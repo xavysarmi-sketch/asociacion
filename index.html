@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- v13.0 - detector de actualizaciones automaticas -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -212,7 +211,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v13.0</div>
+<div class="app-version" id="appVersionTag">v15.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -282,78 +281,72 @@ const MONTHS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov",
 const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
-const DATA_VERSION=2; // bump this when INITIAL data changes
+const DATA_VERSION=3; // bump this when INITIAL data changes
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
   if(!data||!data.members)return data;
   if(data._version>=DATA_VERSION)return data; // already up to date
-  
-  const initialMap={};
-  INITIAL.members.forEach(m=>{initialMap[m.name.toLowerCase()]=m;});
-  
-  // Update existing members with new fields
-  data.members.forEach(m=>{
-    const ref=initialMap[m.name.toLowerCase()];
-    if(ref){
-      if(!m.joinMonth&&ref.joinMonth){m.joinMonth=ref.joinMonth;m.joinYear=ref.joinYear;}
-      if(!m.history||m.history.length===0){m.history=JSON.parse(JSON.stringify(ref.history||[]));}
-      if(!m.phone)m.phone="";
-    }
-    if(!m.history)m.history=[];
-    if(!m.joinMonth)m.joinMonth=null;
-    if(!m.joinYear)m.joinYear=null;
-  });
-  
-  // Add members that exist in INITIAL but not in saved data
-  const existingNames=new Set(data.members.map(m=>m.name.toLowerCase()));
-  INITIAL.members.forEach(im=>{
-    if(!existingNames.has(im.name.toLowerCase())){
-      data.members.push(JSON.parse(JSON.stringify(im)));
-    }
-  });
-  
-  // Update report month/year
-  data.reportMonth=INITIAL.reportMonth;
-  data.reportYear=INITIAL.reportYear;
-  data._version=DATA_VERSION;
+
+  // v3: REEMPLAZO COMPLETO con los datos del Excel (fuente de verdad).
+  // Se conservan los aportes/bonos que el usuario haya marcado en la app,
+  // emparejando por nombre, ya que esos no están en el Excel de préstamos.
+  if(DATA_VERSION>=3){
+    const aportesPrevios={}, bonosPrevios={};
+    data.members.forEach(m=>{
+      const k=(m.name||"").toLowerCase().trim();
+      if(m.aportes&&Object.keys(m.aportes).length)aportesPrevios[k]=m.aportes;
+      if(m.bonos&&m.bonos.length)bonosPrevios[k]=m.bonos;
+    });
+    const fresh=JSON.parse(JSON.stringify(INITIAL));
+    fresh.members.forEach(m=>{
+      const k=(m.name||"").toLowerCase().trim();
+      if(aportesPrevios[k])m.aportes=aportesPrevios[k];
+      if(bonosPrevios[k])m.bonos=bonosPrevios[k];
+    });
+    return fresh;
+  }
   return data;
 }
 
 const URL_PARAMS=new URLSearchParams(window.location.search);
 const READONLY_ID=URL_PARAMS.get("socio")||null;
-const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(",").map(id=>decodeURIComponent(id)):null;
+const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(/[|,]/).map(id=>decodeURIComponent(id)):null;
 
-const INITIAL={_version:2,reportMonth:"Abr",reportYear:2026,monthlyFee:50,rate:5,members:[
-// ── ASOCIADOS (21) ──
-{id:"1",name:"Ángel Sarmiento",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Ago",gYear:2025,capital:250},{gMonth:"Dic",gYear:2025,capital:500}],loans:[]},
-{id:"2",name:"Betty Casañas",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Sep",gYear:2025,capital:300},{gMonth:"Ene",gYear:2026,capital:300}],loans:[{id:"l1",gMonth:"Ene",gYear:2026,capital:300,total:345,n:3,inst:115,pays:[{m:"Feb",y:2026,paid:true},{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false}]}]},
-{id:"3",name:"Mario Orozco",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Sep",gYear:2025,capital:300},{gMonth:"Nov",gYear:2025,capital:500},{gMonth:"Ene",gYear:2026,capital:500},{gMonth:"Mar",gYear:2026,capital:100},{gMonth:"Abr",gYear:2026,capital:1000}],loans:[{id:"l2",gMonth:"Ene",gYear:2026,capital:500,total:575,n:3,inst:192,pays:[{m:"Feb",y:2026,paid:true},{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false}]},{id:"l3",gMonth:"Mar",gYear:2026,capital:100,total:125,n:5,inst:25,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]},{id:"l4",gMonth:"Abr",gYear:2026,capital:1000,total:1250,n:5,inst:250,pays:[{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]}]},
-{id:"4",name:"Stalyn Villafuerte",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Ago",gYear:2025,capital:250},{gMonth:"Nov",gYear:2025,capital:250},{gMonth:"Dic",gYear:2025,capital:500},{gMonth:"Feb",gYear:2026,capital:500},{gMonth:"Abr",gYear:2026,capital:500}],loans:[{id:"l5",gMonth:"Feb",gYear:2026,capital:500,total:575,n:3,inst:192,pays:[{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false}]},{id:"l6",gMonth:"Abr",gYear:2026,capital:500,total:575,n:3,inst:192,pays:[{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false}]}]},
-{id:"5",name:"Alexandra Velazquez",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Oct",gYear:2025,capital:400},{gMonth:"Dic",gYear:2025,capital:300}],loans:[]},
-{id:"6",name:"Jessyca Sanchez",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Sep",gYear:2025,capital:400},{gMonth:"Nov",gYear:2025,capital:250},{gMonth:"Feb",gYear:2026,capital:500}],loans:[{id:"l7",gMonth:"Feb",gYear:2026,capital:500,total:575,n:3,inst:192,pays:[{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false}]}]},
-{id:"7",name:"Mery Sarmiento",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Mar",gYear:2026,capital:500}],loans:[{id:"l8",gMonth:"Mar",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}]},
-{id:"8",name:"Pierre Villafuerte",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Oct",gYear:2025,capital:300}],loans:[]},
-{id:"9",name:"Eulalia Alvarez",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Nov",gYear:2025,capital:500}],loans:[]},
-{id:"10",name:"Amada Pinargote",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[{gMonth:"Oct",gYear:2025,capital:400},{gMonth:"Ene",gYear:2026,capital:500},{gMonth:"Feb",gYear:2026,capital:300}],loans:[{id:"l9",gMonth:"Ene",gYear:2026,capital:500,total:575,n:3,inst:192,pays:[{m:"Feb",y:2026,paid:true},{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false}]},{id:"l10",gMonth:"Feb",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false}]}]},
-{id:"11",name:"Wendy Alvarado",type:"asociado",ref:null,joinMonth:"Oct",joinYear:2025,history:[],loans:[]},
-{id:"12",name:"Johnny Moreno",type:"asociado",ref:null,joinMonth:"Oct",joinYear:2025,history:[],loans:[]},
-{id:"13",name:"Kamen Pablov",type:"asociado",ref:null,joinMonth:"Oct",joinYear:2025,history:[],loans:[]},
-{id:"14",name:"Rodney Badillo",type:"asociado",ref:null,joinMonth:"Ene",joinYear:2026,history:[],loans:[]},
-{id:"15",name:"Maribel Checa",type:"asociado",ref:null,joinMonth:"Ene",joinYear:2026,history:[],loans:[]},
-{id:"16",name:"Javier Arellano",type:"asociado",ref:null,joinMonth:"Mar",joinYear:2026,history:[],loans:[]},
-{id:"17",name:"Jimena Moreno",type:"asociado",ref:null,joinMonth:"Feb",joinYear:2026,history:[],loans:[]},
-{id:"18",name:"Jorge Rivera",type:"asociado",ref:null,joinMonth:"Mar",joinYear:2026,history:[],loans:[]},
-{id:"19",name:"Yanessa Peña",type:"asociado",ref:null,joinMonth:"Mar",joinYear:2026,history:[],loans:[]},
-{id:"20",name:"Gabriel Fuentes",type:"asociado",ref:null,joinMonth:"Abr",joinYear:2026,history:[{gMonth:"Feb",gYear:2026,capital:500}],loans:[{id:"l11",gMonth:"Feb",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false}]}]},
-{id:"21",name:"Gloria Celorio",type:"asociado",ref:null,joinMonth:"Abr",joinYear:2026,history:[{gMonth:"Dic",gYear:2025,capital:200},{gMonth:"Ene",gYear:2026,capital:300},{gMonth:"Abr",gYear:2026,capital:500}],loans:[{id:"l12",gMonth:"Ene",gYear:2026,capital:300,total:345,n:3,inst:115,pays:[{m:"Feb",y:2026,paid:true},{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:false}]},{id:"l13",gMonth:"Abr",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]}]},
-// ── TERCEROS ──
-{id:"t1",name:"Fatima Leon",type:"tercero",ref:"Stalyn Villafuerte",joinMonth:null,joinYear:null,history:[{gMonth:"Mar",gYear:2026,capital:500}],loans:[{id:"lt1",gMonth:"Mar",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}]},
-{id:"t2",name:"Maria Rojas",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,history:[{gMonth:"Mar",gYear:2026,capital:300}],loans:[{id:"lt2",gMonth:"Mar",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}]},
-{id:"t3",name:"Marlene Miranda",type:"tercero",ref:"Ángel Sarmiento",joinMonth:null,joinYear:null,history:[{gMonth:"Mar",gYear:2026,capital:300}],loans:[{id:"lt3",gMonth:"Mar",gYear:2026,capital:300,total:345,n:3,inst:115,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false}]}]},
-{id:"t4",name:"Nicolas Rodriguez",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,history:[{gMonth:"Mar",gYear:2026,capital:400}],loans:[{id:"lt4",gMonth:"Mar",gYear:2026,capital:400,total:500,n:5,inst:100,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}]},
-{id:"t5",name:"Andrea Rodriguez",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,history:[{gMonth:"Mar",gYear:2026,capital:300}],loans:[{id:"lt5",gMonth:"Mar",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Abr",y:2026,paid:false},{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}]},
-{id:"t6",name:"Alexis Palacios",type:"tercero",ref:"Gabriel Fuentes",joinMonth:null,joinYear:null,history:[{gMonth:"Abr",gYear:2026,capital:300}],loans:[{id:"lt6",gMonth:"Abr",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"May",y:2026,paid:false},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]}]}
+const INITIAL={_version:3,reportMonth:"May",reportYear:2026,monthlyFee:50,rate:5,members:[
+// ── ASOCIADOS (25) ──
+{id:"1",name:"Angel Sarmiento",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"2",name:"Betty Casañas",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"3",name:"Mario Orozco",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[{id:"l3",gMonth:"Mar",gYear:2026,capital:100,total:125,n:5,inst:25,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]},{id:"l10",gMonth:"Abr",gYear:2026,capital:1000,total:1250,n:5,inst:250,pays:[{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]},{id:"l18",gMonth:"May",gYear:2026,capital:600,total:750,n:5,inst:150,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"4",name:"Stalyn Villafuerte",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[{id:"l11",gMonth:"Abr",gYear:2026,capital:500,total:575,n:3,inst:192,pays:[{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"5",name:"Alexandra Velazquez",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"6",name:"Jessica sanchez",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[{id:"l19",gMonth:"May",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"7",name:"Mery Sarmiento",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[{id:"l4",gMonth:"Mar",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"8",name:"Pierre Villafuerte",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"9",name:"Eulalia Alvarez",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"10",name:"Amada Pinargote",type:"asociado",ref:null,joinMonth:"Ago",joinYear:2025,history:[],loans:[{id:"l1",gMonth:"Feb",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false}]},{id:"l20",gMonth:"May",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"11",name:"Wendy Alvarado",type:"asociado",ref:null,joinMonth:"Oct",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"12",name:"Johnny Moreno",type:"asociado",ref:null,joinMonth:"Oct",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"13",name:"Kamen Pablov",type:"asociado",ref:null,joinMonth:"Oct",joinYear:2025,history:[],loans:[],aportes:{},bonos:[]},
+{id:"14",name:"Rodney Badillo",type:"asociado",ref:null,joinMonth:"Ene",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+{id:"15",name:"Maribel Checa",type:"asociado",ref:null,joinMonth:"Ene",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+{id:"16",name:"Jimena Moreno",type:"asociado",ref:null,joinMonth:"Feb",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+{id:"17",name:"Javier Arellano",type:"asociado",ref:null,joinMonth:"Mar",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+{id:"18",name:"Jorge Rivera",type:"asociado",ref:null,joinMonth:"Mar",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+{id:"19",name:"Yanessa Peña",type:"asociado",ref:null,joinMonth:"Mar",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+{id:"20",name:"Gabriel Fuentes",type:"asociado",ref:null,joinMonth:"Abr",joinYear:2026,history:[],loans:[{id:"l2",gMonth:"Feb",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false}]},{id:"l21",gMonth:"May",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"21",name:"Gloria Celorio",type:"asociado",ref:null,joinMonth:"Abr",joinYear:2026,history:[],loans:[{id:"l9",gMonth:"Abr",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]},{id:"l17",gMonth:"May",gYear:2026,capital:300,total:345,n:3,inst:115,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"22",name:"Marlene Miranda",type:"asociado",ref:null,joinMonth:"May",joinYear:2026,history:[],loans:[{id:"l7",gMonth:"Mar",gYear:2026,capital:300,total:345,n:3,inst:115,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false}]},{id:"l12",gMonth:"Abr",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"23",name:"Maria Rojas",type:"asociado",ref:null,joinMonth:"May",joinYear:2026,history:[],loans:[{id:"l6",gMonth:"Mar",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"24",name:"Melanny Miranda",type:"asociado",ref:null,joinMonth:"May",joinYear:2026,history:[],loans:[{id:"l15",gMonth:"May",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"25",name:"Yani Rhon",type:"asociado",ref:null,joinMonth:"May",joinYear:2026,history:[],loans:[],aportes:{},bonos:[]},
+// ── TERCEROS (6) ──
+{id:"t1",name:"Fatima Leon",type:"tercero",ref:"Stalyn Villafuerte",joinMonth:null,joinYear:null,history:[],loans:[{id:"l5",gMonth:"Mar",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"t2",name:"Nicolas Rodriguez",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,history:[],loans:[{id:"l8",gMonth:"Mar",gYear:2026,capital:400,total:500,n:5,inst:100,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"t3",name:"Andrea Rodriguez",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,history:[],loans:[],aportes:{},bonos:[]},
+{id:"t4",name:"Alexis Palacios",type:"tercero",ref:"Gabriel Fuentes",joinMonth:null,joinYear:null,history:[],loans:[{id:"l13",gMonth:"Abr",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]}],aportes:{},bonos:[]},
+{id:"t5",name:"Javier Garcia",type:"tercero",ref:"Angel Sarmiento",joinMonth:null,joinYear:null,history:[],loans:[],aportes:{},bonos:[]},
+{id:"t6",name:"Carolina Poveda",type:"tercero",ref:"Gabriel Fuentes",joinMonth:null,joinYear:null,history:[],loans:[{id:"l16",gMonth:"May",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Jun",y:2026,paid:false},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]}],aportes:{},bonos:[]}
 ]};
 
 let DATA,TAB="report",BUSY=false,MODAL=null;
@@ -471,6 +464,109 @@ function memberTotalAportes(m){
 }
 function memberHistoryCount(m){return (m.history||[]).length;}
 function memberHistoryTotal(m){return (m.history||[]).reduce((s,h)=>s+h.capital,0);}
+
+// ════════════════════════════════════════════════════════
+// MÓDULO DE APORTES Y BENEFICIOS (igual lógica que el Excel)
+// ════════════════════════════════════════════════════════
+// Reparto real por mes (interés del fondo ÷ asociados con derecho).
+// Histórico fijo conocido; meses sin dato usan el tope (10) por defecto.
+const REPARTO_REAL={
+  "2025-09":2.5,"2025-10":5,"2025-11":8.08,"2025-12":10,
+  "2026-01":10,"2026-02":10,"2026-03":10,"2026-04":10,"2026-05":10
+};
+const TOPE_TRAMO=[10,12,15]; // tramo 1,2,3
+function mIdx(monthAbbr,year){return year*12+MONTHS.indexOf(monthAbbr);}
+function claveMes(monthAbbr,year){return year+"-"+String(MONTHS.indexOf(monthAbbr)+1).padStart(2,"0");}
+
+// Devuelve el aporte de un asociado en un mes concreto.
+// Si hay excepción registrada (m.aportes[clave]) la usa; si no, asume 50 desde el ingreso.
+function aporteDelMes(m,monthAbbr,year){
+  if(!m.joinMonth||!m.joinYear)return 0;
+  const idx=mIdx(monthAbbr,year), ing=mIdx(m.joinMonth,m.joinYear);
+  if(idx<ing)return 0; // aún no había ingresado
+  const clave=claveMes(monthAbbr,year);
+  if(m.aportes&&m.aportes[clave]!==undefined)return m.aportes[clave];
+  return 50; // patrón normal
+}
+
+// Tramo de un asociado a una fecha (por antigüedad real desde el ingreso)
+function tramoEnFecha(m,monthAbbr,year){
+  if(!m.joinMonth)return 0;
+  const antig=mIdx(monthAbbr,year)-mIdx(m.joinMonth,m.joinYear)+1;
+  if(antig<=0)return 0;
+  if(antig<=12)return 1;
+  if(antig<=24)return 2;
+  return 3;
+}
+
+// Beneficio de un asociado en un mes:
+//  - empieza el mes SIGUIENTE al ingreso (mes vencido)
+//  - aporte 50 → MIN(tope del tramo, reparto real del mes)
+//  - aporte 100 → doble del tope del tramo (fijo)
+function beneficioDelMes(m,monthAbbr,year){
+  if(!m.joinMonth)return 0;
+  const idx=mIdx(monthAbbr,year), ing=mIdx(m.joinMonth,m.joinYear);
+  if(idx<=ing)return 0; // el mes de ingreso no genera beneficio aún
+  const aporte=aporteDelMes(m,monthAbbr,year);
+  if(aporte<=0)return 0;
+  const antig=idx-ing; // nº de mes de beneficio (1=primer mes cobrando)
+  let tramo=1; if(antig>12)tramo=2; if(antig>24)tramo=3;
+  const tope=TOPE_TRAMO[tramo-1];
+  if(aporte>=100)return tope*2;
+  const clave=claveMes(monthAbbr,year);
+  const real=REPARTO_REAL[clave]!==undefined?REPARTO_REAL[clave]:tope;
+  return Math.min(tope,real);
+}
+
+// Recorre todos los meses desde el ingreso hasta el reporte y arma el historial de beneficios
+function beneficioHistorial(m){
+  if(!m.joinMonth||!m.joinYear)return [];
+  const out=[];
+  let idx=mIdx(m.joinMonth,m.joinYear)+1; // primer mes de beneficio
+  const fin=mIdx(DATA.reportMonth,DATA.reportYear);
+  while(idx<=fin){
+    const yr=Math.floor(idx/12), mo=idx-yr*12;
+    const ma=MONTHS[mo], y=yr;
+    const ben=beneficioDelMes(m,ma,y);
+    const ap=aporteDelMes(m,ma,y);
+    if(ap>0)out.push({month:ma,year:y,benef:ben,aporte:ap});
+    idx++;
+  }
+  return out;
+}
+function beneficioAcumulado(m){return beneficioHistorial(m).reduce((s,x)=>s+x.benef,0);}
+function aportesAcumulado(m){
+  if(!m.joinMonth||!m.joinYear)return 0;
+  let t=0,idx=mIdx(m.joinMonth,m.joinYear);
+  const fin=mIdx(DATA.reportMonth,DATA.reportYear);
+  while(idx<=fin){
+    const yr=Math.floor(idx/12), mo=idx-yr*12;
+    t+=aporteDelMes(m,MONTHS[mo],yr); idx++;
+  }
+  return t;
+}
+function tramoActual(m){return tramoEnFecha(m,DATA.reportMonth,DATA.reportYear);}
+// Bonos por referir y aportes extra (para mostrar en la ficha)
+function bonosReferir(m){return (m.bonos||[]);} // [{month,year,n,bonus}]
+function aportesExtra(m){
+  // meses donde aportó 100
+  const out=[];
+  if(!m.joinMonth)return out;
+  let idx=mIdx(m.joinMonth,m.joinYear);
+  const fin=mIdx(DATA.reportMonth,DATA.reportYear);
+  while(idx<=fin){
+    const yr=Math.floor(idx/12),mo=idx-yr*12;
+    if(aporteDelMes(m,MONTHS[mo],yr)>=100)out.push({month:MONTHS[mo],year:yr});
+    idx++;
+  }
+  return out;
+}
+function setAporteMes(mid,monthAbbr,year,valor){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  if(!m.aportes)m.aportes={};
+  m.aportes[claveMes(monthAbbr,year)]=valor;
+  save();render();
+}
 function openHistory(mid){const m=DATA.members.find(x=>x.id===mid);if(!m)return;MODAL={type:"history",member:m};render();}
 function historyModalHTML(){
   const m=MODAL.member;
@@ -532,6 +628,53 @@ function historyModalHTML(){
   return h;
 }
 
+function openBenefDetalle(mid){const m=DATA.members.find(x=>x.id===mid);if(!m)return;MODAL={type:"benef",member:m};render();}
+function benefDetalleHTML(){
+  const m=MODAL.member;
+  const hist=beneficioHistorial(m).slice().reverse(); // más reciente arriba
+  const totalBen=beneficioAcumulado(m);
+  const totalAp=aportesAcumulado(m);
+  const tr=tramoActual(m);
+  const extras=aportesExtra(m);
+  const bonos=bonosReferir(m);
+  let h=`<div class="modal-title">📊 ${escH(m.name)}</div>`;
+  // tarjeta resumen
+  h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:18px;margin-bottom:14px;color:#fff">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Beneficio acumulado</div><div style="font-size:24px;font-weight:800;margin-top:2px">${totalBen.toFixed(2)} €</div></div>
+      <div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Total aportado</div><div style="font-size:24px;font-weight:800;margin-top:2px">${totalAp.toLocaleString("es")} €</div></div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);font-size:13px">Tramo actual: <b>${tr||"—"}</b> · Miembro desde ${m.joinMonth?MONTHS_FULL[MONTHS.indexOf(m.joinMonth)]+" "+m.joinYear:"—"}</div>
+  </div>`;
+  // extras y bonos
+  if(extras.length){
+    h+=`<div style="background:var(--warm-lt);border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13px"><b style="color:var(--warm)">💰 Aportes extra (100€):</b> ${extras.map(e=>e.month+" "+e.year).join(", ")}</div>`;
+  }
+  if(bonos.length){
+    const totBonos=bonos.reduce((s,b)=>s+(b.bonus||0),0);
+    h+=`<div style="background:#FFF0E6;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13px"><b style="color:var(--warm)">🎁 Bonos por referir:</b> ${totBonos} € en total</div>`;
+  }
+  // historial mes a mes
+  h+=`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px;padding:0 4px">📅 Beneficio mes a mes</div>`;
+  if(!hist.length){
+    h+=`<div style="text-align:center;padding:20px;color:var(--muted);background:#F9F9F7;border-radius:12px;font-size:14px">Todavía no genera beneficios</div>`;
+  }else{
+    h+=`<div style="background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden">`;
+    hist.forEach((x,i)=>{
+      const extra=x.aporte>=100;
+      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px${i<hist.length-1?";border-bottom:1px solid var(--border)":""}">
+        <div><div style="font-size:14px;font-weight:600;color:var(--dark)">${MONTHS_FULL[MONTHS.indexOf(x.month)]} ${x.year}</div>${extra?'<div style="font-size:11px;color:var(--warm);font-weight:700">aporte extra 100€</div>':''}</div>
+        <div style="font-size:16px;font-weight:800;color:var(--accent)">+${x.benef.toFixed(2)} €</div>
+      </div>`;
+    });
+    h+=`</div>`;
+    h+=`<div style="background:var(--bg);border:2px dashed var(--accent);border-radius:12px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:14px;font-weight:700;color:var(--dark)">💰 Total beneficio</div>
+      <div style="font-size:20px;font-weight:900;color:var(--dark)">${totalBen.toFixed(2)} €</div></div>`;
+  }
+  return h;
+}
+
 let SYNC_STATUS="init";
 
 function load(){
@@ -547,7 +690,7 @@ function load(){
       }
       try{
         const fbData=await window._fbLoad();
-        if(fbData){DATA=migrateData(fbData);if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});}
+        if(fbData){DATA=migrateData(fbData);if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;if(!m.aportes)m.aportes={};if(!m.bonos)m.bonos=[];});}
         SYNC_STATUS="ok";
       }catch(e){console.error("Firebase readonly load failed:",e);SYNC_STATUS="error";}
       setCurrentMonthYear();
@@ -561,7 +704,7 @@ function load(){
   try{
     const s=localStorage.getItem(KEY);
     DATA=s?migrateData(JSON.parse(s)):JSON.parse(JSON.stringify(INITIAL));
-    if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
+    if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;if(!m.aportes)m.aportes={};if(!m.bonos)m.bonos=[];});
   }catch{DATA=JSON.parse(JSON.stringify(INITIAL));}
   // Forzar siempre al mes actual al cargar
   setCurrentMonthYear();
@@ -581,7 +724,7 @@ function load(){
       const fbData=await window._fbLoad();
       if(fbData){
         DATA=migrateData(fbData);
-        if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
+        if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;if(!m.aportes)m.aportes={};if(!m.bonos)m.bonos=[];});
         localStorage.setItem(KEY,JSON.stringify(DATA));
       }
       SYNC_STATUS="ok";
@@ -908,8 +1051,10 @@ function sendGroupLink(){
   const filtered=sendFilteredMembers();
   const ids=[...SEND_SELECTED].filter(id=>filtered.some(m=>m.id===id));
   if(ids.length<2){toast("Selecciona al menos 2 fichas");return;}
+  // Usar NOMBRES (estables) en vez de IDs (que pueden cambiar con Firebase)
+  const nombres=ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?m.name:null;}).filter(Boolean);
   const base=window.location.href.split("?")[0];
-  const url=`${base}?grupo=${ids.map(id=>encodeURIComponent(id)).join(",")}`;
+  const url=`${base}?grupo=${nombres.map(n=>encodeURIComponent(n)).join("|")}`;
   const msg=`Hola 👋, aquí podéis consultar vuestro reporte de ${DATA.reportMonth} ${DATA.reportYear} en Nuevos Horizontes:\n${url}`;
   openWA(msg);
 }
@@ -918,7 +1063,9 @@ function openLinkModal(mid){MODAL={type:"link",mid};render();}
 
 function buildMemberUrl(mid){
   const base=window.location.href.split("?")[0];
-  return`${base}?socio=${encodeURIComponent(mid)}`;
+  const m=DATA.members.find(x=>x.id===mid);
+  // Usar nombre (estable) en vez de id (puede cambiar con Firebase)
+  return`${base}?socio=${encodeURIComponent(m?m.name:mid)}`;
 }
 
 function sendLinkWA(mid){
@@ -1053,6 +1200,7 @@ function render(){
   h+=`<div class="tabs">
     <button class="tab ${TAB==="report"?"active":""}" onclick="TAB='report';render()">📊 Reporte</button>
     <button class="tab ${TAB==="send"?"active":""}" onclick="TAB='send';render()">📤 Envíos</button>
+    <button class="tab ${TAB==="aportes"?"active":""}" onclick="TAB='aportes';render()">💶 Aportes</button>
     <button class="tab ${TAB==="manage"?"active":""}" onclick="TAB='manage';render()">⚙️ Gestión</button>
   </div><div class="content">`;
 
@@ -1152,6 +1300,38 @@ function render(){
     </div>`;
   }
 
+  // ── PESTAÑA APORTES ──
+  if(TAB==="aportes"){
+    const asoc=DATA.members.filter(m=>m.type==="asociado");
+    const totalBenef=asoc.reduce((s,m)=>s+beneficioAcumulado(m),0);
+    const totalAp=asoc.reduce((s,m)=>s+aportesAcumulado(m),0);
+    h+=`<div class="grand"><div class="grand-label">Fondo de aportes y beneficios — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
+      <div class="grand-val">${totalAp.toLocaleString("es")} €</div>
+      <div class="grand-sub">Beneficios repartidos: <b>${totalBenef.toFixed(2)} €</b></div></div>`;
+    h+=`<p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">Toca un asociado para marcar su aporte del mes y ver su beneficio</p>`;
+    asoc.forEach(m=>{
+      const ap=aporteDelMes(m,rm,ry);
+      const ben=beneficioAcumulado(m);
+      const tr=tramoActual(m);
+      const apMes=aporteDelMes(m,rm,ry);
+      const esExtra=apMes>=100;
+      h+=`<div class="card" style="margin-bottom:10px">
+        <div class="card-head" style="padding:12px 14px">
+          <div style="flex:1">
+            <div class="card-name" style="font-size:16px">${escH(m.name)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Tramo ${tr||"—"} · Beneficio acum: <b style="color:var(--accent)">${ben.toFixed(2)} €</b></div>
+          </div>
+        </div>
+        <div style="padding:10px 14px;display:flex;gap:8px;align-items:center">
+          <span style="font-size:13px;color:var(--muted);font-weight:600">Aporte ${rm}:</span>
+          <button onclick="setAporteMes('${esc(m.id)}','${rm}',${ry},50)" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${apMes===50?'var(--accent)':'var(--border)'};background:${apMes===50?'var(--paid-bg)':'#fff'};font-weight:700;color:${apMes===50?'var(--dark)':'var(--muted)'}">50 €</button>
+          <button onclick="setAporteMes('${esc(m.id)}','${rm}',${ry},100)" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${esExtra?'var(--warm)':'var(--border)'};background:${esExtra?'var(--warm-lt)':'#fff'};font-weight:700;color:${esExtra?'var(--warm)':'var(--muted)'}">100 €</button>
+          <button onclick="openBenefDetalle('${esc(m.id)}')" style="padding:10px 12px;border-radius:10px;border:2px solid var(--dark);background:#fff;color:var(--dark);font-weight:700">📊</button>
+        </div>
+      </div>`;
+    });
+  }
+
   // ── PESTAÑA GESTIÓN ──
   if(TAB==="manage"){
     const asocAll=DATA.members.filter(m=>m.type==="asociado");
@@ -1198,6 +1378,7 @@ function render(){
     if(MODAL.type==="link")h+=linkModalHTML();
     if(MODAL.type==="wa_queue")h+=waQueueModalHTML();
     if(MODAL.type==="history")h+=historyModalHTML();
+    if(MODAL.type==="benef")h+=benefDetalleHTML();
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;
@@ -1333,10 +1514,69 @@ function updateLoanPreview(){
 }
 
 // ── MODO SOLO LECTURA ──
+function asociadoBenefHTML(m){
+  const totalBen=beneficioAcumulado(m);
+  const totalAp=aportesAcumulado(m);
+  const tr=tramoActual(m);
+  const hist=beneficioHistorial(m).slice().reverse();
+  const extras=aportesExtra(m);
+  const bonos=bonosReferir(m);
+  const topeMes=TOPE_TRAMO[(tr||1)-1];
+  let h=``;
+  // Encabezado verde grande
+  h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:20px;padding:22px;margin-top:18px;color:#fff;text-align:center">
+    <div style="font-size:15px;color:rgba(255,255,255,.75);font-weight:600">💚 LO QUE HAS GANADO</div>
+    <div style="font-size:40px;font-weight:900;margin:6px 0">${totalBen.toFixed(2)} €</div>
+    <div style="font-size:14px;color:rgba(255,255,255,.8)">en beneficios acumulados hasta hoy</div>
+  </div>`;
+  // Dos tarjetas grandes: total aportado y beneficio del mes
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+    <div style="background:#fff;border:2px solid var(--border);border-radius:16px;padding:16px;text-align:center">
+      <div style="font-size:13px;color:var(--muted);font-weight:600">Llevas aportado</div>
+      <div style="font-size:26px;font-weight:800;color:var(--dark);margin-top:4px">${totalAp.toLocaleString("es")} €</div>
+    </div>
+    <div style="background:#fff;border:2px solid var(--border);border-radius:16px;padding:16px;text-align:center">
+      <div style="font-size:13px;color:var(--muted);font-weight:600">Ganas al mes</div>
+      <div style="font-size:26px;font-weight:800;color:var(--accent);margin-top:4px">${topeMes} €</div>
+    </div>
+  </div>`;
+  // Tramo explicado en lenguaje simple
+  const tramoTxt=tr===1?"primer año (Tramo 1)":tr===2?"segundo año (Tramo 2)":tr===3?"tercer año (Tramo 3)":"—";
+  h+=`<div style="background:var(--paid-bg);border-radius:14px;padding:14px 16px;margin-top:12px;text-align:center;font-size:14px;color:var(--dark)">
+    Estás en tu <b>${tramoTxt}</b> de permanencia 🌱</div>`;
+  // Aportes extra y bonos si los tiene
+  if(extras.length){
+    h+=`<div style="background:var(--warm-lt);border-radius:14px;padding:14px 16px;margin-top:10px;font-size:14px;color:var(--text)">
+      <b style="color:var(--warm)">💰 Aportes extra de 100 €:</b><br>${extras.map(e=>MONTHS_FULL[MONTHS.indexOf(e.month)]+" "+e.year).join(", ")}<br>
+      <span style="font-size:12px;color:var(--muted)">Esos meses tu beneficio fue el doble</span></div>`;
+  }
+  if(bonos.length){
+    const totBonos=bonos.reduce((s,b)=>s+(b.bonus||0),0);
+    h+=`<div style="background:#FFF0E6;border-radius:14px;padding:14px 16px;margin-top:10px;font-size:14px;color:var(--text)">
+      <b style="color:var(--warm)">🎁 Bonos por traer nuevos miembros:</b> ${totBonos} €<br>
+      <span style="font-size:12px;color:var(--muted)">Se descontaron de tu aporte esos meses</span></div>`;
+  }
+  // Historial mes a mes, plegable
+  if(hist.length){
+    h+=`<div style="font-size:14px;font-weight:700;color:var(--dark);margin:18px 0 8px;text-align:center">📅 Tu historial mes a mes</div>`;
+    h+=`<div style="background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden">`;
+    hist.forEach((x,i)=>{
+      const extra=x.aporte>=100;
+      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px${i<hist.length-1?";border-bottom:1px solid var(--border)":""}">
+        <div style="font-size:15px;font-weight:600;color:var(--dark)">${MONTHS_FULL[MONTHS.indexOf(x.month)]} ${x.year}${extra?' <span style="font-size:11px;color:var(--warm);font-weight:700">(extra)</span>':''}</div>
+        <div style="font-size:17px;font-weight:800;color:var(--accent)">+${x.benef.toFixed(2)} €</div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  return h;
+}
+
 function renderReadonly(){
   const rm=DATA.reportMonth,ry=DATA.reportYear,fee=DATA.monthlyFee;
   const m=DATA.members.find(x=>x.id===READONLY_ID)||
-    DATA.members.find(x=>x.name.toLowerCase().includes((READONLY_ID||"").toLowerCase()));
+    DATA.members.find(x=>x.name===READONLY_ID)||
+    DATA.members.find(x=>x.name.toLowerCase()===(READONLY_ID||"").toLowerCase());
   let h="";
   if(!m){
     h=`<div style="text-align:center;padding:60px 20px">
@@ -1385,6 +1625,10 @@ function renderReadonly(){
   }
   h+=`</div>`;
   h+=`<div class="note" style="margin-top:14px">El aporte mensual de <b>${fee},00 €</b> es adicional a las cuotas de devolución.</div>`;
+  // ── BLOQUE DE BENEFICIOS (solo asociados) ──
+  if(!isTerc&&m.joinMonth){
+    h+=asociadoBenefHTML(m);
+  }
   h+=`<div style="text-align:center;padding:24px 0 8px;font-size:12px;color:var(--muted)">Vista de solo lectura · Contacta con el administrador para cualquier consulta</div>`;
   h+=`</div>`;
   // Modal del historial (si está abierto)
@@ -1397,7 +1641,12 @@ function renderReadonly(){
 // ── MODO GRUPO ──
 function renderGrupo(){
   const rm=DATA.reportMonth,ry=DATA.reportYear,fee=DATA.monthlyFee;
-  const members=GRUPO_IDS?GRUPO_IDS.map(id=>DATA.members.find(x=>x.id===id)).filter(Boolean):[];
+  const members=GRUPO_IDS?GRUPO_IDS.map(key=>{
+    // Buscar por ID exacto primero (enlaces viejos), luego por nombre (enlaces nuevos)
+    return DATA.members.find(x=>x.id===key)||
+           DATA.members.find(x=>x.name===key)||
+           DATA.members.find(x=>x.name.toLowerCase()===String(key).toLowerCase());
+  }).filter(Boolean):[];
   if(!members||!members.length){
     document.getElementById("app").innerHTML=`<div style="text-align:center;padding:60px 20px"><div style="font-size:48px">🔍</div><div style="font-size:18px;font-weight:700;color:var(--dark);margin-top:16px">Grupo no encontrado</div><div style="font-size:14px;color:var(--muted);margin-top:8px">Contacta con el administrador</div></div>`;
     return;
