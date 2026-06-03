@@ -211,7 +211,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v15.0</div>
+<div class="app-version" id="appVersionTag">v16.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -561,11 +561,27 @@ function aportesExtra(m){
   }
   return out;
 }
+// Marca o desmarca el aporte de un mes.
+// Si toca el mismo valor que ya estaba marcado -> lo DESMARCA (queda pendiente).
+// Si toca un valor distinto -> lo marca con ese valor.
 function setAporteMes(mid,monthAbbr,year,valor){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
   if(!m.aportes)m.aportes={};
-  m.aportes[claveMes(monthAbbr,year)]=valor;
+  const clave=claveMes(monthAbbr,year);
+  if(m.aportes[clave]===valor){
+    // ya estaba marcado con ese valor -> desmarcar
+    delete m.aportes[clave];
+    toast("Aporte desmarcado");
+  }else{
+    m.aportes[clave]=valor;
+    toast(valor===100?"✓ Aporte de 100 € marcado":"✓ Aporte de 50 € marcado");
+  }
   save();render();
+}
+// ¿Está el aporte de este mes marcado como pagado?
+function aporteMarcado(m,monthAbbr,year){
+  if(!m.aportes)return false;
+  return m.aportes[claveMes(monthAbbr,year)]!==undefined;
 }
 function openHistory(mid){const m=DATA.members.find(x=>x.id===mid);if(!m)return;MODAL={type:"history",member:m};render();}
 function historyModalHTML(){
@@ -1308,25 +1324,32 @@ function render(){
     h+=`<div class="grand"><div class="grand-label">Fondo de aportes y beneficios — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
       <div class="grand-val">${totalAp.toLocaleString("es")} €</div>
       <div class="grand-sub">Beneficios repartidos: <b>${totalBenef.toFixed(2)} €</b></div></div>`;
-    h+=`<p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">Toca un asociado para marcar su aporte del mes y ver su beneficio</p>`;
+    h+=`<p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">Toca 50 € o 100 € para marcar el aporte de ${rm}. Toca otra vez para desmarcar.</p>`;
     asoc.forEach(m=>{
-      const ap=aporteDelMes(m,rm,ry);
       const ben=beneficioAcumulado(m);
       const tr=tramoActual(m);
-      const apMes=aporteDelMes(m,rm,ry);
-      const esExtra=apMes>=100;
+      const marcado=aporteMarcado(m,rm,ry);
+      const apMes=marcado?aporteDelMes(m,rm,ry):0;
+      const es50=marcado&&apMes===50;
+      const es100=marcado&&apMes>=100;
       h+=`<div class="card" style="margin-bottom:10px">
-        <div class="card-head" style="padding:12px 14px">
+        <div class="card-head" style="padding:12px 14px;${marcado?'background:var(--paid-bg)':''}">
           <div style="flex:1">
             <div class="card-name" style="font-size:16px">${escH(m.name)}</div>
             <div style="font-size:12px;color:var(--muted);margin-top:2px">Tramo ${tr||"—"} · Beneficio acum: <b style="color:var(--accent)">${ben.toFixed(2)} €</b></div>
           </div>
+          <div style="text-align:right">
+            ${marcado
+              ?`<div style="font-size:13px;font-weight:800;color:var(--paid)">✓ PAGADO</div><div style="font-size:11px;color:var(--muted)">${apMes} €${es100?' (extra)':''}</div>`
+              :`<div style="font-size:13px;font-weight:700;color:var(--warm)">⬜ PENDIENTE</div>`
+            }
+          </div>
         </div>
         <div style="padding:10px 14px;display:flex;gap:8px;align-items:center">
-          <span style="font-size:13px;color:var(--muted);font-weight:600">Aporte ${rm}:</span>
-          <button onclick="setAporteMes('${esc(m.id)}','${rm}',${ry},50)" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${apMes===50?'var(--accent)':'var(--border)'};background:${apMes===50?'var(--paid-bg)':'#fff'};font-weight:700;color:${apMes===50?'var(--dark)':'var(--muted)'}">50 €</button>
-          <button onclick="setAporteMes('${esc(m.id)}','${rm}',${ry},100)" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${esExtra?'var(--warm)':'var(--border)'};background:${esExtra?'var(--warm-lt)':'#fff'};font-weight:700;color:${esExtra?'var(--warm)':'var(--muted)'}">100 €</button>
-          <button onclick="openBenefDetalle('${esc(m.id)}')" style="padding:10px 12px;border-radius:10px;border:2px solid var(--dark);background:#fff;color:var(--dark);font-weight:700">📊</button>
+          <span style="font-size:13px;color:var(--muted);font-weight:600">${rm}:</span>
+          <button onclick="setAporteMes('${esc(m.id)}','${rm}',${ry},50)" style="flex:1;padding:11px;border-radius:10px;border:2px solid ${es50?'var(--accent)':'var(--border)'};background:${es50?'var(--accent)':'#fff'};font-weight:700;color:${es50?'#fff':'var(--muted)'}">${es50?'✓ ':''}50 €</button>
+          <button onclick="setAporteMes('${esc(m.id)}','${rm}',${ry},100)" style="flex:1;padding:11px;border-radius:10px;border:2px solid ${es100?'var(--warm)':'var(--border)'};background:${es100?'var(--warm)':'#fff'};font-weight:700;color:${es100?'#fff':'var(--muted)'}">${es100?'✓ ':''}100 €</button>
+          <button onclick="openBenefDetalle('${esc(m.id)}')" style="padding:11px 13px;border-radius:10px;border:2px solid var(--dark);background:#fff;color:var(--dark);font-weight:700">📊</button>
         </div>
       </div>`;
     });
