@@ -513,7 +513,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v32.2</div>
+<div class="app-version" id="appVersionTag">v33.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -1059,9 +1059,20 @@ function load(){
     try{
       const fbData=await window._fbLoad();
       if(fbData){
-        DATA=sanitizeData(migrateData(fbData));
-        if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
-        localStorage.setItem(KEY,JSON.stringify(DATA));
+        const fbT=fbData.updatedAt||0;
+        const localT=(DATA&&DATA.updatedAt)||0;
+        // Solo adoptar Firebase si es MÁS RECIENTE que lo local (gana lo más nuevo)
+        if(fbT>=localT){
+          DATA=sanitizeData(migrateData(fbData));
+          if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
+          localStorage.setItem(KEY,JSON.stringify(DATA));
+        }else{
+          // Lo local es más reciente: subir lo local a Firebase para que la nube se actualice
+          try{await window._fbSave(DATA);}catch(e){}
+        }
+      }else{
+        // Firebase vacío: subir lo local
+        try{await window._fbSave(DATA);}catch(e){}
       }
       SYNC_STATUS="ok";
     }catch(e){
@@ -1075,7 +1086,22 @@ function load(){
   tryFirebase();
 }
 
+async function subirAhoraNube(){
+  DATA.updatedAt=Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
+  if(!window._fbReady){toast("Conectando con la nube, espera un momento e inténtalo de nuevo");return;}
+  toast("Subiendo a la nube...");
+  try{
+    const ok=await window._fbSave(DATA);
+    if(ok){SYNC_STATUS="ok";toast("✓ Datos subidos a la nube ("+DATA.members.length+" miembros)");}
+    else{SYNC_STATUS="error";toast("No se pudo subir. Revisa tu conexión.");}
+  }catch(e){SYNC_STATUS="error";toast("Error al subir a la nube");}
+  const dot=document.querySelector(".sync-indicator");
+  if(dot)dot.innerHTML=syncHTML();
+}
+
 async function save(){
+  DATA.updatedAt=Date.now(); // marca de tiempo: para que gane siempre la versión más reciente
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
 
   if(!READONLY_ID&&!GRUPO_IDS){
@@ -3165,6 +3191,7 @@ function render(){
       <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:4px">💾 Copia de seguridad</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Exporta tus datos para no perderlos si borras el caché</div>
       <button class="backup-btn backup-export" onclick="exportData()">📤 Exportar datos (JSON)</button>
+      <button class="backup-btn" style="background:#2D6A4F;color:#fff" onclick="subirAhoraNube()">☁️ Subir ahora a la nube</button>
       <button class="backup-btn backup-import" onclick="importData()">📂 Importar backup</button>
     </div>`;
 
