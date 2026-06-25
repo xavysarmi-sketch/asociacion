@@ -513,7 +513,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v30.1</div>
+<div class="app-version" id="appVersionTag">v32.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -851,6 +851,10 @@ aportesPuntuales:{"4":[{id:"ap-stalyn-abr",capital:300,retorno:15,total:315,plaz
 let DATA,TAB="asociados",BUSY=false,MODAL=null,FICHA_ID=null,DESP={};
 let FICHA_TAB="resumen"; // pestaña activa dentro del detalle del asociado
 let REPORT_FILTER="todos"; // "todos" (orden de entrada) | "activas" (solo con ayudas activas)
+let CIERRE_SEARCH=""; // texto del buscador del Cierre
+let ASOC_SEARCH=""; // texto del buscador de Asociados
+// Grupos de cierre: se guardan en DATA.gruposCierre = [{id, principalId, miembros:[mid,...]}]
+// Los items (aporte/cuotas) se calculan en vivo según el mes seleccionado.
 let PREVIEW_ID=null; // id del asociado en previsualización del admin (vista "como lo ve el asociado")
 let SEND_SELECTED=new Set(),SEND_FILTER="all",SEND_SEARCH="";
 let WA_QUEUE=[],WA_IDX=0;
@@ -1147,6 +1151,122 @@ function due(m,rm,ry){
 function pendLoan(l){return l.pays.filter(p=>!p.paid).length*l.inst;}
 function pendAll(m){let t=0;m.loans.forEach(l=>t+=pendLoan(l));return t;}
 
+// Recargo por cuota de una ayuda = 5% del capital (una vez por cuota)
+function recargoPorCuota(l){return Math.round(l.capital*(DATA.rate/100));}
+
+// Recargo automático del mes = suma del recargo de cada cuota PAGADA cuyo mes es rm/ry
+function recargoAutoMes(rm,ry){
+  let t=0;
+  DATA.members.forEach(m=>{
+    [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+      l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry&&p.paid) t+=recargoPorCuota(l); });
+    });
+  });
+  return t;
+}
+
+// Lista de cuotas cuyo mes es rm/ry (para el bloque de cuotas cobradas del cierre)
+// ── CIERRE GRUPAL (varios grupos, persistentes) ──
+function gruposCierre(){ if(!DATA.gruposCierre)DATA.gruposCierre=[]; return DATA.gruposCierre; }
+
+// Items (aporte + cuotas) de un miembro en el mes seleccionado
+function itemsDeMiembro(mid){
+  const rm=DATA.reportMonth, ry=DATA.reportYear;
+  const m=DATA.members.find(x=>x.id===mid);
+  if(!m)return [];
+  const items=[];
+  if(m.type==="asociado"){
+    const md=getMesData(rm,ry);
+    const pagado=!!(md.aportes&&md.aportes[m.id]);
+    items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto:"Aporte mensual",importe:(m.aporte||DATA.monthlyFee),yaPagado:pagado});
+  }
+  cuotasDelMes(rm,ry).filter(c=>c.mid===mid).forEach(c=>{
+    items.push({tipo:"cuota",mid:c.mid,lid:c.lid,pi:c.pi,nombre:c.nombre,concepto:`Cuota ${c.numCuota}/${c.totalCuotas}`,importe:c.inst,recargo:c.recargo,yaPagado:c.paid});
+  });
+  return items;
+}
+function itemsDeGrupo(g){
+  const ids=[g.principalId,...(g.miembros||[])];
+  let items=[];
+  ids.forEach(id=>{ items=items.concat(itemsDeMiembro(id)); });
+  return items;
+}
+function crearGrupo(principalId){
+  if(!principalId)return;
+  gruposCierre().push({id:"G"+Date.now(),principalId,miembros:[]});
+  save();render();
+}
+function borrarGrupo(gid){
+  DATA.gruposCierre=gruposCierre().filter(g=>g.id!==gid);
+  save();render();
+}
+function añadirMiembroGrupo(gid,mid){
+  if(!mid)return;
+  const g=gruposCierre().find(x=>x.id===gid);
+  if(g&&g.principalId!==mid&&!(g.miembros||[]).includes(mid)){
+    if(!g.miembros)g.miembros=[];
+    g.miembros.push(mid);
+    save();render();
+  }
+}
+function quitarMiembroGrupo(gid,mid){
+  const g=gruposCierre().find(x=>x.id===gid);
+  if(g){ g.miembros=(g.miembros||[]).filter(x=>x!==mid); save();render(); }
+}
+function marcarItemGrupo(tipo,mid,lid,pi){
+  if(tipo==="aporte"){
+    const md=getMesData(DATA.reportMonth,DATA.reportYear);
+    if(!md.aportes)md.aportes={};
+    md.aportes[mid]=!md.aportes[mid];
+  } else {
+    const m=DATA.members.find(x=>x.id===mid);
+    if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===lid)l.pays[pi].paid=!l.pays[pi].paid;});
+    recolocarAyudas();
+  }
+  recalcMesRecargo();save();render();
+}
+function marcarTodoGrupo(gid){
+  const g=gruposCierre().find(x=>x.id===gid);
+  if(!g)return;
+  itemsDeGrupo(g).forEach(it=>{
+    if(it.yaPagado)return;
+    if(it.tipo==="aporte"){
+      const md=getMesData(DATA.reportMonth,DATA.reportYear);
+      if(!md.aportes)md.aportes={};
+      md.aportes[it.mid]=true;
+    } else {
+      const m=DATA.members.find(x=>x.id===it.mid);
+      if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===it.lid)l.pays[it.pi].paid=true;});
+    }
+  });
+  recolocarAyudas();recalcMesRecargo();save();render();
+  toast("Grupo marcado como pagado ✓");
+}
+function recolocarAyudas(){
+  DATA.members.forEach(m=>{
+    const t=[...(m.loans||[]),...(m.closedLoans||[])];
+    m.loans=t.filter(l=>l.pays.some(p=>!p.paid));
+    m.closedLoans=t.filter(l=>l.pays.every(p=>p.paid));
+  });
+}
+
+function cuotasDelMes(rm,ry){
+  const out=[];
+  DATA.members.forEach(m=>{
+    [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+      l.pays.forEach((p,pi)=>{
+        if(p.m===rm&&p.y===ry){
+          out.push({mid:m.id,nombre:m.name,tipo:m.type,lid:l.id,pi,inst:l.inst,
+            recargo:recargoPorCuota(l),capital:l.inst-recargoPorCuota(l),paid:p.paid,
+            numCuota:pi+1,totalCuotas:l.pays.length,gMonth:l.gMonth,gYear:l.gYear});
+        }
+      });
+    });
+  });
+  // asociados primero, terceros después
+  return out.sort((a,b)=>(a.tipo===b.tipo?0:a.tipo==="asociado"?-1:1));
+}
+
 function togglePay(mid,lid,pi){
   UNDO_SNAPSHOT=JSON.stringify(DATA);
   clearTimeout(UNDO_TIMER);
@@ -1442,11 +1562,7 @@ function sendGroupLink(){
   render();
 }
 function buildGrupoUrl(ids){
-  const base=window.location.href.split("?")[0];
-  const esLocal=base.startsWith("file://");
-  return esLocal
-    ?"https://xavysarmi-sketch.github.io/asociacion/?grupo="+ids.map(id=>encodeURIComponent(id)).join(",")
-    :base+"?grupo="+ids.map(id=>encodeURIComponent(id)).join(",");
+  return baseUrl()+"?grupo="+ids.map(id=>encodeURIComponent(id)).join(",");
 }
 function sendGrupoWA(){
   if(!MODAL||!MODAL.ids)return;
@@ -1514,12 +1630,8 @@ function grupoLinkModalHTML(){
   if(!MODAL||!MODAL.ids)return "";
   const ids=MODAL.ids;
   const nombres=ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?m.name.split(" ")[0]:"";}).filter(Boolean);
-  // URL base: si estamos en file:// avisar que hay que usar la URL publicada
-  const base=window.location.href.split("?")[0];
-  const esLocal=base.startsWith("file://");
-  const url=esLocal
-    ?"https://xavysarmi-sketch.github.io/asociacion/?grupo="+ids.map(id=>encodeURIComponent(id)).join(",")
-    :base+"?grupo="+ids.map(id=>encodeURIComponent(id)).join(",");
+  const esLocal=window.location.href.startsWith("file://");
+  const url=buildGrupoUrl(ids);
   const msg="Hola 👋 aquí podéis ver vuestro reporte de "+DATA.reportMonth+" "+DATA.reportYear+" en Nuevos Horizontes:\n"+url;
   return `<div class="modal-title">🔗 Enlace grupal · ${ids.length} fichas</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Seleccionados: <b>${escH(nombres.join(", "))}</b></p>
@@ -1533,9 +1645,15 @@ function grupoLinkModalHTML(){
     ${esLocal?`<div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:10px;padding:10px 12px;font-size:12px;color:#7A4A1E">⚠️ Estás abriendo desde local. Sube a GitHub Pages para que el enlace funcione al enviarlo.</div>`:""}`;
 }
 
+function baseUrl(){
+  const href=window.location.href.split("?")[0].split("#")[0];
+  // Si se abre desde archivo local, usar siempre la URL publicada
+  if(href.startsWith("file://")||href.startsWith("about:")||location.protocol==="data:")
+    return "https://xavysarmi-sketch.github.io/asociacion/";
+  return href;
+}
 function buildMemberUrl(mid){
-  const base=window.location.href.split("?")[0];
-  return`${base}?socio=${encodeURIComponent(mid)}`;
+  return baseUrl()+"?socio="+encodeURIComponent(mid);
 }
 
 function sendLinkWA(mid){
@@ -1571,8 +1689,7 @@ function linkModalHTML(){
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="copyLink('${esc(m.id)}')">📋 Copiar enlace</button>
 </div>
 <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:11px;color:var(--muted);word-break:break-all;margin-bottom:12px">${escH(url)}</div>
-<button style="width:100%;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer" onclick="sendLinkWA('${esc(m.id)}');closeModal()">💬 Enviar por WhatsApp</button>
-<button class="link-wa-btn" onclick="sendLinkWA('${esc(m.id)}')">💬 Enviar por WhatsApp</button>`;
+<button style="width:100%;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer" onclick="sendLinkWA('${esc(m.id)}');closeModal()">💬 Enviar por WhatsApp</button>`;
 }
 
 function addMemberSubmit(){
@@ -1620,9 +1737,7 @@ function editLoanFormHTML(){
 <label class="m-label">Capital (€)</label>
 <input id="el-cap" class="m-input" type="number" value="${l.capital}" style="font-size:20px;font-weight:700" oninput="updateEditPreview()">
 <label class="m-label">Nº cuotas</label>
-<div style="display:flex;gap:8px;margin-bottom:12px">
-${[1,3,5,6].map(n=>`<button class="m-opt el-n-opt ${l.n===n?"active":""}" data-n="${n}" onclick="document.querySelectorAll('.el-n-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active');updateEditPreview()">${n}</button>`).join("")}
-</div>
+<select id="el-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateEditPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===l.n?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
 <div style="display:flex;gap:8px;margin-bottom:12px">
 <div style="flex:1"><label class="m-label">Mes otorgada</label><select id="el-gm" class="m-select">${MONTHS.map(mm=>`<option${mm===l.gMonth?" selected":""}>${mm}</option>`).join("")}</select></div>
 <div style="flex:1"><label class="m-label">Año</label><select id="el-gy" class="m-select">${["2025","2026","2027"].map(y=>`<option${parseInt(y)===l.gYear?" selected":""}>${y}</option>`).join("")}</select></div>
@@ -1636,7 +1751,7 @@ ${[1,3,5,6].map(n=>`<button class="m-opt el-n-opt ${l.n===n?"active":""}" data-n
 }
 function updateEditPreview(){
   const cap=parseInt(document.getElementById("el-cap")?.value)||0;
-  const nn=parseInt(document.querySelector(".el-n-opt.active")?.dataset.n||"3");
+  const nn=parseInt(document.getElementById("el-n")?.value||"3");
   if(cap<=0){document.getElementById("el-preview").innerHTML="";return;}
   const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
   document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
@@ -1646,7 +1761,7 @@ function saveEditLoan(){
   const l=m&&m.loans.find(x=>x.id===MODAL.lid);
   if(!l){closeModal();return;}
   const cap=parseInt(document.getElementById("el-cap").value)||0;if(cap<=0){alert("Capital inválido");return;}
-  const nn=parseInt(document.querySelector(".el-n-opt.active")?.dataset.n||"3");
+  const nn=parseInt(document.getElementById("el-n")?.value||"3");
   const gm=document.getElementById("el-gm").value,gy=parseInt(document.getElementById("el-gy").value);
   const sm=document.getElementById("el-sm").value,sy=parseInt(document.getElementById("el-sy").value);
   const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
@@ -1865,7 +1980,6 @@ function dropFicha(mid,key,titulo,resumen,contenido,abierto){
   let h=`<button class="ft-drop ${abierto?"abierto":""}" onclick="${tg}">
     <span class="ft-drop-info">
       <span class="ft-drop-titulo">${titulo}</span>
-      <span class="ft-drop-hint">${abierto?"▾ Toca para cerrar":"▸ Toca para ver"}${resumen?" · "+resumen:""}</span>
     </span>
     <span class="ft-drop-chevron">›</span>
   </button>`;
@@ -2037,12 +2151,11 @@ function fichaHTML(m,readonly=false){
   if(FICHA_TAB==="beneficios" && !isTerc && m.joinMonth){
     const cicloTxt=m.ciclo===0?"indefinida":`de ${m.ciclo||12} meses`;
     h+=`<div class="ft-card">
-      <div class="ft-card-title">🎁 Beneficios permanencia ${cicloTxt}</div>
+      <div class="ft-card-title">🎁 Permanencia ${cicloTxt}</div>
       <div class="ft-hero">
         <div class="ft-hero-lbl">Total acumulado</div>
         <div class="ft-hero-val">${acumBen} €</div>
       </div>
-      <div class="ft-row"><span class="ft-lbl">Beneficio de ${escH(rm)} ${ry}</span><span class="ft-val" style="color:#2D6A4F">+ ${benMes} €</span></div>
     </div>`;
     // Historial mes a mes (desplegable)
     if(benRows.length>0){
@@ -2050,22 +2163,17 @@ function fichaHTML(m,readonly=false){
       benRows.slice().reverse().forEach(r=>{
         cont+=`<div class="ft-row"><span class="ft-lbl">${r.mes} ${r.anio}</span><span class="ft-val"><span style="color:#2D6A4F;font-weight:700">+ ${r.bn} €</span> <span style="font-size:11px;color:var(--muted)">acum. ${r.acum} €</span></span></div>`;
       });
-      h+=dropFicha(mid,"benhist","📅 Historial mes a mes",benRows.length+" meses",cont,isOpen("benhist"));
+      h+=dropFicha(mid,"benhist","📅 Historial beneficios por mes",benRows.length+" meses",cont,isOpen("benhist"));
     } else {
       h+=`<div class="ft-card"><div class="ft-empty">Aún no hay beneficios registrados.</div></div>`;
     }
-    h+=`<button class="nota-btn" onclick="${tog('nota')}">
-      <span class="nota-btn-txt">❓ ¿Cómo se calculan tus beneficios?<br><span style="font-size:11px;font-weight:600;opacity:.85">${isOpen("nota")?"▾ Toca para cerrar":"▸ Toca para ver"}</span></span>
-      <span class="nota-chev">${isOpen("nota")?"▾":"›"}</span>
-    </button>`;
-    if(isOpen("nota")){
+    {
       const mesIng=MF[MS.indexOf(m.joinMonth)||0]||m.joinMonth;
       const mesSig=MF[(MS.indexOf(m.joinMonth)+1)%12];
-      h+=`<div class="nota-cuerpo">
-        Los beneficios se generan <b>a mes vencido</b>, igual que para todos los asociados. El mes en que ingresaste cuenta como tu primer mes de permanencia, y su beneficio se refleja al mes siguiente.<br><br>
+      const notaCont=`Los beneficios se generan <b>a mes vencido</b>, igual que para todos los asociados. El mes en que ingresaste cuenta como tu primer mes de permanencia, y su beneficio se refleja al mes siguiente.<br><br>
         <b>Ejemplo:</b> si ingresaste en <b>${mesIng}</b>, tu permanencia empieza a contar ese mes y tu primer beneficio aparece en <b>${mesSig}</b>.<br><br>
-        El importe de cada mes proviene de los recargos efectivamente recaudados por el fondo y se reparte entre los asociados con derecho. Por eso puede variar de un mes a otro y siempre está sujeto a la disponibilidad real del fondo.
-      </div>`;
+        El importe de cada mes proviene de los recargos efectivamente recaudados por el fondo y se reparte entre los asociados con derecho. Por eso puede variar de un mes a otro y siempre está sujeto a la disponibilidad real del fondo.`;
+      h+=dropFicha(mid,"nota","ℹ️ ¿Cómo se calculan tus beneficios?","",notaCont,isOpen("nota"));
     }
   }
 
@@ -2484,13 +2592,40 @@ function desmarcarTodosAportes(){
   DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth).forEach(m=>{md.aportes[m.id]=false;});
   save();render();toast("Todos desmarcados");
 }
+function toggleCuotaCierre(mid,lid,pi){
+  DATA.members.forEach(m=>{
+    if(m.id===mid){
+      [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+        if(l.id===lid)l.pays[pi].paid=!l.pays[pi].paid;
+      });
+      // Reordenar: si todas pagadas → closedLoans; si alguna pendiente → loans
+      const todas=[...(m.loans||[]),...(m.closedLoans||[])];
+      m.loans=todas.filter(l=>l.pays.some(p=>!p.paid));
+      m.closedLoans=todas.filter(l=>l.pays.every(p=>p.paid));
+    }
+  });
+  recalcMesRecargo(); // actualiza el recargo automático
+  save();render();
+}
 function recalcMesRecargo(){
-  // El recargo real viene del Excel; aquí se puede editar manualmente
-  // No lo calculamos automáticamente para no interferir con el Excel
+  // Recargo automático = suma del recargo de cada cuota cobrada del mes.
+  // Solo se aplica si el usuario NO lo ha fijado manualmente.
+  const md=getMesData(DATA.reportMonth,DATA.reportYear);
+  if(!md.recargoManual){
+    md.recargo=recargoAutoMes(DATA.reportMonth,DATA.reportYear);
+  }
+}
+function recalcRecargoForzar(){
+  // Botón "Recalcular": vuelve al automático aunque estuviera manual
+  const md=getMesData(DATA.reportMonth,DATA.reportYear);
+  md.recargoManual=false;
+  md.recargo=recargoAutoMes(DATA.reportMonth,DATA.reportYear);
+  save();render();toast("Recargo recalculado automáticamente ✓");
 }
 function setMesRecargo(val){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
   md.recargo=parseFloat(val)||0;
+  md.recargoManual=true;
   save();
   // Actualizar solo los KPIs sin re-render completo
   const el=document.getElementById("mes-kpi-beneficio");
@@ -2529,6 +2664,14 @@ function renderMesKpis(md){
   if(el4)el4.textContent=conDerecho.length;
 }
 
+function filtrarEnVivo(texto, scopeSelector){
+  const q=(texto||"").toLowerCase().trim();
+  const scope=document.querySelector(scopeSelector)||document;
+  scope.querySelectorAll("[data-nombre]").forEach(el=>{
+    const n=(el.getAttribute("data-nombre")||"").toLowerCase();
+    el.style.display=(!q||n.includes(q))?"":"none";
+  });
+}
 function render(){
   if(READONLY_ID){renderReadonly();return;}
   if(PREVIEW_ID){const pm=DATA.members.find(x=>x.id===PREVIEW_ID);if(pm){renderPreview(pm);return;}PREVIEW_ID=null;}
@@ -2555,7 +2698,7 @@ function render(){
 
   h+=`<div class="tabs">
     <button class="tab ${TAB==="asociados"?"active":""}" onclick="TAB='asociados';FICHA_ID=null;render()">👤 Asociados</button>
-    <button class="tab ${TAB==="mes"?"active":""}" onclick="TAB='mes';render()">📅 Mes</button>
+    <button class="tab ${TAB==="mes"?"active":""}" onclick="TAB='mes';render()">📊 Cierre</button>
     <button class="tab ${TAB==="send"?"active":""}" onclick="TAB='send';render()">📤 Envíos</button>
     <button class="tab ${TAB==="manage"?"active":""}" onclick="TAB='manage';render()">⚙️ Gestión</button>
   </div><div class="content">`;
@@ -2563,6 +2706,8 @@ function render(){
   // ── PESTAÑA MES ──
   if(TAB==="mes"){
     const md=getMesData(rm,ry);
+    recalcMesRecargo(); // recargo automático si no está fijado a mano
+    const recAuto=recargoAutoMes(rm,ry);
     const asocMes=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
     const ri2=MONTHS.indexOf(rm);
     const conDerecho=asocMes.filter(m=>{const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;return(jy<ry)||(jy===ry&&ji<ri2);});
@@ -2575,9 +2720,33 @@ function render(){
     const excedente=md.recargo>0?Math.max(0,md.recargo-totalPagado):0;
     const aptPagados=Object.values(md.aportes||{}).filter(Boolean).length;
 
-    // KPIs superiores
+    // ── CABECERA: título + selector de mes + buscador ──
+    const idxMes=MONTHS.indexOf(rm);
     h+=`<div class="mes-card">
-      <div class="mes-title">📅 Cierre de ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
+      <div class="mes-title" style="margin-bottom:12px">📊 Cierre mensual</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <select class="m-select" style="flex:2;font-size:15px;font-weight:700" onchange="DATA.reportMonth=this.value;save();render()">
+          ${MONTHS.map((mm,i)=>`<option value="${mm}"${mm===rm?" selected":""}>${MONTHS_FULL[i]}</option>`).join("")}
+        </select>
+        <select class="m-select" style="flex:1;font-size:15px;font-weight:700" onchange="DATA.reportYear=parseInt(this.value);save();render()">
+          ${[2025,2026,2027].map(y=>`<option value="${y}"${y===ry?" selected":""}>${y}</option>`).join("")}
+        </select>
+      </div>
+      <input id="cierre-search" type="text" placeholder="🔍 Buscar miembro..." oninput="filtrarEnVivo(this.value,'#cierre-listas')"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box">
+    </div>`;
+
+    // Contenedor de listas filtrables en vivo
+    h+=`<div id="cierre-listas">`;
+
+    // Modo enfoque: si hay un bloque abierto, solo se ve ese
+    const apAbierto=!!DESP["cierre-aportes"];
+    const cuAbierto=!!DESP["cierre-cuotas"];
+    const grAbierto=!!DESP["cierre-grupal"];
+    const hayAbierto=apAbierto||cuAbierto||grAbierto;
+
+    // KPIs (se muestran AL FINAL)
+    const kpiHTML=`<div class="mes-card">
       <div class="mes-kpi-grid">
         <div class="mes-kpi green"><div class="mes-kpi-val">${totalAportesMes(rm,ry)} €</div><div class="mes-kpi-lbl">Aportes cobrados</div></div>
         <div class="mes-kpi orange"><div class="mes-kpi-val" id="mes-kpi-beneficio">${beneficioMes.toFixed(2)} €</div><div class="mes-kpi-lbl">Beneficio / asociado</div></div>
@@ -2586,78 +2755,216 @@ function render(){
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
         <label style="font-size:13px;font-weight:600;color:var(--muted);flex:1">📈 Recargo recaudado este mes (€)</label>
-        <input type="number" value="${md.recargo}" style="width:90px;padding:8px;border:2px solid var(--border);border-radius:10px;font-size:15px;font-weight:700;text-align:right"
+        <input type="number" value="${md.recargo}" style="width:90px;padding:8px;border:2px solid ${md.recargoManual?'var(--warm)':'var(--border)'};border-radius:10px;font-size:15px;font-weight:700;text-align:right"
           oninput="setMesRecargo(this.value)">
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Introduce el total de recargo cobrado de las cuotas del mes (suma del Panel del Mes en Excel)</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:14px">
+        <span style="color:var(--muted)">${md.recargoManual?`✏️ Corregido a mano (auto: ${recAuto} €)`:`✓ Calculado automáticamente de las cuotas cobradas`}</span>
+        ${md.recargoManual?`<button onclick="recalcRecargoForzar()" style="background:none;border:none;color:#2D6A4F;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px">↻ Recalcular</button>`:""}
+      </div>
       <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px">
         <span>Asociados con derecho a beneficio: <b style="color:var(--dark)">${conDerecho.length}</b></span>
         <span>Tope nivel: <b style="color:var(--dark)">${topeNivel} €</b></span>
       </div>
     </div>`;
 
-    // Lista de aportes por asociado
-    h+=`<div class="mes-card">
-      <div class="mes-title">✅ Aportes del mes — ${aptPagados}/${asocMes.length} cobrados</div>`;
-
-    // Barra de progreso
-    const pct=asocMes.length>0?Math.round(aptPagados/asocMes.length*100):0;
-    h+=`<div class="reserva-bar-bg"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
-      <div style="text-align:right;font-size:12px;color:var(--muted);margin-bottom:12px">${pct}% cobrado</div>`;
-
-    // Botones de acción rápida: marcar/desmarcar todos
-    h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
-      <button onclick="marcarTodosAportes()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✅ Marcar todos pagados</button>
-      <button onclick="desmarcarTodosAportes()" style="flex:1;padding:11px;border:1.5px solid #D9C9B0;border-radius:10px;background:#fff;color:#8A7A60;font-size:13px;font-weight:700;cursor:pointer">Desmarcar</button>
-    </div>
-    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">Luego desmarca abajo a quien no haya pagado</div>`;
-
-    // Orden FIJO por ingreso (no se reordena al marcar, para que el toggle no salte)
-    const ingKey=m=>{const mi=MONTHS.indexOf(m.joinMonth);return (m.joinYear||9999)*100+(mi>=0?mi:99);};
-    const aporteSorted=[...asocMes].sort((a,b)=>ingKey(a)-ingKey(b)||a.name.localeCompare(b.name));
-    aporteSorted.forEach(m=>{
-      const paid=!!(md.aportes&&md.aportes[m.id]);
-      const months=memberMonths(m);
-      const lv=memberLevel(m);
-      h+=`<div class="aporte-row">
-        <div>
-          <div class="aporte-name">${escH(m.name)}</div>
-          <div class="aporte-meta">Mes ${months} · <span class="nivel-badge">Nivel ${lv}</span></div>
-        </div>
-        <div class="aporte-toggle">
-          <span class="aporte-amt" style="color:${paid?"#2D6A4F":"var(--warm)"}">${DATA.monthlyFee} €</span>
-          <button class="toggle-btn ${paid?"on":"off"}" onclick="toggleAporte('${esc(m.id)}')"></button>
-        </div>
-      </div>`;
-    });
-    h+=`</div>`;
-
-    // Resumen de beneficios (desplegable)
-    const benAbierto=!!DESP["mes-beneficios"];
-    h+=`<button class="ft-drop ${benAbierto?"abierto":""}" onclick="DESP['mes-beneficios']=!DESP['mes-beneficios'];render()" style="margin-top:4px">
-      <span class="ft-drop-info">
-        <span class="ft-drop-titulo">🎁 Reparto de beneficios</span>
-        <span class="ft-drop-hint">${benAbierto?"▾ Toca para cerrar":"▸ Toca para ver"} · ${conDerecho.length} con derecho</span>
-      </span>
-      <span class="ft-drop-chevron">›</span>
-    </button>`;
-    if(benAbierto){
-      h+=`<div class="ft-drop-body"><div style="background:var(--bg);border-radius:12px;padding:14px">`;
-      conDerecho.forEach(m=>{
-        const ben=levelBenefit(m);
-        h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #EEE8E0">
-          <span style="font-size:14px;font-weight:600">${escH(m.name)}</span>
-          <span style="font-size:15px;font-weight:700;color:#2D6A4F">+ ${ben} €</span>
+    // Lista de aportes por asociado (DESPLEGABLE)
+    if(!hayAbierto||apAbierto){
+    h+=`<div class="mes-card" style="padding-bottom:${apAbierto?'18px':'8px'}">
+      <button onclick="DESP['cierre-aportes']=!DESP['cierre-aportes'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+        <span class="mes-title" style="margin:0">✅ Aportes del mes — ${aptPagados}/${asocMes.length}</span>
+        <span class="ft-drop-chevron" style="${apAbierto?'transform:rotate(90deg)':''}">›</span>
+      </button>`;
+    if(apAbierto){
+      h+=`<div style="margin-top:14px">`;
+      // Barra de progreso
+      const pct=asocMes.length>0?Math.round(aptPagados/asocMes.length*100):0;
+      h+=`<div class="reserva-bar-bg"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
+        <div style="text-align:right;font-size:12px;color:var(--muted);margin-bottom:12px">${pct}% cobrado</div>`;
+      // Botones de acción rápida
+      h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
+        <button onclick="marcarTodosAportes()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✅ Marcar todos pagados</button>
+        <button onclick="desmarcarTodosAportes()" style="flex:1;padding:11px;border:1.5px solid #D9C9B0;border-radius:10px;background:#fff;color:#8A7A60;font-size:13px;font-weight:700;cursor:pointer">Desmarcar</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">Luego desmarca abajo a quien no haya pagado</div>`;
+      // Orden FIJO por ingreso
+      const ingKey=m=>{const mi=MONTHS.indexOf(m.joinMonth);return (m.joinYear||9999)*100+(mi>=0?mi:99);};
+      const aporteSorted=[...asocMes].sort((a,b)=>ingKey(a)-ingKey(b)||a.name.localeCompare(b.name));
+      aporteSorted.forEach(m=>{
+        const paid=!!(md.aportes&&md.aportes[m.id]);
+        const months=memberMonths(m);
+        const lv=memberLevel(m);
+        h+=`<div class="aporte-row" data-nombre="${escH(m.name)}">
+          <div>
+            <div class="aporte-name">${escH(m.name)}</div>
+            <div class="aporte-meta">Mes ${months} · <span class="nivel-badge">Nivel ${lv}</span></div>
+          </div>
+          <div class="aporte-toggle">
+            <span class="aporte-amt" style="color:${paid?"#2D6A4F":"var(--warm)"}">${DATA.monthlyFee} €</span>
+            <button class="toggle-btn ${paid?"on":"off"}" onclick="toggleAporte('${esc(m.id)}')"></button>
+          </div>
         </div>`;
       });
-      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px;font-weight:700;font-size:15px">
-        <span>Total beneficios pagados</span><span style="color:#2D6A4F">${totalPagado.toFixed(2)} €</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-weight:700;font-size:15px">
-        <span>→ Excedente a Reserva</span><span style="color:#5B5EA6">${excedente>0?excedente.toFixed(2):"0"} €</span>
-      </div>
-      </div></div>`;
+      h+=`</div>`;
     }
+    h+=`</div>`;
+    } // fin modo enfoque aportes
+
+    // ── BLOQUE: CUOTAS COBRADAS (DESPLEGABLE) ──
+    const cuotas=cuotasDelMes(rm,ry);
+    const cuotasPagadas=cuotas.filter(c=>c.paid).length;
+    const totalCuotasCobr=cuotas.filter(c=>c.paid).reduce((s,c)=>s+c.inst,0);
+    if(!hayAbierto||cuAbierto){
+    h+=`<div class="mes-card" style="padding-bottom:${cuAbierto?'18px':'8px'}">
+      <button onclick="DESP['cierre-cuotas']=!DESP['cierre-cuotas'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+        <span class="mes-title" style="margin:0">💵 Cuotas del mes — ${cuotasPagadas}/${cuotas.length}</span>
+        <span class="ft-drop-chevron" style="${cuAbierto?'transform:rotate(90deg)':''}">›</span>
+      </button>`;
+    if(cuAbierto){
+      h+=`<div style="margin-top:14px">`;
+      if(cuotas.length===0){
+        h+=`<div style="text-align:center;color:var(--muted);font-size:14px;padding:14px 0">No hay cuotas que venzan este mes.</div>`;
+      } else {
+        h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Marca las cuotas que se cobran en la reunión. El recargo se actualiza solo.</div>`;
+        // Agrupar por persona, manteniendo separación asociados/terceros
+        const orden=[];
+        const porPersona={};
+        cuotas.forEach(c=>{ if(!porPersona[c.mid]){porPersona[c.mid]=[];orden.push(c.mid);} porPersona[c.mid].push(c); });
+        let tipoActual="";
+        orden.forEach(pid=>{
+          const lista=porPersona[pid];
+          const tipo=lista[0].tipo;
+          if(tipo!==tipoActual){
+            tipoActual=tipo;
+            h+=`<div style="font-size:12px;font-weight:700;color:${tipo==="asociado"?"var(--dark)":"var(--terc)"};margin:12px 0 6px">${tipo==="asociado"?"🏠 Asociados":"🤝 Terceros"}</div>`;
+          }
+          const subtotal=lista.reduce((s,x)=>s+x.inst,0);
+          h+=`<div data-nombre="${escH(lista[0].nombre)}" style="border-bottom:1px solid var(--border);padding:8px 0 6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <div class="aporte-name" style="font-size:16px">${escH(lista[0].nombre)}</div>
+              <span style="font-size:13px;color:var(--muted)">${subtotal} €</span>
+            </div>`;
+          lista.forEach(c=>{
+            h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 4px 10px">
+              <span style="font-size:13px;color:var(--muted)">Ayuda ${escH(c.gMonth)} ${c.gYear} · cuota ${c.numCuota}/${c.totalCuotas}</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm)"};font-size:14px">${c.inst} €</span>
+                <button class="toggle-btn ${c.paid?"on":"off"}" onclick="toggleCuotaCierre('${esc(c.mid)}','${esc(c.lid)}',${c.pi})"></button>
+              </div>
+            </div>`;
+          });
+          h+=`</div>`;
+        });
+        h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:2px solid var(--border);margin-top:10px;padding-top:10px">
+          <span>Total cobrado este mes</span><span>${totalCuotasCobr} €</span>
+        </div>`;
+      }
+      h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:14px" onclick="openModal('cierreloan',{})">＋ Registrar ayuda aprobada</button>`;
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+    } // fin modo enfoque cuotas
+
+    // ── BLOQUE: CIERRE GRUPAL (varios grupos plegables) ──
+    const grupos=gruposCierre();
+    if(!hayAbierto||grAbierto){
+    h+=`<div class="mes-card" style="padding-bottom:${grAbierto?'18px':'8px'}">
+      <button onclick="DESP['cierre-grupal']=!DESP['cierre-grupal'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+        <span class="mes-title" style="margin:0">👥 Cierre grupal${grupos.length>0?` — ${grupos.length}`:""}</span>
+        <span class="ft-drop-chevron" style="${grAbierto?'transform:rotate(90deg)':''}">›</span>
+      </button>`;
+    if(grAbierto){
+      h+=`<div style="margin-top:14px">`;
+      h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
+      // Crear nuevo grupo
+      const enGrupo=new Set();
+      grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
+      const dispPrincipal=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
+      h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
+        <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
+          <option value="">— Elegir principal —</option>
+          ${dispPrincipal.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}
+        </select>`;
+      if(grupos.length===0){
+        h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:8px 0 4px">Aún no hay grupos creados.</div>`;
+      }
+      // Cada grupo, plegable
+      grupos.forEach(g=>{
+        const principal=DATA.members.find(m=>m.id===g.principalId);
+        if(!principal)return;
+        const items=itemsDeGrupo(g);
+        const pendientes=items.filter(it=>!it.yaPagado);
+        const totalPend=pendientes.reduce((s,it)=>s+it.importe,0);
+        const totalPagado=items.filter(it=>it.yaPagado).reduce((s,it)=>s+it.importe,0);
+        const gKey="grupo-"+g.id;
+        const gOpen=!!DESP[gKey];
+        h+=`<div style="border:1.5px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;background:#fff">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <button onclick="DESP['${gKey}']=!DESP['${gKey}'];render()" style="flex:1;background:none;border:none;text-align:left;cursor:pointer;padding:0">
+              <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}</div>
+              <div style="font-size:12px;color:var(--muted)">${items.length} concepto(s) · pendiente ${totalPend} €</div>
+            </button>
+            <button onclick="borrarGrupo('${g.id}')" style="background:none;border:none;color:#C0492C;font-size:13px;font-weight:700;cursor:pointer;padding:4px 6px">Eliminar</button>
+            <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="DESP['${gKey}']=!DESP['${gKey}'];render()">›</span>
+          </div>`;
+        if(gOpen){
+          h+=`<div style="margin-top:10px">`;
+          // Agrupar items por persona (mid), preservando orden de aparición
+          const orden=[];
+          const porPersona={};
+          items.forEach(it=>{ if(!porPersona[it.mid]){porPersona[it.mid]=[];orden.push(it.mid);} porPersona[it.mid].push(it); });
+          orden.forEach(pid=>{
+            const lista=porPersona[pid];
+            const esPrincipal=(pid===g.principalId);
+            const nombre=lista[0].nombre;
+            const subtotal=lista.reduce((s,x)=>s+x.importe,0);
+            h+=`<div style="border-bottom:1px solid var(--border);padding:10px 0 8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:10px;color:var(--muted);font-weight:600">(principal)</span>':''}</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:13px;color:var(--muted)">${subtotal} €</span>
+                  ${!esPrincipal?`<button onclick="quitarMiembroGrupo('${g.id}','${esc(pid)}')" style="background:none;border:none;color:#C0492C;font-size:17px;cursor:pointer;padding:0 2px">✕</button>`:""}
+                </div>
+              </div>`;
+            lista.forEach(it=>{
+              const colorImp=it.yaPagado?"#2D6A4F":"var(--warm)";
+              h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 4px 10px">
+                <span style="font-size:13px;color:var(--muted)">${it.concepto}</span>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span class="aporte-amt" style="color:${colorImp};font-size:14px">${it.importe} €</span>
+                  <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
+                </div>
+              </div>`;
+            });
+            h+=`</div>`;
+          });
+          // Añadir miembro a este grupo
+          const yaEnEste=new Set([g.principalId,...(g.miembros||[])]);
+          const cand=DATA.members.filter(m=>!yaEnEste.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+          h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
+            <select class="m-select" style="margin-bottom:10px;font-size:14px" onchange="if(this.value)añadirMiembroGrupo('${g.id}',this.value);this.value=''">
+              <option value="">— Añadir persona —</option>
+              ${cand.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}${m.type==="tercero"?" (tercero)":""}</option>`).join("")}
+            </select>`;
+          h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:1.5px solid var(--border);margin-top:4px;padding-top:10px">
+            <span>Pendiente de cobrar</span><span>${totalPend} €</span>
+          </div>
+          ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Ya cobrado</span><span>${totalPagado} €</span></div>`:""}`;
+          if(totalPend>0){
+            h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px" onclick="marcarTodoGrupo('${g.id}')">✅ Marcar todo pagado</button>`;
+          }
+          h+=`</div>`;
+        }
+        h+=`</div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+    } // fin modo enfoque grupal
+
+    h+=`</div>`; // cierra #cierre-listas
+    // KPIs al final (solo si no hay ningún bloque abierto)
+    if(!hayAbierto)h+=kpiHTML;
   }
 
 
@@ -2687,19 +2994,24 @@ function render(){
       const nAsociados=DATA.members.filter(m=>m.type==="asociado").length;
       const nAyudasActivas=DATA.members.reduce((s,m)=>s+(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length,0);
       h+=`<div class="rep-filtros">
-        <button class="rep-filtro ${REPORT_FILTER==="todos"?"on":""}" onclick="REPORT_FILTER='todos';render()">👥 Todos los miembros<span class="filtro-num">${nAsociados}</span></button>
-        <button class="rep-filtro ${REPORT_FILTER==="activas"?"on":""}" onclick="REPORT_FILTER='activas';render()">🟢 Con ayudas activas<span class="filtro-num">${nAyudasActivas}</span></button>
+        <button class="rep-filtro ${REPORT_FILTER==="todos"?"on":""}" onclick="REPORT_FILTER='todos';render()">Listado completo<span class="filtro-num">${nAsociados}</span></button>
+        <button class="rep-filtro ${REPORT_FILTER==="activas"?"on":""}" onclick="REPORT_FILTER='activas';render()">Con ayudas activas<span class="filtro-num">${nAyudasActivas}</span></button>
       </div>`;
+      // Buscador de miembros
+      h+=`<input id="asoc-search" type="text" placeholder="🔍 Buscar miembro..." oninput="filtrarEnVivo(this.value,'#asoc-listas')"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box;margin-bottom:14px">`;
       // 3) Fichas estilo reporte (tocables → abren la ficha completa)
       let lista=ordered;
       if(REPORT_FILTER==="activas"){
         const tieneActiva=m=>m.loans.some(l=>l.pays.some(p=>!p.paid));
         lista=ordered.filter(tieneActiva);
       }
-      lista.forEach(m=>{h+=cardHTML(m,m.type==="tercero",true);});
-      if(REPORT_FILTER==="activas"&&lista.length===0){
+      h+=`<div id="asoc-listas">`;
+      lista.forEach(m=>{h+=`<div data-nombre="${escH(m.name)}">`+cardHTML(m,m.type==="tercero",true)+`</div>`;});
+      if(lista.length===0){
         h+=`<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0">No hay miembros con ayudas activas este mes.</p>`;
       }
+      h+=`</div>`;
       h+=`<div class="note">Recuerda: el aporte mensual de <b>${fee},00 €</b> es adicional a las cuotas de devolución.</div>`;
       // 4) Resumen General
       const totIntPend=DATA.members.filter(m=>m.type==="asociado").reduce((s,m)=>s+pendAll(m),0);
@@ -2866,6 +3178,7 @@ function render(){
     h+=`<div class="modal-bg" ${dismissable?`onclick="closeModal()"`:""} ><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-handle"></div>`;
     if(MODAL.type==="member")h+=memberFormHTML();
     if(MODAL.type==="loan")h+=loanFormHTML();
+    if(MODAL.type==="cierreloan")h+=cierreLoanFormHTML();
     if(MODAL.type==="editloan")h+=editLoanFormHTML();
     if(MODAL.type==="preview")h+=previewFormHTML();
     if(MODAL.type==="link")h+=linkModalHTML();
@@ -2995,6 +3308,55 @@ function memberFormHTML(){
 <button class="m-primary" onclick="addMemberSubmit()">Añadir</button>`;
 }
 
+function cierreLoanFormHTML(){
+  const rm=DATA.reportMonth, ry=DATA.reportYear;
+  // siguiente mes para 1ª cuota
+  const ni=(MONTHS.indexOf(rm)+1)%12;
+  const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
+  const asoc=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
+  const terc=DATA.members.filter(m=>m.type==="tercero").sort((a,b)=>a.name.localeCompare(b.name));
+  return`<div class="modal-title">🤝 Ayuda aprobada en la reunión</div>
+<label class="m-label">¿A quién?</label>
+<select id="cl-mid" class="m-select" style="margin-bottom:12px;font-size:15px">
+  <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup>
+  <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup>
+</select>
+<label class="m-label">Capital (€)</label>
+<input id="cl-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateCierreLoanPreview()">
+<label class="m-label">Nº cuotas</label>
+<select id="cl-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateCierreLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===3?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Otorgada en <b>${rm} ${ry}</b> · 1ª cuota en <b>${MONTHS[ni]} ${ny}</b></div>
+<div id="cl-preview"></div>
+<button class="m-primary" onclick="addCierreLoanSubmit()">Registrar ayuda</button>`;
+}
+function updateCierreLoanPreview(){
+  const cap=parseInt(document.getElementById("cl-cap")?.value)||0;
+  const nn=parseInt(document.getElementById("cl-n")?.value||"3");
+  const el=document.getElementById("cl-preview");
+  if(!el)return;
+  if(cap<=0){el.innerHTML="";return;}
+  const total=cap+cap*(DATA.rate/100)*nn, inst=Math.ceil(total/nn);
+  el.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + recargo (5% × ${nn})</span><b style="color:var(--dark)">${total} €</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm)">${inst} €</b></div>
+  </div>`;
+}
+function addCierreLoanSubmit(){
+  const mid=document.getElementById("cl-mid").value;
+  const cap=parseInt(document.getElementById("cl-cap").value)||0;if(cap<=0){alert("Capital inválido");return;}
+  const nn=parseInt(document.getElementById("cl-n")?.value||"3");
+  const rm=DATA.reportMonth, ry=DATA.reportYear;
+  const ni=(MONTHS.indexOf(rm)+1)%12;
+  const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
+  const total=cap+cap*(DATA.rate/100)*nn, inst=Math.ceil(total/nn);
+  const pays=[];let mi=ni,yr=ny;
+  for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
+  const m=DATA.members.find(x=>x.id===mid);
+  if(!m)return;
+  if(!m.loans)m.loans=[];
+  m.loans.push({id:"L"+Date.now(),gMonth:rm,gYear:ry,capital:cap,n:nn,inst,pays});
+  save();closeModal();render();toast("Ayuda registrada ✓");
+}
 function loanFormHTML(){
   return`<div class="modal-title">Nueva ayuda</div>
 <label class="m-label">Capital (€)</label>
@@ -3200,4 +3562,3 @@ window.APP_UPDATE = (function(){
 </script>
 </body>
 </html>
-
