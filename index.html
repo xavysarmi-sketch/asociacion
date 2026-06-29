@@ -724,6 +724,8 @@ function sanitizeData(data){
 const URL_PARAMS=new URLSearchParams(window.location.search);
 const READONLY_ID=URL_PARAMS.get("socio")||null;
 const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(",").map(id=>decodeURIComponent(id)):null;
+const GRUPO_YO=URL_PARAMS.get("yo")?decodeURIComponent(URL_PARAMS.get("yo")):null;
+let GRUPO_VISTA="elegir"; // pestaña activa en el enlace grupal: "elegir" | "grupo" | "mi"
 
 const INITIAL={_version:7,reportMonth:"Jul",reportYear:2026,monthlyFee:50,rate:5,
 monthlyData:{},  // {"2026-06":{aportes:{"1":true,...},recargo:475,reserva:225,beneficio:10}}
@@ -1588,22 +1590,25 @@ function sendGroupLink(){
   MODAL={type:"grupo_link",ids};
   render();
 }
-function buildGrupoUrl(ids){
-  return baseUrl()+"?grupo="+ids.map(id=>encodeURIComponent(id)).join(",");
+function buildGrupoUrl(ids,yo){
+  let u=baseUrl()+"?grupo="+ids.map(id=>encodeURIComponent(id)).join(",");
+  if(yo)u+="&yo="+encodeURIComponent(yo);
+  return u;
 }
 function sendGrupoWA(){
   if(!MODAL||!MODAL.ids)return;
-  const url=buildGrupoUrl(MODAL.ids);
+  const url=buildGrupoUrl(MODAL.ids,MODAL.yo||MODAL.ids[0]);
   const msg="Hola 👋 aquí podéis ver vuestro reporte de "+DATA.reportMonth+" "+DATA.reportYear+" en Nuevos Horizontes:\n"+url;
   window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
 }
 function copyGrupoUrl(){
   if(!MODAL||!MODAL.ids)return;
-  const url=buildGrupoUrl(MODAL.ids);
+  const url=buildGrupoUrl(MODAL.ids,MODAL.yo||MODAL.ids[0]);
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>toast("🔗 Enlace copiado ✓"));
   }
 }
+function setGrupoTitular(id){ if(MODAL){MODAL.yo=id;render();} }
 function previewGrupo(){
   if(!MODAL||!MODAL.ids)return;
   const ids=[...MODAL.ids];
@@ -1658,10 +1663,15 @@ function grupoLinkModalHTML(){
   const ids=MODAL.ids;
   const nombres=ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?m.name.split(" ")[0]:"";}).filter(Boolean);
   const esLocal=window.location.href.startsWith("file://");
-  const url=buildGrupoUrl(ids);
+  const yo=MODAL.yo||ids[0];
+  const url=buildGrupoUrl(ids,yo);
   const msg="Hola 👋 aquí podéis ver vuestro reporte de "+DATA.reportMonth+" "+DATA.reportYear+" en Nuevos Horizontes:\n"+url;
   return `<div class="modal-title">🔗 Enlace grupal · ${ids.length} fichas</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Seleccionados: <b>${escH(nombres.join(", "))}</b></p>
+    <label class="m-label">👤 Titular del enlace (verá su ficha individual)</label>
+    <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="setGrupoTitular(this.value)">
+      ${ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?`<option value="${esc(id)}"${id===yo?" selected":""}>${escH(m.name)}</option>`:"";}).join("")}
+    </select>
     <button style="width:100%;padding:14px;border-radius:12px;background:var(--dark);color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="previewGrupo()">
       👁️ Ver cómo lo reciben los asociados
     </button>
@@ -3508,12 +3518,15 @@ function renderReadonly(){
 }
 
 // ── MODO GRUPO ──
+function setGrupoVista(v){ GRUPO_VISTA=v; renderGrupo(); }
 function renderGrupo(){
   const members=GRUPO_IDS?GRUPO_IDS.map(id=>DATA.members.find(x=>x.id===id)).filter(Boolean):[];
   if(!members||!members.length){
     document.getElementById("app").innerHTML=`<div style="text-align:center;padding:60px 20px"><div style="font-size:48px">🔍</div><div style="font-size:18px;font-weight:700;color:var(--dark);margin-top:16px">Grupo no encontrado</div></div>`;
     return;
   }
+  // Titular: el indicado en el enlace (?yo=) o, si no, la primera ficha
+  const titular=members.find(m=>m.id===GRUPO_YO)||members[0];
   const MS2=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const MF2=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const rm=DATA.reportMonth,ry=DATA.reportYear;
@@ -3532,7 +3545,57 @@ function renderGrupo(){
     </div>
   </div>`;
 
-  h+=`<div class="content">`;
+  // ── Pantalla de elección (al abrir el enlace) ──
+  if(GRUPO_VISTA==="elegir"){
+    h+=`<div class="content" style="padding-top:24px">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:6px">¿Qué quieres ver?</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.4">Elige una opción. Podrás cambiar entre ellas en cualquier momento.</div>
+      </div>
+      <button onclick="setGrupoVista('mi')" style="width:100%;display:flex;align-items:center;gap:14px;background:#fff;border:2px solid #D9E2DB;border-radius:18px;padding:18px 16px;margin-bottom:14px;cursor:pointer;text-align:left;box-shadow:0 2px 10px rgba(27,67,50,.06)">
+        <div style="width:48px;height:48px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,#1B4332,#2D6A4F);display:flex;align-items:center;justify-content:center;font-size:24px">👤</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800;color:var(--dark)">Mi reporte</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.35">Solo tus datos: tu aporte, tus ayudas y tus beneficios.</div>
+        </div>
+        <span style="color:var(--muted);font-size:22px;flex-shrink:0">›</span>
+      </button>
+      <button onclick="setGrupoVista('grupo')" style="width:100%;display:flex;align-items:center;gap:14px;background:#fff;border:2px solid #D9E2DB;border-radius:18px;padding:18px 16px;margin-bottom:8px;cursor:pointer;text-align:left;box-shadow:0 2px 10px rgba(27,67,50,.06)">
+        <div style="width:48px;height:48px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,#E07A3A,#C75B0E);display:flex;align-items:center;justify-content:center;font-size:24px">👥</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800;color:var(--dark)">Reporte grupal</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.35">Lo que toca pagar entre todos los del grupo y el total.</div>
+        </div>
+        <span style="color:var(--muted);font-size:22px;flex-shrink:0">›</span>
+      </button>
+      <div style="text-align:center;padding:18px 0 28px;font-size:12px;color:var(--muted)">Vista de solo lectura · Contacta con el administrador</div>
+    </div>`;
+    document.getElementById("app").innerHTML=h;
+    return;
+  }
+
+  // Pestañas: Mi reporte / Reporte grupal
+  const tabOn="background:#fff;color:#1B4332;font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.08)";
+  const tabOff="background:transparent;color:var(--muted);font-weight:700";
+  h+=`<div class="content"><div style="display:flex;gap:6px;background:#EDE7DF;border-radius:14px;padding:4px;margin-bottom:14px">
+      <button onclick="setGrupoVista('mi')" style="flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;cursor:pointer;${GRUPO_VISTA==='mi'?tabOn:tabOff}">👤 Mi reporte</button>
+      <button onclick="setGrupoVista('grupo')" style="flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;cursor:pointer;${GRUPO_VISTA==='grupo'?tabOn:tabOff}">👥 Reporte grupal</button>
+    </div>`;
+
+  if(GRUPO_VISTA==="mi"){
+    // ── Vista individual del titular (igual que el enlace personal) ──
+    h+=fichaHTML(titular,true);
+    h+=`<div style="text-align:center;padding:6px 0 28px;font-size:12px;color:var(--muted)">Vista de solo lectura · Contacta con el administrador</div>`;
+    h+=`</div>`;
+    document.getElementById("app").innerHTML=h;
+    if(MODAL){
+      const extra=`<div class="modal-bg" onclick="closeModal()"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-handle"></div>${MODAL.type==="history"?historyModalHTML():""}</div></div>`;
+      document.getElementById("app").insertAdjacentHTML("beforeend",extra);
+    }
+    return;
+  }
+
+  // ── Vista grupal (resumen entre todos) ──
   members.forEach(m=>{ h+=fichaResumenHTML(m); });
 
   const totalAportes=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+desgloseDelMes(m).apNeto,0);
