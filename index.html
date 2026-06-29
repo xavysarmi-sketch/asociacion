@@ -863,15 +863,16 @@ let UNDO_SNAPSHOT=null,UNDO_TIMER=null;
 function esc(str){return String(str).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
 function escH(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
-// Detecta el mes y año actuales del sistema y los aplica como reporte
+// Registra el año actual del sistema en la lista de años (sin tocar el mes/año elegido)
 function setCurrentMonthYear(){
   if(!DATA)return;
   const now=new Date();
-  const curM=MONTHS[now.getMonth()];
   const curY=now.getFullYear();
   if(YEARS.indexOf(curY)===-1)YEARS.push(curY);
-  DATA.reportMonth=curM;
-  DATA.reportYear=curY;
+  // Opción A: respetar siempre el mes/año que el usuario dejó guardado.
+  // Solo se fija el mes actual si por algún motivo no hubiera ninguno guardado.
+  if(!DATA.reportMonth)DATA.reportMonth=MONTHS[now.getMonth()];
+  if(!DATA.reportYear)DATA.reportYear=curY;
 }
 
 // Devuelve la cuota "activa" de una ayuda en el mes-año dado.
@@ -1042,7 +1043,7 @@ function load(){
     DATA=s?sanitizeData(migrateData(JSON.parse(s))):JSON.parse(JSON.stringify(INITIAL));
     if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
   }catch{DATA=JSON.parse(JSON.stringify(INITIAL));}
-  // Forzar siempre al mes actual al cargar
+  // Respetar el mes/año guardado (solo se fija el actual si no hubiera ninguno)
   setCurrentMonthYear();
   SYNC_STATUS="init";
   render(); // Renderizar con datos locales inmediatamente
@@ -2901,21 +2902,28 @@ function render(){
       </button>`;
     if(grAbierto){
       h+=`<div style="margin-top:14px">`;
-      h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
-      // Crear nuevo grupo
-      const enGrupo=new Set();
-      grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
-      const dispPrincipal=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
-      h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
-        <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
-          <option value="">— Elegir principal —</option>
-          ${dispPrincipal.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}
-        </select>`;
-      if(grupos.length===0){
-        h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:8px 0 4px">Aún no hay grupos creados.</div>`;
+      // ¿Hay un grupo abierto? Si lo hay, se aísla: se ocultan los demás y el selector de nuevo grupo
+      const grupoAbierto=grupos.find(g=>!!DESP["grupo-"+g.id])||null;
+      if(grupoAbierto){
+        h+=`<button onclick="DESP['grupo-${grupoAbierto.id}']=false;render()" style="display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--dark);font-size:14px;font-weight:700;cursor:pointer;padding:0;margin-bottom:14px">← Ver todos los grupos</button>`;
+      } else {
+        h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
+        // Crear nuevo grupo
+        const enGrupo=new Set();
+        grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
+        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
+        h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
+          <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
+            <option value="">— Elegir principal —</option>
+            ${dispPrincipal.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}
+          </select>`;
+        if(grupos.length===0){
+          h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:8px 0 4px">Aún no hay grupos creados.</div>`;
+        }
       }
-      // Cada grupo, plegable
+      // Cada grupo, plegable (si hay uno abierto, solo se muestra ese)
       grupos.forEach(g=>{
+        if(grupoAbierto&&g.id!==grupoAbierto.id)return;
         const principal=DATA.members.find(m=>m.id===g.principalId);
         if(!principal)return;
         const items=itemsDeGrupo(g);
@@ -2930,7 +2938,6 @@ function render(){
               <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}</div>
               <div style="font-size:12px;color:var(--muted)">${items.length} concepto(s) · pendiente ${totalPend} €</div>
             </button>
-            <button onclick="borrarGrupo('${g.id}')" style="background:none;border:none;color:#C0492C;font-size:13px;font-weight:700;cursor:pointer;padding:4px 6px">Eliminar</button>
             <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="DESP['${gKey}']=!DESP['${gKey}'];render()">›</span>
           </div>`;
         if(gOpen){
@@ -2978,6 +2985,44 @@ function render(){
           ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Ya cobrado</span><span>${totalPagado} €</span></div>`:""}`;
           if(totalPend>0){
             h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px" onclick="marcarTodoGrupo('${g.id}')">✅ Marcar todo pagado</button>`;
+          }
+          // ── Resumen del grupo: aportes, cuotas y total (completo) ──
+          const _aportes=items.filter(it=>it.tipo==="aporte");
+          const _cuotas=items.filter(it=>it.tipo==="cuota");
+          const _totAportes=_aportes.reduce((s,it)=>s+it.importe,0);
+          const _nAportes=_aportes.length;
+          const _totCuotas=_cuotas.reduce((s,it)=>s+it.importe,0);
+          const _nCuotas=_cuotas.length;
+          const _totTodo=_totAportes+_totCuotas;
+          h+=`<div style="background:var(--cream);border-radius:12px;padding:12px 14px;margin-top:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Resumen del grupo</div>`;
+          if(_nAportes>0){
+            h+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:13px;color:var(--dark)">Aportes <span style="color:var(--muted)">· ${_nAportes} ${_nAportes===1?"asociado":"asociados"}</span></span>
+              <span style="font-size:14px;font-weight:700;color:var(--dark)">${_totAportes} €</span>
+            </div>`;
+          }
+          if(_nCuotas>0){
+            h+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:13px;color:var(--dark)">Cuotas de ayudas <span style="color:var(--muted)">· ${_nCuotas} ${_nCuotas===1?"cuota":"cuotas"}</span></span>
+              <span style="font-size:14px;font-weight:700;color:var(--dark)">${_totCuotas} €</span>
+            </div>`;
+          }
+          h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding-top:9px;margin-top:2px">
+              <span style="font-size:13px;font-weight:800;color:var(--dark)">Total de todo</span>
+              <span style="font-size:20px;font-weight:900;color:var(--brand,#1B4332)">${_totTodo} €</span>
+            </div>
+          </div>`;
+          // ── Eliminar grupo (confirmación de dos toques) ──
+          const delKey="del-"+g.id;
+          if(DESP[delKey]){
+            h+=`<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
+              <span style="flex:1;font-size:13px;color:#C0492C;font-weight:700">¿Eliminar este grupo?</span>
+              <button onclick="DESP['${delKey}']=false;render()" style="background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;padding:8px 14px">No</button>
+              <button onclick="DESP['${delKey}']=false;borrarGrupo('${g.id}')" style="background:#C0492C;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;padding:8px 16px">Sí, eliminar</button>
+            </div>`;
+          } else {
+            h+=`<button onclick="DESP['${delKey}']=true;render()" style="width:100%;background:none;border:1px solid #E8C9BE;border-radius:10px;color:#C0492C;font-size:13px;font-weight:700;cursor:pointer;padding:10px;margin-top:16px">🗑 Eliminar grupo</button>`;
           }
           h+=`</div>`;
         }
