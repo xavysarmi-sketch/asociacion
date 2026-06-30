@@ -516,7 +516,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v38.0</div>
+<div class="app-version" id="appVersionTag">v39.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -688,9 +688,17 @@ function sanitizeData(data){
   });
   const byName={};
   INITIAL.members.forEach(m=>{byName[m.name.toLowerCase().trim()]=m;});
-  // Eliminar miembros que ya no existen en el archivo (datos viejos fantasma)
+  // Eliminar SOLO miembros fantasma (datos viejos que ya no existen en el archivo).
+  // Se CONSERVAN: los del archivo (INITIAL) y los que tú creaste desde la app
+  // (marcados con origen:"app" o con id que empieza por "m"+timestamp).
+  // Antes este filtro borraba por error a los asociados nuevos y con ellos sus ayudas.
   const validNames=new Set(INITIAL.members.map(m=>m.name.toLowerCase().trim()));
-  data.members=data.members.filter(m=>validNames.has((m.name||"").toLowerCase().trim()));
+  data.members=data.members.filter(m=>{
+    if(validNames.has((m.name||"").toLowerCase().trim()))return true; // está en el archivo
+    if(m.origen==="app")return true;                                  // creado desde la app
+    if(typeof m.id==="string" && m.id.charAt(0)==="m")return true;     // id de la app
+    return false; // fantasma real: descartar
+  });
   data.members.forEach(m=>{
     const ref=byName[(m.name||"").toLowerCase().trim()];
     if(ref){
@@ -1760,7 +1768,7 @@ function addMemberSubmit(){
       }
     }
   }
-  DATA.members.push({id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:""});
+  DATA.members.push({id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:"",origen:"app"});
   closeModal();save();toast("Miembro añadido ✓");
 }
 
