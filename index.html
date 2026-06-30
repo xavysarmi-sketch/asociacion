@@ -513,7 +513,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v35.0</div>
+<div class="app-version" id="appVersionTag">v36.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -606,8 +606,11 @@ function migrateData(data){
         m.ciclo=ref.ciclo;
         m.joinMonth=ref.joinMonth;
         m.joinYear=ref.joinYear;
-        m.loans=JSON.parse(JSON.stringify(ref.loans||[]));
-        m.history=JSON.parse(JSON.stringify(ref.history||[]));
+        // MODO B: las ayudas (loans) e historial se registran desde la app y son
+        // la fuente de verdad del usuario. NO se sobrescriben con las del archivo;
+        // solo se reponen si el miembro guardado no tuviera ninguna.
+        if(!Array.isArray(m.loans))m.loans=JSON.parse(JSON.stringify(ref.loans||[]));
+        if(!Array.isArray(m.history))m.history=JSON.parse(JSON.stringify(ref.history||[]));
         if(!m.phone)m.phone="";
       }
     });
@@ -638,9 +641,12 @@ function migrateData(data){
     const ref=initialMap[m.name.toLowerCase()];
     if(ref){
       if(!m.joinMonth&&ref.joinMonth){m.joinMonth=ref.joinMonth;m.joinYear=ref.joinYear;}
-      // Siempre actualizar loans desde INITIAL en v3→v4 para tener cuotas correctas
-      if(ref.loans&&ref.loans.length>0){
-        m.loans=JSON.parse(JSON.stringify(ref.loans));
+      // MODO B: las ayudas (loans) se registran desde la app y mandan. Solo se
+      // reponen desde el archivo si el miembro guardado no tuviera ninguna.
+      if(!Array.isArray(m.loans)||m.loans.length===0){
+        if(ref.loans&&ref.loans.length>0){
+          m.loans=JSON.parse(JSON.stringify(ref.loans));
+        }
       }
       if(!m.history||m.history.length===0){m.history=JSON.parse(JSON.stringify(ref.history||[]));}
       if(!m.phone)m.phone="";
