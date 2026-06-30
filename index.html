@@ -513,7 +513,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v36.0</div>
+<div class="app-version" id="appVersionTag">v37.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -1067,23 +1067,17 @@ function load(){
     }
     try{
       const fbData=await window._fbLoad();
-      if(fbData){
-        const fbT=fbData.updatedAt||0;
-        const localT=(DATA&&DATA.updatedAt)||0;
-        // Gana lo MÁS NUEVO. Ante empate o diferencia mínima gana lo LOCAL
-        // (es lo que el usuario acaba de escribir en este dispositivo): así una
-        // subida lenta o fallida de Firebase no puede pisar una ayuda recién creada.
-        // Solo se adopta Firebase si supera lo local por un margen real (2 s).
-        if(fbT>localT+2000){
-          DATA=sanitizeData(migrateData(fbData));
-          if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
-          localStorage.setItem(KEY,JSON.stringify(DATA));
-        }else{
-          // Lo local es más reciente: subir lo local a Firebase para que la nube se actualice
-          try{await window._fbSave(DATA);}catch(e){}
-        }
+      const hayLocal = !!localStorage.getItem(KEY) && DATA && DATA.members && DATA.members.length>0;
+      if(!hayLocal && fbData){
+        // localStorage vacío (teléfono nuevo, app reinstalada o caché borrada):
+        // recuperar los datos desde el respaldo de la nube.
+        DATA=sanitizeData(migrateData(fbData));
+        if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
+        localStorage.setItem(KEY,JSON.stringify(DATA));
       }else{
-        // Firebase vacío: subir lo local
+        // CASO NORMAL (un solo dispositivo): lo LOCAL es la verdad. Firebase NUNCA
+        // pisa lo local; solo se usa como respaldo, subiendo la copia local a la nube.
+        // Así una ayuda recién registrada no puede desaparecer al reabrir.
         try{await window._fbSave(DATA);}catch(e){}
       }
       SYNC_STATUS="ok";
@@ -1768,7 +1762,7 @@ function addLoanSubmit(){
   const pays=[];let mi=MONTHS.indexOf(sm),yr=sy;
   for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
   DATA.members.forEach(m=>{if(m.id===MODAL.mid){m.loans.push({id:"l"+Date.now(),gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,pays});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap});}});
-  closeModal();save();toast("Ayuda añadida ✓");
+  closeModal();toast("Ayuda añadida ✓");save();
 }
 
 // ── EDITAR AYUDA: capital, plazo y meses ──
