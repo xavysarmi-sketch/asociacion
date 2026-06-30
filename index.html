@@ -513,7 +513,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v33.0</div>
+<div class="app-version" id="appVersionTag">v34.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -2139,14 +2139,14 @@ function fichaHTML(m,readonly=false){
     let cm=(ji+1)%12, cy=jy+(ji+1>=12?1:0);
     while(cy<ry2||(cy===ry2&&cm<=ri2)){
       const key=cy+"-"+String(cm+1).padStart(2,"0");
-      const bn=beneficioRealMes(key);
+      const bn=beneficioMiembroMes(m,key);
       acumBen=Math.round((acumBen+bn)*100)/100;
       benRows.push({mes:MS[cm],anio:cy,bn,acum:acumBen});
       cm++; if(cm>=12){cm=0;cy++;}
     }
   }
   const mesKeyBen=ry+"-"+String(MS.indexOf(rm)+1).padStart(2,"0");
-  const benMes=(!isTerc&&m.joinMonth)?beneficioRealMes(mesKeyBen):0;
+  const benMes=(!isTerc&&m.joinMonth)?beneficioMiembroMes(m,mesKeyBen):0;
 
   // Barra de pestañas (terceros no tienen Beneficios ni Aportes)
   const tabs=isTerc
@@ -2198,8 +2198,9 @@ function fichaHTML(m,readonly=false){
     if(benRows.length>0){
       let cont="";
       benRows.slice().reverse().forEach(r=>{
-        cont+=`<div class="ft-row"><span class="ft-lbl">${r.mes} ${r.anio}</span><span class="ft-val"><span style="color:#2D6A4F;font-weight:700">+ ${r.bn} €</span> <span style="font-size:11px;color:var(--muted)">acum. ${r.acum} €</span></span></div>`;
+        cont+=`<div class="ft-row"><span class="ft-lbl">${r.mes} ${r.anio}</span><span class="ft-val"><span style="color:#2D6A4F;font-weight:700">+ ${r.bn} €</span></span></div>`;
       });
+      cont+=`<div class="ft-row ft-total"><span class="ft-lbl">Total acumulado</span><span class="ft-val" style="color:#1B4332;font-weight:700">${acumBen} €</span></div>`;
       h+=dropFicha(mid,"benhist","📅 Historial beneficios por mes",benRows.length+" meses",cont,isOpen("benhist"));
     } else {
       h+=`<div class="ft-card"><div class="ft-empty">Aún no hay beneficios registrados.</div></div>`;
@@ -2583,6 +2584,17 @@ function beneficioRealMes(mesKey){
   return topeMesFuturo(mesKey);
 }
 
+// Beneficio de UN asociado en UN mes concreto.
+// Si ese mes aportó 100 o más (modo aporte 100, o 50 + extra), el beneficio es DOBLE.
+function beneficioMiembroMes(m, mesKey){
+  const base = beneficioRealMes(mesKey);
+  const aporteBase = m.aporte || DATA.monthlyFee;
+  const extra = (DATA.extras && DATA.extras[m.id] && DATA.extras[m.id][mesKey] && DATA.extras[m.id][mesKey].monto) || 0;
+  const aportadoEseMes = aporteBase + extra;
+  const mult = aportadoEseMes >= 100 ? 2 : 1;
+  return Math.round(base * mult * 100) / 100;
+}
+
 function memberBenefitAccum(m){
   // Beneficio real acumulado desde el mes SIGUIENTE al ingreso hasta el mes de reporte
   // (mes vencido: el beneficio de agosto se cobra en septiembre)
@@ -2597,7 +2609,7 @@ function memberBenefitAccum(m){
   const rmIdx=ri, ryIdx=ry;
   while(cy<ryIdx||(cy===ryIdx&&cm<=rmIdx)){
     const key=cy+"-"+String(cm+1).padStart(2,"0");
-    total+=beneficioRealMes(key);
+    total+=beneficioMiembroMes(m,key);
     cm++; if(cm>=12){cm=0;cy++;}
   }
   return Math.round(total*100)/100;
