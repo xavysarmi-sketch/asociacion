@@ -2139,9 +2139,10 @@ function fichaHTML(m,readonly=false){
     let cm=(ji+1)%12, cy=jy+(ji+1>=12?1:0);
     while(cy<ry2||(cy===ry2&&cm<=ri2)){
       const key=cy+"-"+String(cm+1).padStart(2,"0");
-      const bn=beneficioMiembroMes(m,key);
+      const dg=beneficioMiembroDesglose(m,key);
+      const bn=dg.total;
       acumBen=Math.round((acumBen+bn)*100)/100;
-      benRows.push({mes:MS[cm],anio:cy,bn,acum:acumBen});
+      benRows.push({mes:MS[cm],anio:cy,bn,acum:acumBen,base:dg.base,extra:dg.extra,tieneExtra:dg.tieneExtra});
       cm++; if(cm>=12){cm=0;cy++;}
     }
   }
@@ -2198,7 +2199,10 @@ function fichaHTML(m,readonly=false){
     if(benRows.length>0){
       let cont="";
       benRows.slice().reverse().forEach(r=>{
-        cont+=`<div class="ft-row"><span class="ft-lbl">${r.mes} ${r.anio}</span><span class="ft-val"><span style="color:#2D6A4F;font-weight:700">+ ${r.bn} €</span></span></div>`;
+        const etqExtra = r.tieneExtra
+          ? `<div style="font-size:12px;color:#B08D3E;margin-top:2px">incluye + ${r.extra} € por aporte extra</div>`
+          : "";
+        cont+=`<div class="ft-row"><span class="ft-lbl">${r.mes} ${r.anio}${etqExtra}</span><span class="ft-val"><span style="color:#2D6A4F;font-weight:700">+ ${r.bn} €</span></span></div>`;
       });
       cont+=`<div class="ft-row ft-total"><span class="ft-lbl">Total acumulado</span><span class="ft-val" style="color:#1B4332;font-weight:700">${acumBen} €</span></div>`;
       h+=dropFicha(mid,"benhist","📅 Historial beneficios por mes",benRows.length+" meses",cont,isOpen("benhist"));
@@ -2586,13 +2590,28 @@ function beneficioRealMes(mesKey){
 
 // Beneficio de UN asociado en UN mes concreto.
 // Si ese mes aportó 100 o más (modo aporte 100, o 50 + extra), el beneficio es DOBLE.
-function beneficioMiembroMes(m, mesKey){
+// Clave del mes anterior a una clave "AAAA-MM"
+function mesKeyAnterior(mesKey){
+  const [y,mm]=mesKey.split("-").map(Number);
+  let pm=mm-1, py=y;
+  if(pm<1){pm=12;py--;}
+  return py+"-"+String(pm).padStart(2,"0");
+}
+// Desglose del beneficio de un miembro para el mes 'mesKey' (mes en que se COBRA, a mes vencido).
+// El aporte que genera el beneficio es el del MES ANTERIOR (el extra de junio se refleja en julio).
+function beneficioMiembroDesglose(m, mesKey){
   const base = beneficioRealMes(mesKey);
   const aporteBase = m.aporte || DATA.monthlyFee;
-  const extra = (DATA.extras && DATA.extras[m.id] && DATA.extras[m.id][mesKey] && DATA.extras[m.id][mesKey].monto) || 0;
+  const keyAporte = mesKeyAnterior(mesKey);
+  const extra = (DATA.extras && DATA.extras[m.id] && DATA.extras[m.id][keyAporte] && DATA.extras[m.id][keyAporte].monto) || 0;
   const aportadoEseMes = aporteBase + extra;
-  const mult = aportadoEseMes >= 100 ? 2 : 1;
-  return Math.round(base * mult * 100) / 100;
+  const tieneExtra = extra > 0 && aportadoEseMes >= 100;
+  const benBase = Math.round(base * 100) / 100;                 // parte regular
+  const benExtra = tieneExtra ? Math.round(base * 100) / 100 : 0; // parte por aporte extra (duplica)
+  return { base: benBase, extra: benExtra, total: Math.round((benBase+benExtra)*100)/100, tieneExtra, keyAporte };
+}
+function beneficioMiembroMes(m, mesKey){
+  return beneficioMiembroDesglose(m, mesKey).total;
 }
 
 function memberBenefitAccum(m){
