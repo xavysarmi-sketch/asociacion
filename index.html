@@ -513,7 +513,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v34.0</div>
+<div class="app-version" id="appVersionTag">v35.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -1064,8 +1064,11 @@ function load(){
       if(fbData){
         const fbT=fbData.updatedAt||0;
         const localT=(DATA&&DATA.updatedAt)||0;
-        // Solo adoptar Firebase si es MÁS RECIENTE que lo local (gana lo más nuevo)
-        if(fbT>=localT){
+        // Gana lo MÁS NUEVO. Ante empate o diferencia mínima gana lo LOCAL
+        // (es lo que el usuario acaba de escribir en este dispositivo): así una
+        // subida lenta o fallida de Firebase no puede pisar una ayuda recién creada.
+        // Solo se adopta Firebase si supera lo local por un margen real (2 s).
+        if(fbT>localT+2000){
           DATA=sanitizeData(migrateData(fbData));
           if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
           localStorage.setItem(KEY,JSON.stringify(DATA));
@@ -1873,6 +1876,7 @@ function mesObjetivo(m){
   const esTerc=m.type==="tercero";
   let mi=MONTHS.indexOf(DATA.reportMonth);
   let y=DATA.reportYear;
+  const topeMi=mi; // No avanzar más allá del mes del reporte: nadie "debe" un mes que aún no ha llegado.
   const todosLoans=[...(m.loans||[]),...(m.closedLoans||[])];
   // Avanzar como máximo 24 meses para evitar bucles
   for(let step=0; step<24; step++){
@@ -1898,6 +1902,11 @@ function mesObjetivo(m){
     // Si este mes no tiene ni aporte pendiente ni cuotas pendientes,
     // pero tampoco tiene cuotas ni es relevante, igualmente avanzamos solo si
     // todo lo de este mes está cubierto. Avanzar al siguiente mes.
+    // PERO no pasamos del mes del reporte: si ya estamos en él y está todo
+    // cubierto, el asociado está al día (aunque haya adelantado meses futuros).
+    if(mi>=topeMi){
+      return {mes:DATA.reportMonth, anio:DATA.reportYear};
+    }
     mi++;
   }
   // Fallback: mes del reporte
@@ -2105,15 +2114,20 @@ function fichaHTML(m,readonly=false){
      3. MARCAR APORTE (solo admin, no readonly)
   ──────────────────────────────────────────────── */
   if(!isTerc&&!readonly){
-    const aptOk=!!(mdObj.aportes&&mdObj.aportes[m.id]);
+    // El botón de aporte opera siempre sobre el MES DEL SISTEMA (no el mes
+    // objetivo, que puede avanzar solo). Así, al marcar el aporte queda fijo
+    // en verde y no salta al mes siguiente; volver a pulsar lo desmarca.
+    const rmSis=DATA.reportMonth, rySis=DATA.reportYear;
+    const mdSis=getMesData(rmSis,rySis);
+    const aptOk=!!(mdSis.aportes&&mdSis.aportes[m.id]);
     h+=`<div class="ficha-section">
-      <div class="ficha-sec-title">✅ Estado del aporte — ${escH(rmObj)} ${ryObj}</div>
+      <div class="ficha-sec-title">✅ Estado del aporte — ${escH(rmSis)} ${rySis}</div>
       <div class="ficha-row">
         <div>
           <div class="ficha-row-lbl">${aptOk?"Aporte recibido ✅":"Aporte pendiente ⏳"}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px">${d.apNeto} € netos a pagar este mes</div>
         </div>
-        <button class="toggle-btn ${aptOk?"on":"off"}" onclick="toggleAporte('${esc(m.id)}','${rmObj}',${ryObj});render()"></button>
+        <button class="toggle-btn ${aptOk?"on":"off"}" onclick="toggleAporte('${esc(m.id)}','${rmSis}',${rySis})"></button>
       </div>
     </div>`;
   }
