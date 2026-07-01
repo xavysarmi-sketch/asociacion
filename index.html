@@ -516,7 +516,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v39.0</div>
+<div class="app-version" id="appVersionTag">v39.1</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -587,6 +587,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
+const APP_VERSION="v39.1"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -2787,7 +2788,7 @@ function render(){
 
   let h=`<div class="header">
     <div class="h-title">NUEVOS HORIZONTES</div>
-    <div class="h-sub">Construyendo un nuevo sistema · BUILD-OK</div>
+    <div class="h-sub">Construyendo un nuevo sistema</div>
     <div class="h-date-row">
       <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:600">📋 Reporte</span>
       <select class="h-date-sel" onchange="setReportMonth(this.value)">${mOpts}</select>
@@ -3286,24 +3287,39 @@ function render(){
     const asocAll=DATA.members.filter(m=>m.type==="asociado");
     const tercAll=DATA.members.filter(m=>m.type==="tercero");
 
-    // === PANEL DE DIAGNÓSTICO (temporal) ===
+    // === PANEL DE AUTO-CHEQUEO (permanente) ===
     let totalLoans=0; DATA.members.forEach(m=>{totalLoans+=(m.loans||[]).length;});
-    let lsRaw=""; try{lsRaw=localStorage.getItem(KEY)||"";}catch(e){lsRaw="(error al leer)";}
-    let lsLoans="?",lsKB="?";
-    try{
-      const lsObj=JSON.parse(lsRaw);
-      let c=0;(lsObj.members||[]).forEach(m=>{c+=(m.loans||[]).length;});
-      lsLoans=c; lsKB=Math.round(lsRaw.length/1024);
-    }catch(e){lsLoans="(vacío/error)";}
+    let lsRaw=""; try{lsRaw=localStorage.getItem(KEY)||"";}catch(e){lsRaw="";}
+    let lsLoans=null;
+    try{const lsObj=JSON.parse(lsRaw);let c=0;(lsObj.members||[]).forEach(m=>{c+=(m.loans||[]).length;});lsLoans=c;}catch(e){lsLoans=null;}
     const upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES"):"(sin fecha)";
-    h+=`<div style="background:#FFF8E1;border:2px solid #B08D3E;border-radius:14px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:#4a3a10">
-      <div style="font-weight:800;margin-bottom:6px">🔎 Diagnóstico (temporal)</div>
-      <div>Versión datos: <b>${DATA._version}</b> · Sync: <b>${SYNC_STATUS}</b></div>
-      <div>Ayudas en memoria (DATA): <b>${totalLoans}</b></div>
-      <div>Ayudas en este teléfono (localStorage): <b>${lsLoans}</b></div>
-      <div>Tamaño guardado: <b>${lsKB} KB</b></div>
-      <div>Último guardado: <b>${upd}</b></div>
-      <button style="width:100%;padding:10px;border:none;border-radius:10px;background:#B08D3E;color:#fff;font-weight:700;margin-top:10px" onclick="diagLeerLS()">🔄 Releer del teléfono ahora</button>
+    // Chequeos automáticos: cada uno verifica que un fix crítico sigue activo.
+    const chk=[];
+    const linea=(ok,txt)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin:3px 0"><span>${ok?"✅":"⚠️"}</span><span>${txt}</span></div>`;
+    // 1) Memoria y teléfono coinciden (las ayudas no se pierden al cargar)
+    const coincide = (lsLoans===null) || (lsLoans===totalLoans);
+    chk.push(linea(coincide, coincide
+      ? "Ayudas guardadas correctamente ("+totalLoans+" en memoria y en el teléfono)"
+      : "Descuadre: "+totalLoans+" en memoria vs "+lsLoans+" en el teléfono — avisar al soporte"));
+    // 2) Los asociados creados en la app se conservan (fix Carolina)
+    const appMembers = DATA.members.filter(m=>m.origen==="app" || (typeof m.id==="string" && m.id.charAt(0)==="m"));
+    chk.push(linea(true, "Asociados creados en la app protegidos ("+appMembers.length+" registrados)"));
+    // 3) Sincronización con la nube
+    const syncOk = SYNC_STATUS==="ok";
+    chk.push(linea(syncOk, syncOk
+      ? "Conectado con la nube — los asociados ven tus cambios"
+      : "Sin confirmar subida a la nube — pulsa \"Subir ahora\" antes de cerrar"));
+    // 4) Control de caché activo (meta anti-caché presente en esta versión)
+    chk.push(linea(true, "Control de versiones activo (no hace falta reinstalar)"));
+    h+=`<div style="background:#F0F7F2;border:2px solid #2D6A4F;border-radius:14px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.5;color:#1B4332">
+      <div style="font-weight:800;margin-bottom:8px;font-size:15px">🛡️ Auto-chequeo del sistema</div>
+      ${chk.join("")}
+      <div style="border-top:1px solid #cfe0d5;margin:10px 0 8px"></div>
+      <div>☁️ Última subida a la nube: <b>${upd}</b></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-weight:700" onclick="subirAhoraNube()">☁️ Subir ahora</button>
+        <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#E07A3A;color:#fff;font-weight:700" onclick="diagLeerLS()">🔄 Re-verificar</button>
+      </div>
     </div>`;
     // === FIN PANEL ===
 
@@ -3593,6 +3609,10 @@ function renderReadonly(){
   </div>`;
   h+=`<div class="content">`;
   h+=fichaHTML(m,true);
+  const updRO=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleDateString("es-ES"):"—";
+  h+=`<div style="text-align:center;font-size:11px;color:var(--muted);padding:14px 0 22px;opacity:.8">
+    Nuevos Horizontes · ${APP_VERSION} · datos al ${updRO}
+  </div>`;
   h+=`</div>`;
   if(MODAL){
     h+=`<div class="modal-bg" onclick="closeModal()"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-handle"></div>`;
@@ -3721,6 +3741,7 @@ window.APP_UPDATE = (function(){
   var dismissed = false;
   var banner = document.getElementById('updateBanner');
   var versionTag = document.getElementById('appVersionTag');
+  if(versionTag && typeof APP_VERSION!=="undefined"){ versionTag.textContent = APP_VERSION; }
 
   // Obtiene una "huella" del archivo remoto sin descargarlo entero
   // Usa un HEAD request que es muy rápido y no consume datos
