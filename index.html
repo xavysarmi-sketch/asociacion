@@ -516,7 +516,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v39.1</div>
+<div class="app-version" id="appVersionTag">v41.0</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -587,7 +587,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v39.1"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v41.0"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -742,6 +742,12 @@ function sanitizeData(data){
 const URL_PARAMS=new URLSearchParams(window.location.search);
 const READONLY_ID=URL_PARAMS.get("socio")||null;
 const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(",").map(id=>decodeURIComponent(id)):null;
+// Enlace grupal ESTABLE: apunta al asociado principal del grupo (?grupoppal=ID).
+// La lista de miembros se lee del grupo guardado (gruposCierre) en el momento de abrir,
+// así el enlace se actualiza solo al editar el grupo y no hay que reenviarlo.
+const GRUPO_PPAL=URL_PARAMS.get("grupoppal")?decodeURIComponent(URL_PARAMS.get("grupoppal")):null;
+// ¿Estamos en cualquier modo grupo? (formato nuevo por principal o formato antiguo por lista)
+const ES_MODO_GRUPO = !!(GRUPO_IDS || GRUPO_PPAL);
 const GRUPO_YO=URL_PARAMS.get("yo")?decodeURIComponent(URL_PARAMS.get("yo")):null;
 let GRUPO_VISTA="elegir"; // pestaña activa en el enlace grupal: "elegir" | "grupo" | "mi"
 
@@ -1035,7 +1041,7 @@ function historyModalHTML(){
 let SYNC_STATUS="init";
 
 function load(){
-  if(READONLY_ID||GRUPO_IDS){
+  if(READONLY_ID||ES_MODO_GRUPO){
     DATA=JSON.parse(JSON.stringify(INITIAL));
     document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">⏳</div><div style="font-size:16px;font-weight:600;color:#2D6A4F">Cargando datos...</div></div>';
     const tryLoad=async()=>{
@@ -1130,7 +1136,7 @@ async function save(){
   DATA.updatedAt=Date.now(); // marca de tiempo: para que gane siempre la versión más reciente
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
 
-  if(!READONLY_ID&&!GRUPO_IDS){
+  if(!READONLY_ID&&!ES_MODO_GRUPO){
     SYNC_STATUS="saving";
     // FIX IPHONE: actualizar solo el indicador, sin re-renderizar todo
     const dot=document.querySelector(".sync-indicator");
@@ -1618,6 +1624,25 @@ function buildGrupoUrl(ids,yo){
   if(yo)u+="&yo="+encodeURIComponent(yo);
   return u;
 }
+// Enlace ESTABLE de un grupo de cierre: apunta al asociado principal.
+// No congela la lista; el asociado siempre verá los miembros actuales del grupo.
+function buildGrupoUrlEstable(principalId){
+  return baseUrl()+"?grupoppal="+encodeURIComponent(principalId);
+}
+// Compartir por WhatsApp el enlace estable de un grupo de cierre (desde la pestaña Cierre)
+function compartirGrupoCierre(gid){
+  const g=(DATA.gruposCierre||[]).find(x=>x.id===gid);
+  if(!g){toast("Grupo no encontrado");return;}
+  const ppal=DATA.members.find(m=>m.id===g.principalId);
+  if(!ppal){toast("El principal del grupo no existe");return;}
+  const url=buildGrupoUrlEstable(g.principalId);
+  const msg="Hola 👋 aquí podéis ver vuestro reporte de "+DATA.reportMonth+" "+DATA.reportYear+" en Nuevos Horizontes:\n"+url;
+  if(navigator.share){
+    navigator.share({text:msg}).then(()=>toast("Compartido ✓")).catch(e=>{if(e.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");});
+  }else{
+    window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
+  }
+}
 function sendGrupoWA(){
   if(!MODAL||!MODAL.ids)return;
   const url=buildGrupoUrl(MODAL.ids,MODAL.yo||MODAL.ids[0]);
@@ -1837,7 +1862,9 @@ function saveEditLoan(){
 function saveCfg(){
   const fee=parseInt(document.getElementById("cfg-fee")?.value)||50;
   const rate=parseFloat(document.getElementById("cfg-rate")?.value)||5;
-  DATA.monthlyFee=fee;DATA.rate=rate;
+  let dia=parseInt(document.getElementById("cfg-diaaviso")?.value);
+  if(isNaN(dia)||dia<1||dia>28)dia=25; // rango seguro; 28 evita meses cortos
+  DATA.monthlyFee=fee;DATA.rate=rate;DATA.diaAvisoProximo=dia;
   save();toast("Configuración guardada ✓");
 }
 
@@ -2140,12 +2167,31 @@ function fichaHTML(m,readonly=false){
     const rmSis=DATA.reportMonth, rySis=DATA.reportYear;
     const mdSis=getMesData(rmSis,rySis);
     const aptOk=!!(mdSis.aportes&&mdSis.aportes[m.id]);
+    // Aviso del próximo mes: solo si YA está al día y estamos a partir del día
+    // configurable (por defecto 25). Es informativo; no marca deuda ni cambia el botón.
+    const diaAviso=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
+    const hoyDia=new Date().getDate();
+    const iRep=MONTHS.indexOf(rmSis);
+    const iSig=(iRep+1)%12;
+    const mesSigFull=(typeof MONTHS_FULL!=="undefined"?MONTHS_FULL[iSig]:MONTHS[iSig]).toLowerCase();
+    const aporteAsoc=(m.aporte||DATA.monthlyFee);
+    let estadoLbl, subLbl;
+    if(!aptOk){
+      estadoLbl="Aporte pendiente ⏳";
+      subLbl=`${d.apNeto} € netos a pagar este mes`;
+    } else if(hoyDia>=diaAviso){
+      estadoLbl="✅ Al día";
+      subLbl=`Próximo: ${aporteAsoc} € de ${mesSigFull}`;
+    } else {
+      estadoLbl="✅ Al día";
+      subLbl="Aporte de este mes recibido";
+    }
     h+=`<div class="ficha-section">
       <div class="ficha-sec-title">✅ Estado del aporte — ${escH(rmSis)} ${rySis}</div>
       <div class="ficha-row">
         <div>
-          <div class="ficha-row-lbl">${aptOk?"Aporte recibido ✅":"Aporte pendiente ⏳"}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">${d.apNeto} € netos a pagar este mes</div>
+          <div class="ficha-row-lbl">${estadoLbl}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${subLbl}</div>
         </div>
         <button class="toggle-btn ${aptOk?"on":"off"}" onclick="toggleAporte('${esc(m.id)}','${rmSis}',${rySis})"></button>
       </div>
@@ -2777,7 +2823,7 @@ function filtrarEnVivo(texto, scopeSelector){
 function render(){
   if(READONLY_ID){renderReadonly();return;}
   if(PREVIEW_ID){const pm=DATA.members.find(x=>x.id===PREVIEW_ID);if(pm){renderPreview(pm);return;}PREVIEW_ID=null;}
-  if(GRUPO_IDS){renderGrupo();return;}
+  if(ES_MODO_GRUPO){renderGrupo();return;}
   const{reportMonth:rm,reportYear:ry,monthlyFee:fee}=DATA;
   const asoc=DATA.members.filter(m=>m.type==="asociado");
   const terc=DATA.members.filter(m=>m.type==="tercero");
@@ -3061,6 +3107,8 @@ function render(){
           if(totalPend>0){
             h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px" onclick="marcarTodoGrupo('${g.id}')">✅ Marcar todo pagado</button>`;
           }
+          // Enlace estable del grupo (se auto-actualiza; no hay que reenviarlo al editar el grupo)
+          h+=`<button style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#25D366;color:#fff;font-size:14px;font-weight:700;cursor:pointer" onclick="compartirGrupoCierre('${g.id}')">💬 Compartir enlace del grupo</button>`;
           // ── Resumen del grupo: aportes, cuotas y total (completo) ──
           const _aportes=items.filter(it=>it.tipo==="aporte");
           const _cuotas=items.filter(it=>it.tipo==="cuota");
@@ -3332,6 +3380,10 @@ function render(){
       <div class="cfg-row">
         <div><div class="cfg-label">Interés por cuota</div><div class="cfg-sub">% sobre el capital × nº cuotas</div></div>
         <input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %
+      </div>
+      <div class="cfg-row">
+        <div><div class="cfg-label">Día de aviso del próximo aporte</div><div class="cfg-sub">Desde este día se muestra "Próximo: … de [mes]" en las fichas al día</div></div>
+        <input id="cfg-diaaviso" class="cfg-input" type="number" value="${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}" min="1" max="28">
       </div>
       <button style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;margin-top:12px" onclick="saveCfg()">💾 Guardar configuración</button>
     </div>`;
@@ -3625,13 +3677,29 @@ function renderReadonly(){
 // ── MODO GRUPO ──
 function setGrupoVista(v){ GRUPO_VISTA=v; renderGrupo(); }
 function renderGrupo(){
-  const members=GRUPO_IDS?GRUPO_IDS.map(id=>DATA.members.find(x=>x.id===id)).filter(Boolean):[];
+  // Resolver la lista de miembros según el tipo de enlace:
+  // - Nuevo (?grupoppal=ID): buscar el grupo guardado cuyo principal sea ese asociado
+  //   y usar SU lista actual (principal + miembros). Así el enlace se auto-actualiza.
+  // - Antiguo (?grupo=id1,id2,...): usar la lista fija de la URL (compatibilidad).
+  let ids=[];
+  let titularId=GRUPO_YO;
+  if(GRUPO_PPAL){
+    const grupos=(DATA.gruposCierre||[]);
+    const g=grupos.find(x=>x.principalId===GRUPO_PPAL);
+    if(g){
+      ids=[g.principalId,...(g.miembros||[])];
+      if(!titularId)titularId=g.principalId; // el principal es el titular por defecto
+    }
+  } else if(GRUPO_IDS){
+    ids=GRUPO_IDS;
+  }
+  const members=ids.map(id=>DATA.members.find(x=>x.id===id)).filter(Boolean);
   if(!members||!members.length){
     document.getElementById("app").innerHTML=`<div style="text-align:center;padding:60px 20px"><div style="font-size:48px">🔍</div><div style="font-size:18px;font-weight:700;color:var(--dark);margin-top:16px">Grupo no encontrado</div></div>`;
     return;
   }
-  // Titular: el indicado en el enlace (?yo=) o, si no, la primera ficha
-  const titular=members.find(m=>m.id===GRUPO_YO)||members[0];
+  // Titular: el principal del grupo (nuevo) o el indicado en ?yo= o la primera ficha
+  const titular=members.find(m=>m.id===titularId)||members[0];
   const MS2=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const MF2=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const rm=DATA.reportMonth,ry=DATA.reportYear;
