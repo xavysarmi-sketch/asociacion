@@ -516,7 +516,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.9</div>
+<div class="app-version" id="appVersionTag">v43.11</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -587,7 +587,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.9"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.11"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -601,15 +601,20 @@ function migrateData(data){
   if((data._version||0) < 6){
     const imap={};
     INITIAL.members.forEach(m=>{imap[m.name.toLowerCase().trim()]=m;});
+    const idRemap={}; // id viejo → id nuevo, para arreglar referencias (grupos de cierre)
     data.members.forEach(m=>{
       const ref=imap[(m.name||"").toLowerCase().trim()];
       if(ref){
+        if(m.id!==ref.id && m.id!=null)idRemap[m.id]=ref.id; // recordar el cambio de id
         m.id=ref.id;                 // ← clave: anclar el id al del archivo
         m.type=ref.type;
         m.ref=ref.ref;
-        m.ciclo=ref.ciclo;
-        m.joinMonth=ref.joinMonth;
-        m.joinYear=ref.joinYear;
+        // EL CICLO LO MANDA EL TELÉFONO: si el asociado ya tiene un ciclo guardado
+        // (aunque sea "indefinido"), NO se sobrescribe con el del archivo. Solo se
+        // toma del archivo si el miembro guardado no tuviera ninguno.
+        if(m.ciclo===undefined||m.ciclo===null)m.ciclo=ref.ciclo;
+        // Fechas de ingreso: igual, solo se reponen si faltan.
+        if(!m.joinMonth){m.joinMonth=ref.joinMonth;m.joinYear=ref.joinYear;}
         // MODO B: las ayudas (loans) e historial se registran desde la app y son
         // la fuente de verdad del usuario. NO se sobrescriben con las del archivo;
         // solo se reponen si el miembro guardado no tuviera ninguna.
@@ -625,6 +630,15 @@ function migrateData(data){
         data.members.push(JSON.parse(JSON.stringify(im)));
       }
     });
+    // BLINDAJE DE GRUPOS DE CIERRE: si al reanclar ids algún grupo apuntaba a un
+    // id viejo, se actualiza al nuevo. Así los grupos NUNCA se pierden ni quedan
+    // huérfanos por el cambio de id. Los grupos viven solo en el teléfono.
+    if(Array.isArray(data.gruposCierre)){
+      data.gruposCierre.forEach(g=>{
+        if(g.principalId&&idRemap[g.principalId])g.principalId=idRemap[g.principalId];
+        if(Array.isArray(g.miembros))g.miembros=g.miembros.map(mid=>idRemap[mid]||mid);
+      });
+    }
     data.reportMonth=INITIAL.reportMonth;
     data.reportYear=INITIAL.reportYear;
     data._version=6;
@@ -654,7 +668,10 @@ function migrateData(data){
       }
       if(!m.history||m.history.length===0){m.history=JSON.parse(JSON.stringify(ref.history||[]));}
       if(!m.phone)m.phone="";
-      if(!m.ciclo&&ref.ciclo){m.ciclo=ref.ciclo;}
+      // CICLO: 0 = "indefinido" es un valor VÁLIDO elegido en el teléfono. Antes
+      // "!m.ciclo" lo trataba como vacío y lo machacaba con el del archivo (bug de
+      // "indefinido vuelve a 24"). Ahora solo se repone si es undefined/null.
+      if((m.ciclo===undefined||m.ciclo===null)&&ref.ciclo!=null){m.ciclo=ref.ciclo;}
     }
     if(!m.history)m.history=[];
     if(!m.joinMonth)m.joinMonth=null;
@@ -700,14 +717,24 @@ function sanitizeData(data){
     if(typeof m.id==="string" && m.id.charAt(0)==="m")return true;     // id de la app
     return false; // fantasma real: descartar
   });
+  const idRemapSan={}; // id viejo → id nuevo, para no romper referencias de grupos
   data.members.forEach(m=>{
     const ref=byName[(m.name||"").toLowerCase().trim()];
     if(ref){
+      if(m.id!==ref.id && m.id!=null)idRemapSan[m.id]=ref.id;
       m.id=ref.id;          // id correcto del archivo (fuente de verdad)
       m.type=ref.type;      // asociado / tercero
       m.ref=ref.ref;        // avalista (o null)
     }
   });
+  // BLINDAJE DE GRUPOS DE CIERRE: actualizar referencias de id para que ningún
+  // grupo quede huérfano (y desaparezca) tras reanclar ids. Se ejecuta SIEMPRE.
+  if(Array.isArray(data.gruposCierre)){
+    data.gruposCierre.forEach(g=>{
+      if(g.principalId&&idRemapSan[g.principalId])g.principalId=idRemapSan[g.principalId];
+      if(Array.isArray(g.miembros))g.miembros=g.miembros.map(mid=>idRemapSan[mid]||mid);
+    });
+  }
   // Fusionar referidos del archivo (INITIAL) sin pisar los ya registrados
   if(INITIAL.referidos){
     if(!data.referidos)data.referidos={};
@@ -3234,14 +3261,16 @@ function render(){
       h+=`<div style="margin-top:14px">`;
       // ¿Hay un grupo abierto? Si lo hay, se aísla: se ocultan los demás y el selector de nuevo grupo
       const grupoAbierto=grupos.find(g=>!!DESP["grupo-"+g.id])||null;
+      // Personas ya asignadas a CUALQUIER grupo (como principal o miembro).
+      // Se excluyen de todos los desplegables para no duplicarlas y agilizar el trabajo.
+      const enGrupo=new Set();
+      grupos.forEach(gg=>{enGrupo.add(gg.principalId);(gg.miembros||[]).forEach(x=>enGrupo.add(x));});
       if(grupoAbierto){
         h+=`<button onclick="DESP['grupo-${grupoAbierto.id}']=false;render()" style="display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--dark);font-size:14px;font-weight:700;cursor:pointer;padding:0;margin-bottom:14px">← Ver todos los grupos</button>`;
       } else {
         h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
         // Crear nuevo grupo
-        const enGrupo=new Set();
-        grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
-        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
+        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
         h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
           <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
             <option value="">— Elegir principal —</option>
@@ -3302,8 +3331,8 @@ function render(){
             h+=`</div>`;
           });
           // Añadir miembro a este grupo
-          const yaEnEste=new Set([g.principalId,...(g.miembros||[])]);
-          const cand=DATA.members.filter(m=>!yaEnEste.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+          // Excluir a quienes ya están en ESTE grupo Y en cualquier otro grupo.
+          const cand=DATA.members.filter(m=>!enGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
           h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
             <select class="m-select" style="margin-bottom:10px;font-size:14px" onchange="if(this.value)añadirMiembroGrupo('${g.id}',this.value);this.value=''">
               <option value="">— Añadir persona —</option>
