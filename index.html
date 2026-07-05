@@ -516,7 +516,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.8</div>
+<div class="app-version" id="appVersionTag">v43.9</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -587,7 +587,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.8"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.9"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -1469,7 +1469,11 @@ function delLoan(mid,lid){
     return;
   }
   _delLoanArmed=null;
-  DATA.members.forEach(m=>{if(m.id===mid)m.loans=m.loans.filter(l=>l.id!==lid);});
+  DATA.members.forEach(m=>{if(m.id===mid){
+    m.loans=m.loans.filter(l=>l.id!==lid);
+    // Eliminar la entrada de historial vinculada a este apoyo (si la tiene)
+    if(Array.isArray(m.history))m.history=m.history.filter(h=>h.lid!==lid);
+  }});
   save();toast("Ayuda eliminada ✓");render();
 }
 
@@ -1887,11 +1891,43 @@ function addLoanSubmit(){
   const total=cap+cap*(rate/100)*nn,inst=Math.ceil(total/nn);
   const pays=[];let mi=MONTHS.indexOf(sm),yr=sy;
   for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
-  DATA.members.forEach(m=>{if(m.id===MODAL.mid){m.loans.push({id:"l"+Date.now(),gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,rate,pays});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap});}});
+  DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,rate,pays});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
   closeModal();toast("Ayuda añadida ✓");save();
 }
 
 // ── EDITAR AYUDA: capital, plazo y meses ──
+function histLoanFormHTML(){
+  const m=DATA.members.find(x=>x.id===MODAL.mid);
+  if(!m)return `<div class="modal-title">Historial</div><p>Asociado no encontrado.</p>`;
+  const hist=m.history||[];
+  const total=hist.reduce((s,x)=>s+(x.capital||0),0);
+  let filas=hist.map((x,i)=>{
+    const armed=(_delHistArmed===(m.id+"|"+i));
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+      <div><div style="font-weight:600;font-size:14px;color:var(--dark)">${escH(x.gMonth||"?")} ${x.gYear||""}</div><div style="font-size:12px;color:var(--muted)">${x.capital||0} € de capital${x.lid?"":' · <span style="color:#C0492C">sin vincular</span>'}</div></div>
+      <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delHistEntry('${esc(m.id)}',${i})">${armed?"¿Seguro?":"✕"}</button>
+    </div>`;
+  }).join("");
+  if(hist.length===0)filas=`<p style="color:var(--muted);font-size:13px">Sin entradas en el historial.</p>`;
+  return `<div class="modal-title">📋 Historial de ayudas — ${escH(m.name)}</div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Cada entrada es un apoyo registrado. Elimina las que sobren (por ejemplo, registros de prueba). Esto solo corrige el historial acumulado; no afecta a las ayudas activas.</p>
+  <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:12px"><span style="font-weight:700;color:var(--dark)">Total historial</span><span style="font-weight:700;color:var(--warm)">${total} €</span></div>
+  ${filas}
+  <button class="m-primary" onclick="closeModal()" style="margin-top:6px">Cerrar</button>`;
+}
+let _delHistArmed=null;
+function delHistEntry(mid,idx){
+  const key=mid+"|"+idx;
+  if(_delHistArmed!==key){
+    _delHistArmed=key; render(); toast("Toca de nuevo ✕ para eliminar esta entrada");
+    setTimeout(()=>{if(_delHistArmed===key){_delHistArmed=null;render();}},4000);
+    return;
+  }
+  _delHistArmed=null;
+  const m=DATA.members.find(x=>x.id===mid);
+  if(m&&Array.isArray(m.history)){m.history.splice(idx,1);}
+  save();toast("Entrada eliminada ✓");render();
+}
 function editLoanFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   const l=m&&m.loans.find(x=>x.id===MODAL.lid);
@@ -1927,9 +1963,9 @@ function editLoanFormHTML(){
     <div style="font-size:12px;color:var(--warm);font-weight:600;margin-bottom:8px">Se cobrará solo ${retorno} € este mes · el capital se recupera en una cuota extra al final.</div>
     <button class="edit-btn" style="width:100%;padding:11px;font-size:13px;background:#E8A04B;color:#fff;font-weight:700" onclick="aplazarDesdeEditor()">Aplicar aplazamiento</button>`;
   })()}
-  ${l.pays.some(p=>p.aplazada)?`<div style="margin-top:10px;font-size:12px;color:var(--dark)"><b>Cuotas aplazadas:</b> ${l.pays.filter(p=>p.aplazada).map(p=>escH(p.m)+" "+p.y+" ("+ (p.instAplazada||Math.round(l.capital*(DATA.rate/100))) +"€)").join(", ")}</div>`:""}
+  ${l.pays.some(p=>p.aplazada)?`<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--muted)"><div style="font-weight:700;font-size:13px;color:var(--dark);margin-bottom:6px">Cuotas aplazadas</div>${l.pays.map((p,i)=>p.aplazada?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><span style="font-size:13px;color:var(--dark)">${escH(p.m)} ${p.y} · ${(p.instAplazada||recargoPorCuota(l))}€ (solo retorno)</span><button class="edit-btn" style="padding:5px 9px;font-size:11px;background:#D9C7A8" onclick="quitarAplazamiento(${i})">↩︓ Quitar</button></div>`:"").join("")}<p style="font-size:11px;color:var(--muted);margin-top:2px">Al quitar un aplazamiento, esa cuota vuelve a normal y el plazo se reduce en un mes.</p></div>`:""}
 </div>
-<button class="m-primary" onclick="saveEditLoan()">Guardar cambios</button>`;
+<button id="btnSaveEditLoan" class="m-primary" onclick="saveEditLoan()">Guardar cambios</button>`;
 }
 function updateEditPreview(){
   const cap=parseInt(document.getElementById("el-cap")?.value)||0;
@@ -1937,6 +1973,26 @@ function updateEditPreview(){
   if(cap<=0){document.getElementById("el-preview").innerHTML="";return;}
   const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
   document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
+}
+function quitarAplazamiento(idx){
+  const m=DATA.members.find(x=>x.id===MODAL.mid);
+  const l=m&&m.loans.find(x=>x.id===MODAL.lid);
+  if(!l||!l.pays[idx]||!l.pays[idx].aplazada){toast("Esa cuota no está aplazada");return;}
+  UNDO_SNAPSHOT=JSON.stringify(DATA);
+  clearTimeout(UNDO_TIMER);
+  // 1) Devolver la cuota a normal
+  delete l.pays[idx].aplazada;
+  delete l.pays[idx].instAplazada;
+  // 2) Quitar UNA cuota extra del final que esté sin pagar y sin aplazar
+  //    (la que se había añadido al aplazar). Se busca desde el final.
+  for(let i=l.pays.length-1;i>=0;i--){
+    if(!l.pays[i].paid && !l.pays[i].aplazada && i!==idx){ l.pays.splice(i,1); break; }
+  }
+  // 3) Recalcular respetando las aplazadas que queden
+  recalcularApoyo(l);
+  save();
+  toast("↩︎ Aplazamiento retirado · plazo "+l.n+" cuotas");
+  render();
 }
 function aplazarDesdeEditor(){
   const sel=document.getElementById("el-aplazar-mes");
@@ -1962,7 +2018,17 @@ function aplazarDesdeEditor(){
   toast("✓ "+p.m+" "+p.y+" aplazada · plazo "+l.n+" cuotas");
   render(); // reabre el modal con el estado actualizado
 }
+let _saveEditArmed=false;
 function saveEditLoan(){
+  const btn=document.getElementById("btnSaveEditLoan");
+  if(!_saveEditArmed){
+    _saveEditArmed=true;
+    if(btn){btn.textContent="✓ Confirmar guardado";btn.style.background="#E07A3A";}
+    toast("Toca de nuevo para confirmar los cambios");
+    setTimeout(()=>{_saveEditArmed=false;if(btn){btn.textContent="Guardar cambios";btn.style.background="";}},4000);
+    return;
+  }
+  _saveEditArmed=false;
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   const l=m&&m.loans.find(x=>x.id===MODAL.lid);
   if(!l){closeModal();return;}
@@ -3566,6 +3632,7 @@ function render(){
     if(MODAL.type==="loan")h+=loanFormHTML();
     if(MODAL.type==="cierreloan")h+=cierreLoanFormHTML();
     if(MODAL.type==="editloan")h+=editLoanFormHTML();
+    if(MODAL.type==="histloan")h+=histLoanFormHTML();
     if(MODAL.type==="preview")h+=previewFormHTML();
     if(MODAL.type==="link")h+=linkModalHTML();
     if(MODAL.type==="wa_queue")h+=waQueueModalHTML();
@@ -3671,7 +3738,11 @@ function manageHTML(m,isT){
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delLoan('${esc(m.id)}','${esc(l.id)}')">${armed?"¿Seguro?":"✕"}</button>
     </div></div>`;
   });
-  h+=`<button class="add-loan-btn" onclick="openModal('loan',{mid:'${esc(m.id)}'})">+ Añadir ayuda</button></div>`;
+  h+=`<button class="add-loan-btn" onclick="openModal('loan',{mid:'${esc(m.id)}'})">+ Añadir ayuda</button>`;
+  if((m.history||[]).length>0){
+    h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`;
+  }
+  h+=`</div>`;
   return h;
 }
 
