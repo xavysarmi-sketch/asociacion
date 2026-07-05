@@ -516,7 +516,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.2</div>
+<div class="app-version" id="appVersionTag">v43.8</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -587,7 +587,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.2"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.8"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -882,6 +882,17 @@ let ASOC_SEARCH=""; // texto del buscador de Asociados
 // Grupos de cierre: se guardan en DATA.gruposCierre = [{id, principalId, miembros:[mid,...]}]
 // Los items (aporte/cuotas) se calculan en vivo según el mes seleccionado.
 let PREVIEW_ID=null; // id del asociado en previsualización del admin (vista "como lo ve el asociado")
+let MG_SEARCH=""; // texto del buscador de la pestaña Gestión
+// Filtra las tarjetas de Gestión mostrando/ocultando por nombre, SIN re-render
+// (así el input conserva el foco y el teclado no se cierra en cada letra).
+function filtrarGestion(q){
+  MG_SEARCH=q||"";
+  const t=(q||"").trim().toLowerCase();
+  document.querySelectorAll('.mg-card[data-nombre]').forEach(card=>{
+    const nom=card.getAttribute('data-nombre')||"";
+    card.style.display = (!t || nom.indexOf(t)>=0) ? "" : "none";
+  });
+}
 let SEND_SELECTED=new Set(),SEND_FILTER="all",SEND_SEARCH="";
 let WA_QUEUE=[],WA_IDX=0;
 let UNDO_SNAPSHOT=null,UNDO_TIMER=null;
@@ -1176,7 +1187,7 @@ function totalAportesMes(rm,ry){
   let t=0;
   DATA.members.forEach(m=>{
     if(m.type==="tercero")return;
-    if(aportes[m.id]) t+=(m.aporte||DATA.monthlyFee);
+    if(aportes[m.id]) t+=aporteNetoMes(m,rm,ry);
     // aportes extra de ese mes (los paga aunque cuenten aparte)
     const ex=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][mesKey]);
     if(ex&&ex.monto) t+=ex.monto;
@@ -1232,14 +1243,14 @@ function aportesSplit(rm,ry){
     const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;
     const activoEseMes=(jy<ry)||(jy===ry&&ji<=ri);
     if(!activoEseMes)return;
-    const cuota=m.aporte||DATA.monthlyFee;
+    const cuota=aporteNetoMes(m,rm,ry);
     if(aportes[m.id])cobrado+=cuota; else pendiente+=cuota;
   });
   return {cobrado,pendiente};
 }
 
 // Recargo por cuota de una ayuda = 5% del capital (una vez por cuota)
-function recargoPorCuota(l){return Math.round(l.capital*(DATA.rate/100));}
+function recargoPorCuota(l){return Math.round(l.capital*((l.rate!=null?l.rate:DATA.rate)/100));}
 
 // Recargo automático del mes = suma del recargo de cada cuota PAGADA cuyo mes es rm/ry
 function recargoAutoMes(rm,ry){
@@ -1256,6 +1267,21 @@ function recargoAutoMes(rm,ry){
 // ── CIERRE GRUPAL (varios grupos, persistentes) ──
 function gruposCierre(){ if(!DATA.gruposCierre)DATA.gruposCierre=[]; return DATA.gruposCierre; }
 
+// Descuento por referido de un asociado en un mes concreto (misma regla en toda la app):
+// 10€ por referido, máximo 3 (30€). Se usa TANTO en la ficha como en el Cierre para
+// que las sumas coincidan siempre. Devuelve {nReferidos, descuento}.
+function descuentoReferidoMes(mid,rm,ry){
+  const refData=(DATA.referidos&&DATA.referidos[mid]&&DATA.referidos[mid][getMesKey(rm,ry)])||null;
+  const nReferidos=refData?Math.min(refData.n,3):0;
+  return {nReferidos, descuento:nReferidos*10};
+}
+// Aporte NETO que corresponde pagar a un asociado ese mes (base − descuento, mínimo 0).
+function aporteNetoMes(m,rm,ry){
+  const base=(m.aporte||DATA.monthlyFee);
+  const {descuento}=descuentoReferidoMes(m.id,rm,ry);
+  return Math.max(0, base-descuento);
+}
+
 // Items (aporte + cuotas) de un miembro en el mes seleccionado
 function itemsDeMiembro(mid){
   const rm=DATA.reportMonth, ry=DATA.reportYear;
@@ -1265,10 +1291,13 @@ function itemsDeMiembro(mid){
   if(m.type==="asociado"){
     const md=getMesData(rm,ry);
     const pagado=!!(md.aportes&&md.aportes[m.id]);
-    items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto:"Aporte mensual",importe:(m.aporte||DATA.monthlyFee),yaPagado:pagado});
+    const {nReferidos,descuento}=descuentoReferidoMes(m.id,rm,ry);
+    const neto=aporteNetoMes(m,rm,ry);
+    const concepto=descuento>0?`Aporte mensual (−${descuento}€ por ${nReferidos} referido${nReferidos>1?"s":""})`:"Aporte mensual";
+    items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto,importe:neto,yaPagado:pagado});
   }
   cuotasDelMes(rm,ry).filter(c=>c.mid===mid).forEach(c=>{
-    items.push({tipo:"cuota",mid:c.mid,lid:c.lid,pi:c.pi,nombre:c.nombre,concepto:`Cuota ${c.numCuota}/${c.totalCuotas}`,importe:c.inst,recargo:c.recargo,yaPagado:c.paid});
+    items.push({tipo:"cuota",mid:c.mid,lid:c.lid,pi:c.pi,nombre:c.nombre,concepto:`Cuota ${c.numCuota}/${c.totalCuotas}${c.aplazada?" · aplazada":""}`,importe:c.inst,recargo:c.recargo,yaPagado:c.paid,aplazada:c.aplazada});
   });
   return items;
 }
@@ -1343,8 +1372,11 @@ function cuotasDelMes(rm,ry){
     [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
       l.pays.forEach((p,pi)=>{
         if(p.m===rm&&p.y===ry){
-          out.push({mid:m.id,nombre:m.name,tipo:m.type,lid:l.id,pi,inst:l.inst,
-            recargo:recargoPorCuota(l),capital:l.inst-recargoPorCuota(l),paid:p.paid,
+          const rec=recargoPorCuota(l);
+          const imp=p.aplazada?(p.instAplazada||rec):l.inst; // aplazada = solo retorno
+          const cap=p.aplazada?0:(l.inst-rec);               // aplazada = 0 capital
+          out.push({mid:m.id,nombre:m.name,tipo:m.type,lid:l.id,pi,inst:imp,
+            recargo:rec,capital:cap,paid:p.paid,aplazada:!!p.aplazada,
             numCuota:pi+1,totalCuotas:l.pays.length,gMonth:l.gMonth,gYear:l.gYear});
         }
       });
@@ -1408,45 +1440,23 @@ function delMember(mid){
   save();toast("Eliminado ✓");render();
 }
 let _delLoanArmed=null;
-let _aplazarArmed=null;
-// FASE 1 — Aplazar la cuota pendiente del MES DE REPORTE de un apoyo.
-// Mueve el capital de esa cuota al final (plazo N+1). El asociado paga solo el
-// retorno compartido del mes (5% del capital original). Dos toques para confirmar.
-function aplazarCuota(mid,lid){
-  const m=DATA.members.find(x=>x.id===mid);
-  if(!m)return;
-  const l=(m.loans||[]).find(x=>x.id===lid);
-  if(!l){toast("Ese apoyo ya no está activo");return;}
-  const rm=DATA.reportMonth, ry=DATA.reportYear;
-  const pi=l.pays.findIndex(p=>p.m===rm&&p.y===ry&&!p.paid);
-  if(pi<0){
-    toast("No hay cuota pendiente de "+rm+" "+ry+" en este apoyo");
-    _aplazarArmed=null; render(); return;
-  }
-  if(l.pays[pi].aplazada){ toast("Esa cuota ya está aplazada"); return; }
-  const retorno=recargoPorCuota(l);
-  const nuevoN=l.n+1;
-  const key=mid+"|"+lid;
-  if(_aplazarArmed!==key){
-    _aplazarArmed=key;
-    toast("⏸️ Aplazar "+rm+" "+ry+": cobras solo "+retorno+" € (retorno). Plazo "+l.n+"→"+nuevoN+". Toca ⏸️ otra vez para confirmar",6000);
-    setTimeout(()=>{if(_aplazarArmed===key){_aplazarArmed=null;render();}},6000);
-    return;
-  }
-  _aplazarArmed=null;
-  UNDO_SNAPSHOT=JSON.stringify(DATA);
-  clearTimeout(UNDO_TIMER);
-  l.pays[pi].aplazada=true;
-  l.pays[pi].instAplazada=retorno;
-  const ultima=l.pays[l.pays.length-1];
-  let mi=MONTHS.indexOf(ultima.m), yr=ultima.y;
-  mi++; if(mi>=12){mi=0;yr++;}
-  l.pays.push({m:MONTHS[mi],y:yr,paid:false});
-  l.n=nuevoN;
-  l.total=l.capital+l.capital*(DATA.rate/100)*nuevoN;
-  save();
-  toast("✓ Cuota de "+rm+" aplazada · nuevo plazo "+nuevoN+" cuotas");
-  render();
+// Recalcula los importes de un apoyo respetando las cuotas APLAZADAS.
+// - Las cuotas aplazadas pagan solo el retorno (5% del capital original).
+// - El capital se reparte entre las cuotas NO aplazadas (al alza).
+// - Cada cuota no aplazada = capitalPorCuota + retorno.
+function recalcularApoyo(l){
+  const tasa=(l.rate!=null?l.rate:DATA.rate);
+  const retorno=Math.round(l.capital*(tasa/100)); // % del capital original
+  const nAplazadas=l.pays.filter(p=>p.aplazada).length;
+  const nNormales=l.pays.length-nAplazadas;
+  const capPorCuota=nNormales>0?Math.ceil(l.capital/nNormales):0;
+  l.pays.forEach(p=>{
+    if(p.aplazada){ p.instAplazada=retorno; }
+  });
+  l.inst=capPorCuota+retorno;         // cuota normal completa (ej. 125)
+  l.n=l.pays.length;                  // plazo real (incluye el mes extra)
+  // Total = suma real de lo que se cobrará (normales completas + aplazadas solo retorno)
+  l.total=nNormales*l.inst + nAplazadas*retorno;
 }
 function delLoan(mid,lid){
   // Sin confirm() (se bloquea en móvil). Primer toque arma, segundo elimina.
@@ -1870,12 +1880,14 @@ function addMemberSubmit(){
 function addLoanSubmit(){
   const cap=parseInt(document.getElementById("l-cap").value)||0;if(cap<=0)return;
   const nn=parseInt(document.getElementById("l-n")?.value||"3");
+  let rate=parseFloat(document.getElementById("l-rate")?.value);
+  if(isNaN(rate)||rate<0)rate=DATA.rate; // fallback a la tasa global del fondo
   const gm=document.getElementById("l-gm").value,gy=parseInt(document.getElementById("l-gy").value);
   const sm=document.getElementById("l-sm").value,sy=parseInt(document.getElementById("l-sy").value);
-  const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
+  const total=cap+cap*(rate/100)*nn,inst=Math.ceil(total/nn);
   const pays=[];let mi=MONTHS.indexOf(sm),yr=sy;
   for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
-  DATA.members.forEach(m=>{if(m.id===MODAL.mid){m.loans.push({id:"l"+Date.now(),gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,pays});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap});}});
+  DATA.members.forEach(m=>{if(m.id===MODAL.mid){m.loans.push({id:"l"+Date.now(),gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,rate,pays});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap});}});
   closeModal();toast("Ayuda añadida ✓");save();
 }
 
@@ -1901,6 +1913,22 @@ function editLoanFormHTML(){
 <div style="flex:1"><label class="m-label">Año</label><select id="el-sy" class="m-select">${["2025","2026","2027"].map(y=>`<option${parseInt(y)===sy?" selected":""}>${y}</option>`).join("")}</select></div>
 </div>
 <div id="el-preview"></div>
+<div style="border-top:1px dashed var(--muted);margin:16px 0 12px;padding-top:14px">
+  <div style="font-weight:700;font-size:14px;color:var(--dark);margin-bottom:4px">⏸️ Aplazar una cuota</div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:8px">El asociado paga solo el retorno del mes (5% del capital). El capital de esa cuota pasa al final: se añade un mes. Las demás cuotas no cambian.</p>
+  ${(()=>{
+    const pend=l.pays.map((p,i)=>({p,i})).filter(o=>!o.p.paid&&!o.p.aplazada);
+    if(pend.length===0)return `<div style="font-size:12px;color:var(--muted)">No hay cuotas pendientes para aplazar.</div>`;
+    const retorno=Math.round(l.capital*(DATA.rate/100));
+    return `<select id="el-aplazar-mes" class="m-select" style="margin-bottom:8px">
+      <option value="">— Elegir mes a aplazar —</option>
+      ${pend.map(o=>`<option value="${o.i}">${o.p.m} ${o.p.y} · ${o.i+1}/${l.pays.length}</option>`).join("")}
+    </select>
+    <div style="font-size:12px;color:var(--warm);font-weight:600;margin-bottom:8px">Se cobrará solo ${retorno} € este mes · el capital se recupera en una cuota extra al final.</div>
+    <button class="edit-btn" style="width:100%;padding:11px;font-size:13px;background:#E8A04B;color:#fff;font-weight:700" onclick="aplazarDesdeEditor()">Aplicar aplazamiento</button>`;
+  })()}
+  ${l.pays.some(p=>p.aplazada)?`<div style="margin-top:10px;font-size:12px;color:var(--dark)"><b>Cuotas aplazadas:</b> ${l.pays.filter(p=>p.aplazada).map(p=>escH(p.m)+" "+p.y+" ("+ (p.instAplazada||Math.round(l.capital*(DATA.rate/100))) +"€)").join(", ")}</div>`:""}
+</div>
 <button class="m-primary" onclick="saveEditLoan()">Guardar cambios</button>`;
 }
 function updateEditPreview(){
@@ -1910,6 +1938,30 @@ function updateEditPreview(){
   const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
   document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
 }
+function aplazarDesdeEditor(){
+  const sel=document.getElementById("el-aplazar-mes");
+  const idx=sel?parseInt(sel.value):NaN;
+  if(isNaN(idx)){toast("Elige primero el mes a aplazar");return;}
+  const m=DATA.members.find(x=>x.id===MODAL.mid);
+  const l=m&&m.loans.find(x=>x.id===MODAL.lid);
+  if(!l){closeModal();return;}
+  const p=l.pays[idx];
+  if(!p||p.paid||p.aplazada){toast("Esa cuota no se puede aplazar");return;}
+  UNDO_SNAPSHOT=JSON.stringify(DATA);
+  clearTimeout(UNDO_TIMER);
+  // 1) Marcar como aplazada (solo retorno)
+  p.aplazada=true;
+  // 2) Añadir una cuota nueva al final (capital recuperado + su retorno)
+  const ultima=l.pays[l.pays.length-1];
+  let mi=MONTHS.indexOf(ultima.m), yr=ultima.y;
+  mi++; if(mi>=12){mi=0;yr++;}
+  l.pays.push({m:MONTHS[mi],y:yr,paid:false});
+  // 3) Recalcular respetando aplazadas
+  recalcularApoyo(l);
+  save();
+  toast("✓ "+p.m+" "+p.y+" aplazada · plazo "+l.n+" cuotas");
+  render(); // reabre el modal con el estado actualizado
+}
 function saveEditLoan(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   const l=m&&m.loans.find(x=>x.id===MODAL.lid);
@@ -1918,22 +1970,29 @@ function saveEditLoan(){
   const nn=parseInt(document.getElementById("el-n")?.value||"3");
   const gm=document.getElementById("el-gm").value,gy=parseInt(document.getElementById("el-gy").value);
   const sm=document.getElementById("el-sm").value,sy=parseInt(document.getElementById("el-sy").value);
-  const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
-  // Reconstruir cuotas preservando estado 'paid' por mes-año
-  const pagadasPrev={};
-  l.pays.forEach(p=>{if(p.paid)pagadasPrev[p.m+"-"+p.y]=true;});
+  // Preservar estado 'paid' Y 'aplazada' por mes-año al reconstruir
+  const prev={};
+  l.pays.forEach(p=>{prev[p.m+"-"+p.y]={paid:!!p.paid,aplazada:!!p.aplazada};});
   const pays=[];let mi=MONTHS.indexOf(sm),yr=sy;
-  for(let i=0;i<nn;i++){const k=MONTHS[mi]+"-"+yr;pays.push({m:MONTHS[mi],y:yr,paid:!!pagadasPrev[k]});mi++;if(mi>=12){mi=0;yr++;}}
-  l.capital=cap;l.n=nn;l.total=total;l.inst=inst;l.gMonth=gm;l.gYear=gy;l.pays=pays;
+  for(let i=0;i<nn;i++){
+    const k=MONTHS[mi]+"-"+yr;
+    const st=prev[k]||{};
+    pays.push({m:MONTHS[mi],y:yr,paid:!!st.paid,...(st.aplazada?{aplazada:true}:{})});
+    mi++;if(mi>=12){mi=0;yr++;}
+  }
+  l.capital=cap;l.gMonth=gm;l.gYear=gy;l.pays=pays;
+  // Recalcular respetando cuotas aplazadas (no reparte parejo si hay aplazadas)
+  recalcularApoyo(l);
   closeModal();save();toast("Ayuda actualizada ✓");render();
 }
 
 function saveCfg(){
-  const fee=parseInt(document.getElementById("cfg-fee")?.value)||50;
+  // El aporte mensual ya no se edita aquí (se gestiona por asociado en ⚙️ Nivel/Ciclo).
+  // Se conserva DATA.monthlyFee como valor por defecto de seguridad.
   const rate=parseFloat(document.getElementById("cfg-rate")?.value)||5;
   let dia=parseInt(document.getElementById("cfg-diaaviso")?.value);
   if(isNaN(dia)||dia<1||dia>28)dia=25; // rango seguro; 28 evita meses cortos
-  DATA.monthlyFee=fee;DATA.rate=rate;DATA.diaAvisoProximo=dia;
+  DATA.rate=rate;DATA.diaAvisoProximo=dia;
   save();toast("Configuración guardada ✓");
 }
 
@@ -2057,7 +2116,8 @@ function desgloseDelMes(m){
   todosLoans.forEach(l=>{
     (l.pays||[]).forEach((p,idx)=>{
       if(p.m===rm && p.y===ry){
-        cuotasMes.push({loan:l,idx,inst:l.inst,paid:p.paid});
+        const imp=p.aplazada?(p.instAplazada||0):l.inst;
+        cuotasMes.push({loan:l,idx,inst:imp,paid:p.paid,aplazada:!!p.aplazada});
       }
     });
   });
@@ -2114,7 +2174,7 @@ function fichaResumenHTML(m){
       const isActive=(pi===activeIdx);
       const st=p.paid?"paid":isActive?"due":"future";
       // En readonly: div, no botón
-      h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val">${loan.inst} €</div><div class="cuota-status">${p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+      h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
     });
     h+=`</div></div>`;
   });
@@ -2125,7 +2185,7 @@ function fichaResumenHTML(m){
   const okColor="#8CE0B0", pendColor="#FFD9A3";
   const lineaAporte=!isTerc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Aporte mensual ${escH(rmO)} ${ryO}</span><span style="font-weight:700;color:${d.aportePagado?okColor:"#fff"}">${d.fee} € ${d.aportePagado?"✅":"⏳"}</span></div>`:"";
   const lineaDesc=(!isTerc&&d.descuento>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#FFE0A3;padding:3px 0"><span>🎁 Descuento por referir (${d.nReferidos})</span><span style="font-weight:700">− ${d.descuento} €</span></div>`:"";
-  const lineasCuotas=d.cuotasMes.map(c=>{const p=c.loan.pays[c.idx];return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Cuota ${escH(p.m)} ${p.y} · ${c.idx+1}/${c.loan.n}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${c.inst} € ${c.paid?"✅":"⏳"}</span></div>`;}).join("");
+  const lineasCuotas=d.cuotasMes.map(c=>{const p=c.loan.pays[c.idx];return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Cuota ${escH(p.m)} ${p.y} · ${c.idx+1}/${c.loan.n}${c.aplazada?` <span style="color:#E8A04B">· aplazada</span>`:""}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span></div>`;}).join("");
   const hayLineas=lineaAporte||lineaDesc||lineasCuotas;
   h+=`<div class="total-ban" style="flex-direction:column;align-items:stretch;gap:0">
     ${hayLineas?`<div style="padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25);margin-bottom:8px">${lineaAporte}${lineaDesc}${lineasCuotas}</div>`:""}
@@ -2225,8 +2285,8 @@ function fichaHTML(m,readonly=false){
   d.cuotasMes.forEach(c=>{
     const pMes=c.loan.pays[c.idx];
     h+=`<div class="desg-fila">
-      <span class="desg-lbl">Cuota ${escH(pMes.m)} ${pMes.y} · ${c.idx+1}/${c.loan.n}</span>
-      <span class="desg-val ${c.paid?"ok":"pend"}">${c.inst} € ${c.paid?"✅":"⏳"}</span>
+      <span class="desg-lbl">Cuota ${escH(pMes.m)} ${pMes.y} · ${c.idx+1}/${c.loan.n}${c.aplazada?` · aplazada`:""}</span>
+      <span class="desg-val ${c.paid?"ok":"pend"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span>
     </div>`;
   });
   if(isTerc&&d.cuotasMes.length===0){
@@ -2257,7 +2317,7 @@ function fichaHTML(m,readonly=false){
     const iRep=MONTHS.indexOf(rmSis);
     const iSig=(iRep+1)%12;
     const mesSigFull=(typeof MONTHS_FULL!=="undefined"?MONTHS_FULL[iSig]:MONTHS[iSig]).toLowerCase();
-    const aporteAsoc=(m.aporte||DATA.monthlyFee);
+    const aporteAsoc=aporteNetoMes(m,rmSis,rySis);
     let estadoLbl, subLbl;
     if(!aptOk){
       estadoLbl="Aporte pendiente ⏳";
@@ -2402,9 +2462,9 @@ function fichaHTML(m,readonly=false){
           const isActive=(pi===activeIdx)&&!esCerrada;
           const st=p.paid?"paid":isActive?"due":"future";
           if(readonly){
-            c+=`<div class="cuota cuota-${st}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada?"APLAZADA":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+            c+=`<div class="cuota cuota-${st}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
           } else {
-            c+=`<button class="cuota cuota-${st}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"RETORNO ✓":"SOLO RETORNO"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+            c+=`<button class="cuota cuota-${st}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
           }
         });
         c+=`</div></div>`;
@@ -3466,11 +3526,7 @@ function render(){
     h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
       <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:12px">⚙️ Configuración</div>
       <div class="cfg-row">
-        <div><div class="cfg-label">Aporte mensual</div><div class="cfg-sub">Cuota fija de cada asociado</div></div>
-        <input id="cfg-fee" class="cfg-input" type="number" value="${DATA.monthlyFee}" min="1"> €
-      </div>
-      <div class="cfg-row">
-        <div><div class="cfg-label">Interés por cuota</div><div class="cfg-sub">% sobre el capital × nº cuotas</div></div>
+        <div><div class="cfg-label">Aporte adicional por cuota</div><div class="cfg-sub">% sobre el capital × nº cuotas (regla del fondo)</div></div>
         <input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %
       </div>
       <div class="cfg-row">
@@ -3479,6 +3535,9 @@ function render(){
       </div>
       <button style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;margin-top:12px" onclick="saveCfg()">💾 Guardar configuración</button>
     </div>`;
+
+    h+=`<div style="margin:8px 0 4px"><input id="mgSearch" type="text" placeholder="🔍 Buscar asociado o tercero por nombre…" value="${escH(MG_SEARCH||"")}" oninput="filtrarGestion(this.value)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box"></div>`;
+    if(MG_SEARCH)setTimeout(()=>filtrarGestion(MG_SEARCH),0);
 
     h+=`<div class="sec-title" style="margin-top:8px">🏠 Ayudas Internas</div>`;
     h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir socio interno</button>`;
@@ -3586,10 +3645,10 @@ function cardHTML(m,isT,tappable){
       const isActive=(pi===activeIdx);
       const st=p.paid?"paid":isActive?"due":"future";
       if(tappable){
-        h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val">${loan.inst} €</div><div class="cuota-status">${p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+        h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
       } else {
-        const confirmMsg=!p.paid?`if(!confirm('¿Marcar como pagado: ${loan.inst} € de ${escH(m.name)}?'))return;`:"";
-        h+=`<button class="cuota cuota-${st}" onclick="${confirmMsg}togglePay('${esc(m.id)}','${esc(loan.id)}',${pi})"><div class="cuota-month">${p.m}</div><div class="cuota-val">${loan.inst} €</div><div class="cuota-status">${p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+        const confirmMsg=!p.paid?`if(!confirm('¿Marcar como pagado: ${p.aplazada?(p.instAplazada||0):loan.inst} € de ${escH(m.name)}?'))return;`:"";
+        h+=`<button class="cuota cuota-${st}" onclick="${confirmMsg}togglePay('${esc(m.id)}','${esc(loan.id)}',${pi})"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
       }
     });
     h+=`</div></div>`;
@@ -3603,13 +3662,12 @@ function cardHTML(m,isT,tappable){
 
 function manageHTML(m,isT){
   const memArmed=(_delMemberArmed===m.id);
-  let h=`<div class="mg-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-weight:700;font-size:16px;color:${isT?"var(--terc)":"var(--dark)"}">${escH(m.name)}</div><div style="font-size:12px;color:var(--muted)">${isT?"Ref: "+escH(m.ref):"Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div></div><button class="del-btn ${memArmed?"armed":""}" onclick="delMember('${esc(m.id)}')">${memArmed?"¿Seguro?":"🗑️"}</button></div>`;
+  let h=`<div class="mg-card" data-nombre="${escH((m.name||"").toLowerCase())}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-weight:700;font-size:16px;color:${isT?"var(--terc)":"var(--dark)"}">${escH(m.name)}</div><div style="font-size:12px;color:var(--muted)">${isT?"Ref: "+escH(m.ref):"Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div></div><button class="del-btn ${memArmed?"armed":""}" onclick="delMember('${esc(m.id)}')">${memArmed?"¿Seguro?":"🗑️"}</button></div>`;
   m.loans.forEach(l=>{
     const armed=(_delLoanArmed===(m.id+"|"+l.id));
     h+=`<div class="mg-loan"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
       <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${l.capital} €</div><div style="font-size:12px;color:#999">${l.n} cuotas de ${l.inst} €</div></div>
       <button class="edit-btn" style="padding:6px 10px;font-size:12px" onclick="openModal('editloan',{mid:'${esc(m.id)}',lid:'${esc(l.id)}'})">✏️</button>
-      <button class="edit-btn" style="padding:6px 10px;font-size:12px;background:#E8A04B" onclick="aplazarCuota('${esc(m.id)}','${esc(l.id)}')">⏸️</button>
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delLoan('${esc(m.id)}','${esc(l.id)}')">${armed?"¿Seguro?":"✕"}</button>
     </div></div>`;
   });
@@ -3691,6 +3749,8 @@ function loanFormHTML(){
 <input id="l-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateLoanPreview()">
 <label class="m-label">Nº cuotas</label>
 <select id="l-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===3?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+<label class="m-label">Aporte adicional por cuota (%)</label>
+<input id="l-rate" class="m-input" type="number" value="${DATA.rate}" min="0" step="0.5" style="margin-bottom:12px" oninput="updateLoanPreview()">
 <div style="display:flex;gap:8px;margin-bottom:12px">
 <div style="flex:1"><label class="m-label">Mes otorgada</label><select id="l-gm" class="m-select">${MONTHS.map(m=>`<option${m==="Mar"?" selected":""}>${m}</option>`).join("")}</select></div>
 <div style="flex:1"><label class="m-label">Año</label><select id="l-gy" class="m-select">${["2025","2026","2027"].map(y=>`<option${y==="2026"?" selected":""}>${y}</option>`).join("")}</select></div>
@@ -3706,9 +3766,11 @@ function loanFormHTML(){
 function updateLoanPreview(){
   const cap=parseInt(document.getElementById("l-cap")?.value)||0;
   const nn=parseInt(document.getElementById("l-n")?.value||"3");
+  let rate=parseFloat(document.getElementById("l-rate")?.value);
+  if(isNaN(rate)||rate<0)rate=DATA.rate;
   if(cap<=0){document.getElementById("l-preview").innerHTML="";return;}
-  const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
-  document.getElementById("l-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + interés (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
+  const total=cap+cap*(rate/100)*nn,inst=Math.ceil(total/nn);
+  document.getElementById("l-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + aporte adicional (${rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
 }
 
 // ── MODO SOLO LECTURA ──
