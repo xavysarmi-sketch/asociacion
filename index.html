@@ -395,6 +395,12 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .desg-total-fila{display:flex;justify-content:space-between;align-items:center}
 .desg-total-lbl{font-size:14px;font-weight:800;color:rgba(255,255,255,.9);text-transform:uppercase;letter-spacing:.5px}
 .desg-total-val{font-size:30px;font-weight:900;color:#fff}
+.tot-final{margin-top:2px}
+.tot-final-lbl{font-size:13px;font-weight:800;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.tot-final-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tot-final-num{font-size:34px;font-weight:900;color:#fff;line-height:1}
+.tot-chip{display:inline-flex;align-items:center;gap:7px;background:rgba(140,224,176,.18);border:1px solid rgba(140,224,176,.5);color:#8CE0B0;font-weight:800;font-size:17px;padding:9px 17px;border-radius:999px;white-space:nowrap}
+.tot-chip.pend{background:rgba(224,122,58,.2);border-color:rgba(224,122,58,.55);color:#F5B989}
 
 /* Acordeón principal */
 .acord{background:#fff;border-radius:16px;margin-bottom:10px;border:1px solid var(--border);overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05)}
@@ -516,7 +522,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.11</div>
+<div class="app-version" id="appVersionTag">v43.13</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -587,7 +593,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.11"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.13"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -601,20 +607,15 @@ function migrateData(data){
   if((data._version||0) < 6){
     const imap={};
     INITIAL.members.forEach(m=>{imap[m.name.toLowerCase().trim()]=m;});
-    const idRemap={}; // id viejo → id nuevo, para arreglar referencias (grupos de cierre)
     data.members.forEach(m=>{
       const ref=imap[(m.name||"").toLowerCase().trim()];
       if(ref){
-        if(m.id!==ref.id && m.id!=null)idRemap[m.id]=ref.id; // recordar el cambio de id
         m.id=ref.id;                 // ← clave: anclar el id al del archivo
         m.type=ref.type;
         m.ref=ref.ref;
-        // EL CICLO LO MANDA EL TELÉFONO: si el asociado ya tiene un ciclo guardado
-        // (aunque sea "indefinido"), NO se sobrescribe con el del archivo. Solo se
-        // toma del archivo si el miembro guardado no tuviera ninguno.
-        if(m.ciclo===undefined||m.ciclo===null)m.ciclo=ref.ciclo;
-        // Fechas de ingreso: igual, solo se reponen si faltan.
-        if(!m.joinMonth){m.joinMonth=ref.joinMonth;m.joinYear=ref.joinYear;}
+        m.ciclo=ref.ciclo;
+        m.joinMonth=ref.joinMonth;
+        m.joinYear=ref.joinYear;
         // MODO B: las ayudas (loans) e historial se registran desde la app y son
         // la fuente de verdad del usuario. NO se sobrescriben con las del archivo;
         // solo se reponen si el miembro guardado no tuviera ninguna.
@@ -630,15 +631,6 @@ function migrateData(data){
         data.members.push(JSON.parse(JSON.stringify(im)));
       }
     });
-    // BLINDAJE DE GRUPOS DE CIERRE: si al reanclar ids algún grupo apuntaba a un
-    // id viejo, se actualiza al nuevo. Así los grupos NUNCA se pierden ni quedan
-    // huérfanos por el cambio de id. Los grupos viven solo en el teléfono.
-    if(Array.isArray(data.gruposCierre)){
-      data.gruposCierre.forEach(g=>{
-        if(g.principalId&&idRemap[g.principalId])g.principalId=idRemap[g.principalId];
-        if(Array.isArray(g.miembros))g.miembros=g.miembros.map(mid=>idRemap[mid]||mid);
-      });
-    }
     data.reportMonth=INITIAL.reportMonth;
     data.reportYear=INITIAL.reportYear;
     data._version=6;
@@ -668,10 +660,7 @@ function migrateData(data){
       }
       if(!m.history||m.history.length===0){m.history=JSON.parse(JSON.stringify(ref.history||[]));}
       if(!m.phone)m.phone="";
-      // CICLO: 0 = "indefinido" es un valor VÁLIDO elegido en el teléfono. Antes
-      // "!m.ciclo" lo trataba como vacío y lo machacaba con el del archivo (bug de
-      // "indefinido vuelve a 24"). Ahora solo se repone si es undefined/null.
-      if((m.ciclo===undefined||m.ciclo===null)&&ref.ciclo!=null){m.ciclo=ref.ciclo;}
+      if(!m.ciclo&&ref.ciclo){m.ciclo=ref.ciclo;}
     }
     if(!m.history)m.history=[];
     if(!m.joinMonth)m.joinMonth=null;
@@ -717,24 +706,14 @@ function sanitizeData(data){
     if(typeof m.id==="string" && m.id.charAt(0)==="m")return true;     // id de la app
     return false; // fantasma real: descartar
   });
-  const idRemapSan={}; // id viejo → id nuevo, para no romper referencias de grupos
   data.members.forEach(m=>{
     const ref=byName[(m.name||"").toLowerCase().trim()];
     if(ref){
-      if(m.id!==ref.id && m.id!=null)idRemapSan[m.id]=ref.id;
       m.id=ref.id;          // id correcto del archivo (fuente de verdad)
       m.type=ref.type;      // asociado / tercero
       m.ref=ref.ref;        // avalista (o null)
     }
   });
-  // BLINDAJE DE GRUPOS DE CIERRE: actualizar referencias de id para que ningún
-  // grupo quede huérfano (y desaparezca) tras reanclar ids. Se ejecuta SIEMPRE.
-  if(Array.isArray(data.gruposCierre)){
-    data.gruposCierre.forEach(g=>{
-      if(g.principalId&&idRemapSan[g.principalId])g.principalId=idRemapSan[g.principalId];
-      if(Array.isArray(g.miembros))g.miembros=g.miembros.map(mid=>idRemapSan[mid]||mid);
-    });
-  }
   // Fusionar referidos del archivo (INITIAL) sin pisar los ya registrados
   if(INITIAL.referidos){
     if(!data.referidos)data.referidos={};
@@ -1775,7 +1754,7 @@ function previewGrupo(){
   const MS2=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const MF2=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const rm=DATA.reportMonth,ry=DATA.reportYear;
-  const totalGrupo=members.reduce((s,m)=>s+desgloseDelMes(m).totalNeto,0);
+  const totalGrupo=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).total,0);
   // Mes a mostrar: el mes objetivo más común del grupo
   const _cuentaP={};
   members.forEach(m=>{const d=desgloseDelMes(m);const k=d.mesObj+"|"+d.anioObj;_cuentaP[k]=(_cuentaP[k]||0)+1;});
@@ -1794,8 +1773,8 @@ function previewGrupo(){
 
   members.forEach(m=>{ h+=fichaResumenHTML(m); });
 
-  const totalAportesP=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+desgloseDelMes(m).apNeto,0);
-  const totalCuotasP=members.reduce((s,m)=>s+desgloseDelMes(m).totalCuotas,0);
+  const totalAportesP=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
+  const totalCuotasP=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).totalCuotas,0);
 
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resumen total — ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
@@ -2182,6 +2161,43 @@ function mesObjetivo(m){
   return {mes:DATA.reportMonth, anio:DATA.reportYear};
 }
 
+// Total de lo que corresponde a una ficha en el MES DE REPORTE (Opción A):
+// aporte (con descuento por referido) + TODAS las cuotas de ese mes (aplazadas
+// cuentan su retorno). "Al día" SOLO si aporte Y todas las cuotas están pagados.
+// Función única usada por la ficha personal y el reporte grupal para que nunca
+// se descuadren entre sí.
+function totalDelMes(m,rm,ry){
+  const esTerc=m.type==="tercero";
+  const md=getMesData(rm,ry);
+  // Aporte (terceros no aportan)
+  const aportePagado=esTerc?true:!!(md.aportes&&md.aportes[m.id]);
+  // Aporte neto = base + extra puntual − descuento por referido (mínimo 0)
+  const _extraData=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])||null;
+  const apExtra=_extraData?_extraData.monto:0;
+  const _base=(m.aporte||DATA.monthlyFee);
+  const _desc=descuentoReferidoMes(m.id,rm,ry).descuento;
+  const aporteImporte=esTerc?0:Math.max(0,_base+apExtra-_desc);
+  // Cuotas que vencen ESTE mes (todos los apoyos), con importe real (aplazada=retorno)
+  const cuotas=[];
+  [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+    l.pays.forEach((p,idx)=>{
+      if(p.m===rm&&p.y===ry){
+        const imp=p.aplazada?(p.instAplazada||recargoPorCuota(l)):l.inst;
+        cuotas.push({inst:imp,paid:!!p.paid,aplazada:!!p.aplazada,idx,loan:l});
+      }
+    });
+  });
+  const totalCuotas=cuotas.reduce((s,c)=>s+c.inst,0);
+  const total=(esTerc?0:aporteImporte)+totalCuotas; // total del mes (todo lo que corresponde)
+  // Pendiente = lo que aún NO está pagado
+  const aportePend=(!esTerc&&!aportePagado)?aporteImporte:0;
+  const cuotasPend=cuotas.filter(c=>!c.paid).reduce((s,c)=>s+c.inst,0);
+  const pendiente=aportePend+cuotasPend;
+  // Al día SOLO si aporte pagado (o tercero) Y todas las cuotas pagadas
+  const alDia=(esTerc||aportePagado)&&cuotas.every(c=>c.paid);
+  return {total,pendiente,alDia,aporteImporte,aportePagado,cuotas,totalCuotas,esTerc};
+}
+
 function desgloseDelMes(m){
   // El cuadro se basa en el MES OBJETIVO (próximo mes con algo pendiente),
   // no en el mes del sistema. Así, al pagar junio completo, salta a julio.
@@ -2275,17 +2291,26 @@ function fichaResumenHTML(m){
   // Barra: aporte + cuotas del mes objetivo con su estado (pagado/pendiente).
   // Cada cuota ya viene filtrada al mes objetivo exacto (sin adelantar la siguiente).
   const rmO=d.mesObj, ryO=d.anioObj;
+  const tot=totalDelMes(m,rm,ry); // Opción 1: total del MES DE REPORTE (aporte+cuotas)
   const okColor="#8CE0B0", pendColor="#FFD9A3";
-  const lineaAporte=!isTerc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Aporte mensual ${escH(rmO)} ${ryO}</span><span style="font-weight:700;color:${d.aportePagado?okColor:"#fff"}">${d.fee} € ${d.aportePagado?"✅":"⏳"}</span></div>`:"";
-  const lineaDesc=(!isTerc&&d.descuento>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#FFE0A3;padding:3px 0"><span>🎁 Descuento por referir (${d.nReferidos})</span><span style="font-weight:700">− ${d.descuento} €</span></div>`:"";
-  const lineasCuotas=d.cuotasMes.map(c=>{const p=c.loan.pays[c.idx];return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Cuota ${escH(p.m)} ${p.y} · ${c.idx+1}/${c.loan.n}${c.aplazada?` <span style="color:#E8A04B">· aplazada</span>`:""}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span></div>`;}).join("");
-  const hayLineas=lineaAporte||lineaDesc||lineasCuotas;
+  // Opción 1: líneas de detalle del MES DE REPORTE (coherentes con el total).
+  const _dr=descuentoReferidoMes(m.id,rm,ry);
+  const _descRef=_dr.descuento;
+  const _extraR=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])?DATA.extras[m.id][getMesKey(rm,ry)].monto:0;
+  const _baseR=(m.aporte||DATA.monthlyFee);
+  const lineaAporte=!isTerc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Aporte mensual ${escH(rm)} ${ry}</span><span style="font-weight:700;color:${tot.aportePagado?okColor:"#fff"}">${_baseR} € ${tot.aportePagado?"✅":"⏳"}</span></div>`:"";
+  const lineaExtra=(!isTerc&&_extraR>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>＋ Aporte extra puntual</span><span style="font-weight:700">${_extraR} €</span></div>`:"";
+  const lineaDesc=(!isTerc&&_descRef>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#FFE0A3;padding:3px 0"><span>🎁 Descuento por referir (${_dr.nReferidos})</span><span style="font-weight:700">− ${_descRef} €</span></div>`:"";
+  const lineasCuotas=tot.cuotas.map(c=>{return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Cuota ${escH(rm)} ${ry} · ${c.idx+1}/${c.loan.n}${c.aplazada?` <span style="color:#E8A04B">· aplazada</span>`:""}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span></div>`;}).join("");
+  const hayLineas=lineaAporte||lineaExtra||lineaDesc||lineasCuotas;
   h+=`<div class="total-ban" style="flex-direction:column;align-items:stretch;gap:0">
-    ${hayLineas?`<div style="padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25);margin-bottom:8px">${lineaAporte}${lineaDesc}${lineasCuotas}</div>`:""}
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      ${d.alDia
-        ? `<span class="total-ban-lbl">Estado de ${escH(MF[MS.indexOf(rmO)])} ${ryO}</span><span class="total-ban-val" style="font-size:20px">✅ Al día</span>`
-        : `<span class="total-ban-lbl">Pendiente ${escH(MF[MS.indexOf(rmO)])} ${ryO}</span><span class="total-ban-val">${d.totalPendiente} €</span>`}
+    ${hayLineas?`<div style="padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25);margin-bottom:8px">${lineaAporte}${lineaExtra}${lineaDesc}${lineasCuotas}</div>`:""}
+    <div class="tot-final">
+      <div class="tot-final-lbl">Total ${escH(MF[MS.indexOf(rm)])} ${ry}</div>
+      <div class="tot-final-row">
+        <span class="tot-final-num">${tot.total} €</span>
+        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${tot.pendiente} €`}</span>
+      </div>
     </div>
   </div>`;
 
@@ -2321,6 +2346,7 @@ function fichaHTML(m,readonly=false){
   const lv=memberLevel(m);
   const benAcum=memberBenefitAccum(m);
   const d=desgloseDelMes(m);
+  const tot=totalDelMes(m,rm,ry); // Opción 1: total del MES DE REPORTE (aporte+cuotas)
   const isTerc=m.type==="tercero";
   const md=getMesData(rm,ry);
   const MS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -2355,41 +2381,45 @@ function fichaHTML(m,readonly=false){
      Basado en el MES OBJETIVO (próximo mes con algo pendiente),
      no en el mes del sistema. Al pagar junio completo, salta a julio.
   ──────────────────────────────────────────────── */
-  const rmObj=d.mesObj, ryObj=d.anioObj;
-  const mdObj=getMesData(rmObj,ryObj);
-  const mesLabel=MF[MS.indexOf(rmObj)]+" "+ryObj;
+  // Opción 1: el cuadro se basa en el MES DE REPORTE (no en el mes objetivo),
+  // para que el total coincida con el reporte grupal.
+  const mesLabel=MF[MS.indexOf(rm)]+" "+ry;
+  const _dr2=descuentoReferidoMes(m.id,rm,ry);
+  const _extra2=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])?DATA.extras[m.id][getMesKey(rm,ry)].monto:0;
+  const _base2=(m.aporte||DATA.monthlyFee);
   h+=`<div class="desg-card">
     <div class="desg-titulo">📋 Corresponde este mes · ${mesLabel}</div>`;
 
   if(!isTerc){
     h+=`<div class="desg-fila">
-      <span class="desg-lbl">Aporte mensual ${escH(rmObj)} ${ryObj}</span>
-      <span class="desg-val ${d.aportePagado?"ok":"pend"}">${d.fee} € ${d.aportePagado?"✅":"⏳"}</span>
+      <span class="desg-lbl">Aporte mensual ${escH(rm)} ${ry}</span>
+      <span class="desg-val ${tot.aportePagado?"ok":"pend"}">${_base2} € ${tot.aportePagado?"✅":"⏳"}</span>
     </div>`;
-    if(d.apExtra>0) h+=`<div class="desg-fila">
+    if(_extra2>0) h+=`<div class="desg-fila">
       <span class="desg-lbl">＋ Aporte extra puntual</span>
-      <span class="desg-val">${d.apExtra} €</span>
+      <span class="desg-val">${_extra2} €</span>
     </div>`;
-    if(d.descuento>0) h+=`<div class="desg-fila">
-      <span class="desg-lbl">− Descuento por referidos (${d.nReferidos} × 10 €)</span>
-      <span class="desg-val desc">−${d.descuento} €</span>
+    if(_dr2.descuento>0) h+=`<div class="desg-fila">
+      <span class="desg-lbl">− Descuento por referidos (${_dr2.nReferidos} × 10 €)</span>
+      <span class="desg-val desc">−${_dr2.descuento} €</span>
     </div>`;
   }
-  d.cuotasMes.forEach(c=>{
-    const pMes=c.loan.pays[c.idx];
+  tot.cuotas.forEach(c=>{
     h+=`<div class="desg-fila">
-      <span class="desg-lbl">Cuota ${escH(pMes.m)} ${pMes.y} · ${c.idx+1}/${c.loan.n}${c.aplazada?` · aplazada`:""}</span>
+      <span class="desg-lbl">Cuota ${escH(rm)} ${ry} · ${c.idx+1}/${c.loan.n}${c.aplazada?` · aplazada`:""}</span>
       <span class="desg-val ${c.paid?"ok":"pend"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span>
     </div>`;
   });
-  if(isTerc&&d.cuotasMes.length===0){
+  if(isTerc&&tot.cuotas.length===0){
     h+=`<div style="color:rgba(255,255,255,.55);font-size:13px;padding:8px 0">Sin cuotas este mes</div>`;
   }
   h+=`<div class="desg-separador"></div>
-    <div class="desg-total-fila">
-      ${d.alDia
-        ? `<span class="desg-total-lbl">Estado</span><span class="desg-total-val">✅ Al día</span>`
-        : `<span class="desg-total-lbl">Total a pagar</span><span class="desg-total-val">${d.totalPendiente} €</span>`}
+    <div class="tot-final">
+      <div class="tot-final-lbl">Total ${escH(MF[MS.indexOf(rm)])} ${ry}</div>
+      <div class="tot-final-row">
+        <span class="tot-final-num">${tot.total} €</span>
+        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${tot.pendiente} €`}</span>
+      </div>
     </div>
   </div>`;
 
@@ -3261,16 +3291,14 @@ function render(){
       h+=`<div style="margin-top:14px">`;
       // ¿Hay un grupo abierto? Si lo hay, se aísla: se ocultan los demás y el selector de nuevo grupo
       const grupoAbierto=grupos.find(g=>!!DESP["grupo-"+g.id])||null;
-      // Personas ya asignadas a CUALQUIER grupo (como principal o miembro).
-      // Se excluyen de todos los desplegables para no duplicarlas y agilizar el trabajo.
-      const enGrupo=new Set();
-      grupos.forEach(gg=>{enGrupo.add(gg.principalId);(gg.miembros||[]).forEach(x=>enGrupo.add(x));});
       if(grupoAbierto){
         h+=`<button onclick="DESP['grupo-${grupoAbierto.id}']=false;render()" style="display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--dark);font-size:14px;font-weight:700;cursor:pointer;padding:0;margin-bottom:14px">← Ver todos los grupos</button>`;
       } else {
         h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
         // Crear nuevo grupo
-        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+        const enGrupo=new Set();
+        grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
+        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
         h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
           <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
             <option value="">— Elegir principal —</option>
@@ -3331,8 +3359,8 @@ function render(){
             h+=`</div>`;
           });
           // Añadir miembro a este grupo
-          // Excluir a quienes ya están en ESTE grupo Y en cualquier otro grupo.
-          const cand=DATA.members.filter(m=>!enGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+          const yaEnEste=new Set([g.principalId,...(g.miembros||[])]);
+          const cand=DATA.members.filter(m=>!yaEnEste.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
           h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
             <select class="m-select" style="margin-bottom:10px;font-size:14px" onchange="if(this.value)añadirMiembroGrupo('${g.id}',this.value);this.value=''">
               <option value="">— Añadir persona —</option>
@@ -3958,7 +3986,7 @@ function renderGrupo(){
   const MS2=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const MF2=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const rm=DATA.reportMonth,ry=DATA.reportYear;
-  const totalGrupo=members.reduce((s,m)=>s+desgloseDelMes(m).totalNeto,0);
+  const totalGrupo=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).total,0);
   // Mes a mostrar: el mes objetivo más común del grupo
   const _cuentaG={};
   members.forEach(m=>{const d=desgloseDelMes(m);const k=d.mesObj+"|"+d.anioObj;_cuentaG[k]=(_cuentaG[k]||0)+1;});
@@ -4026,8 +4054,8 @@ function renderGrupo(){
   // ── Vista grupal (resumen entre todos) ──
   members.forEach(m=>{ h+=fichaResumenHTML(m); });
 
-  const totalAportes=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+desgloseDelMes(m).apNeto,0);
-  const totalCuotas2=members.reduce((s,m)=>s+desgloseDelMes(m).totalCuotas,0);
+  const totalAportes=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
+  const totalCuotas2=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).totalCuotas,0);
 
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resumen total — ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
