@@ -25,7 +25,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .h-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:1px}
 .h-sub{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:12px}
 .h-date-row{display:flex;align-items:center;justify-content:center;gap:6px}
-.h-date-sel{background:rgba(255,255,255,.18);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:15px;padding:7px 10px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.h-date-sel{background:rgba(255,255,255,.18) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='white' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>") no-repeat right 9px center;border:none;border-radius:10px;color:#fff;font-weight:700;font-size:15px;padding:7px 26px 7px 12px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer}
 .h-date-sel option{background:#1B4332;color:#fff}
 .tabs{display:flex;gap:5px;padding:14px 16px 6px}
 .tab{flex:1;padding:11px 0;border:none;border-radius:12px;font-size:13px;font-weight:700;background:#fff;color:#7A7A7A;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:all .2s}
@@ -48,6 +48,18 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .grand-breakdown{margin-top:10px;text-align:left}
 .gb-row{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;font-size:14px;color:rgba(255,255,255,.85);border-bottom:1px solid rgba(255,255,255,.12)}
 .gb-row b{color:#fff;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
+.rec-fila{padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.12)}
+.rec-l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rec-l1 .rec-lbl{font-size:14px;color:rgba(255,255,255,.85)}
+.rec-l1 .rec-imp{font-weight:800;color:#fff;font-size:16px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rec-l2{text-align:right;margin-top:3px}
+.chip-falta{display:inline-block;background:rgba(255,180,70,.18);color:#FFC98B;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.chip-ok{display:inline-block;background:rgba(149,213,178,.2);color:#95D5B2;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.rec-sub{background:rgba(255,255,255,.06);border-radius:8px;padding:8px;border-bottom:none;margin-top:2px}
+.rec-sub .rec-lbl{font-weight:700}
+.toggle-asoc{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:13px 16px;font-size:15px;font-weight:700;color:#1B4332;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:16px}
+.toggle-asoc .ta-num{background:#2D6A4F;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;margin-left:6px}
+.toggle-asoc .ta-flecha{color:var(--muted);font-size:13px;font-weight:600}
 .gb-row.gb-total{border-bottom:none;border-top:1.5px solid rgba(255,255,255,.3);margin-top:4px;padding-top:9px;font-size:15px;font-weight:700;color:#fff}
 .gb-row.gb-total b{font-size:18px}
 .sec-title{font-size:18px;font-weight:700;color:var(--dark);margin:18px 0 10px;display:flex;align-items:center;gap:8px}
@@ -196,6 +208,12 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .rf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;color:rgba(255,255,255,.8)}
 .rf-val{font-weight:700;color:#fff}
 .rf-pend{color:#FFB347}
+.rf-sec{font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1.2px;margin:12px 0 6px}
+.rf-neto{display:flex;justify-content:space-between;align-items:center;font-weight:800;color:#fff;font-size:15px;margin-bottom:8px}
+.rf-neto b{font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.v-pos{color:#95D5B2}
+.v-neg{color:#FFAA92}
+.v-res{color:#C5C6F5}
 .rf-divider{height:1px;background:rgba(255,255,255,.15);margin:10px 0}
 .rf-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid rgba(255,255,255,.25);font-size:18px;font-weight:800;color:#fff}
 .img-btn{flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:700;background:#FF6B35;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s}
@@ -522,7 +540,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.13</div>
+<div class="app-version" id="appVersionTag">v43.14</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -593,7 +611,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.13"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.14"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -883,6 +901,7 @@ aportesPuntuales:{"4":[{id:"ap-stalyn-abr",capital:300,retorno:15,total:315,plaz
 let DATA,TAB="asociados",BUSY=false,MODAL=null,FICHA_ID=null,DESP={};
 let FICHA_TAB="resumen"; // pestaña activa dentro del detalle del asociado
 let REPORT_FILTER="todos"; // "todos" (orden de entrada) | "activas" (solo con ayudas activas)
+let LISTA_ABIERTA=false; // la lista de asociados arranca plegada para ver el control contable de un vistazo
 let CIERRE_SEARCH=""; // texto del buscador del Cierre
 let ASOC_SEARCH=""; // texto del buscador de Asociados
 // Grupos de cierre: se guardan en DATA.gruposCierre = [{id, principalId, miembros:[mid,...]}]
@@ -1211,6 +1230,24 @@ function salidasPuntualesMes(rm,ry){
     });
   }
   return t;
+}
+// Desglose de las devoluciones de aportes puntuales que TOCAN devolverse en rm/ry,
+// separando lo ya devuelto de lo aún pendiente (devuelto:false). Ambos importes salen
+// del disponible: el pendiente es un compromiso ya adquirido, no dinero disponible.
+function salidasPuntualesSplit(rm,ry){
+  let devuelto=0,pendiente=0;const items=[];
+  if(DATA.aportesPuntuales){
+    Object.entries(DATA.aportesPuntuales).forEach(([mid,arr])=>{
+      (arr||[]).forEach(ap=>{
+        if(ap.mesDev===rm&&ap.anioDev===ry){
+          const nom=(DATA.members.find(x=>x.id===mid)||{}).name||"";
+          if(ap.devuelto){devuelto+=ap.total;}else{pendiente+=ap.total;}
+          items.push({nombre:nom,total:ap.total,devuelto:!!ap.devuelto});
+        }
+      });
+    });
+  }
+  return {devuelto,pendiente,total:devuelto+pendiente,items};
 }
 
 function due(m,rm,ry){
@@ -3103,9 +3140,9 @@ function render(){
     <div class="h-sub">Construyendo un nuevo sistema</div>
     <div class="h-date-row">
       <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:600">📋 Reporte</span>
-      <select class="h-date-sel" onchange="setReportMonth(this.value)">${mOpts}</select>
+      <select class="h-date-sel" onchange="setReportMonth(this.value)" title="Cambiar mes">${mOpts}</select>
       <span style="color:rgba(255,255,255,.5);font-weight:700">·</span>
-      <select class="h-date-sel" onchange="setReportYear(this.value)">${yOpts}</select>
+      <select class="h-date-sel" onchange="setReportYear(this.value)" title="Cambiar año">${yOpts}</select>
     </div>
     <div class="sync-indicator" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.6)">${syncHTML()}</div>
   </div>`;
@@ -3447,48 +3484,63 @@ function render(){
       const aptSplit=aportesSplit(rm,ry);
       const totCob=intSplit.cob+extSplit.cob+aptSplit.cobrado;
       const totPen=intSplit.pen+extSplit.pen+aptSplit.pendiente;
-      const rowRec=(icon,lbl,cob,pen)=>`<div class="gb-row"><span>${icon} ${lbl}</span><b>${cob} €${pen>0?` <span style="color:#C0492C;font-weight:600;font-size:12px">· faltan ${pen} €</span>`:` <span style="color:#2D6A4F;font-weight:600;font-size:12px">· ✓</span>`}</b></div>`;
+      // Fila con chip en línea propia: importe cobrado arriba, estado (faltan/al día) debajo
+      const rowRec=(icon,lbl,cob,pen,extraCls,sub)=>`<div class="rec-fila ${extraCls||""}">
+        <div class="rec-l1"><span class="rec-lbl">${icon} ${lbl}${sub?` <span style="opacity:.6;font-size:12px">${sub}</span>`:""}</span><span class="rec-imp">${cob} €</span></div>
+        <div class="rec-l2">${pen>0?`<span class="chip-falta">⏳ faltan ${pen} €</span>`:`<span class="chip-ok">✓ al día</span>`}</div>
+      </div>`;
+      // Contador de aportes cobrados X/Y para mostrar junto a "Aportes del mes"
+      const _mdRec=getMesData(rm,ry),_riRec=MONTHS.indexOf(rm);
+      const _asocAct=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&((m.joinYear<ry)||(m.joinYear===ry&&MONTHS.indexOf(m.joinMonth)<=_riRec)));
+      const _aptPag=_asocAct.filter(m=>_mdRec.aportes&&_mdRec.aportes[m.id]).length;
+      // Subtotal de devoluciones (internas + externas) antes de aportes
+      const devCob=intSplit.cob+extSplit.cob, devPen=intSplit.pen+extSplit.pen;
       h+=`<div class="grand">
         <div class="grand-label">Recaudación — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="grand-breakdown">
           ${rowRec("🏠","Devoluciones internas",intSplit.cob,intSplit.pen)}
           ${rowRec("🤝","Devoluciones externas",extSplit.cob,extSplit.pen)}
-          ${rowRec("💰","Aportes del mes",aptSplit.cobrado,aptSplit.pendiente)}
-          <div class="gb-row gb-total"><span>COBRADO</span><b>${totCob} €</b></div>
+          ${rowRec("","Subtotal devoluciones",devCob,devPen,"rec-sub")}
+          ${rowRec("💰","Aportes del mes",aptSplit.cobrado,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})`)}
+          <div class="gb-row gb-total" style="margin-top:6px"><span>COBRADO</span><b>${totCob} €</b></div>
           ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">⏳ Pendiente por cobrar</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">✅ Todo cobrado este mes</span><b></b></div>`}
         </div>
       </div>`;
-      // 2) Botones de filtro
-      // Contadores para los botones de filtro
+      // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
       const nAsociados=DATA.members.filter(m=>m.type==="asociado").length;
       const nAyudasActivas=DATA.members.reduce((s,m)=>s+(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length,0);
-      h+=`<div class="rep-filtros">
-        <button class="rep-filtro ${REPORT_FILTER==="todos"?"on":""}" onclick="REPORT_FILTER='todos';render()">Listado completo<span class="filtro-num">${nAsociados}</span></button>
-        <button class="rep-filtro ${REPORT_FILTER==="activas"?"on":""}" onclick="REPORT_FILTER='activas';render()">Con ayudas activas<span class="filtro-num">${nAyudasActivas}</span></button>
-      </div>`;
-      // Buscador de miembros
-      h+=`<input id="asoc-search" type="text" placeholder="🔍 Buscar miembro..." oninput="filtrarEnVivo(this.value,'#asoc-listas')"
-        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box;margin-bottom:14px">`;
-      // 3) Fichas estilo reporte (tocables → abren la ficha completa)
-      let lista=ordered;
-      if(REPORT_FILTER==="activas"){
-        const tieneActiva=m=>m.loans.some(l=>l.pays.some(p=>!p.paid));
-        lista=ordered.filter(tieneActiva);
+      h+=`<button class="toggle-asoc" onclick="LISTA_ABIERTA=!LISTA_ABIERTA;render()">
+        <span>👥 Ver asociados <span class="ta-num">${nAsociados}</span></span>
+        <span class="ta-flecha">${LISTA_ABIERTA?"▲ ocultar":"▼ desplegar"}</span>
+      </button>`;
+      if(LISTA_ABIERTA){
+        // Botones de filtro
+        h+=`<div class="rep-filtros">
+          <button class="rep-filtro ${REPORT_FILTER==="todos"?"on":""}" onclick="REPORT_FILTER='todos';render()">Listado completo<span class="filtro-num">${nAsociados}</span></button>
+          <button class="rep-filtro ${REPORT_FILTER==="activas"?"on":""}" onclick="REPORT_FILTER='activas';render()">Con ayudas activas<span class="filtro-num">${nAyudasActivas}</span></button>
+        </div>`;
+        // Buscador de miembros
+        h+=`<input id="asoc-search" type="text" placeholder="🔍 Buscar miembro..." oninput="filtrarEnVivo(this.value,'#asoc-listas')"
+          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box;margin-bottom:14px">`;
+        // Fichas estilo reporte (tocables → abren la ficha completa)
+        let lista=ordered;
+        if(REPORT_FILTER==="activas"){
+          const tieneActiva=m=>m.loans.some(l=>l.pays.some(p=>!p.paid));
+          lista=ordered.filter(tieneActiva);
+        }
+        h+=`<div id="asoc-listas">`;
+        lista.forEach(m=>{h+=`<div data-nombre="${escH(m.name)}">`+cardHTML(m,m.type==="tercero",true)+`</div>`;});
+        if(lista.length===0){
+          h+=`<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0">No hay miembros con ayudas activas este mes.</p>`;
+        }
+        h+=`</div>`;
+        h+=`<div class="note">Recuerda: el aporte mensual de <b>${fee},00 €</b> es adicional a las cuotas de devolución.</div>`;
       }
-      h+=`<div id="asoc-listas">`;
-      lista.forEach(m=>{h+=`<div data-nombre="${escH(m.name)}">`+cardHTML(m,m.type==="tercero",true)+`</div>`;});
-      if(lista.length===0){
-        h+=`<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0">No hay miembros con ayudas activas este mes.</p>`;
-      }
-      h+=`</div>`;
-      h+=`<div class="note">Recuerda: el aporte mensual de <b>${fee},00 €</b> es adicional a las cuotas de devolución.</div>`;
       // 4) Resumen General
       const totIntPend=DATA.members.filter(m=>m.type==="asociado").reduce((s,m)=>s+pendAll(m),0);
       const totTercPend=DATA.members.filter(m=>m.type==="tercero").reduce((s,m)=>s+pendAll(m),0);
       const md=getMesData(rm,ry);
       const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
-      const aptPagados=Object.values(md.aportes||{}).filter(Boolean).length;
-      const aptTotal=asocActivos.length;
       const ri2=MONTHS.indexOf(rm);
       const conDerecho=asocActivos.filter(m=>{const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;return(jy<ry)||(jy===ry&&ji<ri2);});
       const topeNivel=ri2>=8&&ry===2026?12:10;
@@ -3497,23 +3549,27 @@ function render(){
       const repartoPorAsoc=conDerecho.length>0?md.recargo/conDerecho.length:0;
       const beneficioMes=md.recargo>0?Math.min(repartoPorAsoc,topeNivel):(benHistRes!==undefined?benHistRes:0);
       const excedenteMes=md.recargo>0?Math.max(0,md.recargo-(beneficioMes*conDerecho.length)):0;
+      // Desglose de aportes puntuales a devolver este mes (pendiente vs ya devuelto)
+      const spl=salidasPuntualesSplit(rm,ry);
+      const entradas=totalAportesMes(rm,ry)+tA+tT;
+      const dispNeto=entradas-spl.total;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="rf-row"><span>👥 Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
-        <div class="rf-row"><span>✅ Aportes cobrados (${DATA.monthlyFee}€ c/u)</span><span class="rf-val" style="color:${aptPagados===aptTotal?'#2D6A4F':'var(--warm)'}">${aptPagados} / ${aptTotal}</span></div>
-        <div class="rf-row"><span>💰 Total aportes mes</span><span class="rf-val">${totalAportesMes(rm,ry)} €</span></div>
         <div class="rf-divider"></div>
-        <div class="rf-row"><span>🏠 Cuotas internas — este mes</span><span class="rf-val">${tA} €</span></div>
-        <div class="rf-row"><span>🤝 Cuotas terceros — este mes</span><span class="rf-val">${tT} €</span></div>
-        <div class="rf-row"><span>📈 Recargo recaudado</span><span class="rf-val" style="color:#2D6A4F">${md.recargo} €</span></div>
+        <div class="rf-sec">Movimiento del mes</div>
+        <div class="rf-row"><span>＋ Entradas (aportes + cuotas)</span><span class="rf-val v-pos">${entradas} €</span></div>
+        ${spl.items.map(it=>it.devuelto
+          ?`<div class="rf-row"><span>✅ Devolución puntual (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
+          :`<div class="rf-row"><span>🔒 Devolución pendiente (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
+        ).join("")}
+        <div class="rf-neto"><span>💵 Disponible neto real</span><b>${dispNeto} €</b></div>
         <div class="rf-divider"></div>
-        <div class="rf-row"><span>＋ Entradas (aportes + cuotas)</span><span class="rf-val" style="color:#2D6A4F">${totalAportesMes(rm,ry)+tA+tT} €</span></div>
-        ${salidasPuntualesMes(rm,ry)>0?`<div class="rf-row"><span>− Devolución aportes puntuales</span><span class="rf-val" style="color:#C0492C">−${salidasPuntualesMes(rm,ry)} €</span></div>`:""}
-        <div class="rf-row" style="font-weight:700"><span>💵 Disponible neto del mes</span><span class="rf-val" style="color:#1B4332">${totalAportesMes(rm,ry)+tA+tT-salidasPuntualesMes(rm,ry)} €</span></div>
+        <div class="rf-sec">Reparto</div>
+        <div class="rf-row"><span>🎁 Beneficio por asociado</span><span class="rf-val">${beneficioMes.toFixed(2)} € <span style="font-size:11px;color:rgba(255,255,255,.55)">(${conDerecho.length} con derecho)</span></span></div>
+        <div class="rf-row"><span>🏦 Excedente → Reserva</span><span class="rf-val v-res">${excedenteMes>0?excedenteMes.toFixed(2):"0"} €</span></div>
         <div class="rf-divider"></div>
-        <div class="rf-row"><span>🎁 Beneficio por asociado</span><span class="rf-val">${beneficioMes.toFixed(2)} € <span style="font-size:11px;color:var(--muted)">(${conDerecho.length} con derecho)</span></span></div>
-        <div class="rf-row"><span>🏦 Excedente → Reserva</span><span class="rf-val" style="color:#5B5EA6">${excedenteMes>0?excedenteMes.toFixed(2):"0"} €</span></div>
-        <div class="rf-divider"></div>
+        <div class="rf-sec">Cartera pendiente</div>
         <div class="rf-row"><span>🏠 Pendiente total internas</span><span class="rf-val rf-pend">${totIntPend} €</span></div>
         <div class="rf-row"><span>🤝 Pendiente total terceros</span><span class="rf-val rf-pend">${totTercPend} €</span></div>
         <div class="rf-total"><span>CARTERA TOTAL</span><span>${totIntPend+totTercPend} €</span></div>
