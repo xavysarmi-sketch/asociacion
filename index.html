@@ -3482,7 +3482,13 @@ function render(){
       const intSplit=asocC.reduce((a,m)=>{const s=dueSplit(m,rm,ry);a.cob+=s.cobrado;a.pen+=s.pendiente;return a;},{cob:0,pen:0});
       const extSplit=tercC.reduce((a,m)=>{const s=dueSplit(m,rm,ry);a.cob+=s.cobrado;a.pen+=s.pendiente;return a;},{cob:0,pen:0});
       const aptSplit=aportesSplit(rm,ry);
-      const totCob=intSplit.cob+extSplit.cob+aptSplit.cobrado;
+      // Aportes extra del mes (p.ej. aporte adicional al fondo). Se registran ya entregados,
+      // por eso cuentan como cobrado dentro de "Aportes del mes".
+      const _mkExt=getMesKey(rm,ry);
+      let aptExtra=0;
+      if(DATA.extras){Object.values(DATA.extras).forEach(o=>{ if(o[_mkExt]&&o[_mkExt].monto) aptExtra+=o[_mkExt].monto; });}
+      const aptCob=aptSplit.cobrado+aptExtra;
+      const totCob=intSplit.cob+extSplit.cob+aptCob;
       const totPen=intSplit.pen+extSplit.pen+aptSplit.pendiente;
       // Fila con chip en línea propia: importe cobrado arriba, estado (faltan/al día) debajo
       const rowRec=(icon,lbl,cob,pen,extraCls,sub)=>`<div class="rec-fila ${extraCls||""}">
@@ -3501,7 +3507,7 @@ function render(){
           ${rowRec("🏠","Devoluciones internas",intSplit.cob,intSplit.pen)}
           ${rowRec("🤝","Devoluciones externas",extSplit.cob,extSplit.pen)}
           ${rowRec("","Subtotal devoluciones",devCob,devPen,"rec-sub")}
-          ${rowRec("💰","Aportes del mes",aptSplit.cobrado,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})`)}
+          ${rowRec("💰","Aportes del mes",aptCob,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}`)}
           <div class="gb-row gb-total" style="margin-top:6px"><span>COBRADO</span><b>${totCob} €</b></div>
           ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">⏳ Pendiente por cobrar</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">✅ Todo cobrado este mes</span><b></b></div>`}
         </div>
@@ -3551,7 +3557,14 @@ function render(){
       const excedenteMes=md.recargo>0?Math.max(0,md.recargo-(beneficioMes*conDerecho.length)):0;
       // Desglose de aportes puntuales a devolver este mes (pendiente vs ya devuelto)
       const spl=salidasPuntualesSplit(rm,ry);
-      const entradas=totalAportesMes(rm,ry)+tA+tT;
+      // Entradas = total PREVISTO del mes: aportes previstos (base − descuentos referido)
+      // + aportes EXTRA del mes (p.ej. aporte adicional al fondo) + cuotas internas + terceros.
+      // El cuadro superior muestra cobrado vs pendiente; aquí interesa el total a cobrar.
+      const _apt=aportesSplit(rm,ry);
+      const _mkE=getMesKey(rm,ry);
+      let _extras=0;
+      if(DATA.extras){Object.values(DATA.extras).forEach(o=>{ if(o[_mkE]&&o[_mkE].monto) _extras+=o[_mkE].monto; });}
+      const entradas=_apt.cobrado+_apt.pendiente+_extras+tA+tT;
       const dispNeto=entradas-spl.total;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
