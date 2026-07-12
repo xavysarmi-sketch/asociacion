@@ -545,7 +545,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.16</div>
+<div class="app-version" id="appVersionTag">v43.18</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -616,7 +616,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.16"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.18"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -765,10 +765,23 @@ function sanitizeData(data){
       }
     });
   }
+  // Vinculación automática del historial: para cada entrada de historial sin lid,
+  // buscar su ayuda (loans o closedLoans) que coincida EXACTO en capital+mes+año y
+  // asignarle el lid. Solo vincula cuando el emparejamiento es único (sin ambigüedad),
+  // así el historial queda conectado a sus ayudas sin tocar importes ni borrar nada.
+  if(data.members){
+    data.members.forEach(m=>{
+      if(!Array.isArray(m.history)||!m.history.length)return;
+      const todas=[...(m.loans||[]),...(m.closedLoans||[])];
+      m.history.forEach(h=>{
+        if(h.lid)return;
+        const matches=todas.filter(l=>l.capital===h.capital&&l.gMonth===h.gMonth&&l.gYear===h.gYear);
+        if(matches.length===1) h.lid=matches[0].id;
+      });
+    });
+  }
   return data;
 }
-
-const URL_PARAMS=new URLSearchParams(window.location.search);
 const READONLY_ID=URL_PARAMS.get("socio")||null;
 const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(",").map(id=>decodeURIComponent(id)):null;
 // Enlace grupal ESTABLE: apunta al asociado principal del grupo (?grupoppal=ID).
@@ -1259,10 +1272,11 @@ function salidasPuntualesSplit(rm,ry){
 function due(m,rm,ry){
   // Suma la cuota cuyo mes es EXACTAMENTE rm/ry (no la próxima sin pagar),
   // incluyendo ayudas cerradas (una cuota pagada ese mes es devolución contable real).
+  // Si la cuota está aplazada/ampliada, usa su importe especial (instAplazada), igual que dueSplit.
   let t=0;
   const todas=[...(m.loans||[]),...(m.closedLoans||[])];
   todas.forEach(l=>{
-    l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry) t+=l.inst; });
+    l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry) t+=(p.aplazada?p.instAplazada:l.inst); });
   });
   return t;
 }
