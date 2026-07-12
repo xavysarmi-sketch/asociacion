@@ -63,6 +63,11 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .gb-row.gb-total{border-bottom:none;border-top:1.5px solid rgba(255,255,255,.3);margin-top:4px;padding-top:9px;font-size:15px;font-weight:700;color:#fff}
 .gb-row.gb-total b{font-size:18px}
 .sec-title{font-size:18px;font-weight:700;color:var(--dark);margin:18px 0 10px;display:flex;align-items:center;gap:8px}
+.mg-acc-head{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-left:4px solid #2D6A4F;border-radius:12px;padding:14px 16px;margin:14px 0 6px;font-size:16px;font-weight:700;color:var(--dark);cursor:pointer}
+.mg-acc-head.terc{border-left-color:#E07A3A}
+.mg-acc-num{background:#2D6A4F;color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;margin-left:6px}
+.mg-acc-head.terc .mg-acc-num{background:#E07A3A}
+.mg-acc-fl{font-size:13px;font-weight:600;color:var(--muted)}
 .sec-title.terc{color:var(--terc)}
 .card{background:#fff;border-radius:18px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid var(--border)}
 .card.terc{border-color:#D5D6E8}
@@ -540,7 +545,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.14</div>
+<div class="app-version" id="appVersionTag">v43.16</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -611,7 +616,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.14"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.16"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -908,6 +913,7 @@ let ASOC_SEARCH=""; // texto del buscador de Asociados
 // Los items (aporte/cuotas) se calculan en vivo según el mes seleccionado.
 let PREVIEW_ID=null; // id del asociado en previsualización del admin (vista "como lo ve el asociado")
 let MG_SEARCH=""; // texto del buscador de la pestaña Gestión
+let MG_INT_OPEN=false, MG_EXT_OPEN=false; // desplegables de Gestión (arrancan cerrados)
 // Filtra las tarjetas de Gestión mostrando/ocultando por nombre, SIN re-render
 // (así el input conserva el foco y el teclado no se cierra en cada letra).
 function filtrarGestion(q){
@@ -2109,8 +2115,12 @@ function saveCfg(){
 let _searchTimer=null;
 function setSearch(val){
   SEND_SEARCH=val;
-  clearTimeout(_searchTimer);
-  _searchTimer=setTimeout(()=>render(),200);
+  // Filtrar mostrando/ocultando tarjetas por CSS, SIN render() (así no se cierra el teclado)
+  const t=(val||"").trim().toLowerCase();
+  document.querySelectorAll('.send-card[data-envio-nombre]').forEach(card=>{
+    const nom=card.getAttribute('data-envio-nombre')||"";
+    card.style.display = (!t || nom.indexOf(t)>=0) ? "" : "none";
+  });
 }
 
 function exportData(){
@@ -3332,10 +3342,10 @@ function render(){
         h+=`<button onclick="DESP['grupo-${grupoAbierto.id}']=false;render()" style="display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--dark);font-size:14px;font-weight:700;cursor:pointer;padding:0;margin-bottom:14px">← Ver todos los grupos</button>`;
       } else {
         h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
-        // Crear nuevo grupo
+        // Crear nuevo grupo — solo asociados que NO estén ya en ningún grupo
         const enGrupo=new Set();
         grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
-        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
+        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
         h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
           <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
             <option value="">— Elegir principal —</option>
@@ -3395,9 +3405,10 @@ function render(){
             });
             h+=`</div>`;
           });
-          // Añadir miembro a este grupo
-          const yaEnEste=new Set([g.principalId,...(g.miembros||[])]);
-          const cand=DATA.members.filter(m=>!yaEnEste.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+          // Añadir miembro a este grupo — excluir a quien ya esté en CUALQUIER grupo
+          const enCualquierGrupo=new Set();
+          grupos.forEach(gg=>{enCualquierGrupo.add(gg.principalId);(gg.miembros||[]).forEach(x=>enCualquierGrupo.add(x));});
+          const cand=DATA.members.filter(m=>!enCualquierGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
           h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
             <select class="m-select" style="margin-bottom:10px;font-size:14px" onchange="if(this.value)añadirMiembroGrupo('${g.id}',this.value);this.value=''">
               <option value="">— Añadir persona —</option>
@@ -3596,7 +3607,7 @@ function render(){
     const tercPend=DATA.members.filter(m=>m.type==="tercero"&&m.loans.some(l=>l.pays.some(p=>!p.paid)));
     const allSend=[...todosAsoc,...tercPend];
     const filteredBase=SEND_FILTER==="asociado"?todosAsoc:SEND_FILTER==="tercero"?tercPend:allSend;
-    const filtered=SEND_SEARCH?filteredBase.filter(m=>m.name.toLowerCase().includes(SEND_SEARCH.toLowerCase())):filteredBase;
+    const filtered=filteredBase;
     const selCount=[...SEND_SELECTED].filter(id=>filtered.some(m=>m.id===id)).length;
 
     h+=`<div class="send-header">
@@ -3612,6 +3623,7 @@ function render(){
       <button class="send-filter-btn ${SEND_FILTER==="tercero"?"terc-on":""}" onclick="SEND_FILTER='tercero';render()">🤝 Terc. (${tercPend.length})</button>
     </div>`;
     h+=`<input class="send-search" type="search" placeholder="🔍 Buscar..." value="${escH(SEND_SEARCH)}" oninput="setSearch(this.value)">`;
+    if(SEND_SEARCH)setTimeout(()=>setSearch(SEND_SEARCH),0);
     h+=`<div class="send-controls">
       <button class="send-ctrl-btn select-all-btn" onclick="selectAll()">✅ Todos</button>
       <button class="send-ctrl-btn select-none-btn" onclick="selectNone()">☐ Ninguno</button>
@@ -3631,7 +3643,7 @@ function render(){
           const aportePagado=!!(md2.aportes&&md2.aportes[m.id]);
           const dMes=desgloseDelMes(m);
           const isSelected=SEND_SELECTED.has(m.id);
-          h+=`<div class="send-card ${isSelected?"selected":""}" onclick="toggleSel('${esc(m.id)}')">
+          h+=`<div class="send-card ${isSelected?"selected":""}" data-envio-nombre="${escH(m.name.toLowerCase())}" onclick="toggleSel('${esc(m.id)}')">
             <div class="send-card-left">
               <div class="send-card-check">${isSelected?"✅":"⬜"}</div>
               <div>
@@ -3679,64 +3691,30 @@ function render(){
     const asocAll=DATA.members.filter(m=>m.type==="asociado");
     const tercAll=DATA.members.filter(m=>m.type==="tercero");
 
-    // === PANEL DE AUTO-CHEQUEO (permanente) ===
-    let totalLoans=0; DATA.members.forEach(m=>{totalLoans+=(m.loans||[]).length;});
-    let lsRaw=""; try{lsRaw=localStorage.getItem(KEY)||"";}catch(e){lsRaw="";}
-    let lsLoans=null;
-    try{const lsObj=JSON.parse(lsRaw);let c=0;(lsObj.members||[]).forEach(m=>{c+=(m.loans||[]).length;});lsLoans=c;}catch(e){lsLoans=null;}
-    const upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES"):"(sin fecha)";
-    // Chequeos automáticos: cada uno verifica que un fix crítico sigue activo.
-    const chk=[];
-    const linea=(ok,txt)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin:3px 0"><span>${ok?"✅":"⚠️"}</span><span>${txt}</span></div>`;
-    // 1) Memoria y teléfono coinciden (las ayudas no se pierden al cargar)
-    const coincide = (lsLoans===null) || (lsLoans===totalLoans);
-    chk.push(linea(coincide, coincide
-      ? "Ayudas guardadas correctamente ("+totalLoans+" en memoria y en el teléfono)"
-      : "Descuadre: "+totalLoans+" en memoria vs "+lsLoans+" en el teléfono — avisar al soporte"));
-    // 2) Los asociados creados en la app se conservan (fix Carolina)
-    const appMembers = DATA.members.filter(m=>m.origen==="app" || (typeof m.id==="string" && m.id.charAt(0)==="m"));
-    chk.push(linea(true, "Asociados creados en la app protegidos ("+appMembers.length+" registrados)"));
-    // 3) Sincronización con la nube
-    const syncOk = SYNC_STATUS==="ok";
-    chk.push(linea(syncOk, syncOk
-      ? "Conectado con la nube — los asociados ven tus cambios"
-      : "Sin confirmar subida a la nube — pulsa \"Subir ahora\" antes de cerrar"));
-    // 4) Control de caché activo (meta anti-caché presente en esta versión)
-    chk.push(linea(true, "Control de versiones activo (no hace falta reinstalar)"));
-    h+=`<div style="background:#F0F7F2;border:2px solid #2D6A4F;border-radius:14px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.5;color:#1B4332">
-      <div style="font-weight:800;margin-bottom:8px;font-size:15px">🛡️ Auto-chequeo del sistema</div>
-      ${chk.join("")}
-      <div style="border-top:1px solid #cfe0d5;margin:10px 0 8px"></div>
-      <div>☁️ Última subida a la nube: <b>${upd}</b></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-weight:700" onclick="subirAhoraNube()">☁️ Subir ahora</button>
-        <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#E07A3A;color:#fff;font-weight:700" onclick="diagLeerLS()">🔄 Re-verificar</button>
-      </div>
-    </div>`;
-    // === FIN PANEL ===
-
-    h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
-      <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:12px">⚙️ Configuración</div>
-      <div class="cfg-row">
-        <div><div class="cfg-label">Aporte adicional por cuota</div><div class="cfg-sub">% sobre el capital × nº cuotas (regla del fondo)</div></div>
-        <input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %
-      </div>
-      <div class="cfg-row">
-        <div><div class="cfg-label">Día de aviso del próximo aporte</div><div class="cfg-sub">Desde este día se muestra "Próximo: … de [mes]" en las fichas al día</div></div>
-        <input id="cfg-diaaviso" class="cfg-input" type="number" value="${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}" min="1" max="28">
-      </div>
-      <button style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;margin-top:12px" onclick="saveCfg()">💾 Guardar configuración</button>
-    </div>`;
-
     h+=`<div style="margin:8px 0 4px"><input id="mgSearch" type="text" placeholder="🔍 Buscar asociado o tercero por nombre…" value="${escH(MG_SEARCH||"")}" oninput="filtrarGestion(this.value)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box"></div>`;
     if(MG_SEARCH)setTimeout(()=>filtrarGestion(MG_SEARCH),0);
 
-    h+=`<div class="sec-title" style="margin-top:8px">🏠 Ayudas Internas</div>`;
-    h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir socio interno</button>`;
-    asocAll.forEach(m=>{h+=manageHTML(m);});
-    h+=`<div class="sec-title terc" style="margin-top:20px">🤝 Terceros</div>`;
-    h+=`<button class="add-btn terc" onclick="openModal('member',{preset:'tercero'})">+ Añadir tercero</button>`;
-    tercAll.forEach(m=>{h+=manageHTML(m,true);});
+    // 🏠 Ayudas Internas (desplegable, arranca cerrado)
+    h+=`<div class="mg-acc-head" onclick="MG_INT_OPEN=!MG_INT_OPEN;render()">
+      <span>🏠 Ayudas Internas <span class="mg-acc-num">${asocAll.length}</span></span>
+      <span class="mg-acc-fl">${MG_INT_OPEN?"▲ ocultar":"▼ mostrar"}</span></div>`;
+    if(MG_INT_OPEN){
+      h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir socio interno</button>`;
+      asocAll.forEach(m=>{h+=manageHTML(m);});
+    }
+    // 🤝 Ayudas Externas (desplegable, arranca cerrado)
+    h+=`<div class="mg-acc-head terc" onclick="MG_EXT_OPEN=!MG_EXT_OPEN;render()">
+      <span>🤝 Ayudas Externas <span class="mg-acc-num">${tercAll.length}</span></span>
+      <span class="mg-acc-fl">${MG_EXT_OPEN?"▲ ocultar":"▼ mostrar"}</span></div>`;
+    if(MG_EXT_OPEN){
+      h+=`<button class="add-btn terc" onclick="openModal('member',{preset:'tercero'})">+ Añadir tercero (con aval)</button>`;
+      tercAll.forEach(m=>{h+=manageHTML(m,true);});
+    }
+
+    // 🛡️ Auto-chequeo del sistema (al final)
+    h+=chequeoHTML();
+    // ⚙️ Configuración (al final)
+    h+=configHTML();
 
     h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin-top:20px;border:1px solid var(--border)">
       <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:4px">💾 Copia de seguridad</div>
@@ -3780,7 +3758,7 @@ function sendCardHTML(m,rm,ry,dimmed){
   const isSel=SEND_SELECTED.has(m.id);
   const selClass=isSel?(isTerc?"terc-selected":"selected"):"";
   const btnId=`copy-${m.id}`;
-  return`<div class="send-card ${selClass}${dimmed?" no-cuota-this-month":""}" onclick="toggleSendSelect('${esc(m.id)}')">
+  return`<div class="send-card ${selClass}${dimmed?" no-cuota-this-month":""}" data-envio-nombre="${escH(m.name.toLowerCase())}" onclick="toggleSendSelect('${esc(m.id)}')">
     <div class="send-card-head">
       <div class="send-card-info">
         <div class="send-card-name">${escH(m.name)}</div>
@@ -3853,6 +3831,50 @@ function cardHTML(m,isT,tappable){
   return h;
 }
 
+function chequeoHTML(){
+  let totalLoans=0; DATA.members.forEach(m=>{totalLoans+=(m.loans||[]).length;});
+  let lsRaw=""; try{lsRaw=localStorage.getItem(KEY)||"";}catch(e){lsRaw="";}
+  let lsLoans=null;
+  try{const lsObj=JSON.parse(lsRaw);let c=0;(lsObj.members||[]).forEach(m=>{c+=(m.loans||[]).length;});lsLoans=c;}catch(e){lsLoans=null;}
+  const upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES"):"(sin fecha)";
+  const chk=[];
+  const linea=(ok,txt)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin:3px 0"><span>${ok?"✅":"⚠️"}</span><span>${txt}</span></div>`;
+  const coincide = (lsLoans===null) || (lsLoans===totalLoans);
+  chk.push(linea(coincide, coincide
+    ? "Ayudas guardadas correctamente ("+totalLoans+" en memoria y en el teléfono)"
+    : "Descuadre: "+totalLoans+" en memoria vs "+lsLoans+" en el teléfono — avisar al soporte"));
+  const appMembers = DATA.members.filter(m=>m.origen==="app" || (typeof m.id==="string" && m.id.charAt(0)==="m"));
+  chk.push(linea(true, "Asociados creados en la app protegidos ("+appMembers.length+" registrados)"));
+  const syncOk = SYNC_STATUS==="ok";
+  chk.push(linea(syncOk, syncOk
+    ? "Conectado con la nube — los asociados ven tus cambios"
+    : "Sin confirmar subida a la nube — pulsa \"Subir ahora\" antes de cerrar"));
+  chk.push(linea(true, "Control de versiones activo (no hace falta reinstalar)"));
+  return `<div style="background:#F0F7F2;border:2px solid #2D6A4F;border-radius:14px;padding:14px;margin-top:20px;margin-bottom:16px;font-size:13px;line-height:1.5;color:#1B4332">
+    <div style="font-weight:800;margin-bottom:8px;font-size:15px">🛡️ Auto-chequeo del sistema</div>
+    ${chk.join("")}
+    <div style="border-top:1px solid #cfe0d5;margin:10px 0 8px"></div>
+    <div>☁️ Última subida a la nube: <b>${upd}</b></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-weight:700" onclick="subirAhoraNube()">☁️ Subir ahora</button>
+      <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#E07A3A;color:#fff;font-weight:700" onclick="diagLeerLS()">🔄 Re-verificar</button>
+    </div>
+  </div>`;
+}
+function configHTML(){
+  return `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
+    <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:12px">⚙️ Configuración</div>
+    <div class="cfg-row">
+      <div><div class="cfg-label">Aporte adicional por cuota</div><div class="cfg-sub">% sobre el capital × nº cuotas (regla del fondo)</div></div>
+      <input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %
+    </div>
+    <div class="cfg-row">
+      <div><div class="cfg-label">Día de aviso del próximo aporte</div><div class="cfg-sub">Desde este día se muestra "Próximo: … de [mes]" en las fichas al día</div></div>
+      <input id="cfg-diaaviso" class="cfg-input" type="number" value="${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}" min="1" max="28">
+    </div>
+    <button style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;margin-top:12px" onclick="saveCfg()">💾 Guardar configuración</button>
+  </div>`;
+}
 function manageHTML(m,isT){
   const memArmed=(_delMemberArmed===m.id);
   let h=`<div class="mg-card" data-nombre="${escH((m.name||"").toLowerCase())}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-weight:700;font-size:16px;color:${isT?"var(--terc)":"var(--dark)"}">${escH(m.name)}</div><div style="font-size:12px;color:var(--muted)">${isT?"Ref: "+escH(m.ref):"Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div></div><button class="del-btn ${memArmed?"armed":""}" onclick="delMember('${esc(m.id)}')">${memArmed?"¿Seguro?":"🗑️"}</button></div>`;
@@ -3941,6 +3963,12 @@ function addCierreLoanSubmit(){
   save();closeModal();render();toast("Ayuda registrada ✓");
 }
 function loanFormHTML(){
+  // Predefinir: mes otorgada = mes en curso (rm/ry); 1ª cuota = mes siguiente (regla del fondo)
+  const gm=DATA.reportMonth, gy=DATA.reportYear;
+  const gi=MONTHS.indexOf(gm);
+  const sm=MONTHS[(gi+1)%12];
+  const sy=(gi+1)>=12 ? (gy+1) : gy;
+  const yStr=y=>String(y);
   return`<div class="modal-title">Nueva ayuda</div>
 <label class="m-label">Capital (€)</label>
 <input id="l-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateLoanPreview()">
@@ -3949,15 +3977,27 @@ function loanFormHTML(){
 <label class="m-label">Aporte adicional por cuota (%)</label>
 <input id="l-rate" class="m-input" type="number" value="${DATA.rate}" min="0" step="0.5" style="margin-bottom:12px" oninput="updateLoanPreview()">
 <div style="display:flex;gap:8px;margin-bottom:12px">
-<div style="flex:1"><label class="m-label">Mes otorgada</label><select id="l-gm" class="m-select">${MONTHS.map(m=>`<option${m==="Mar"?" selected":""}>${m}</option>`).join("")}</select></div>
-<div style="flex:1"><label class="m-label">Año</label><select id="l-gy" class="m-select">${["2025","2026","2027"].map(y=>`<option${y==="2026"?" selected":""}>${y}</option>`).join("")}</select></div>
+<div style="flex:1"><label class="m-label">Mes otorgada</label><select id="l-gm" class="m-select" onchange="syncPrimeraCuota()">${MONTHS.map(m=>`<option${m===gm?" selected":""}>${m}</option>`).join("")}</select></div>
+<div style="flex:1"><label class="m-label">Año</label><select id="l-gy" class="m-select" onchange="syncPrimeraCuota()">${["2025","2026","2027"].map(y=>`<option${y===yStr(gy)?" selected":""}>${y}</option>`).join("")}</select></div>
 </div>
 <div style="display:flex;gap:8px;margin-bottom:16px">
-<div style="flex:1"><label class="m-label">1ª cuota mes</label><select id="l-sm" class="m-select">${MONTHS.map(m=>`<option${m==="Abr"?" selected":""}>${m}</option>`).join("")}</select></div>
-<div style="flex:1"><label class="m-label">Año</label><select id="l-sy" class="m-select">${["2025","2026","2027"].map(y=>`<option${y==="2026"?" selected":""}>${y}</option>`).join("")}</select></div>
+<div style="flex:1"><label class="m-label">1ª cuota mes</label><select id="l-sm" class="m-select">${MONTHS.map(m=>`<option${m===sm?" selected":""}>${m}</option>`).join("")}</select></div>
+<div style="flex:1"><label class="m-label">Año</label><select id="l-sy" class="m-select">${["2025","2026","2027"].map(y=>`<option${y===yStr(sy)?" selected":""}>${y}</option>`).join("")}</select></div>
 </div>
 <div id="l-preview"></div>
 <button class="m-primary" onclick="addLoanSubmit()">Añadir ayuda</button>`;
+}
+// Al cambiar el mes/año otorgado, ajusta automáticamente la 1ª cuota al mes siguiente
+function syncPrimeraCuota(){
+  const gm=document.getElementById("l-gm"), gy=document.getElementById("l-gy");
+  const sm=document.getElementById("l-sm"), sy=document.getElementById("l-sy");
+  if(!gm||!sm)return;
+  const gi=MONTHS.indexOf(gm.value);
+  const ni=(gi+1)%12;
+  sm.value=MONTHS[ni];
+  const ny=(gi+1)>=12 ? (parseInt(gy.value)+1) : parseInt(gy.value);
+  sy.value=String(ny);
+  if(typeof updateLoanPreview==="function")updateLoanPreview();
 }
 
 function updateLoanPreview(){
