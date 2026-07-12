@@ -545,7 +545,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.18</div>
+<div class="app-version" id="appVersionTag">v43.19</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -616,7 +616,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.18"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.19"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -782,6 +782,8 @@ function sanitizeData(data){
   }
   return data;
 }
+
+const URL_PARAMS=new URLSearchParams(window.location.search);
 const READONLY_ID=URL_PARAMS.get("socio")||null;
 const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(",").map(id=>decodeURIComponent(id)):null;
 // Enlace grupal ESTABLE: apunta al asociado principal del grupo (?grupoppal=ID).
