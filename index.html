@@ -258,6 +258,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .hist-total-lbl{font-size:14px;font-weight:600;color:var(--muted)}
 .hist-total-val{font-size:20px;font-weight:800;color:var(--dark)}
 .app-version{position:fixed;bottom:6px;right:8px;font-size:10px;color:var(--muted);opacity:.5;z-index:100;pointer-events:none;font-weight:600}
+.app-version-ok{position:fixed;bottom:6px;right:62px;font-size:10px;color:#2D6A4F;opacity:.75;z-index:100;pointer-events:none;font-weight:700}
 .update-banner{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#E07A3A,#D96926);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.2);z-index:9998;transform:translateY(100%);transition:transform .3s ease-out;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
 .update-banner.show{transform:translateY(0)}
 .update-banner-text{flex:1;font-size:14px;font-weight:600;line-height:1.3}
@@ -545,7 +546,8 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.19</div>
+<div class="app-version" id="appVersionTag">v43.20</div>
+<div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
@@ -616,7 +618,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.19"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.20"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -920,6 +922,8 @@ aportesPuntuales:{"4":[{id:"ap-stalyn-abr",capital:300,retorno:15,total:315,plaz
 
 let DATA,TAB="asociados",BUSY=false,MODAL=null,FICHA_ID=null,DESP={};
 let FICHA_TAB="resumen"; // pestaña activa dentro del detalle del asociado
+let CODE_CHECKS={ran:false,running:false,online:true,ok1:null,ok2:null,ok3:null,ok4:null,ts:null}; // resultados del auto-chequeo de código
+let UPDATE_CONFIRMED=false; // true en cuanto se confirma que se está viendo la versión publicada
 let REPORT_FILTER="todos"; // "todos" (orden de entrada) | "activas" (solo con ayudas activas)
 let LISTA_ABIERTA=false; // la lista de asociados arranca plegada para ver el control contable de un vistazo
 let CIERRE_SEARCH=""; // texto del buscador del Cierre
@@ -3177,7 +3181,7 @@ function render(){
     <button class="tab ${TAB==="asociados"?"active":""}" onclick="TAB='asociados';FICHA_ID=null;render()">👤 Asociados</button>
     <button class="tab ${TAB==="mes"?"active":""}" onclick="TAB='mes';render()">📊 Cierre</button>
     <button class="tab ${TAB==="send"?"active":""}" onclick="TAB='send';render()">📤 Envíos</button>
-    <button class="tab ${TAB==="manage"?"active":""}" onclick="TAB='manage';render()">⚙️ Gestión</button>
+    <button class="tab ${TAB==="manage"?"active":""}" onclick="irGestion()">⚙️ Gestión</button>
   </div><div class="content">`;
 
   // ── PESTAÑA MES ──
@@ -3847,6 +3851,60 @@ function cardHTML(m,isT,tappable){
   return h;
 }
 
+// Abre la pestaña Gestión y lanza el auto-chequeo de código la primera vez.
+function irGestion(){
+  TAB="manage";
+  if(!CODE_CHECKS.ran && !CODE_CHECKS.running) runCodeChecks();
+  render();
+}
+// Comprueba que el archivo PUBLICADO sigue teniendo los arreglos críticos intactos.
+// Se descarga a sí mismo (igual que el aviso de "nueva versión") y examina el texto;
+// la comprobación del tope/beneficio extra no necesita descarga: ejecuta el cálculo
+// real con datos de prueba que no tocan la información de ningún asociado.
+function runCodeChecks(force){
+  if(CODE_CHECKS.running) return;
+  if(CODE_CHECKS.ran && !force) return;
+  CODE_CHECKS.running=true;
+  if(TAB==="manage")render();
+  const url=location.href.split("?")[0]+"?_selfcheck="+Date.now();
+  fetch(url,{cache:"no-store"}).then(r=>r.text()).then(src=>{
+    // Solo se examina el texto ANTERIOR a este propio auto-chequeo: así el código
+    // de esta comprobación (que menciona estos mismos textos) no se confunde consigo
+    // mismo y da un falso "todo bien" si algo real hubiera sido borrado.
+    const limite=src.indexOf('function runCodeChecks');
+    const zona=limite>-1?src.slice(0,limite):src;
+    const iSD=zona.indexOf('function sanitizeData(');
+    let ok1=false,ok2=false;
+    if(iSD>-1){
+      // Busca la llave '}' que cierra de verdad sanitizeData (contando llaves,
+      // no basta con mirar si el texto siguiente "termina en }").
+      let i=zona.indexOf('{',iSD),depth=0,iClose=-1;
+      for(;i<zona.length;i++){
+        if(zona[i]==='{')depth++;
+        else if(zona[i]==='}'){depth--;if(depth===0){iClose=i;break;}}
+      }
+      if(iClose>-1){
+        const resto=zona.slice(iClose+1,iClose+1+200);
+        ok1=/^\s*const URL_PARAMS=new URLSearchParams\(window\.location\.search\);/.test(resto);
+        const entre=zona.slice(iSD,iClose);
+        ok2=/origen\s*===\s*"app"/.test(entre) && /id\.charAt\(0\)\s*===\s*"m"/.test(entre);
+      }
+    }
+    const ok3 = zona.includes('Cache-Control" content="no-cache, no-store, must-revalidate"')
+      && zona.includes('http-equiv="Pragma" content="no-cache"')
+      && zona.includes('http-equiv="Expires" content="0"');
+    CODE_CHECKS.online=true; CODE_CHECKS.ok1=ok1; CODE_CHECKS.ok2=ok2; CODE_CHECKS.ok3=ok3;
+  }).catch(()=>{ CODE_CHECKS.online=false; }).then(()=>{
+    try{
+      const t1=topeMesFuturo("2026-08")===10, t2=topeMesFuturo("2026-09")===12;
+      const b1=levelBenefit({joinMonth:DATA.reportMonth,joinYear:DATA.reportYear,aporte:100});
+      const b2=levelBenefit({joinMonth:DATA.reportMonth,joinYear:DATA.reportYear,aporte:50});
+      CODE_CHECKS.ok4 = t1 && t2 && b1===20 && b2===10;
+    }catch(e){ CODE_CHECKS.ok4=false; }
+    CODE_CHECKS.ran=true; CODE_CHECKS.running=false; CODE_CHECKS.ts=Date.now();
+    if(TAB==="manage")render();
+  });
+}
 function chequeoHTML(){
   let totalLoans=0; DATA.members.forEach(m=>{totalLoans+=(m.loans||[]).length;});
   let lsRaw=""; try{lsRaw=localStorage.getItem(KEY)||"";}catch(e){lsRaw="";}
@@ -3855,17 +3913,47 @@ function chequeoHTML(){
   const upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES"):"(sin fecha)";
   const chk=[];
   const linea=(ok,txt)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin:3px 0"><span>${ok?"✅":"⚠️"}</span><span>${txt}</span></div>`;
+  // Igual que linea(), pero admite un tercer estado "aún comprobando" (⏳) y uno
+  // de "sin conexión" para no dar una falsa alarma cuando no hay internet.
+  const lineaEstado=(estado,txtOk,txtMal,txtEspera,txtSinConexion)=>{
+    const icono = estado===true?"✅":estado===false?"⚠️":"⏳";
+    const txt = estado===true?txtOk:estado===false?txtMal:estado==="offline"?txtSinConexion:txtEspera;
+    return `<div style="display:flex;align-items:flex-start;gap:8px;margin:3px 0"><span>${icono}</span><span>${txt}</span></div>`;
+  };
   const coincide = (lsLoans===null) || (lsLoans===totalLoans);
   chk.push(linea(coincide, coincide
     ? "Ayudas guardadas correctamente ("+totalLoans+" en memoria y en el teléfono)"
     : "Descuadre: "+totalLoans+" en memoria vs "+lsLoans+" en el teléfono — avisar al soporte"));
-  const appMembers = DATA.members.filter(m=>m.origen==="app" || (typeof m.id==="string" && m.id.charAt(0)==="m"));
-  chk.push(linea(true, "Asociados creados en la app protegidos ("+appMembers.length+" registrados)"));
   const syncOk = SYNC_STATUS==="ok";
   chk.push(linea(syncOk, syncOk
     ? "Conectado con la nube — los asociados ven tus cambios"
     : "Sin confirmar subida a la nube — pulsa \"Subir ahora\" antes de cerrar"));
-  chk.push(linea(true, "Control de versiones activo (no hace falta reinstalar)"));
+
+  const s1 = !CODE_CHECKS.ran ? null : (!CODE_CHECKS.online ? "offline" : CODE_CHECKS.ok1);
+  chk.push(lineaEstado(s1,
+    "Código de arranque intacto (no se queda en pantalla en blanco)",
+    "Aviso: el código de arranque cambió de posición — avisar al soporte",
+    "Comprobando código de arranque…",
+    "Sin conexión: no se pudo comprobar el código de arranque"));
+  const s2 = !CODE_CHECKS.ran ? null : (!CODE_CHECKS.online ? "offline" : CODE_CHECKS.ok2);
+  chk.push(lineaEstado(s2,
+    "Protección de asociados creados en la app activa",
+    "Aviso: no se detecta la protección de asociados creados en la app — avisar al soporte",
+    "Comprobando protección de asociados…",
+    "Sin conexión: no se pudo comprobar la protección de asociados"));
+  const s3 = !CODE_CHECKS.ran ? null : (!CODE_CHECKS.online ? "offline" : CODE_CHECKS.ok3);
+  chk.push(lineaEstado(s3,
+    "Etiquetas anti-caché presentes (el iPhone no usa versiones viejas)",
+    "Aviso: faltan etiquetas anti-caché — avisar al soporte",
+    "Comprobando etiquetas anti-caché…",
+    "Sin conexión: no se pudo comprobar la caché"));
+  const s4 = !CODE_CHECKS.ran ? null : CODE_CHECKS.ok4;
+  chk.push(lineaEstado(s4,
+    "Cálculo de tope de mes y beneficio extra correcto",
+    "Aviso: el cálculo de tope de mes o beneficio extra no da el resultado esperado — avisar al soporte",
+    "Comprobando cálculo de tope y beneficio extra…",
+    "Comprobando cálculo de tope y beneficio extra…"));
+
   return `<div style="background:#F0F7F2;border:2px solid #2D6A4F;border-radius:14px;padding:14px;margin-top:20px;margin-bottom:16px;font-size:13px;line-height:1.5;color:#1B4332">
     <div style="font-weight:800;margin-bottom:8px;font-size:15px">🛡️ Auto-chequeo del sistema</div>
     ${chk.join("")}
@@ -3873,7 +3961,7 @@ function chequeoHTML(){
     <div>☁️ Última subida a la nube: <b>${upd}</b></div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-weight:700" onclick="subirAhoraNube()">☁️ Subir ahora</button>
-      <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#E07A3A;color:#fff;font-weight:700" onclick="diagLeerLS()">🔄 Re-verificar</button>
+      <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#E07A3A;color:#fff;font-weight:700" onclick="diagLeerLS();runCodeChecks(true)">🔄 Re-verificar</button>
     </div>
   </div>`;
 }
@@ -4072,6 +4160,7 @@ function renderReadonly(){
   const updRO=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleDateString("es-ES"):"—";
   h+=`<div style="text-align:center;font-size:11px;color:var(--muted);padding:14px 0 22px;opacity:.8">
     Nuevos Horizontes · ${APP_VERSION} · datos al ${updRO}
+    <div id="versionOkBadgeRO" style="display:${UPDATE_CONFIRMED?"block":"none"};color:#2D6A4F;font-weight:700;margin-top:4px;opacity:1">✓ Estás viendo la última versión</div>
   </div>`;
   h+=`</div>`;
   if(MODAL){
@@ -4242,6 +4331,16 @@ window.APP_UPDATE = (function(){
       .catch(function(){ return null; });
   }
 
+  // Marca visualmente (sello ✓) que se confirmó que esta pantalla es la versión publicada.
+  // Se llama cuando la huella del servidor coincide con lo que ya se está viendo.
+  function marcarVersionConfirmada(){
+    UPDATE_CONFIRMED = true;
+    var b1 = document.getElementById('versionOkBadge');
+    if(b1) b1.style.display = 'inline';
+    var b2 = document.getElementById('versionOkBadgeRO');
+    if(b2) b2.style.display = 'block';
+  }
+
   function check(){
     if(dismissed) return; // Si el usuario cerró el banner, no insistir esta sesión
     fetchFingerprint().then(function(fp){
@@ -4249,11 +4348,13 @@ window.APP_UPDATE = (function(){
       if(currentFingerprint === null){
         // Primera comprobación de esta sesión: guardamos la huella actual
         currentFingerprint = fp;
+        marcarVersionConfirmada();
         return;
       }
       if(fp === currentFingerprint){
         // Sin cambios: se limpia cualquier candidato pendiente (era ruido puntual)
         pendingFp = null; pendingCount = 0;
+        marcarVersionConfirmada();
         return;
       }
       // La huella es distinta. Puede ser versión nueva real o ruido de las
