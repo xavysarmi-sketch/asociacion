@@ -546,7 +546,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.21</div>
+<div class="app-version" id="appVersionTag">v43.22</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -616,9 +616,14 @@ if(document.readyState==="loading"){
 const MONTHS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const KEY="nh-app-v9";
+const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.21"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.22"; // versión visible de la app (una sola fuente de verdad)
+// Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
+// save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
+// de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
+let SYNC_DECISION_PENDING=false;
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -1153,6 +1158,15 @@ function load(){
         DATA=sanitizeData(migrateData(fbData));
         if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
         localStorage.setItem(KEY,JSON.stringify(DATA));
+      }else if(hayLocal && fbData && typeof fbData.updatedAt==="number" && fbData.updatedAt>(DATA.updatedAt||0)){
+        // La nube tiene datos MÁS RECIENTES que este dispositivo (editaste desde otro
+        // aparato). No se decide en automático: se pregunta. Mientras esté pendiente,
+        // save() no debe subir nada a Firebase (evitaría pisar lo reciente con esto viejo).
+        SYNC_DECISION_PENDING=true;
+        MODAL={type:"sync_conflict",cloudData:fbData,localUpdatedAt:DATA.updatedAt||null,cloudUpdatedAt:fbData.updatedAt};
+        SYNC_STATUS="ok";
+        render();
+        return; // el flujo continúa en resolverConflictoSync() cuando se elija una opción
       }else{
         // CASO NORMAL (un solo dispositivo): lo LOCAL es la verdad. Firebase NUNCA
         // pisa lo local; solo se usa como respaldo, subiendo la copia local a la nube.
@@ -1169,6 +1183,66 @@ function load(){
     // FIX IPHONE: NO llamamos a _fbListen aquí — eliminado completamente
   };
   tryFirebase();
+}
+
+// Guarda una copia de `data` en los respaldos locales (máx 3, se descarta la más
+// antigua). origen indica de dónde viene esa copia ("local" o "nube") y ts la fecha
+// de esos datos (DATA.updatedAt), para mostrarla luego en Gestión.
+function guardarRespaldoLocal(data,origen,ts){
+  try{
+    const raw=localStorage.getItem(KEY_BACKUPS);
+    const arr=raw?JSON.parse(raw):[];
+    arr.push({ts:ts||Date.now(),origen,guardadoEn:Date.now(),data});
+    while(arr.length>3)arr.shift();
+    localStorage.setItem(KEY_BACKUPS,JSON.stringify(arr));
+  }catch(e){console.error("No se pudo guardar el respaldo local:",e);}
+}
+function listarRespaldosLocales(){
+  try{const raw=localStorage.getItem(KEY_BACKUPS);return raw?JSON.parse(raw):[];}catch{return[];}
+}
+
+// El usuario decide qué hacer ante un conflicto de sincronización (modal "sync_conflict").
+async function resolverConflictoSync(choice){
+  if(!MODAL||MODAL.type!=="sync_conflict")return;
+  const cloudData=MODAL.cloudData;
+  if(choice==="cloud"){
+    // Antes de reemplazar lo local por lo de la nube, respaldar lo local actual con su fecha.
+    guardarRespaldoLocal(DATA,"local",MODAL.localUpdatedAt);
+    DATA=sanitizeData(migrateData(cloudData));
+    if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
+    try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
+    toast("☁️ Datos de la nube cargados ✓");
+  }else{
+    // Mantener local: los de la nube van a quedar pisados por la subida de abajo, así
+    // que primero se respaldan (con su propia fecha) para que no se destruyan sin copia.
+    guardarRespaldoLocal(cloudData,"nube",MODAL.cloudUpdatedAt);
+    toast("📱 Mantienes los datos de este dispositivo");
+  }
+  MODAL=null;
+  SYNC_DECISION_PENDING=false; // se reanuda el flujo normal de save()
+  render();
+  if(choice==="local"){
+    // Continúa el flujo normal (caso de siempre): lo local es la verdad, se sube como respaldo.
+    try{await window._fbSave(DATA);}catch(e){}
+  }
+  setCurrentMonthYear();
+  render();
+}
+
+// Restaura una copia de respaldo (por índice en listarRespaldosLocales()). Antes de
+// restaurar, guarda el estado actual como respaldo también: ninguna restauración
+// puede destruir datos sin que quede su copia.
+async function restaurarRespaldoLocal(idx){
+  const arr=listarRespaldosLocales();
+  const bk=arr[idx];
+  if(!bk)return;
+  guardarRespaldoLocal(DATA,"local",DATA.updatedAt||Date.now());
+  DATA=sanitizeData(migrateData(JSON.parse(JSON.stringify(bk.data))));
+  if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
+  closeModal();
+  await save();
+  toast("♻️ Copia de seguridad restaurada ✓");
+  render();
 }
 
 // Diagnóstico: releer localStorage SIN tocar nada y comparar con memoria
@@ -1196,6 +1270,8 @@ async function subirAhoraNube(){
 async function save(){
   DATA.updatedAt=Date.now(); // marca de tiempo: para que gane siempre la versión más reciente
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
+
+  if(SYNC_DECISION_PENDING)return; // hay un conflicto de sync sin resolver: solo local, nada de Firebase
 
   if(!READONLY_ID&&!ES_MODO_GRUPO){
     SYNC_STATUS="saving";
@@ -1732,6 +1808,65 @@ function waQueueModalHTML(){
 ${done>0?`<button style="width:100%;padding:14px;border:none;border-radius:14px;background:#F5F5F5;color:#777;font-size:14px;font-weight:600;margin-bottom:8px" onclick="waQueueSkip()">⏭ Saltar este</button>`:""}
 <button style="width:100%;padding:12px;border:2px solid #ddd;border-radius:14px;background:transparent;color:#999;font-size:13px;font-weight:600" onclick="waQueueCancel()">✕ Cancelar</button>
 ${remaining>1?`<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:10px">Quedan ${remaining} mensaje${remaining>1?"s":""} después de este</div>`:""}`;
+}
+
+// Aviso de conflicto: hay datos más recientes en la nube que en este dispositivo.
+// No se puede cerrar tocando fuera — hay que elegir una de las dos opciones.
+function syncConflictModalHTML(){
+  const localT=MODAL.localUpdatedAt?new Date(MODAL.localUpdatedAt).toLocaleString("es-ES"):"(sin fecha)";
+  const cloudT=MODAL.cloudUpdatedAt?new Date(MODAL.cloudUpdatedAt).toLocaleString("es-ES"):"(sin fecha)";
+  return`<div class="modal-title">☁️ Hay datos más recientes en la nube</div>
+<div style="font-size:15px;line-height:1.6;color:var(--dark);margin-bottom:18px">
+  Parece que se editaron los datos desde <b>otro dispositivo</b>. ¿Cuáles quieres usar?
+</div>
+<div style="background:#F5F0EB;border-radius:14px;padding:14px;margin-bottom:10px">
+  <div style="font-size:13px;color:var(--muted);font-weight:600">📱 Este dispositivo</div>
+  <div style="font-size:18px;font-weight:800;color:var(--dark)">${localT}</div>
+</div>
+<div style="background:#F5F0EB;border-radius:14px;padding:14px;margin-bottom:22px">
+  <div style="font-size:13px;color:var(--muted);font-weight:600">☁️ La nube</div>
+  <div style="font-size:18px;font-weight:800;color:var(--dark)">${cloudT}</div>
+</div>
+<button class="backup-btn" style="background:#2D6A4F;color:#fff;font-size:16px;padding:16px" onclick="resolverConflictoSync('cloud')">☁️ Usar los de la nube (más recientes)</button>
+<button class="backup-btn" style="background:#fff;color:var(--dark);border:2px solid var(--dark);font-size:16px;padding:16px" onclick="resolverConflictoSync('local')">📱 Mantener los de este dispositivo</button>`;
+}
+
+// Lista de copias de seguridad locales (hasta 3), con confirmación de doble toque
+// por copia (mismo patrón que eliminar una ayuda: primer toque arma, segundo restaura).
+let _restoreArmedIdx=null;
+function armarRestaurar(idx){
+  if(_restoreArmedIdx!==idx){
+    _restoreArmedIdx=idx;
+    render();
+    toast("Toca de nuevo ♻️ Restaurar para confirmar");
+    setTimeout(()=>{if(_restoreArmedIdx===idx){_restoreArmedIdx=null;render();}},4000);
+    return;
+  }
+  _restoreArmedIdx=null;
+  restaurarRespaldoLocal(idx);
+}
+function restaurarBackupsModalHTML(){
+  const arr=listarRespaldosLocales();
+  let h=`<div class="modal-title">🗄️ Restaurar copia de seguridad local</div>`;
+  if(!arr.length){
+    h+=`<p style="font-size:14px;color:var(--muted);text-align:center;padding:12px 0">Todavía no hay copias de seguridad guardadas.</p>`;
+  }else{
+    h+=`<p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Se crean automáticamente cuando se resuelve una diferencia entre este dispositivo y la nube. Restaurar una copia guarda antes el estado actual, así que nunca se pierde nada.</p>`;
+    arr.forEach((bk,i)=>{
+      const fecha=bk.ts?new Date(bk.ts).toLocaleString("es-ES"):"(sin fecha)";
+      const origenTxt=bk.origen==="nube"?"☁️ Copia de la nube":"📱 Copia de este dispositivo";
+      const armed=_restoreArmedIdx===i;
+      h+=`<div style="background:#F5F0EB;border-radius:14px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600">${origenTxt}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--dark)">${fecha}</div>
+        </div>
+        <button style="padding:10px 14px;border:none;border-radius:12px;background:${armed?"#C75B0E":"var(--dark)"};color:#fff;font-size:13px;font-weight:700;white-space:nowrap" onclick="armarRestaurar(${i})">${armed?"♻️ Confirmar":"Restaurar"}</button>
+      </div>`;
+    });
+  }
+  h+=`<button style="width:100%;padding:12px;border:2px solid #ddd;border-radius:14px;background:transparent;color:#999;font-size:13px;font-weight:600;margin-top:6px" onclick="closeModal()">Cerrar</button>`;
+  return h;
 }
 
 function openPreview(mid){previewMiembro(mid);}
@@ -3772,6 +3907,7 @@ function render(){
       <button class="backup-btn backup-export" onclick="exportData()">📤 Exportar datos (JSON)</button>
       <button class="backup-btn" style="background:#2D6A4F;color:#fff" onclick="subirAhoraNube()">☁️ Subir ahora a la nube</button>
       <button class="backup-btn backup-import" onclick="importData()">📂 Importar backup</button>
+      <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
     </div>`;
 
     h+=`<button class="reset-btn" onclick="if(confirm('¿Resetear todos los datos? Se perderán todos los cambios.')){DATA=JSON.parse(JSON.stringify(INITIAL));save();toast('Datos reseteados');render();}">🔄 Resetear a datos originales</button>`;
@@ -3780,7 +3916,7 @@ function render(){
   h+=`</div>`;
 
   if(MODAL){
-    const dismissable=MODAL.type!=="wa_queue";
+    const dismissable=MODAL.type!=="wa_queue"&&MODAL.type!=="sync_conflict";
     h+=`<div class="modal-bg" ${dismissable?`onclick="closeModal()"`:""} ><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-handle"></div>`;
     if(MODAL.type==="member")h+=memberFormHTML();
     if(MODAL.type==="loan")h+=loanFormHTML();
@@ -3796,6 +3932,8 @@ function render(){
     if(MODAL.type==="ciclo")h+=cicloFormHTML();
     if(MODAL.type==="puntual")h+=puntualFormHTML();
     if(MODAL.type==="grupo_link")h+=grupoLinkModalHTML();
+    if(MODAL.type==="sync_conflict")h+=syncConflictModalHTML();
+    if(MODAL.type==="restaurar_backups")h+=restaurarBackupsModalHTML();
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;
