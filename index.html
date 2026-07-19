@@ -546,7 +546,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.20</div>
+<div class="app-version" id="appVersionTag">v43.21</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -618,7 +618,7 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.20"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.21"; // versión visible de la app (una sola fuente de verdad)
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -1496,11 +1496,16 @@ function undoPay(){
 }
 
 let _delMemberArmed=null;
+// ¿Es este asociado el principal de algún grupo de Cierre? (su enlace de grupo
+// dejaría de encontrar miembros si se le elimina)
+function esPrincipalDeGrupo(mid){
+  return (DATA.gruposCierre||[]).some(g=>g.principalId===mid);
+}
 function delMember(mid){
   if(_delMemberArmed!==mid){
     _delMemberArmed=mid;
     render();
-    toast("Toca de nuevo 🗑️ para confirmar");
+    toast(esPrincipalDeGrupo(mid)?"⚠️ Su enlace de grupo dejará de funcionar. Toca de nuevo 🗑️ para confirmar":"Toca de nuevo 🗑️ para confirmar",4000);
     setTimeout(()=>{if(_delMemberArmed===mid){_delMemberArmed=null;render();}},4000);
     return;
   }
@@ -1764,11 +1769,23 @@ async function shareImg(mid){
   }
 }
 
+// ¿Coincide el conjunto de ids seleccionado EXACTAMENTE con algún grupo de Cierre?
+// (mismos miembros, sin importar el orden). Si coincide, se puede usar el enlace
+// estable de ese grupo en vez del enlace con IDs congelados.
+function grupoQueCoincide(ids){
+  const set=new Set(ids);
+  return (DATA.gruposCierre||[]).find(g=>{
+    const gset=new Set([g.principalId,...(g.miembros||[])]);
+    if(gset.size!==set.size)return false;
+    for(const id of gset){ if(!set.has(id))return false; }
+    return true;
+  })||null;
+}
 function sendGroupLink(){
   const allVisible=DATA.members;
   const ids=[...SEND_SELECTED].filter(id=>allVisible.some(m=>m.id===id));
   if(ids.length<2){toast("Selecciona al menos 2 fichas");return;}
-  MODAL={type:"grupo_link",ids};
+  MODAL={type:"grupo_link",ids,grupoMatch:grupoQueCoincide(ids)};
   render();
 }
 function buildGrupoUrl(ids,yo){
@@ -1778,8 +1795,17 @@ function buildGrupoUrl(ids,yo){
 }
 // Enlace ESTABLE de un grupo de cierre: apunta al asociado principal.
 // No congela la lista; el asociado siempre verá los miembros actuales del grupo.
-function buildGrupoUrlEstable(principalId){
-  return baseUrl()+"?grupoppal="+encodeURIComponent(principalId);
+function buildGrupoUrlEstable(principalId,yo){
+  let u=baseUrl()+"?grupoppal="+encodeURIComponent(principalId);
+  if(yo)u+="&yo="+encodeURIComponent(yo);
+  return u;
+}
+// URL a usar para el modal de Envíos: estable si coincide con un grupo de Cierre,
+// si no, la de siempre (IDs congelados).
+function urlDelModalGrupo(){
+  if(!MODAL||!MODAL.ids)return "";
+  if(MODAL.grupoMatch)return buildGrupoUrlEstable(MODAL.grupoMatch.principalId,MODAL.yo);
+  return buildGrupoUrl(MODAL.ids,MODAL.yo||MODAL.ids[0]);
 }
 // Compartir por WhatsApp el enlace estable de un grupo de cierre (desde la pestaña Cierre)
 function compartirGrupoCierre(gid){
@@ -1797,13 +1823,13 @@ function compartirGrupoCierre(gid){
 }
 function sendGrupoWA(){
   if(!MODAL||!MODAL.ids)return;
-  const url=buildGrupoUrl(MODAL.ids,MODAL.yo||MODAL.ids[0]);
+  const url=urlDelModalGrupo();
   const msg="Hola 👋 aquí podéis ver vuestro reporte de "+DATA.reportMonth+" "+DATA.reportYear+" en Nuevos Horizontes:\n"+url;
   window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
 }
 function copyGrupoUrl(){
   if(!MODAL||!MODAL.ids)return;
-  const url=buildGrupoUrl(MODAL.ids,MODAL.yo||MODAL.ids[0]);
+  const url=urlDelModalGrupo();
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>toast("🔗 Enlace copiado ✓"));
   }
@@ -1863,14 +1889,18 @@ function grupoLinkModalHTML(){
   const ids=MODAL.ids;
   const nombres=ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?m.name.split(" ")[0]:"";}).filter(Boolean);
   const esLocal=window.location.href.startsWith("file://");
-  const yo=MODAL.yo||ids[0];
-  const url=buildGrupoUrl(ids,yo);
-  const msg="Hola 👋 aquí podéis ver vuestro reporte de "+DATA.reportMonth+" "+DATA.reportYear+" en Nuevos Horizontes:\n"+url;
+  const gMatch=MODAL.grupoMatch;
+  const principalMatch=gMatch?DATA.members.find(x=>x.id===gMatch.principalId):null;
   return `<div class="modal-title">🔗 Enlace grupal · ${ids.length} fichas</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Seleccionados: <b>${escH(nombres.join(", "))}</b></p>
+    ${gMatch&&principalMatch
+      ?`<div style="background:#F0F7F2;border:1px solid #2D6A4F;border-radius:10px;padding:10px 12px;font-size:12px;color:#1B4332;margin-bottom:14px">✅ Coincide con el grupo de Cierre de <b>${escH(principalMatch.name)}</b> — se usará el enlace estable (no se rompe si editas a estos asociados).</div>`
+      :`<div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:10px;padding:10px 12px;font-size:12px;color:#7A4A1E;margin-bottom:14px">⚠️ Este enlace se romperá si editas a estos asociados. Mejor crea un grupo en la pestaña Cierre.
+        <button style="display:block;margin-top:8px;padding:7px 12px;border:none;border-radius:8px;background:#C75B0E;color:#fff;font-size:11px;font-weight:700;cursor:pointer" onclick="closeModal();TAB='mes';render()">Ir a Cierre</button>
+      </div>`}
     <label class="m-label">👤 Titular del enlace (verá su ficha individual)</label>
     <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="setGrupoTitular(this.value)">
-      ${ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?`<option value="${esc(id)}"${id===yo?" selected":""}>${escH(m.name)}</option>`:"";}).join("")}
+      ${ids.map(id=>{const m=DATA.members.find(x=>x.id===id);return m?`<option value="${esc(id)}"${id===(MODAL.yo||ids[0])?" selected":""}>${escH(m.name)}</option>`:"";}).join("")}
     </select>
     <button style="width:100%;padding:14px;border-radius:12px;background:var(--dark);color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="previewGrupo()">
       👁️ Ver cómo lo reciben los asociados
@@ -3982,6 +4012,9 @@ function configHTML(){
 function manageHTML(m,isT){
   const memArmed=(_delMemberArmed===m.id);
   let h=`<div class="mg-card" data-nombre="${escH((m.name||"").toLowerCase())}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-weight:700;font-size:16px;color:${isT?"var(--terc)":"var(--dark)"}">${escH(m.name)}</div><div style="font-size:12px;color:var(--muted)">${isT?"Ref: "+escH(m.ref):"Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div></div><button class="del-btn ${memArmed?"armed":""}" onclick="delMember('${esc(m.id)}')">${memArmed?"¿Seguro?":"🗑️"}</button></div>`;
+  if(memArmed&&esPrincipalDeGrupo(m.id)){
+    h+=`<div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:10px;padding:9px 11px;margin:-2px 0 12px;font-size:12px;color:#7A4A1E">⚠️ Es principal de un grupo de Cierre — su enlace de grupo dejará de funcionar. Toca 🗑️ otra vez para confirmar.</div>`;
+  }
   m.loans.forEach(l=>{
     const armed=(_delLoanArmed===(m.id+"|"+l.id));
     h+=`<div class="mg-loan"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
