@@ -546,7 +546,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.22</div>
+<div class="app-version" id="appVersionTag">v43.23</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -619,7 +619,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.22"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.23"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -730,8 +730,10 @@ function sanitizeData(data){
   // (marcados con origen:"app" o con id que empieza por "m"+timestamp).
   // Antes este filtro borraba por error a los asociados nuevos y con ellos sus ayudas.
   const validNames=new Set(INITIAL.members.map(m=>m.name.toLowerCase().trim()));
+  const validIds=new Set(INITIAL.members.map(m=>m.id));
   data.members=data.members.filter(m=>{
     if(validNames.has((m.name||"").toLowerCase().trim()))return true; // está en el archivo
+    if(validIds.has(m.id))return true;                                // está en el archivo (por id, aunque le hayan cambiado el nombre)
     if(m.origen==="app")return true;                                  // creado desde la app
     if(typeof m.id==="string" && m.id.charAt(0)==="m")return true;     // id de la app
     return false; // fantasma real: descartar
@@ -4042,7 +4044,7 @@ function runCodeChecks(force){
     const limite=src.indexOf('function runCodeChecks');
     const zona=limite>-1?src.slice(0,limite):src;
     const iSD=zona.indexOf('function sanitizeData(');
-    let ok1=false,ok2=false;
+    let ok1=false,ok2=false,ok5=false;
     if(iSD>-1){
       // Busca la llave '}' que cierra de verdad sanitizeData (contando llaves,
       // no basta con mirar si el texto siguiente "termina en }").
@@ -4056,12 +4058,16 @@ function runCodeChecks(force){
         ok1=/^\s*const URL_PARAMS=new URLSearchParams\(window\.location\.search\);/.test(resto);
         const entre=zona.slice(iSD,iClose);
         ok2=/origen\s*===\s*"app"/.test(entre) && /id\.charAt\(0\)\s*===\s*"m"/.test(entre);
+        // Protección añadida en v43.23: un asociado del archivo (INITIAL) al que le
+        // cambian el nombre en caliente debe seguir reconociéndose por su id, si no
+        // sanitizeData lo trata como fantasma y lo borra (bug real: caso Ariel Olivo).
+        ok5=/validIds\.has\(m\.id\)/.test(entre);
       }
     }
     const ok3 = zona.includes('Cache-Control" content="no-cache, no-store, must-revalidate"')
       && zona.includes('http-equiv="Pragma" content="no-cache"')
       && zona.includes('http-equiv="Expires" content="0"');
-    CODE_CHECKS.online=true; CODE_CHECKS.ok1=ok1; CODE_CHECKS.ok2=ok2; CODE_CHECKS.ok3=ok3;
+    CODE_CHECKS.online=true; CODE_CHECKS.ok1=ok1; CODE_CHECKS.ok2=ok2; CODE_CHECKS.ok3=ok3; CODE_CHECKS.ok5=ok5;
   }).catch(()=>{ CODE_CHECKS.online=false; }).then(()=>{
     try{
       const t1=topeMesFuturo("2026-08")===10, t2=topeMesFuturo("2026-09")===12;
@@ -4115,6 +4121,12 @@ function chequeoHTML(){
     "Aviso: faltan etiquetas anti-caché — avisar al soporte",
     "Comprobando etiquetas anti-caché…",
     "Sin conexión: no se pudo comprobar la caché"));
+  const s5 = !CODE_CHECKS.ran ? null : (!CODE_CHECKS.online ? "offline" : CODE_CHECKS.ok5);
+  chk.push(lineaEstado(s5,
+    "Miembros del archivo (INITIAL) se conservan por id al renombrarlos",
+    "Aviso: un asociado renombrado en caliente podría borrarse solo al recargar — avisar al soporte",
+    "Comprobando protección de renombrados…",
+    "Sin conexión: no se pudo comprobar la protección de renombrados"));
   const s4 = !CODE_CHECKS.ran ? null : CODE_CHECKS.ok4;
   chk.push(lineaEstado(s4,
     "Cálculo de tope de mes y beneficio extra correcto",
