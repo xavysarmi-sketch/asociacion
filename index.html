@@ -46,12 +46,13 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .rep-filtro.on .filtro-num{background:rgba(255,255,255,.22);color:#fff}
 .grand-sub b{font-weight:700;color:#fff}
 .grand-breakdown{margin-top:10px;text-align:left}
-.gb-row{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;font-size:14px;color:rgba(255,255,255,.85);border-bottom:1px solid rgba(255,255,255,.12)}
-.gb-row b{color:#fff;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
+.gb-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 4px;font-size:14px;color:rgba(255,255,255,.85);border-bottom:1px solid rgba(255,255,255,.12)}
+.gb-row>span:first-child{min-width:0;flex:1}
+.gb-row b{color:#fff;font-weight:700;font-variant-numeric:lining-nums tabular-nums;white-space:nowrap;flex-shrink:0}
 .rec-fila{padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.12)}
 .rec-l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.rec-l1 .rec-lbl{font-size:14px;color:rgba(255,255,255,.85)}
-.rec-l1 .rec-imp{font-weight:800;color:#fff;font-size:16px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rec-l1 .rec-lbl{font-size:14px;color:rgba(255,255,255,.85);min-width:0;flex:1}
+.rec-l1 .rec-imp{font-weight:800;color:#fff;font-size:16px;white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
 .rec-l2{text-align:right;margin-top:3px}
 .chip-falta{display:inline-block;background:rgba(255,180,70,.18);color:#FFC98B;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
 .chip-ok{display:inline-block;background:rgba(149,213,178,.2);color:#95D5B2;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
@@ -210,17 +211,26 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .empty-sub{font-size:13px;margin-top:6px}
 .resumen-final{background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:18px;padding:18px;margin-top:16px}
 .rf-title{font-size:14px;font-weight:800;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
-.rf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;color:rgba(255,255,255,.8)}
-.rf-val{font-weight:700;color:#fff}
+.rf-row{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:8px;font-size:13px;color:rgba(255,255,255,.8)}
+.rf-row>span:first-child{min-width:0;flex:1}
+.rf-val{font-weight:700;color:#fff;white-space:nowrap;flex-shrink:0}
 .rf-pend{color:#FFB347}
 .rf-sec{font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1.2px;margin:12px 0 6px}
-.rf-neto{display:flex;justify-content:space-between;align-items:center;font-weight:800;color:#fff;font-size:15px;margin-bottom:8px}
-.rf-neto b{font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rf-neto{display:flex;align-items:center;gap:8px;justify-content:space-between;font-weight:800;color:#fff;font-size:15px;margin-bottom:4px}
+.rf-neto>span:first-child{min-width:0;flex:1}
+.rf-neto small{display:block;font-weight:400;opacity:.55;font-size:10px;margin-top:2px;line-height:1.3}
+.rf-neto b{font-size:17px;white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
+.rf-falta{text-align:right;font-size:11px;color:#FFB347;margin:-2px 0 8px}
+.ayn-row{cursor:pointer}
+.ayn-row .arrow{opacity:.6;font-size:10px;margin-left:4px}
+.ayn-sub{padding-left:16px;font-size:12px;opacity:.82;margin-bottom:5px}
 .v-pos{color:#95D5B2}
 .v-neg{color:#FFAA92}
 .v-res{color:#C5C6F5}
 .rf-divider{height:1px;background:rgba(255,255,255,.15);margin:10px 0}
-.rf-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid rgba(255,255,255,.25);font-size:18px;font-weight:800;color:#fff}
+.rf-total{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:2px solid rgba(255,255,255,.25);font-size:18px;font-weight:800;color:#fff}
+.rf-total>span:first-child{min-width:0;flex:1}
+.rf-total>span:last-child{white-space:nowrap;flex-shrink:0}
 .img-btn{flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:700;background:#FF6B35;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s}
 .img-btn:active{transform:scale(.97)}
 .img-btn:disabled{opacity:.5}
@@ -546,7 +556,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.23</div>
+<div class="app-version" id="appVersionTag">v43.24</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -619,7 +629,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.23"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.24"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -933,6 +943,7 @@ let CODE_CHECKS={ran:false,running:false,online:true,ok1:null,ok2:null,ok3:null,
 let UPDATE_CONFIRMED=false; // true en cuanto se confirma que se está viendo la versión publicada
 let REPORT_FILTER="todos"; // "todos" (orden de entrada) | "activas" (solo con ayudas activas)
 let LISTA_ABIERTA=false; // la lista de asociados arranca plegada para ver el control contable de un vistazo
+let AYUDAS_NUEVAS_ABIERTA=false; // detalle de "Ayudas nuevas del mes" en Resumen General, arranca plegado
 let CIERRE_SEARCH=""; // texto del buscador del Cierre
 let ASOC_SEARCH=""; // texto del buscador de Asociados
 // Grupos de cierre: se guardan en DATA.gruposCierre = [{id, principalId, miembros:[mid,...]}]
@@ -3670,11 +3681,12 @@ function render(){
       const mFicha=DATA.members.find(x=>x.id===FICHA_ID);
       if(mFicha){h+=fichaHTML(mFicha);}
     } else {
-      // Vista fusionada: Recaudación + filtros + fichas estilo reporte (tocables) + Resumen General
+      // Vista fusionada: filtros + fichas estilo reporte (tocables) + Recaudación + Resumen General
       const ordered=buildOrderedMembers();
       const totApt=totalAportesMes(rm,ry);
       h+=`<div id="capture" style="background:#F5F0EB;padding-bottom:10px">`;
-      // 1) Recaudación — cobrado vs pendiente del MES EN CURSO
+      // 1) Recaudación — cobrado vs pendiente del MES EN CURSO (cálculos; el bloque se
+      // pinta más abajo, DESPUÉS del desplegable de asociados — ver punto 3)
       const asocC=DATA.members.filter(m=>m.type==="asociado");
       const tercC=DATA.members.filter(m=>m.type==="tercero");
       const intSplit=asocC.reduce((a,m)=>{const s=dueSplit(m,rm,ry);a.cob+=s.cobrado;a.pen+=s.pendiente;return a;},{cob:0,pen:0});
@@ -3699,17 +3711,6 @@ function render(){
       const _aptPag=_asocAct.filter(m=>_mdRec.aportes&&_mdRec.aportes[m.id]).length;
       // Subtotal de devoluciones (internas + externas) antes de aportes
       const devCob=intSplit.cob+extSplit.cob, devPen=intSplit.pen+extSplit.pen;
-      h+=`<div class="grand">
-        <div class="grand-label">Recaudación — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
-        <div class="grand-breakdown">
-          ${rowRec("🏠","Devoluciones internas",intSplit.cob,intSplit.pen)}
-          ${rowRec("🤝","Devoluciones externas",extSplit.cob,extSplit.pen)}
-          ${rowRec("","Subtotal devoluciones",devCob,devPen,"rec-sub")}
-          ${rowRec("💰","Aportes del mes",aptCob,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}`)}
-          <div class="gb-row gb-total" style="margin-top:6px"><span>COBRADO</span><b>${totCob} €</b></div>
-          ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">⏳ Pendiente por cobrar</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">✅ Todo cobrado este mes</span><b></b></div>`}
-        </div>
-      </div>`;
       // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
       const nAsociados=DATA.members.filter(m=>m.type==="asociado").length;
       const nAyudasActivas=DATA.members.reduce((s,m)=>s+(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length,0);
@@ -3740,21 +3741,34 @@ function render(){
         h+=`</div>`;
         h+=`<div class="note">Recuerda: el aporte mensual de <b>${fee},00 €</b> es adicional a las cuotas de devolución.</div>`;
       }
+      // 3) Recaudación — se pinta aquí, debajo del desplegable de asociados
+      h+=`<div class="grand">
+        <div class="grand-label">Recaudación — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
+        <div class="grand-breakdown">
+          ${rowRec("🏠","Devoluciones internas",intSplit.cob,intSplit.pen)}
+          ${rowRec("🤝","Devoluciones externas",extSplit.cob,extSplit.pen)}
+          ${rowRec("","Subtotal devoluciones",devCob,devPen,"rec-sub")}
+          ${rowRec("💰","Aportes del mes",aptCob,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}`)}
+          <div class="gb-row gb-total" style="margin-top:6px"><span>COBRADO</span><b>${totCob} €</b></div>
+          ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">⏳ Pendiente por cobrar</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">✅ Todo cobrado este mes</span><b></b></div>`}
+        </div>
+      </div>`;
       // 4) Resumen General
       const totIntPend=DATA.members.filter(m=>m.type==="asociado").reduce((s,m)=>s+pendAll(m),0);
       const totTercPend=DATA.members.filter(m=>m.type==="tercero").reduce((s,m)=>s+pendAll(m),0);
-      const md=getMesData(rm,ry);
       const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
-      const ri2=MONTHS.indexOf(rm);
-      const conDerecho=asocActivos.filter(m=>{const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;return(jy<ry)||(jy===ry&&ji<ri2);});
-      const topeNivel=ri2>=8&&ry===2026?12:10;
-      const mesKeyRes=ry+"-"+String(ri2+1).padStart(2,"0");
-      const benHistRes=typeof BENEFICIO_MES!=="undefined"?BENEFICIO_MES[mesKeyRes]:undefined;
-      const repartoPorAsoc=conDerecho.length>0?md.recargo/conDerecho.length:0;
-      const beneficioMes=md.recargo>0?Math.min(repartoPorAsoc,topeNivel):(benHistRes!==undefined?benHistRes:0);
-      const excedenteMes=md.recargo>0?Math.max(0,md.recargo-(beneficioMes*conDerecho.length)):0;
+      // Ayudas nuevas otorgadas ESTE mes (activas y cerradas: una ayuda corta puede
+      // otorgarse y cerrarse en el mismo mes, así que hay que mirar las dos listas).
+      const ayudasNuevasMes=[];
+      DATA.members.forEach(m=>{
+        [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+          if(l.gMonth===rm&&l.gYear===ry) ayudasNuevasMes.push({nombre:m.name,capital:l.capital});
+        });
+      });
+      const totalAyudasNuevas=ayudasNuevasMes.reduce((s,a)=>s+a.capital,0);
       // Desglose de aportes puntuales a devolver este mes (pendiente vs ya devuelto)
       const spl=salidasPuntualesSplit(rm,ry);
+      const salidasYaDevueltas=spl.items.filter(it=>it.devuelto).reduce((s,it)=>s+it.total,0);
       // Entradas = total PREVISTO del mes: aportes previstos (base − descuentos referido)
       // + aportes EXTRA del mes (p.ej. aporte adicional al fondo) + cuotas internas + terceros.
       // El cuadro superior muestra cobrado vs pendiente; aquí interesa el total a cobrar.
@@ -3763,7 +3777,11 @@ function render(){
       let _extras=0;
       if(DATA.extras){Object.values(DATA.extras).forEach(o=>{ if(o[_mkE]&&o[_mkE].monto) _extras+=o[_mkE].monto; });}
       const entradas=_apt.cobrado+_apt.pendiente+_extras+tA+tT;
-      const dispNeto=entradas-spl.total;
+      // Disponible neto real: PREVISTO del mes (incluye lo aún pendiente de cobrar).
+      const dispNeto=entradas-spl.total-totalAyudasNuevas;
+      // Caja real: solo dinero que YA se movió — cobrado real, menos lo que ya salió
+      // (ayudas nuevas se entregan al otorgarse; devoluciones puntuales solo si ya se pagaron).
+      const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="rf-row"><span>👥 Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
@@ -3774,11 +3792,11 @@ function render(){
           ?`<div class="rf-row"><span>✅ Devolución puntual (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
           :`<div class="rf-row"><span>🔒 Devolución pendiente (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
         ).join("")}
-        <div class="rf-neto"><span>💵 Disponible neto real</span><b>${dispNeto} €</b></div>
-        <div class="rf-divider"></div>
-        <div class="rf-sec">Reparto</div>
-        <div class="rf-row"><span>🎁 Beneficio por asociado</span><span class="rf-val">${beneficioMes.toFixed(2)} € <span style="font-size:11px;color:rgba(255,255,255,.55)">(${conDerecho.length} con derecho)</span></span></div>
-        <div class="rf-row"><span>🏦 Excedente → Reserva</span><span class="rf-val v-res">${excedenteMes>0?excedenteMes.toFixed(2):"0"} €</span></div>
+        ${ayudasNuevasMes.length>0?`<div class="rf-row ayn-row" onclick="AYUDAS_NUEVAS_ABIERTA=!AYUDAS_NUEVAS_ABIERTA;render()"><span>🆕 Ayudas nuevas otorgadas (${ayudasNuevasMes.length}) <span class="arrow">${AYUDAS_NUEVAS_ABIERTA?"▲":"▼"}</span></span><span class="rf-val v-neg">−${totalAyudasNuevas} €</span></div>
+        ${AYUDAS_NUEVAS_ABIERTA?ayudasNuevasMes.map(a=>`<div class="rf-row ayn-sub"><span>${escH(a.nombre)}</span><span class="rf-val">${a.capital} €</span></div>`).join(""):""}`:""}
+        <div class="rf-neto"><span>💵 Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
+        <div class="rf-neto"><span>💰 Caja real<small>(solo cobrado)</small></span><b>${cajaReal} €</b></div>
+        ${totPen>0?`<div class="rf-falta">⏳ faltan ${totPen} € por cobrar</div>`:""}
         <div class="rf-divider"></div>
         <div class="rf-sec">Cartera pendiente</div>
         <div class="rf-row"><span>🏠 Pendiente total internas</span><span class="rf-val rf-pend">${totIntPend} €</span></div>
