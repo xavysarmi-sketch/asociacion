@@ -556,7 +556,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.24</div>
+<div class="app-version" id="appVersionTag">v43.25</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -629,7 +629,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.24"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.25"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1001,9 +1001,13 @@ function activePayIndex(loan,rm,ry){
     const p=loan.pays[i];
     if(p.m===rm&&p.y===ry&&!p.paid)return i;
   }
-  // 3) Cascada: primera cuota futura sin pagar
-  for(let i=0;i<loan.pays.length;i++){
-    if(!loan.pays[i].paid)return i;
+  // 3) Cascada: primera cuota futura sin pagar — SOLO a partir del día de aviso
+  // (si no, una cuota de un mes que aún no ha llegado se vería "POR PAGAR").
+  const diaAviso=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
+  if(new Date().getDate()>=diaAviso){
+    for(let i=0;i<loan.pays.length;i++){
+      if(!loan.pays[i].paid)return i;
+    }
   }
   return -1;
 }
@@ -3745,9 +3749,6 @@ function render(){
       h+=`<div class="grand">
         <div class="grand-label">Recaudación — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="grand-breakdown">
-          ${rowRec("🏠","Devoluciones internas",intSplit.cob,intSplit.pen)}
-          ${rowRec("🤝","Devoluciones externas",extSplit.cob,extSplit.pen)}
-          ${rowRec("","Subtotal devoluciones",devCob,devPen,"rec-sub")}
           ${rowRec("💰","Aportes del mes",aptCob,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}`)}
           <div class="gb-row gb-total" style="margin-top:6px"><span>COBRADO</span><b>${totCob} €</b></div>
           ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">⏳ Pendiente por cobrar</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">✅ Todo cobrado este mes</span><b></b></div>`}
@@ -3797,6 +3798,12 @@ function render(){
         <div class="rf-neto"><span>💵 Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
         <div class="rf-neto"><span>💰 Caja real<small>(solo cobrado)</small></span><b>${cajaReal} €</b></div>
         ${totPen>0?`<div class="rf-falta">⏳ faltan ${totPen} € por cobrar</div>`:""}
+        <div class="rf-divider"></div>
+        <div class="rf-sec">Devoluciones y aportes</div>
+        <div class="rf-row"><span>🔄 Devoluciones</span><span class="rf-val">${devCob} €</span></div>
+        ${devPen>0?`<div class="rf-row"><span>🔄 Devoluciones pendientes</span><span class="rf-val rf-pend">${devPen} €</span></div>`:""}
+        <div class="rf-row"><span>💰 Aportes</span><span class="rf-val">${aptCob} €</span></div>
+        ${aptSplit.pendiente>0?`<div class="rf-row"><span>💰 Aportes pendientes</span><span class="rf-val rf-pend">${aptSplit.pendiente} €</span></div>`:""}
         <div class="rf-divider"></div>
         <div class="rf-sec">Cartera pendiente</div>
         <div class="rf-row"><span>🏠 Pendiente total internas</span><span class="rf-val rf-pend">${totIntPend} €</span></div>
@@ -4411,6 +4418,7 @@ function renderGrupo(){
   let h=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);padding:18px 20px 16px;border-radius:0 0 24px 24px;text-align:center;margin-bottom:0">
     <div class="h-title">NUEVOS HORIZONTES</div>
     <div class="h-sub">Reporte · ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
+    <div style="color:#fff;font-size:15px;font-weight:700;margin-top:2px">Hola, ${escH(titular.name)} 👋</div>
     <div style="margin-top:10px;background:rgba(255,255,255,.15);border-radius:12px;padding:8px 16px;display:inline-block">
       <span style="color:#fff;font-size:13px;font-weight:600">${members.length} fichas · Total grupal: <b style="font-size:18px">${totalGrupo} €</b></span>
     </div>
