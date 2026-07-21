@@ -53,9 +53,12 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .rec-l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .rec-l1 .rec-lbl{font-size:14px;color:rgba(255,255,255,.85);min-width:0;flex:1}
 .rec-l1 .rec-imp{font-weight:800;color:#fff;font-size:16px;white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
-.rec-l2{text-align:right;margin-top:3px}
-.chip-falta{display:inline-block;background:rgba(255,180,70,.18);color:#FFC98B;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
-.chip-ok{display:inline-block;background:rgba(149,213,178,.2);color:#95D5B2;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.gb-salida{margin-top:8px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.3)}
+.gb-salida-lbl{font-size:12px;color:rgba(255,255,255,.65)}
+.gb-salida-row{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+.gb-salida-txt{font-size:13px;color:rgba(255,255,255,.75)}
+.gb-salida-imp{font-weight:800;color:#FFAA92;font-size:15px}
+.gb-salida-sub{font-size:10.5px;color:rgba(255,255,255,.45);margin-top:3px}
 .rec-sub{background:rgba(255,255,255,.06);border-radius:8px;padding:8px;border-bottom:none;margin-top:2px}
 .rec-sub .rec-lbl{font-weight:700}
 .toggle-asoc{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:13px 16px;font-size:15px;font-weight:700;color:#1B4332;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:16px}
@@ -146,6 +149,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .mstat-val{font-size:17px;font-weight:800;color:var(--dark)}
 .mstat-lbl{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-top:1px}
 .nivel-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;background:#D8F3DC;color:#1B4332}
+.cuota-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--bg);color:#8B6F47;font-size:11px;font-weight:800;flex-shrink:0;border:1px solid var(--border)}
 
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:998;display:flex;align-items:flex-end;justify-content:center}
 .modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto}
@@ -556,7 +560,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.25</div>
+<div class="app-version" id="appVersionTag">v43.26</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -629,7 +633,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.25"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.26"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -3494,6 +3498,7 @@ function render(){
         const porPersona={};
         cuotas.forEach(c=>{ if(!porPersona[c.mid]){porPersona[c.mid]=[];orden.push(c.mid);} porPersona[c.mid].push(c); });
         let tipoActual="";
+        let _cuotaIdx=0;
         orden.forEach(pid=>{
           const lista=porPersona[pid];
           const tipo=lista[0].tipo;
@@ -3508,8 +3513,10 @@ function render(){
               <span style="font-size:13px;color:var(--muted)">${subtotal} €</span>
             </div>`;
           lista.forEach(c=>{
-            h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 4px 10px">
-              <span style="font-size:13px;color:var(--muted)">Ayuda ${escH(c.gMonth)} ${c.gYear} · cuota ${c.numCuota}/${c.totalCuotas}</span>
+            _cuotaIdx++;
+            h+=`<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
+              <span class="cuota-num">${_cuotaIdx}</span>
+              <span style="font-size:13px;color:var(--muted);flex:1">Ayuda ${escH(c.gMonth)} ${c.gYear} · cuota ${c.numCuota}/${c.totalCuotas}</span>
               <div style="display:flex;align-items:center;gap:10px">
                 <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm)"};font-size:14px">${c.inst} €</span>
                 <button class="toggle-btn ${c.paid?"on":"off"}" onclick="toggleCuotaCierre('${esc(c.mid)}','${esc(c.lid)}',${c.pi})"></button>
@@ -3519,7 +3526,7 @@ function render(){
           h+=`</div>`;
         });
         h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:2px solid var(--border);margin-top:10px;padding-top:10px">
-          <span>Total cobrado este mes</span><span>${totalCuotasCobr} €</span>
+          <span>Total cobrado este mes <span style="font-weight:400;color:var(--muted);font-size:12px">(${cuotas.length} ${cuotas.length===1?"cuota":"cuotas"})</span></span><span>${totalCuotasCobr} €</span>
         </div>`;
       }
       h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:14px" onclick="openModal('cierreloan',{})">＋ Registrar ayuda aprobada</button>`;
@@ -3582,6 +3589,7 @@ function render(){
           const orden=[];
           const porPersona={};
           items.forEach(it=>{ if(!porPersona[it.mid]){porPersona[it.mid]=[];orden.push(it.mid);} porPersona[it.mid].push(it); });
+          let _cuotaIdxGrupo=0;
           orden.forEach(pid=>{
             const lista=porPersona[pid];
             const esPrincipal=(pid===g.principalId);
@@ -3597,8 +3605,11 @@ function render(){
               </div>`;
             lista.forEach(it=>{
               const colorImp=it.yaPagado?"#2D6A4F":"var(--warm)";
-              h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 4px 10px">
-                <span style="font-size:13px;color:var(--muted)">${it.concepto}</span>
+              const esCuota=it.tipo==="cuota";
+              if(esCuota)_cuotaIdxGrupo++;
+              h+=`<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
+                ${esCuota?`<span class="cuota-num">${_cuotaIdxGrupo}</span>`:""}
+                <span style="font-size:13px;color:var(--muted);flex:1">${it.concepto}</span>
                 <div style="display:flex;align-items:center;gap:10px">
                   <span class="aporte-amt" style="color:${colorImp};font-size:14px">${it.importe} €</span>
                   <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
@@ -3704,17 +3715,16 @@ function render(){
       const aptCob=aptSplit.cobrado+aptExtra;
       const totCob=intSplit.cob+extSplit.cob+aptCob;
       const totPen=intSplit.pen+extSplit.pen+aptSplit.pendiente;
-      // Fila con chip en línea propia: importe cobrado arriba, estado (faltan/al día) debajo
-      const rowRec=(icon,lbl,cob,pen,extraCls,sub)=>`<div class="rec-fila ${extraCls||""}">
-        <div class="rec-l1"><span class="rec-lbl">${icon} ${lbl}${sub?` <span style="opacity:.6;font-size:12px">${sub}</span>`:""}</span><span class="rec-imp">${cob} €</span></div>
-        <div class="rec-l2">${pen>0?`<span class="chip-falta">⏳ faltan ${pen} €</span>`:`<span class="chip-ok">✓ al día</span>`}</div>
-      </div>`;
       // Contador de aportes cobrados X/Y para mostrar junto a "Aportes del mes"
       const _mdRec=getMesData(rm,ry),_riRec=MONTHS.indexOf(rm);
       const _asocAct=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&((m.joinYear<ry)||(m.joinYear===ry&&MONTHS.indexOf(m.joinMonth)<=_riRec)));
       const _aptPag=_asocAct.filter(m=>_mdRec.aportes&&_mdRec.aportes[m.id]).length;
       // Subtotal de devoluciones (internas + externas) antes de aportes
-      const devCob=intSplit.cob+extSplit.cob, devPen=intSplit.pen+extSplit.pen;
+      const devCob=intSplit.cob+extSplit.cob;
+      // Desglose de aportes puntuales a devolver este mes (pendiente vs ya devuelto) —
+      // se calcula aquí porque Recaudación (punto 3, abajo) también lo necesita.
+      const spl=salidasPuntualesSplit(rm,ry);
+      const salidasYaDevueltas=spl.items.filter(it=>it.devuelto).reduce((s,it)=>s+it.total,0);
       // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
       const nAsociados=DATA.members.filter(m=>m.type==="asociado").length;
       const nAyudasActivas=DATA.members.reduce((s,m)=>s+(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length,0);
@@ -3749,9 +3759,16 @@ function render(){
       h+=`<div class="grand">
         <div class="grand-label">Recaudación — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="grand-breakdown">
-          ${rowRec("💰","Aportes del mes",aptCob,aptSplit.pendiente,"",`(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}`)}
-          <div class="gb-row gb-total" style="margin-top:6px"><span>COBRADO</span><b>${totCob} €</b></div>
-          ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">⏳ Pendiente por cobrar</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">✅ Todo cobrado este mes</span><b></b></div>`}
+          <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Devoluciones</span><span class="rec-imp">${devCob} €</span></div></div>
+          <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Aportaciones <span style="opacity:.6;font-size:12px">(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}</span></span><span class="rec-imp">${aptCob} €</span></div></div>
+          <div class="gb-row gb-total" style="margin-top:6px"><span>SUMA</span><b>${totCob} €</b></div>
+          ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">Pendiente</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">Todo cobrado este mes</span><b></b></div>`}
+          ${spl.total>0?`<div class="gb-salida">
+            <div class="gb-salida-lbl">Salida del fondo</div>
+            <div class="gb-salida-row"><span class="gb-salida-txt">Devolución de aporte puntual</span><span class="gb-salida-imp">−${spl.total} €</span></div>
+            <div class="gb-salida-sub">Ya descontada en Disponible neto real y Caja real (Resumen General)</div>
+          </div>
+          <div class="gb-row gb-total" style="margin-top:10px"><span>TOTAL NETO</span><b>${totCob-spl.total} €</b></div>`:""}
         </div>
       </div>`;
       // 4) Resumen General
@@ -3767,9 +3784,6 @@ function render(){
         });
       });
       const totalAyudasNuevas=ayudasNuevasMes.reduce((s,a)=>s+a.capital,0);
-      // Desglose de aportes puntuales a devolver este mes (pendiente vs ya devuelto)
-      const spl=salidasPuntualesSplit(rm,ry);
-      const salidasYaDevueltas=spl.items.filter(it=>it.devuelto).reduce((s,it)=>s+it.total,0);
       // Entradas = total PREVISTO del mes: aportes previstos (base − descuentos referido)
       // + aportes EXTRA del mes (p.ej. aporte adicional al fondo) + cuotas internas + terceros.
       // El cuadro superior muestra cobrado vs pendiente; aquí interesa el total a cobrar.
@@ -3785,29 +3799,31 @@ function render(){
       const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
-        <div class="rf-row"><span>👥 Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
+        <div class="rf-row"><span>Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
         <div class="rf-divider"></div>
         <div class="rf-sec">Movimiento del mes</div>
         <div class="rf-row"><span>＋ Entradas (aportes + cuotas)</span><span class="rf-val v-pos">${entradas} €</span></div>
         ${spl.items.map(it=>it.devuelto
-          ?`<div class="rf-row"><span>✅ Devolución puntual (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
-          :`<div class="rf-row"><span>🔒 Devolución pendiente (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
+          ?`<div class="rf-row"><span>Devolución puntual (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
+          :`<div class="rf-row"><span>Devolución pendiente (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
         ).join("")}
-        ${ayudasNuevasMes.length>0?`<div class="rf-row ayn-row" onclick="AYUDAS_NUEVAS_ABIERTA=!AYUDAS_NUEVAS_ABIERTA;render()"><span>🆕 Ayudas nuevas otorgadas (${ayudasNuevasMes.length}) <span class="arrow">${AYUDAS_NUEVAS_ABIERTA?"▲":"▼"}</span></span><span class="rf-val v-neg">−${totalAyudasNuevas} €</span></div>
+        ${ayudasNuevasMes.length>0?`<div class="rf-row ayn-row" onclick="AYUDAS_NUEVAS_ABIERTA=!AYUDAS_NUEVAS_ABIERTA;render()"><span>Ayudas nuevas otorgadas (${ayudasNuevasMes.length}) <span class="arrow">${AYUDAS_NUEVAS_ABIERTA?"▲":"▼"}</span></span><span class="rf-val v-neg">−${totalAyudasNuevas} €</span></div>
         ${AYUDAS_NUEVAS_ABIERTA?ayudasNuevasMes.map(a=>`<div class="rf-row ayn-sub"><span>${escH(a.nombre)}</span><span class="rf-val">${a.capital} €</span></div>`).join(""):""}`:""}
-        <div class="rf-neto"><span>💵 Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
-        <div class="rf-neto"><span>💰 Caja real<small>(solo cobrado)</small></span><b>${cajaReal} €</b></div>
-        ${totPen>0?`<div class="rf-falta">⏳ faltan ${totPen} € por cobrar</div>`:""}
+        <div class="rf-neto"><span>Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
+        <div class="rf-neto"><span>Caja real<small>(solo cobrado)</small></span><b>${cajaReal} €</b></div>
+        ${totPen>0?`<div class="rf-falta">faltan ${totPen} € por cobrar</div>`:""}
         <div class="rf-divider"></div>
         <div class="rf-sec">Devoluciones y aportes</div>
-        <div class="rf-row"><span>🔄 Devoluciones</span><span class="rf-val">${devCob} €</span></div>
-        ${devPen>0?`<div class="rf-row"><span>🔄 Devoluciones pendientes</span><span class="rf-val rf-pend">${devPen} €</span></div>`:""}
-        <div class="rf-row"><span>💰 Aportes</span><span class="rf-val">${aptCob} €</span></div>
-        ${aptSplit.pendiente>0?`<div class="rf-row"><span>💰 Aportes pendientes</span><span class="rf-val rf-pend">${aptSplit.pendiente} €</span></div>`:""}
+        <div class="rf-row"><span>Internas</span><span class="rf-val">${intSplit.cob} €</span></div>
+        ${intSplit.pen>0?`<div class="rf-row"><span>Internas pendientes</span><span class="rf-val rf-pend">${intSplit.pen} €</span></div>`:""}
+        <div class="rf-row"><span>Externas</span><span class="rf-val">${extSplit.cob} €</span></div>
+        ${extSplit.pen>0?`<div class="rf-row"><span>Externas pendientes</span><span class="rf-val rf-pend">${extSplit.pen} €</span></div>`:""}
+        <div class="rf-row"><span>Aportes</span><span class="rf-val">${aptCob} €</span></div>
+        ${aptSplit.pendiente>0?`<div class="rf-row"><span>Aportes pendientes</span><span class="rf-val rf-pend">${aptSplit.pendiente} €</span></div>`:""}
         <div class="rf-divider"></div>
         <div class="rf-sec">Cartera pendiente</div>
-        <div class="rf-row"><span>🏠 Pendiente total internas</span><span class="rf-val rf-pend">${totIntPend} €</span></div>
-        <div class="rf-row"><span>🤝 Pendiente total terceros</span><span class="rf-val rf-pend">${totTercPend} €</span></div>
+        <div class="rf-row"><span>Pendiente total internas</span><span class="rf-val rf-pend">${totIntPend} €</span></div>
+        <div class="rf-row"><span>Pendiente total terceros</span><span class="rf-val rf-pend">${totTercPend} €</span></div>
         <div class="rf-total"><span>CARTERA TOTAL</span><span>${totIntPend+totTercPend} €</span></div>
       </div></div>`;
     }
