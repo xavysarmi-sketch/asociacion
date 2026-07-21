@@ -560,7 +560,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.26</div>
+<div class="app-version" id="appVersionTag">v43.27</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -633,7 +633,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.26"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.27"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1463,7 +1463,7 @@ function itemsDeMiembro(mid){
     items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto,importe:neto,yaPagado:pagado});
   }
   cuotasDelMes(rm,ry).filter(c=>c.mid===mid).forEach(c=>{
-    items.push({tipo:"cuota",mid:c.mid,lid:c.lid,pi:c.pi,nombre:c.nombre,concepto:`Cuota ${c.numCuota}/${c.totalCuotas}${c.aplazada?" · aplazada":""}`,importe:c.inst,recargo:c.recargo,yaPagado:c.paid,aplazada:c.aplazada});
+    items.push({tipo:"cuota",mid:c.mid,lid:c.lid,pi:c.pi,nombre:c.nombre,concepto:`Cuota ${c.numCuota}/${c.totalCuotas}`,importe:c.inst,recargo:c.recargo,yaPagado:c.paid,aplazada:c.aplazada});
   });
   return items;
 }
@@ -3514,9 +3514,12 @@ function render(){
             </div>`;
           lista.forEach(c=>{
             _cuotaIdx++;
-            h+=`<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
+            h+=`<div style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
               <span class="cuota-num">${_cuotaIdx}</span>
-              <span style="font-size:13px;color:var(--muted);flex:1">Ayuda ${escH(c.gMonth)} ${c.gYear} · cuota ${c.numCuota}/${c.totalCuotas}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;color:var(--muted)">Ayuda ${escH(c.gMonth)} ${c.gYear} · cuota ${c.numCuota}/${c.totalCuotas}</div>
+                ${c.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
+              </div>
               <div style="display:flex;align-items:center;gap:10px">
                 <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm)"};font-size:14px">${c.inst} €</span>
                 <button class="toggle-btn ${c.paid?"on":"off"}" onclick="toggleCuotaCierre('${esc(c.mid)}','${esc(c.lid)}',${c.pi})"></button>
@@ -3607,9 +3610,12 @@ function render(){
               const colorImp=it.yaPagado?"#2D6A4F":"var(--warm)";
               const esCuota=it.tipo==="cuota";
               if(esCuota)_cuotaIdxGrupo++;
-              h+=`<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
+              h+=`<div style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
                 ${esCuota?`<span class="cuota-num">${_cuotaIdxGrupo}</span>`:""}
-                <span style="font-size:13px;color:var(--muted);flex:1">${it.concepto}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;color:var(--muted)">${it.concepto}</div>
+                  ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
+                </div>
                 <div style="display:flex;align-items:center;gap:10px">
                   <span class="aporte-amt" style="color:${colorImp};font-size:14px">${it.importe} €</span>
                   <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
