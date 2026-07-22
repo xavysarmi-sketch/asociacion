@@ -636,7 +636,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.30"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.31"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4535,7 +4535,7 @@ load();
 <!-- ============================================================ -->
 <script>
 window.APP_UPDATE = (function(){
-  var CHECK_INTERVAL_MS = 10 * 60 * 1000; // Comprueba cada 10 minutos (menos ruido)
+  var CHECK_INTERVAL_MS = 3 * 60 * 1000; // Comprueba cada 3 minutos
   var currentFingerprint = null;
   var pendingFp = null;      // huella distinta a la espera de confirmarse
   var pendingCount = 0;      // veces seguidas que se ha visto esa huella distinta
@@ -4646,7 +4646,7 @@ window.APP_UPDATE = (function(){
 
   // Inicializar: primera comprobación al cargar
   check();
-  // Comprobar cada 2 minutos mientras la app esté abierta
+  // Comprobar cada 3 minutos mientras la app esté abierta
   setInterval(check, CHECK_INTERVAL_MS);
   // Comprobar también cuando el usuario vuelve a la app (importante en iPhone)
   document.addEventListener('visibilitychange', function(){
