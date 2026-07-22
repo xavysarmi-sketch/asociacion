@@ -89,8 +89,8 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .loan-pend{text-align:right}
 .loan-pend-lbl{font-size:12px;font-weight:600;color:var(--muted)}
 .loan-pend-val{font-weight:700;font-size:17px;color:var(--warm)}
-.timeline{display:flex;gap:5px}
-.cuota{flex:1;border-radius:10px;padding:8px 4px;text-align:center;min-width:0;border:none}
+.timeline{display:flex;flex-wrap:wrap;gap:5px}
+.cuota{flex:1 1 64px;border-radius:10px;padding:8px 4px;text-align:center;min-width:64px;border:none}
 .cuota-paid{background:var(--paid-bg);outline:2px solid var(--paid)}
 .cuota-due{background:var(--warm-lt);outline:2.5px solid var(--warm);box-shadow:0 0 0 3px rgba(224,122,58,.15)}
 .cuota-future{background:#F5F5F5;outline:2px solid #DEDEDE}
@@ -636,7 +636,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.29"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.30"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
