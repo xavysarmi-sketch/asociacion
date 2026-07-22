@@ -35,11 +35,18 @@ lenguaje sencillo antes de aplicarlos.
 - Verificar visualmente que las reglas críticas 2, 3 y 4 siguen intactas.
 
 ## Versionado y deploy
-- La versión visible está en el elemento id="appVersionTag" (abajo a la derecha). Incrementarla
-  en cada cambio (formato v43.XX).
+- El número de versión vive SOLO en la constante APP_VERSION. Al versionar, cambiar
+  únicamente APP_VERSION, nunca escribir el número a mano en appVersionTag.
+- La versión visible (elemento id="appVersionTag", abajo a la derecha) la rellena el JS
+  a partir de APP_VERSION; el div no lleva texto fijo. Incrementar APP_VERSION en cada
+  cambio (formato v43.XX).
 - Mensaje de commit: empieza con la versión, ej. "v43.20 — descripción breve".
 - Antes de hacer commit/push, mostrar resumen de cambios y esperar aprobación de Ángel.
 - GitHub Pages tarda 1–2 min en publicar; la PWA puede necesitar recarga con ?_v=timestamp.
+- Regla permanente (sin que Ángel lo pida): en cuanto termine el commit + push de index.html,
+  como último paso de la tarea, copiar el index.html ya publicado a
+  `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\` (sobrescribiendo la copia anterior).
+  Detalle completo en el CLAUDE.md de NH Oficial, sección "Carpeta para_subir_a_Claude".
 
 ## Terminología obligatoria (textos visibles y documentos)
 - Usar: asociados, aportaciones/aportes, apoyos, adelantos solidarios, retornos compartidos,
@@ -58,3 +65,6 @@ lenguaje sencillo antes de aplicarlos.
 - Cambios quirúrgicos, no reescribir el archivo entero.
 - Criterio profesional honesto: si algo es mala idea o falta un dato, decirlo, no asumir.
 - El "Documento Maestro Interno" manda: si algo lo contradice, es un error a corregir.
+- Al terminar cualquier tarea, entregar el resumen en Markdown, compacto: archivos tocados,
+  líneas cambiadas con antes/después, resultado de node --check y número de versión. No
+  volcar el archivo completo salvo que Ángel lo pida.
