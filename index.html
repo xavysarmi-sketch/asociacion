@@ -94,6 +94,9 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .cuota-paid{background:var(--paid-bg);outline:2px solid var(--paid)}
 .cuota-due{background:var(--warm-lt);outline:2.5px solid var(--warm);box-shadow:0 0 0 3px rgba(224,122,58,.15)}
 .cuota-future{background:#F5F5F5;outline:2px solid #DEDEDE}
+.cuota-aplazada{background:#EEEDFE;outline:2px solid #534AB7}
+.cuota-aplazada .cuota-month,.cuota-aplazada .cuota-val{color:#3C3489}
+.cuota-aplazada .cuota-status{color:#26215C}
 .cuota-month{font-size:12px;font-weight:600;text-transform:uppercase}
 .cuota-val{font-size:15px;font-weight:700;margin-top:2px}
 .cuota-status{font-size:11px;font-weight:700;margin-top:3px}
@@ -560,7 +563,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.27</div>
+<div class="app-version" id="appVersionTag">v43.28</div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -2534,9 +2537,9 @@ function fichaResumenHTML(m){
     h+=`<div class="timeline">`;
     loan.pays.forEach((p,pi)=>{
       const isActive=(pi===activeIdx);
-      const st=p.paid?"paid":isActive?"due":"future";
+      const st=(p.aplazada&&!p.paid)?"aplazada":p.paid?"paid":isActive?"due":"future";
       // En readonly: div, no botón
-      h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+      h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
     });
     h+=`</div></div>`;
   });
@@ -2836,11 +2839,11 @@ function fichaHTML(m,readonly=false){
           <div class="timeline">`;
         loan.pays.forEach((p,pi)=>{
           const isActive=(pi===activeIdx)&&!esCerrada;
-          const st=p.paid?"paid":isActive?"due":"future";
+          const st=(p.aplazada&&!p.paid)?"aplazada":p.paid?"paid":isActive?"due":"future";
           if(readonly){
-            c+=`<div class="cuota cuota-${st}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+            c+=`<div class="cuota cuota-${st}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
           } else {
-            c+=`<button class="cuota cuota-${st}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+            c+=`<button class="cuota cuota-${st}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
           }
         });
         c+=`</div></div>`;
@@ -4051,12 +4054,12 @@ function cardHTML(m,isT,tappable){
     h+=`<div class="timeline">`;
     loan.pays.forEach((p,pi)=>{
       const isActive=(pi===activeIdx);
-      const st=p.paid?"paid":isActive?"due":"future";
+      const st=(p.aplazada&&!p.paid)?"aplazada":p.paid?"paid":isActive?"due":"future";
       if(tappable){
-        h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+        h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
       } else {
         const confirmMsg=!p.paid?`if(!confirm('¿Marcar como pagado: ${p.aplazada?(p.instAplazada||0):loan.inst} € de ${escH(m.name)}?'))return;`:"";
-        h+=`<button class="cuota cuota-${st}" onclick="${confirmMsg}togglePay('${esc(m.id)}','${esc(loan.id)}',${pi})"><div class="cuota-month">${p.m}</div><div class="cuota-val">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada?(p.paid?"APLAZADA ✓":"APLAZADA"):p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+        h+=`<button class="cuota cuota-${st}" onclick="${confirmMsg}togglePay('${esc(m.id)}','${esc(loan.id)}',${pi})"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
       }
     });
     h+=`</div></div>`;
