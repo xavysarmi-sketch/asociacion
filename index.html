@@ -15,12 +15,12 @@
 <style>
 :root{--bg:#F5F0EB;--card:#fff;--accent:#2D6A4F;--dark:#1B4332;--warm:#E07A3A;--warm-lt:#FFF0E6;--text:#2C2C2C;--muted:#7A7A7A;--border:#E8E0D8;--paid:#2D6A4F;--paid-bg:#D8F3DC;--terc:#5B5EA6;--wa:#25D366}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);max-width:500px;margin:0 auto;min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top)}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);max-width:500px;margin:0 auto;min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer;-webkit-appearance:none}
 input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:12px 28px;border-radius:30px;font-size:15px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);white-space:nowrap;transition:opacity .3s;pointer-events:none}
 .toast.hidden{opacity:0}
-.header{background:linear-gradient(135deg,#1B4332,#2D6A4F);padding:22px 20px 16px;border-radius:0 0 24px 24px;text-align:center;position:relative;overflow:hidden}
+.header{background:linear-gradient(135deg,#1B4332,#2D6A4F);padding:calc(22px + env(safe-area-inset-top)) 20px 16px;border-radius:0 0 24px 24px;text-align:center;position:relative;overflow:hidden}
 .header::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.06)}
 .h-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:1px}
 .h-sub{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:12px}
@@ -636,7 +636,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.31"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.32"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
