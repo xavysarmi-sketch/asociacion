@@ -43,10 +43,18 @@ lenguaje sencillo antes de aplicarlos.
 - Mensaje de commit: empieza con la versión, ej. "v43.20 — descripción breve".
 - Antes de hacer commit/push, mostrar resumen de cambios y esperar aprobación de Ángel.
 - GitHub Pages tarda 1–2 min en publicar; la PWA puede necesitar recarga con ?_v=timestamp.
-- Regla permanente (sin que Ángel lo pida): en cuanto termine el commit + push de index.html,
-  como último paso de la tarea, copiar el index.html ya publicado a
-  `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\` (sobrescribiendo la copia anterior).
-  Detalle completo en el CLAUDE.md de NH Oficial, sección "Carpeta para_subir_a_Claude".
+- REGLA DE CIERRE OBLIGATORIA (ejecutar siempre al terminar cualquier tarea, no opcional):
+  tras aplicar el cambio, validar `node --check` y confirmar la versión en APP_VERSION, y
+  como ÚLTIMO paso, sin que Ángel lo pida:
+  1. Copiar el index.html final a la carpeta-puente
+     `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\`, sobrescribiendo el que haya.
+  2. Si la tarea tocó también el Excel (NH_Contabilidad_Maestra.xlsx) o el Documento Maestro
+     (NH_Documento_Maestro_*.docx), copiar igualmente esa versión actualizada a la misma carpeta.
+  3. Confirmar en el resumen final qué archivos quedaron copiados y con qué versión, así:
+     `✔ para_subir_a_Claude actualizada → index.html v43.XX`
+  La carpeta-puente nunca debe quedarse en una versión anterior a la del repo. Si este paso no
+  se ejecuta, la tarea no está completa. Detalle completo en el CLAUDE.md de NH Oficial,
+  sección "Carpeta para_subir_a_Claude".
 
 ## Terminología obligatoria (textos visibles y documentos)
 - Usar: asociados, aportaciones/aportes, apoyos, adelantos solidarios, retornos compartidos,
