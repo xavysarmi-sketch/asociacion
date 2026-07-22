@@ -563,7 +563,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 </div>
 
 <!-- Marca de versión visible -->
-<div class="app-version" id="appVersionTag">v43.28</div>
+<div class="app-version" id="appVersionTag"></div>
 <div class="app-version-ok" id="versionOkBadge" style="display:none">✓ al día</div>
 
 <!-- FIX IPHONE: html2canvas y jsPDF se cargan LAZY, solo cuando el usuario pulsa "Generar PDF" -->
@@ -636,7 +636,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.27"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.29"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
