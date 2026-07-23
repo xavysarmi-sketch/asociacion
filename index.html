@@ -274,7 +274,7 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .hist-total{background:var(--bg);border-radius:12px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center}
 .hist-total-lbl{font-size:14px;font-weight:600;color:var(--muted)}
 .hist-total-val{font-size:20px;font-weight:800;color:var(--dark)}
-.app-version{position:fixed;bottom:6px;right:8px;font-size:10px;color:var(--muted);opacity:.5;z-index:100;pointer-events:none;font-weight:600}
+.app-version{position:fixed;bottom:6px;right:8px;font-size:10px;color:#2D6A4F;opacity:.85;z-index:100;pointer-events:none;font-weight:700}
 .app-version-ok{position:fixed;bottom:6px;right:62px;font-size:10px;color:#2D6A4F;opacity:.75;z-index:100;pointer-events:none;font-weight:700}
 .update-banner{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#E07A3A,#D96926);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.2);z-index:9998;transform:translateY(100%);transition:transform .3s ease-out;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
 .update-banner.show{transform:translateY(0)}
@@ -636,7 +636,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.32"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v43.33"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
