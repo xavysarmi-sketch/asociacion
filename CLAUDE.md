@@ -68,11 +68,36 @@ lenguaje sencillo antes de aplicarlos.
 - Excel: solo .xlsx, sin macros, funciones compatibles con LibreOffice Calc, decimales solo
   cuando sean necesarios.
 
-## Forma de trabajo
-- Avanzar bloque por bloque; explicar qué se va a cambiar y por qué ANTES de tocar código.
-- Cambios quirúrgicos, no reescribir el archivo entero.
+## Forma de trabajo — protocolo completo por tarea sobre index.html
+Contexto: Xavy trabaja desde Windows (ordenador), despliega con GitHub Desktop y verifica en
+iPhone (Safari y PWA). Las specs las prepara Claude en el Proyecto; Code las ejecuta sobre el
+código.
+
+1. Apertura — antes de proponer nada, declarar:
+   `Partida: index.html vXX.XX (leído de <ruta completa>)`
+   Si la versión no coincide con la que indica Xavy, DETENERSE y avisar.
+2. Cambios visuales — si la tarea afecta a CSS, colores, tamaños, posiciones o layout, generar
+   primero un archivo de previsualización `preview_<descripcion>.html` en para_subir_a_Claude,
+   con solo el bloque afectado y datos de ejemplo, para revisarlo en el móvil ANTES de tocar
+   index.html. No aplicar hasta que Xavy apruebe la preview.
+3. Aplicación — búsqueda/reemplazo literal, sin reinterpretar la spec; cambios quirúrgicos, no
+   reescribir el archivo entero. Si el texto a buscar no aparece exactamente, DETENERSE y
+   avisar; no improvisar.
+4. Validación — obligatoria en cada tarea (ver sección "Validación obligatoria" arriba).
+5. Reporte — SIEMPRE dentro de un bloque de código markdown (triple backtick), con: versión de
+   partida, líneas antes→después de cada cambio, resultado de validaciones, y lista explícita
+   de lo NO tocado. No volcar el archivo completo salvo que Ángel lo pida.
+6. Cierre — copiar index.html (y Excel/Documento si se tocaron) a para_subir_a_Claude (ver
+   "REGLA DE CIERRE OBLIGATORIA" en Versionado y deploy).
+7. Commit — NUNCA hacer commit+push sin confirmación explícita de Xavy tras revisar el reporte.
+8. Efectos secundarios — al cambiar CSS de layout (padding, position, z-index, safe-area),
+   enumerar en el reporte qué otras zonas podrían verse afectadas. Ejemplo real: quitar
+   padding-top del body arregló la cabecera pero dejó el contenido bajo la barra de estado al
+   hacer scroll.
+9. Herramientas — si una tarea requiere instalar, actualizar o configurar algo en el equipo de
+   Xavy (paquetes, dependencias, ajustes), AVISAR ANTES con: qué hace falta, por qué, y los
+   pasos exactos en Windows. No dar por supuesto que está instalado ni ejecutar instalaciones
+   sin avisar.
+
 - Criterio profesional honesto: si algo es mala idea o falta un dato, decirlo, no asumir.
 - El "Documento Maestro Interno" manda: si algo lo contradice, es un error a corregir.
-- Al terminar cualquier tarea, entregar el resumen en Markdown, compacto: archivos tocados,
-  líneas cambiadas con antes/después, resultado de node --check y número de versión. No
-  volcar el archivo completo salvo que Ángel lo pida.
