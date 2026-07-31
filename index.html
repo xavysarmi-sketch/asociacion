@@ -638,8 +638,8 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
-const DATA_VERSION=8; // bump this when INITIAL data changes
-const APP_VERSION="v44.0"; // versión visible de la app (una sola fuente de verdad)
+const DATA_VERSION=9; // bump this when INITIAL data changes
+const APP_VERSION="v44.1"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -729,6 +729,25 @@ function migrateData(data){
     data.reportMonth=INITIAL.reportMonth;
     data.reportYear=INITIAL.reportYear;
     data._version=6;
+    return data;
+  }
+
+  // ── v8→v9: v44.1 cambió el redondeo de ayudaTotal/ayudaCuotas de céntimos exactos
+  // a euros enteros y equilibró el reparto (decisión de Ángel). Vuelve a pasar
+  // recalcularApoyo(l) por cada ayuda para que total/cuotas queden en euros enteros
+  // — es la ÚNICA diferencia con v8, así que este bloque es MÍNIMO a propósito: NO
+  // reejecuta el resto de la migración (resincronizar con INITIAL, resetear
+  // reportMonth/reportYear, dar de alta miembros nuevos...), que sería incorrecto
+  // para datos que ya están al día en todo lo demás (p. ej. le resetearía el mes de
+  // reporte de Ángel de vuelta a "Jul" aunque ya esté en "Ago"). Idempotente: no
+  // toca pays[].paid, aplazada, instAplazada, ni monthlyData (incluido el recargo).
+  if(data._version===8){
+    data.members.forEach(m=>{
+      [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+        recalcularApoyo(l);
+      });
+    });
+    data._version=9;
     return data;
   }
 
@@ -1516,23 +1535,30 @@ function aportesSplit(rm,ry){
 // Recargo por cuota de una ayuda = % del capital (una vez por cuota), en céntimos exactos.
 function recargoPorCuota(l){return Math.round(l.capital*((l.rate!=null?l.rate:DATA.rate)/100)*100)/100;}
 
-// Total exacto de una ayuda = capital + recargo simple por cada cuota (capital*rate/100*n).
-// rate puede venir undefined (ayudas antiguas) → usa DATA.rate como fallback, igual que recargoPorCuota.
+// Total de una ayuda = capital + recargo simple por cada cuota (capital*rate/100*n),
+// SIEMPRE redondeado al alza a euro entero (v44.1 — decisión de Ángel: lo que se cobra
+// en mano nunca lleva céntimos; el fondo se queda con la fracción de más). El -1e-9 es
+// solo para que el redondeo de coma flotante no empuje un total exacto al euro siguiente.
+// rate puede venir undefined (ayudas antiguas) → usa DATA.rate como fallback.
+// OJO: esto es independiente de recargoPorCuota(), que se queda en céntimos exactos a
+// propósito (es una magnitud contable, no un importe que nadie paga en efectivo).
 function ayudaTotal(capital,n,rate){
   const r=(rate!=null?rate:DATA.rate)/100;
-  return Math.round((capital+capital*r*n)*100)/100;
+  return Math.ceil(capital+capital*r*n-1e-9);
 }
 
-// Reparte el total en n cuotas: las n-1 primeras redondeadas al alza al céntimo,
-// la última absorbe la diferencia — así sum(cuotas) === total SIEMPRE.
+// Reparte el total (ya entero) en n cuotas ENTERAS de forma EQUILIBRADA (v44.1,
+// corrección de Ángel): las primeras "resto" cuotas llevan 1€ más que el resto —
+// el salto máximo entre cuotas es de 1€, nunca se concentra toda la diferencia en
+// la última (evita que una última cuota mucho más baja parezca un descuento/error).
+// sum(cuotas) === total SIEMPRE.
 function ayudaCuotas(capital,n,rate){
   const total=ayudaTotal(capital,n,rate);
   if(!n||n<1)return {total,cuotas:[]};
-  const base=Math.ceil((total/n)*100)/100;
+  const base=Math.floor(total/n);
+  const resto=total-base*n; // nº de cuotas (las primeras) que llevan 1€ más
   const cuotas=[];
-  let acumulado=0;
-  for(let i=0;i<n-1;i++){ cuotas.push(base); acumulado=Math.round((acumulado+base)*100)/100; }
-  cuotas.push(Math.round((total-acumulado)*100)/100);
+  for(let i=0;i<n;i++) cuotas.push(i<resto?base+1:base);
   return {total,cuotas};
 }
 
@@ -1970,10 +1996,16 @@ function delMember(mid){
 let _delLoanArmed=null;
 // Recalcula los importes de un apoyo. ÚNICA función (junto con ayudaCuotas) que puede
 // escribir total/inst/cuotas — ver REGLA PERMANENTE en las instrucciones del proyecto.
-// - Sin cuotas aplazadas: usa ayudaCuotas tal cual (total y cuotas exactos, sum(cuotas)===total).
-// - Con cuotas APLAZADAS: las aplazadas pagan solo el retorno (recargoPorCuota, % del capital
-//   ORIGINAL); el capital se reparte EXACTO entre las cuotas normales (la última normal
-//   absorbe el céntimo). l.cuotas queda en el mismo orden que l.pays; l.total=suma(l.cuotas).
+// - Sin cuotas aplazadas: usa ayudaCuotas tal cual (total y cuotas exactas, en euros
+//   enteros, sum(cuotas)===total).
+// - Con cuotas APLAZADAS: la aplazada paga en efectivo instAplazada = Math.ceil(capital*
+//   tasa/100) — euro entero, v44.1 (NO es recargoPorCuota: esa función se queda en
+//   céntimos exactos a propósito para recargoAutoMes/control 6/banner, que son magnitudes
+//   contables, no importes que nadie paga en mano). El resto del total (también entero,
+//   mismo criterio que ayudaTotal) se reparte de forma EQUILIBRADA entre las cuotas
+//   normales (salto máximo de 1€, mismo criterio que ayudaCuotas — no se concentra la
+//   diferencia en una sola cuota). l.cuotas queda en el mismo orden que l.pays;
+//   l.total=suma(l.cuotas).
 // l.inst queda solo como referencia visual (1ª cuota normal); el cálculo real usa l.cuotas.
 function recalcularApoyo(l){
   const tasa=(l.rate!=null?l.rate:DATA.rate);
@@ -1984,27 +2016,29 @@ function recalcularApoyo(l){
     l.total=total; l.cuotas=cuotas; l.inst=cuotas[0];
     return;
   }
-  const retorno=recargoPorCuota(l); // % del capital ORIGINAL, en céntimos exactos
+  const instAplazada=Math.ceil(l.capital*(tasa/100)-1e-9); // importe en efectivo, euro entero
+  const totalAyuda=ayudaTotal(l.capital,l.n,tasa); // también entero, mismo criterio que sin aplazadas
   const nNormales=l.n-nAplazadas;
-  const capBase=nNormales>0?Math.ceil((l.capital/nNormales)*100)/100:0;
+  const restante=totalAyuda-nAplazadas*instAplazada; // lo que queda por repartir entre las normales
+  // Reparto EQUILIBRADO (mismo criterio que ayudaCuotas): las primeras "restoN"
+  // cuotas normales llevan 1€ más — salto máximo de 1€ entre cuotas normales.
+  const baseN=nNormales>0?Math.floor(restante/nNormales):0;
+  const restoN=nNormales>0?restante-baseN*nNormales:0;
   const cuotas=[];
-  let capAcumulado=0,iNormal=0;
+  let iNormal=0;
   l.pays.forEach(p=>{
     if(p.aplazada){
-      p.instAplazada=retorno;
-      cuotas.push(retorno);
+      p.instAplazada=instAplazada;
+      cuotas.push(instAplazada);
     }else{
+      cuotas.push(iNormal<restoN?baseN+1:baseN);
       iNormal++;
-      let capCuota;
-      if(iNormal===nNormales){ capCuota=Math.round((l.capital-capAcumulado)*100)/100; } // última normal absorbe el céntimo
-      else{ capCuota=capBase; capAcumulado=Math.round((capAcumulado+capBase)*100)/100; }
-      cuotas.push(Math.round((capCuota+retorno)*100)/100);
     }
   });
   l.cuotas=cuotas;
-  l.total=Math.round(cuotas.reduce((s,c)=>s+c,0)*100)/100;
+  l.total=cuotas.reduce((s,c)=>s+c,0);
   const iPrimeraNormal=l.pays.findIndex(p=>!p.aplazada);
-  l.inst=iPrimeraNormal>=0?cuotas[iPrimeraNormal]:retorno;
+  l.inst=iPrimeraNormal>=0?cuotas[iPrimeraNormal]:instAplazada;
 }
 function delLoan(mid,lid){
   // Sin confirm() (se bloquea en móvil). Primer toque arma, segundo elimina.
