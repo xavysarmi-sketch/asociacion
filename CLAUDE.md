@@ -27,6 +27,14 @@ lenguaje sencillo antes de aplicarlos.
 4. Sin Service Worker. La caché se controla con metaetiquetas anti-caché + recarga forzada
    con ?_v=timestamp (conservando los parámetros socio/grupo/yo). No eliminar.
 5. No usar confirm() nativo: en PWA/iPhone es poco fiable. Usar confirmación de dos toques.
+6. El repo se publica en GitHub Pages. Dentro de asociacion\ solo puede haber código
+   (index.html y configuración). Los JSON exportados, el Excel, los Word y las copias
+   de trabajo viven en `C:\Users\xavys\Documents\NH Oficial\`. Si necesitas un archivo
+   de datos para trabajar, LÉELO desde NH Oficial\; no lo copies al repo ni siquiera de
+   forma temporal. Antes de cualquier commit, ejecuta `git status` y confirma que no
+   aparece ningún .json, .xlsx, .docx ni carpeta de trabajo. (Incidente real: el 2026-07-31
+   se dejaron NH_backup_Ago2026.json, NH_fixture_pruebas.json y una carpeta _trabajo_v44\
+   dentro del repo — nunca llegaron a commitearse, pero fue un error evitable.)
 
 ## Validación obligatoria antes de dar un cambio por terminado
 - `node --check` sobre el JS extraído (sintaxis).
@@ -63,10 +71,14 @@ lenguaje sencillo antes de aplicarlos.
   de la app, nunca en documentos.)
 
 ## Archivos fuera del repo
-- El Excel de contabilidad y los documentos Word están FUERA de esta carpeta (el repo es
-  público). Nunca copiar datos de asociados, importes o documentos internos dentro del repo.
+- Ver Regla Crítica 6. El Excel de contabilidad y los documentos Word están FUERA de esta
+  carpeta (el repo es público). Nunca copiar datos de asociados, importes o documentos
+  internos dentro del repo, ni siquiera de forma temporal.
 - Excel: solo .xlsx, sin macros, funciones compatibles con LibreOffice Calc, decimales solo
   cuando sean necesarios.
+- Hay un `.gitignore` en esta carpeta como red de seguridad (bloquea *.json, *.xlsx, *.docx,
+  *.pdf, *.csv y carpetas de trabajo) — es un respaldo, no una excusa para copiar archivos
+  de datos aquí a propósito.
 
 ## Forma de trabajo — protocolo completo por tarea sobre index.html
 Contexto: Xavy trabaja desde Windows (ordenador), despliega con GitHub Desktop y verifica en

@@ -1,0 +1,14 @@
+# Datos de la asociación: NUNCA se publican (el repo se sirve en GitHub Pages)
+*.json
+!.claude/*.json
+*.xlsx
+*.xlsm
+*.docx
+*.pdf
+*.csv
+
+# Copias de trabajo y respaldos
+_trabajo*/
+respaldos/
+*_COPIA_*.html
+*.bak

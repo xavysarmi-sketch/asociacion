@@ -638,8 +638,8 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
-const DATA_VERSION=7; // bump this when INITIAL data changes
-const APP_VERSION="v43.36"; // versión visible de la app (una sola fuente de verdad)
+const DATA_VERSION=8; // bump this when INITIAL data changes
+const APP_VERSION="v44.0"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -648,6 +648,38 @@ let SYNC_DECISION_PENDING=false;
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
   if(!data||!data.members)return data;
+  // Necesario para el bloque v7→v8 de abajo: recalcularApoyo/recargoPorCuota/ayudaTotal
+  // usan DATA.rate como fallback cuando una ayuda no tiene su propio l.rate, pero
+  // migrateData() se ejecuta ANTES de que el global DATA se reasigne al resultado
+  // (DATA=sanitizeData(migrateData(...))) — en la primera carga DATA aún es undefined.
+  // Se sobrescribe de todos modos justo después de esta función, así que es seguro.
+  DATA=data;
+
+  // Alias de renombrados conocidos (cesiones de plaza — cláusula 7.6, o cambios de
+  // nombre). Se aplican AQUÍ, antes de cualquier comparación por nombre contra
+  // INITIAL más abajo, para que ningún paso de alta cree un "fantasma" duplicado
+  // con el nombre antiguo (así se creó el id 13 duplicado: Kamen Pablov/Ariel Olivo,
+  // porque el renombrado solo vivía en sanitizeData, que corre DESPUÉS de esto).
+  // Único sitio del archivo donde se mantiene esta tabla — no duplicar en sanitizeData.
+  const ALIAS_NOMBRES={
+    "kamen pablov":"Ariel Olivo",
+    "mery sarmiento":"Gloria Sarmiento"
+  };
+  data.members.forEach(m=>{
+    const alias=ALIAS_NOMBRES[_normNombre(m.name)];
+    if(alias)m.name=alias;
+  });
+  if(data.aportesPuntuales){
+    Object.values(data.aportesPuntuales).forEach(arr=>{
+      if(!Array.isArray(arr))return;
+      arr.forEach(ap=>{
+        if(ap&&ap.destino){
+          const alias=ALIAS_NOMBRES[_normNombre(ap.destino)];
+          if(alias)ap.destino=alias;
+        }
+      });
+    });
+  }
 
   // ── → v6: re-sincronizar datos maestros desde INITIAL, INCLUIDO el id ──
   // Los datos del ARCHIVO (INITIAL) son la fuente de verdad. Refrescamos id,
@@ -674,11 +706,24 @@ function migrateData(data){
         if(!m.phone)m.phone="";
       }
     });
-    // Altas que están en INITIAL pero no en los datos guardados
-    const have=new Set(data.members.map(m=>(m.name||"").toLowerCase().trim()));
+    // Altas que están en INITIAL pero no en los datos guardados — por ID, no por
+    // nombre (mismo criterio que sanitizeData desde v43.23; el bucle de arriba ya
+    // ancla m.id=ref.id a los que hacen match por nombre, así que para cuando
+    // llegamos aquí los ids ya están correctos). Comparar por nombre fue la causa
+    // raíz del id 13 duplicado (Kamen Pablov/Ariel Olivo) y del mismo patrón en
+    // Stalyn Villafuerte — con 100+ personas, nombres iguales o parecidos generarían
+    // más duplicados silenciosos. ALIAS_NOMBRES sigue haciendo falta, pero solo para
+    // actualizar el NOMBRE visible — ya no es la barrera contra altas fantasma.
+    const haveIds=new Set(data.members.map(m=>m.id));
     INITIAL.members.forEach(im=>{
-      if(!have.has(im.name.toLowerCase().trim())){
-        data.members.push(JSON.parse(JSON.stringify(im)));
+      if(!haveIds.has(im.id)){
+        const nuevo=JSON.parse(JSON.stringify(im));
+        // Si INITIAL todavía usa el nombre antiguo (nadie lo ha renombrado ahí),
+        // aplicar el alias también al alta fresca — si no, entraría con el nombre
+        // viejo porque el barrido de ALIAS_NOMBRES de arriba ya había terminado.
+        const alias=ALIAS_NOMBRES[_normNombre(nuevo.name)];
+        if(alias)nuevo.name=alias;
+        data.members.push(nuevo);
       }
     });
     data.reportMonth=INITIAL.reportMonth;
@@ -702,32 +747,71 @@ function migrateData(data){
     if(ref){
       if(!m.joinMonth&&ref.joinMonth){m.joinMonth=ref.joinMonth;m.joinYear=ref.joinYear;}
       // MODO B: las ayudas (loans) se registran desde la app y mandan. Solo se
-      // reponen desde el archivo si el miembro guardado no tuviera ninguna.
-      if(!Array.isArray(m.loans)||m.loans.length===0){
+      // reponen desde el archivo si el miembro guardado no tuviera NINGUNA ayuda —
+      // ni activa ni cerrada. Antes solo miraba m.loans: a quien tenía todo cerrado
+      // (closedLoans no vacío, loans vacío) lo trataba como "sin ayudas" y le
+      // inyectaba una copia vieja desde INITIAL con el mismo id (caso real: Stalyn
+      // Villafuerte, l4_1 duplicada).
+      const sinNinguna=(!Array.isArray(m.loans)||m.loans.length===0)
+                      &&(!Array.isArray(m.closedLoans)||m.closedLoans.length===0);
+      if(sinNinguna){
         if(ref.loans&&ref.loans.length>0){
           m.loans=JSON.parse(JSON.stringify(ref.loans));
         }
       }
       if(!m.history||m.history.length===0){m.history=JSON.parse(JSON.stringify(ref.history||[]));}
       if(!m.phone)m.phone="";
-      if(!m.ciclo&&ref.ciclo){m.ciclo=ref.ciclo;}
+      if(m.ciclo==null&&ref.ciclo!=null){m.ciclo=ref.ciclo;} // ciclo 0 = indefinido, es un valor válido, no "falta"
     }
     if(!m.history)m.history=[];
     if(!m.joinMonth)m.joinMonth=null;
     if(!m.joinYear)m.joinYear=null;
   });
   
-  // Add members that exist in INITIAL but not in saved data
-  const existingNames=new Set(data.members.map(m=>m.name.toLowerCase()));
+  // Add members that exist in INITIAL but not in saved data — por ID, no por nombre.
+  // Ver el comentario detallado más arriba (misma corrección, mismo motivo: el id 13
+  // duplicado Kamen Pablov/Ariel Olivo y el mismo patrón en Stalyn Villafuerte).
+  const haveIds2=new Set(data.members.map(m=>m.id));
   INITIAL.members.forEach(im=>{
-    if(!existingNames.has(im.name.toLowerCase())){
-      data.members.push(JSON.parse(JSON.stringify(im)));
+    if(!haveIds2.has(im.id)){
+      const nuevo=JSON.parse(JSON.stringify(im));
+      // Igual que arriba: aplicar el alias al alta fresca si INITIAL aún usa el nombre antiguo.
+      const alias=ALIAS_NOMBRES[_normNombre(nuevo.name)];
+      if(alias)nuevo.name=alias;
+      data.members.push(nuevo);
     }
   });
   
   // Update report month/year
   data.reportMonth=INITIAL.reportMonth;
   data.reportYear=INITIAL.reportYear;
+
+  // ── v7→v8: recalcular total/cuotas con la función central, y corregir Maribel Checa ──
+  // Idempotente: puede ejecutarse N veces con resultado idéntico (recalcularApoyo y el
+  // patrón exacto de M2 son deterministas y no dependen de si ya se aplicaron antes).
+  {
+    // M1: recalcular total y cuotas de TODA ayuda (loans + closedLoans) con
+    // recalcularApoyo(l) — es la única función que puede escribir total/inst/cuotas
+    // (REGLA PERMANENTE) y respeta los aplazamientos (Melanny). NO toca pays[].paid,
+    // aplazada, ni instAplazada.
+    data.members.forEach(m=>{
+      [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+        recalcularApoyo(l);
+      });
+    });
+    // M2: Maribel Checa (id 15) — SOLO si coincide EXACTAMENTE el patrón: en su
+    // historial, un registro de Jun 2026 con capital 400 y SIN lid → capital 500 y
+    // lid "l15_1". No crea una segunda ayuda, no duplica historial, no cambia la fecha.
+    data.members.forEach(m=>{
+      if(m.id!=="15"||!Array.isArray(m.history))return;
+      m.history.forEach(h=>{
+        if(h.gMonth==="Jun"&&h.gYear===2026&&h.capital===400&&!h.lid){
+          h.capital=500; h.lid="l15_1";
+        }
+      });
+    });
+  }
+
   data._version=DATA_VERSION;
   return data;
 }
@@ -738,11 +822,10 @@ function migrateData(data){
 // aunque los datos guardados estén corruptos. NO toca pagos ni aportes.
 function sanitizeData(data){
   if(!data||!data.members)return data;
-  // Renombrados conocidos: nombre antiguo en datos guardados → nombre actual del archivo.
-  // Mery Sarmiento es la misma persona que Gloria Sarmiento (id 7).
-  data.members.forEach(m=>{
-    if((m.name||"").toLowerCase().trim()==="mery sarmiento")m.name="Gloria Sarmiento";
-  });
+  // Renombrados conocidos (cesiones de plaza, cambios de nombre): se aplican en
+  // ALIAS_NOMBRES dentro de migrateData (que corre siempre, antes que esta función),
+  // no aquí — un único sitio evita que dos mecanismos hagan lo mismo en lugares
+  // distintos y que uno de los dos llegue tarde (así se creó el id 13 duplicado).
   const byName={};
   INITIAL.members.forEach(m=>{byName[m.name.toLowerCase().trim()]=m;});
   // Eliminar SOLO miembros fantasma (datos viejos que ya no existen en el archivo).
@@ -961,6 +1044,7 @@ let ASOC_SEARCH=""; // texto del buscador de Asociados
 let PREVIEW_ID=null; // id del asociado en previsualización del admin (vista "como lo ve el asociado")
 let MG_SEARCH=""; // texto del buscador de la pestaña Gestión
 let MG_INT_OPEN=false, MG_EXT_OPEN=false; // desplegables de Gestión (arrancan cerrados)
+let AUDIT_OPEN=false; // desplegable de la tarjeta "🔍 Auditoría interna" (arranca cerrado)
 // Filtra las tarjetas de Gestión mostrando/ocultando por nombre, SIN re-render
 // (así el input conserva el foco y el teclado no se cierra en cada letra).
 function filtrarGestion(q){
@@ -1135,7 +1219,7 @@ let SYNC_STATUS="init";
 
 function load(){
   if(READONLY_ID||ES_MODO_GRUPO){
-    DATA=JSON.parse(JSON.stringify(INITIAL));
+    DATA=sanitizeData(migrateData(JSON.parse(JSON.stringify(INITIAL))));
     document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">⏳</div><div style="font-size:16px;font-weight:600;color:#2D6A4F">Cargando datos...</div></div>';
     const tryLoad=async()=>{
       if(!window._fbReady){
@@ -1159,9 +1243,9 @@ function load(){
   // Modo administrador: localStorage primero (inmediato), Firebase después (en background)
   try{
     const s=localStorage.getItem(KEY);
-    DATA=s?sanitizeData(migrateData(JSON.parse(s))):JSON.parse(JSON.stringify(INITIAL));
+    DATA=s?sanitizeData(migrateData(JSON.parse(s))):sanitizeData(migrateData(JSON.parse(JSON.stringify(INITIAL))));
     if(DATA.members)DATA.members.forEach(m=>{if(!m.phone)m.phone="";if(!m.history)m.history=[];if(!m.joinMonth)m.joinMonth=null;if(!m.joinYear)m.joinYear=null;});
-  }catch{DATA=JSON.parse(JSON.stringify(INITIAL));}
+  }catch{DATA=sanitizeData(migrateData(JSON.parse(JSON.stringify(INITIAL))));}
   // Respetar el mes/año guardado (solo se fija el actual si no hubiera ninguno)
   setCurrentMonthYear();
   SYNC_STATUS="init";
@@ -1296,6 +1380,7 @@ async function subirAhoraNube(){
 
 async function save(){
   DATA.updatedAt=Date.now(); // marca de tiempo: para que gane siempre la versión más reciente
+  invalidateAuditCache(); // los datos cambiaron: la próxima lectura del chip/tarjeta recalcula
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
 
   if(SYNC_DECISION_PENDING)return; // hay un conflicto de sync sin resolver: solo local, nada de Firebase
@@ -1381,16 +1466,22 @@ function salidasPuntualesSplit(rm,ry){
 function due(m,rm,ry){
   // Suma la cuota cuyo mes es EXACTAMENTE rm/ry (no la próxima sin pagar),
   // incluyendo ayudas cerradas (una cuota pagada ese mes es devolución contable real).
-  // Si la cuota está aplazada/ampliada, usa su importe especial (instAplazada), igual que dueSplit.
+  // Usa cuotaDe() (respeta aplazamientos y ayudas sin migrar) — no leer l.inst aquí.
   let t=0;
   const todas=[...(m.loans||[]),...(m.closedLoans||[])];
   todas.forEach(l=>{
-    l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry) t+=(p.aplazada?p.instAplazada:l.inst); });
+    l.pays.forEach((p,i)=>{ if(p.m===rm&&p.y===ry) t+=cuotaDe(l,i); });
   });
-  return t;
+  return Math.round(t*100)/100;
 }
-function pendLoan(l){return l.pays.filter(p=>!p.paid).length*l.inst;}
-function pendAll(m){let t=0;m.loans.forEach(l=>t+=pendLoan(l));return t;}
+// Pendiente real de una ayuda: suma las cuotas NO pagadas usando cuotaDe() (fuente de verdad,
+// respeta aplazamientos y genera cuotas al vuelo con ayudaCuotas si la ayuda no está migrada).
+function pendLoan(l){
+  let t=0;
+  l.pays.forEach((p,i)=>{ if(!p.paid) t+=cuotaDe(l,i); });
+  return Math.round(t*100)/100;
+}
+function pendAll(m){let t=0;m.loans.forEach(l=>t+=pendLoan(l));return Math.round(t*100)/100;}
 
 // Cuotas de un miembro que vencen EXACTAMENTE en rm/ry, separando pagado/pendiente.
 // (No arrastra atrasos de meses anteriores: solo el mes en curso.)
@@ -1398,8 +1489,9 @@ function dueSplit(m,rm,ry){
   let cobrado=0,pendiente=0;
   const todas=[...(m.loans||[]),...(m.closedLoans||[])];
   todas.forEach(l=>{
-    l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry){ const imp=p.aplazada?p.instAplazada:l.inst; if(p.paid)cobrado+=imp; else pendiente+=imp; } });
+    l.pays.forEach((p,i)=>{ if(p.m===rm&&p.y===ry){ const imp=cuotaDe(l,i); if(p.paid)cobrado+=imp; else pendiente+=imp; } });
   });
+  cobrado=Math.round(cobrado*100)/100; pendiente=Math.round(pendiente*100)/100;
   return {cobrado,pendiente};
 }
 // Aportes del mes rm/ry: cobrado (los que pagaron) y pendiente (asociados activos
@@ -1421,8 +1513,45 @@ function aportesSplit(rm,ry){
   return {cobrado,pendiente};
 }
 
-// Recargo por cuota de una ayuda = 5% del capital (una vez por cuota)
-function recargoPorCuota(l){return Math.round(l.capital*((l.rate!=null?l.rate:DATA.rate)/100));}
+// Recargo por cuota de una ayuda = % del capital (una vez por cuota), en céntimos exactos.
+function recargoPorCuota(l){return Math.round(l.capital*((l.rate!=null?l.rate:DATA.rate)/100)*100)/100;}
+
+// Total exacto de una ayuda = capital + recargo simple por cada cuota (capital*rate/100*n).
+// rate puede venir undefined (ayudas antiguas) → usa DATA.rate como fallback, igual que recargoPorCuota.
+function ayudaTotal(capital,n,rate){
+  const r=(rate!=null?rate:DATA.rate)/100;
+  return Math.round((capital+capital*r*n)*100)/100;
+}
+
+// Reparte el total en n cuotas: las n-1 primeras redondeadas al alza al céntimo,
+// la última absorbe la diferencia — así sum(cuotas) === total SIEMPRE.
+function ayudaCuotas(capital,n,rate){
+  const total=ayudaTotal(capital,n,rate);
+  if(!n||n<1)return {total,cuotas:[]};
+  const base=Math.ceil((total/n)*100)/100;
+  const cuotas=[];
+  let acumulado=0;
+  for(let i=0;i<n-1;i++){ cuotas.push(base); acumulado=Math.round((acumulado+base)*100)/100; }
+  cuotas.push(Math.round((total-acumulado)*100)/100);
+  return {total,cuotas};
+}
+
+// Formatea un importe para TEXTO mostrado (pantalla/WhatsApp/PDF): sin decimales si es
+// .00, si no con coma decimal española. NUNCA usar en value= de un <input> ni en nada
+// que se vuelva a parsear — ahí siempre punto (parseFloat/parseInt no entienden la coma).
+function fmtEur(x){
+  const r=Math.round(x*100)/100;
+  return Number.isInteger(r)?String(r):r.toFixed(2).replace(".",",");
+}
+
+// Importe EXACTO de la cuota i de una ayuda (respeta aplazamientos). Único helper de lectura
+// para dinero por-cuota: úsalo en vez de leer l.inst directamente en cualquier sitio nuevo.
+function cuotaDe(l,i){
+  const p=(l.pays||[])[i];
+  if(p&&p.aplazada) return (p.instAplazada!=null?p.instAplazada:recargoPorCuota(l));
+  if(l.cuotas&&l.cuotas.length===(l.pays||[]).length) return l.cuotas[i];
+  return ayudaCuotas(l.capital,l.n,l.rate).cuotas[i]; // fallback ayudas sin migrar
+}
 
 // Recargo automático del mes = suma del recargo de cada cuota PAGADA cuyo mes es rm/ry
 function recargoAutoMes(rm,ry){
@@ -1432,7 +1561,229 @@ function recargoAutoMes(rm,ry){
       l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry&&p.paid) t+=recargoPorCuota(l); });
     });
   });
-  return t;
+  return Math.round(t*100)/100;
+}
+
+function _normNombre(s){
+  return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
+}
+// Índice absoluto de mes (para comparar "Ago 2025" con "Jul 2027" con una sola resta).
+function _idxMes(mes,anio){ return anio*12+MONTHS.indexOf(mes); }
+
+// La app registra el recargo desde jun-2026. Los meses anteriores son históricos y
+// viven en NH_Contabilidad_Maestra.xlsx (hoja Reparto_Mensual, celdas azules fijas).
+const RECARGO_DESDE="2026-06";
+
+// Auditoría interna: SOLO informa, nunca corrige nada. Devuelve {errores, advertencias}
+// (arrays de texto legible). Recorre TODO DATA (miembros, ayudas, meses) — con ~50-60
+// personas y ~55 ayudas es barato, por eso el chip de cabecera puede llamarla en cada render().
+function auditarNH(){
+  const errores=[],advertencias=[];
+  const todasLasAyudas=[]; // {m,l,cerrada} — para controles 3,4,5,11,12
+  DATA.members.forEach(m=>{
+    (m.loans||[]).forEach(l=>todasLasAyudas.push({m,l}));
+    (m.closedLoans||[]).forEach(l=>todasLasAyudas.push({m,l}));
+  });
+
+  // 1 y 2: historial vs ayuda vinculada
+  DATA.members.forEach(m=>{
+    const todas=[...(m.loans||[]),...(m.closedLoans||[])];
+    (m.history||[]).forEach(h=>{
+      if(h.lid){
+        const l=todas.find(x=>x.id===h.lid);
+        if(l&&l.capital!==h.capital){
+          errores.push(`Historial: ${m.name} — ${h.gMonth} ${h.gYear} capital ${h.capital}€ ≠ ayuda vinculada (${l.capital}€)`);
+        }
+      }else{
+        const hayMismoPeriodo=todas.some(l=>l.gMonth===h.gMonth&&l.gYear===h.gYear);
+        if(hayMismoPeriodo){
+          errores.push(`Historial: ${m.name} — ${h.gMonth} ${h.gYear} sin lid, pero hay una ayuda del mismo periodo sin vincular`);
+        }
+      }
+    });
+  });
+
+  // 3 y 4: total y cuotas de cada ayuda
+  todasLasAyudas.forEach(({m,l})=>{
+    const n=l.n||l.pays.length;
+    const totalEsperado=ayudaTotal(l.capital,n,l.rate);
+    if(Math.abs((l.total!=null?l.total:0)-totalEsperado)>0.005){
+      errores.push(`Total: ${m.name} — ayuda ${l.gMonth} ${l.gYear} tiene total ${l.total}€, calculado ${totalEsperado}€`);
+    }
+    if(Array.isArray(l.cuotas)){
+      const sumaCuotas=Math.round(l.cuotas.reduce((s,c)=>s+c,0)*100)/100;
+      const totalRef=l.total!=null?l.total:totalEsperado;
+      if(Math.abs(sumaCuotas-totalRef)>0.005){
+        errores.push(`Cuotas: ${m.name} — ayuda ${l.gMonth} ${l.gYear} suma de cuotas ${sumaCuotas}€ ≠ total ${totalRef}€`);
+      }
+    }
+  });
+
+  // 5: pagos duplicados dentro de una misma ayuda (mismo mes/año dos veces)
+  todasLasAyudas.forEach(({m,l})=>{
+    const vistos=new Set();
+    (l.pays||[]).forEach(p=>{
+      const k=p.m+"-"+p.y;
+      if(vistos.has(k)){
+        errores.push(`Pago duplicado: ${m.name} — ayuda ${l.gMonth} ${l.gYear} tiene dos cuotas en ${p.m} ${p.y}`);
+      }
+      vistos.add(k);
+    });
+  });
+
+  // 6: recargo mensual guardado vs calculado, desde RECARGO_DESDE en adelante (no solo
+  // el mes activo). Antes de esa fecha el recargo es histórico fijo de la Maestra
+  // (Excel) y nunca se llevó en la app — no son errores, se excluyen del todo.
+  // Si Ángel lo fijó a mano (recargoManual), es una decisión suya: no se marca como error.
+  const mesesRecargoAusente=[];
+  Object.keys(DATA.monthlyData||{}).sort().forEach(k=>{
+    if(k<RECARGO_DESDE)return; // histórico anterior a la app: vive en la Maestra, no se audita
+    const md=DATA.monthlyData[k];
+    if(!md||md.recargoManual)return;
+    const[ys,ms]=k.split("-");
+    const ry=parseInt(ys),rm=MONTHS[parseInt(ms)-1];
+    if(!rm)return;
+    if(md.recargo==null){
+      mesesRecargoAusente.push(`${rm} ${ry}`);
+      return;
+    }
+    const calculado=recargoAutoMes(rm,ry);
+    const guardado=md.recargo;
+    if(Math.abs(guardado-calculado)>0.005){
+      errores.push(`Recargo ${rm} ${ry}: guardado ${guardado}€, calculado ${calculado}€ (diferencia ${Math.round((calculado-guardado)*100)/100}€)`);
+    }
+  });
+  if(mesesRecargoAusente.length>0){
+    advertencias.push(`${mesesRecargoAusente.length} mes${mesesRecargoAusente.length>1?"es":""} desde ${RECARGO_DESDE} sin recargo registrado en la app (${mesesRecargoAusente.join(", ")}) — revisar si están pendientes de cerrar`);
+  }
+
+  // 7: personas duplicadas por nombre (tildes/mayúsculas/espacios)
+  {
+    const porNombre={};
+    DATA.members.forEach(m=>{
+      const k=_normNombre(m.name);
+      if(!porNombre[k])porNombre[k]=[];
+      porNombre[k].push(m);
+    });
+    Object.values(porNombre).forEach(grupo=>{
+      if(grupo.length>1)errores.push(`Nombre duplicado: "${grupo[0].name}" aparece ${grupo.length} veces (ids: ${grupo.map(x=>x.id).join(", ")})`);
+    });
+  }
+
+  // 8: ids de miembro duplicados
+  {
+    const vistos={};
+    DATA.members.forEach(m=>{
+      vistos[m.id]=(vistos[m.id]||0)+1;
+    });
+    Object.keys(vistos).forEach(id=>{ if(vistos[id]>1)errores.push(`Id de miembro duplicado: "${id}" (${vistos[id]} veces)`); });
+  }
+
+  // 9: lids (ids de ayuda) duplicados ENTRE personas distintas
+  {
+    const dueño={};
+    todasLasAyudas.forEach(({m,l})=>{
+      if(dueño[l.id]&&dueño[l.id]!==m.id){
+        errores.push(`Id de ayuda duplicado: "${l.id}" existe en ${dueño[l.id+"__name"]} y en ${m.name}`);
+      }
+      dueño[l.id]=m.id; dueño[l.id+"__name"]=m.name;
+    });
+  }
+
+  // 10: terceros sin avalista
+  DATA.members.forEach(m=>{
+    if(m.type==="tercero"&&!m.ref)errores.push(`Tercero sin avalista: ${m.name}`);
+  });
+
+  // 11: reglas del Documento Maestro §11/§12 sobre plazos y capital máximo.
+  // MATIZ OBLIGATORIO: plazoBase excluye las cuotas aplazadas (un aplazamiento con causa
+  // justificada no convierte una ayuda corta en plazo largo — caso Melanny).
+  todasLasAyudas.forEach(({m,l})=>{
+    const nAplazadas=(l.pays||[]).filter(p=>p.aplazada).length;
+    const n=l.n||l.pays.length;
+    const plazoBase=n-nAplazadas;
+    const esTerc=m.type==="tercero";
+    // Doc Maestro §11.1: asociados 100–1.000€ libre; 1.000–3.000€ con aprobación previa
+    // del coordinador (aviso, no error); por encima de 3.000€ no se concede ninguna ayuda.
+    // Terceros: tope fijo de 500€ (no está sujeto a esta escala).
+    if(esTerc){
+      if(l.capital>500){
+        errores.push(`Capital excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo de 500€`);
+      }
+    }else{
+      if(l.capital>3000){
+        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo absoluto de 3.000€ (§11.1)`);
+      }else if(l.capital>1000){
+        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ está entre 1.000€ y 3.000€ (§11.1)`);
+      }
+    }
+    if(esTerc&&plazoBase>5){
+      errores.push(`Plazo excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses (máximo 5 para terceros)`);
+    }
+    if(!esTerc&&plazoBase>5){
+      const ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
+      const cicloOk=(ciclo===24||ciclo===36||ciclo===0);
+      if(!cicloOk){
+        errores.push(`Plazo largo sin ciclo habilitado: ${m.name} — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses requiere ciclo 24, 36 o indefinido (0); tiene ciclo ${ciclo}`);
+      }
+    }
+  });
+
+  // 12: ayudas sin condición histórica (tipoEnConcesion) — UNA sola advertencia agrupada.
+  const sinCondicion=todasLasAyudas.filter(({l})=>l.tipoEnConcesion==null);
+  if(sinCondicion.length>0){
+    advertencias.push(`${sinCondicion.length} ayuda${sinCondicion.length>1?"s":""} sin condición histórica registrada (tipoEnConcesion/avalistaEnConcesion/cicloEnConcesion) — de antes de esta actualización, no se han migrado`);
+  }
+
+  // 13: el plazo del apoyo no puede exceder la permanencia comprometida (el apoyo puede
+  // obligar a subir de ciclo, pero no al revés). Ciclo 0 (indefinido) nunca se marca —
+  // no tiene fecha de cierre. Solo aplica a asociados con joinMonth conocido.
+  todasLasAyudas.forEach(({m,l})=>{
+    if(m.type==="tercero"||m.ciclo===0||m.ciclo==null||!m.joinMonth)return;
+    const pays=l.pays||[];
+    if(!pays.length)return;
+    const finCiclo=_idxMes(m.joinMonth,m.joinYear)+m.ciclo;
+    const ultima=pays[pays.length-1];
+    const idxUltima=_idxMes(ultima.m,ultima.y);
+    if(idxUltima>finCiclo){
+      errores.push(`Plazo excede permanencia: ${m.name} ${l.id} — la última cuota (${ultima.m} ${ultima.y}) excede su permanencia (ciclo ${m.ciclo}m desde ${m.joinMonth} ${m.joinYear}) en ${idxUltima-finCiclo} mes(es)`);
+    }
+  });
+
+  // 14: nombres citados en aportesPuntuales[*].destino que no corresponden a ninguna
+  // persona existente (por nombre normalizado) — detecta solos futuros renombrados
+  // que aún no se hayan añadido a ALIAS_NOMBRES (migrateData).
+  if(DATA.aportesPuntuales){
+    const nombresValidos=new Set(DATA.members.map(m=>_normNombre(m.name)));
+    const huerfanos=new Set();
+    Object.values(DATA.aportesPuntuales).forEach(arr=>{
+      if(!Array.isArray(arr))return;
+      arr.forEach(ap=>{
+        if(ap&&ap.destino&&!nombresValidos.has(_normNombre(ap.destino))){
+          huerfanos.add(ap.destino);
+        }
+      });
+    });
+    huerfanos.forEach(nombre=>{
+      advertencias.push(`Destino huérfano en aportesPuntuales: "${nombre}" no corresponde a ninguna persona actual — ¿renombrado sin actualizar?`);
+    });
+  }
+
+  return {errores,advertencias};
+}
+
+// auditarNH() recorre TODO DATA — barato hoy (27 asociados), pero crece con el nº de
+// asociados × ayudas × meses. El chip de cabecera y la tarjeta de Gestión lo llaman en
+// CADA render(), así que se cachea aquí e invalida solo cuando cambian los datos
+// (save() lo invalida explícitamente; la clave por updatedAt+nº miembros es la 2ª red
+// de seguridad). auditarNH() en sí sigue sin caché, para pruebas y el botón manual.
+let _audCache=null,_audKey=null;
+function invalidateAuditCache(){_audCache=null;_audKey=null;}
+function auditarNHCached(){
+  const key=(DATA.updatedAt||"")+"|"+(DATA.members||[]).length;
+  if(_audKey===key&&_audCache)return _audCache;
+  _audCache=auditarNH();_audKey=key;
+  return _audCache;
 }
 
 // Lista de cuotas cuyo mes es rm/ry (para el bloque de cuotas cobradas del cierre)
@@ -1545,8 +1896,8 @@ function cuotasDelMes(rm,ry){
       l.pays.forEach((p,pi)=>{
         if(p.m===rm&&p.y===ry){
           const rec=recargoPorCuota(l);
-          const imp=p.aplazada?(p.instAplazada||rec):l.inst; // aplazada = solo retorno
-          const cap=p.aplazada?0:(l.inst-rec);               // aplazada = 0 capital
+          const imp=cuotaDe(l,pi); // aplazada = solo retorno; normal = cuota exacta (l.cuotas)
+          const cap=p.aplazada?0:Math.round((imp-rec)*100)/100;
           out.push({mid:m.id,nombre:m.name,tipo:m.type,lid:l.id,pi,inst:imp,
             recargo:rec,capital:cap,paid:p.paid,aplazada:!!p.aplazada,
             numCuota:pi+1,totalCuotas:l.pays.length,gMonth:l.gMonth,gYear:l.gYear});
@@ -1617,23 +1968,43 @@ function delMember(mid){
   save();toast("Eliminado ✓");render();
 }
 let _delLoanArmed=null;
-// Recalcula los importes de un apoyo respetando las cuotas APLAZADAS.
-// - Las cuotas aplazadas pagan solo el retorno (5% del capital original).
-// - El capital se reparte entre las cuotas NO aplazadas (al alza).
-// - Cada cuota no aplazada = capitalPorCuota + retorno.
+// Recalcula los importes de un apoyo. ÚNICA función (junto con ayudaCuotas) que puede
+// escribir total/inst/cuotas — ver REGLA PERMANENTE en las instrucciones del proyecto.
+// - Sin cuotas aplazadas: usa ayudaCuotas tal cual (total y cuotas exactos, sum(cuotas)===total).
+// - Con cuotas APLAZADAS: las aplazadas pagan solo el retorno (recargoPorCuota, % del capital
+//   ORIGINAL); el capital se reparte EXACTO entre las cuotas normales (la última normal
+//   absorbe el céntimo). l.cuotas queda en el mismo orden que l.pays; l.total=suma(l.cuotas).
+// l.inst queda solo como referencia visual (1ª cuota normal); el cálculo real usa l.cuotas.
 function recalcularApoyo(l){
   const tasa=(l.rate!=null?l.rate:DATA.rate);
-  const retorno=Math.round(l.capital*(tasa/100)); // % del capital original
+  l.n=l.pays.length;
   const nAplazadas=l.pays.filter(p=>p.aplazada).length;
-  const nNormales=l.pays.length-nAplazadas;
-  const capPorCuota=nNormales>0?Math.ceil(l.capital/nNormales):0;
+  if(nAplazadas===0){
+    const{total,cuotas}=ayudaCuotas(l.capital,l.n,tasa);
+    l.total=total; l.cuotas=cuotas; l.inst=cuotas[0];
+    return;
+  }
+  const retorno=recargoPorCuota(l); // % del capital ORIGINAL, en céntimos exactos
+  const nNormales=l.n-nAplazadas;
+  const capBase=nNormales>0?Math.ceil((l.capital/nNormales)*100)/100:0;
+  const cuotas=[];
+  let capAcumulado=0,iNormal=0;
   l.pays.forEach(p=>{
-    if(p.aplazada){ p.instAplazada=retorno; }
+    if(p.aplazada){
+      p.instAplazada=retorno;
+      cuotas.push(retorno);
+    }else{
+      iNormal++;
+      let capCuota;
+      if(iNormal===nNormales){ capCuota=Math.round((l.capital-capAcumulado)*100)/100; } // última normal absorbe el céntimo
+      else{ capCuota=capBase; capAcumulado=Math.round((capAcumulado+capBase)*100)/100; }
+      cuotas.push(Math.round((capCuota+retorno)*100)/100);
+    }
   });
-  l.inst=capPorCuota+retorno;         // cuota normal completa (ej. 125)
-  l.n=l.pays.length;                  // plazo real (incluye el mes extra)
-  // Total = suma real de lo que se cobrará (normales completas + aplazadas solo retorno)
-  l.total=nNormales*l.inst + nAplazadas*retorno;
+  l.cuotas=cuotas;
+  l.total=Math.round(cuotas.reduce((s,c)=>s+c,0)*100)/100;
+  const iPrimeraNormal=l.pays.findIndex(p=>!p.aplazada);
+  l.inst=iPrimeraNormal>=0?cuotas[iPrimeraNormal]:retorno;
 }
 function delLoan(mid,lid){
   // Sin confirm() (se bloquea en móvil). Primer toque arma, segundo elimina.
@@ -1660,17 +2031,18 @@ function mText(member){
   if(member.ref)t+=`   Referido por: ${member.ref}\n`;
   t+=`\n`;
   member.loans.forEach(loan=>{
-    t+=`📌 *Ayuda otorgada ${loan.gMonth} ${loan.gYear}*\n   Capital: ${loan.capital} € · Total: ${loan.total} €\n   Pendiente: ${pendLoan(loan)} €\n\n`;
-    loan.pays.forEach(p=>{
+    t+=`📌 *Ayuda otorgada ${loan.gMonth} ${loan.gYear}*\n   Capital: ${loan.capital} € · Total: ${fmtEur(loan.total)} €\n   Pendiente: ${fmtEur(pendLoan(loan))} €\n\n`;
+    loan.pays.forEach((p,pi)=>{
       const cur=p.m===rm&&p.y===ry;
-      if(p.paid)t+=`   ✅ ${p.m} ${p.y}: ${loan.inst} € (pagado)\n`;
-      else if(cur)t+=`   🔴 ${p.m} ${p.y}: ${loan.inst} € *DEBE ESTE MES*\n`;
-      else t+=`   ⬜ ${p.m} ${p.y}: ${loan.inst} € (próximo)\n`;
+      const imp=fmtEur(cuotaDe(loan,pi));
+      if(p.paid)t+=`   ✅ ${p.m} ${p.y}: ${imp} € (pagado)\n`;
+      else if(cur)t+=`   🔴 ${p.m} ${p.y}: ${imp} € *DEBE ESTE MES*\n`;
+      else t+=`   ⬜ ${p.m} ${p.y}: ${imp} € (próximo)\n`;
     });
     t+=`\n`;
   });
   const d=due(member,rm,ry);
-  t+=`━━━━━━━━━━━━━━━━━━━━\n💰 *TOTAL A PAGAR EN ${rm.toUpperCase()} ${ry}: ${d} €*\n`;
+  t+=`━━━━━━━━━━━━━━━━━━━━\n💰 *TOTAL A PAGAR EN ${rm.toUpperCase()} ${ry}: ${fmtEur(d)} €*\n`;
   if(member.loans.length>1)t+=`   (${member.loans.length} ayudas activas)\n`;
   t+=`━━━━━━━━━━━━━━━━━━━━\n\n_Aporte mensual de ${fee} € es adicional_`;
   return t;
@@ -1744,10 +2116,11 @@ function fullText(){
   const a=members.filter(m=>m.type==="asociado"),t=members.filter(m=>m.type==="tercero");
   let sA=0,sT=0;
   let tx=`━━━━━━━━━━━━━━━━━━━━\n📋 *NUEVOS HORIZONTES*\nResumen ${rm} ${ry}\n━━━━━━━━━━━━━━━━━━━━\n\n*👥 ASOCIADOS*\n\n`;
-  a.forEach(m=>{const d=due(m,rm,ry);if(d>0){tx+=`• ${m.name}: *${d} €*\n`;sA+=d;}});
+  a.forEach(m=>{const d=due(m,rm,ry);if(d>0){tx+=`• ${m.name}: *${fmtEur(d)} €*\n`;sA+=d;}});
   tx+=`\n*🤝 TERCEROS*\n\n`;
-  t.forEach(m=>{const d=due(m,rm,ry);if(d>0){tx+=`• ${m.name}: *${d} €*\n`;sT+=d;}});
-  tx+=`\n━━━━━━━━━━━━━━━━━━━━\n💰 *TOTAL ${rm.toUpperCase()} ${ry}*\n   Asociados: ${sA} €\n   Terceros: ${sT} €\n   *TOTAL: ${sA+sT} €*\n━━━━━━━━━━━━━━━━━━━━`;
+  t.forEach(m=>{const d=due(m,rm,ry);if(d>0){tx+=`• ${m.name}: *${fmtEur(d)} €*\n`;sT+=d;}});
+  sA=Math.round(sA*100)/100; sT=Math.round(sT*100)/100;
+  tx+=`\n━━━━━━━━━━━━━━━━━━━━\n💰 *TOTAL ${rm.toUpperCase()} ${ry}*\n   Asociados: ${fmtEur(sA)} €\n   Terceros: ${fmtEur(sT)} €\n   *TOTAL: ${fmtEur(sA+sT)} €*\n━━━━━━━━━━━━━━━━━━━━`;
   return tx;
 }
 
@@ -2149,10 +2522,16 @@ function addLoanSubmit(){
   if(isNaN(rate)||rate<0)rate=DATA.rate; // fallback a la tasa global del fondo
   const gm=document.getElementById("l-gm").value,gy=parseInt(document.getElementById("l-gy").value);
   const sm=document.getElementById("l-sm").value,sy=parseInt(document.getElementById("l-sy").value);
-  const total=cap+cap*(rate/100)*nn,inst=Math.ceil(total/nn);
+  const{total,cuotas}=ayudaCuotas(cap,nn,rate);
+  const inst=cuotas[0]; // referencia visual (importe de la 1ª cuota); el cálculo real usa l.cuotas
   const pays=[];let mi=MONTHS.indexOf(sm),yr=sy;
   for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
-  DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,rate,pays});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
+  const mOr=DATA.members.find(x=>x.id===MODAL.mid);
+  // Condición histórica de la ayuda en el momento de concederla (no se migra a las antiguas).
+  const tipoEnConcesion=mOr?mOr.type:"asociado";
+  const avalistaEnConcesion=(mOr&&mOr.type==="tercero")?(mOr.ref||null):null;
+  const cicloEnConcesion=mOr?(mOr.ciclo!=null?mOr.ciclo:0):0;
+  DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
   closeModal();toast("Ayuda añadida ✓");save();
 }
 
@@ -2232,8 +2611,10 @@ function updateEditPreview(){
   const cap=parseInt(document.getElementById("el-cap")?.value)||0;
   const nn=parseInt(document.getElementById("el-n")?.value||"3");
   if(cap<=0){document.getElementById("el-preview").innerHTML="";return;}
-  const total=cap+cap*(DATA.rate/100)*nn,inst=Math.ceil(total/nn);
-  document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
+  const{total,cuotas}=ayudaCuotas(cap,nn,DATA.rate);
+  const base=cuotas[0],ultima=cuotas[cuotas.length-1];
+  const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
+  document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
 }
 function quitarAplazamiento(idx){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
@@ -2335,7 +2716,21 @@ function setSearch(val){
   });
 }
 
+let _exportArmed=false;
+// Si la auditoría interna encuentra errores, pide confirmación de dos toques antes de
+// exportar (sin confirm() nativo, poco fiable en PWA/iPhone — regla crítica del proyecto).
 function exportData(){
+  const r=auditarNH();
+  const btn=document.querySelector(".backup-export");
+  if(r.errores.length>0&&!_exportArmed){
+    _exportArmed=true;
+    if(btn)btn.textContent=`⚠️ ${r.errores.length} error(es) en la auditoría — toca de nuevo para exportar igual`;
+    toast("La auditoría interna encontró errores (ver Gestión → 🔍 Auditoría interna). Toca \"Exportar\" otra vez para exportar de todas formas",5000);
+    setTimeout(()=>{_exportArmed=false;if(btn)btn.textContent="📤 Exportar datos (JSON)";},5000);
+    return;
+  }
+  _exportArmed=false;
+  if(btn)btn.textContent="📤 Exportar datos (JSON)";
   const json=JSON.stringify(DATA,null,2);
   const blob=new Blob([json],{type:"application/json"});
   const url=URL.createObjectURL(blob);
@@ -2441,17 +2836,17 @@ function totalDelMes(m,rm,ry){
   [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
     l.pays.forEach((p,idx)=>{
       if(p.m===rm&&p.y===ry){
-        const imp=p.aplazada?(p.instAplazada||recargoPorCuota(l)):l.inst;
+        const imp=cuotaDe(l,idx);
         cuotas.push({inst:imp,paid:!!p.paid,aplazada:!!p.aplazada,idx,loan:l});
       }
     });
   });
-  const totalCuotas=cuotas.reduce((s,c)=>s+c.inst,0);
-  const total=(esTerc?0:aporteImporte)+totalCuotas; // total del mes (todo lo que corresponde)
+  const totalCuotas=Math.round(cuotas.reduce((s,c)=>s+c.inst,0)*100)/100;
+  const total=Math.round(((esTerc?0:aporteImporte)+totalCuotas)*100)/100; // total del mes (todo lo que corresponde)
   // Pendiente = lo que aún NO está pagado
   const aportePend=(!esTerc&&!aportePagado)?aporteImporte:0;
-  const cuotasPend=cuotas.filter(c=>!c.paid).reduce((s,c)=>s+c.inst,0);
-  const pendiente=aportePend+cuotasPend;
+  const cuotasPend=Math.round(cuotas.filter(c=>!c.paid).reduce((s,c)=>s+c.inst,0)*100)/100;
+  const pendiente=Math.round((aportePend+cuotasPend)*100)/100;
   // Al día SOLO si aporte pagado (o tercero) Y todas las cuotas pagadas
   const alDia=(esTerc||aportePagado)&&cuotas.every(c=>c.paid);
   return {total,pendiente,alDia,aporteImporte,aportePagado,cuotas,totalCuotas,esTerc};
@@ -2484,23 +2879,23 @@ function desgloseDelMes(m){
   todosLoans.forEach(l=>{
     (l.pays||[]).forEach((p,idx)=>{
       if(p.m===rm && p.y===ry){
-        const imp=p.aplazada?(p.instAplazada||0):l.inst;
+        const imp=cuotaDe(l,idx);
         cuotasMes.push({loan:l,idx,inst:imp,paid:p.paid,aplazada:!!p.aplazada});
       }
     });
   });
   // Solo suman al total las cuotas de este mes que estén SIN pagar
-  const totalCuotas=cuotasMes.reduce((s,c)=>s+(c.paid?0:c.inst),0);
+  const totalCuotas=Math.round(cuotasMes.reduce((s,c)=>s+(c.paid?0:c.inst),0)*100)/100;
 
   // Total neto — terceros solo pagan cuotas, no aporte mensual
   const esTerc=m.type==="tercero";
   const apNeto=esTerc?0:Math.max(0,fee+apExtra-descuento);
-  const totalNeto=apNeto+totalCuotas;
+  const totalNeto=Math.round((apNeto+totalCuotas)*100)/100;
 
   // Valores de PENDIENTE REAL (descontando lo ya pagado), para el cuadro individual:
   // si el aporte del mes objetivo ya está pagado, no cuenta como pendiente.
   const apNetoPend = (esTerc || aportePagado) ? 0 : apNeto;
-  const totalPendiente = apNetoPend + totalCuotas; // totalCuotas ya excluye las pagadas
+  const totalPendiente = Math.round((apNetoPend+totalCuotas)*100)/100; // totalCuotas ya excluye las pagadas
   const alDia = totalPendiente===0;
 
   return{fee,apExtra,descuento,nReferidos,cuotasMes,totalCuotas,apNeto,totalNeto,apNetoPend,totalPendiente,alDia,aportePagado,esTerc,mesObj:rm,anioObj:ry};
@@ -2542,7 +2937,7 @@ function fichaResumenHTML(m){
       const isActive=(pi===activeIdx);
       const st=(p.aplazada&&!p.paid)?"aplazada":p.paid?"paid":isActive?"due":"future";
       // En readonly: div, no botón
-      h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+      h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${fmtEur(cuotaDe(loan,pi))} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
     });
     h+=`</div></div>`;
   });
@@ -2560,15 +2955,15 @@ function fichaResumenHTML(m){
   const lineaAporte=!isTerc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Aporte mensual ${escH(rm)} ${ry}</span><span style="font-weight:700;color:${tot.aportePagado?okColor:"#fff"}">${_baseR} € ${tot.aportePagado?"✅":"⏳"}</span></div>`:"";
   const lineaExtra=(!isTerc&&_extraR>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>＋ Aporte extra puntual</span><span style="font-weight:700">${_extraR} €</span></div>`:"";
   const lineaDesc=(!isTerc&&_descRef>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#FFE0A3;padding:3px 0"><span>🎁 Descuento por referir (${_dr.nReferidos})</span><span style="font-weight:700">− ${_descRef} €</span></div>`:"";
-  const lineasCuotas=tot.cuotas.map(c=>{return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Cuota ${escH(rm)} ${ry} · ${c.idx+1}/${c.loan.n}${c.aplazada?` <span style="color:#E8A04B">· aplazada</span>`:""}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span></div>`;}).join("");
+  const lineasCuotas=tot.cuotas.map(c=>{return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Cuota ${escH(rm)} ${ry} · ${c.idx+1}/${c.loan.n}${c.aplazada?` <span style="color:#E8A04B">· aplazada</span>`:""}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${fmtEur(c.inst)} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span></div>`;}).join("");
   const hayLineas=lineaAporte||lineaExtra||lineaDesc||lineasCuotas;
   h+=`<div class="total-ban" style="flex-direction:column;align-items:stretch;gap:0">
     ${hayLineas?`<div style="padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25);margin-bottom:8px">${lineaAporte}${lineaExtra}${lineaDesc}${lineasCuotas}</div>`:""}
     <div class="tot-final">
       <div class="tot-final-lbl">Total ${escH(MF[MS.indexOf(rm)])} ${ry}</div>
       <div class="tot-final-row">
-        <span class="tot-final-num">${tot.total} €</span>
-        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${tot.pendiente} €`}</span>
+        <span class="tot-final-num">${fmtEur(tot.total)} €</span>
+        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
       </div>
     </div>
   </div>`;
@@ -2604,8 +2999,16 @@ function fichaHTML(m,readonly=false){
   const months=memberMonths(m);
   const lv=memberLevel(m);
   const benAcum=memberBenefitAccum(m);
-  const d=desgloseDelMes(m);
-  const tot=totalDelMes(m,rm,ry); // Opción 1: total del MES DE REPORTE (aporte+cuotas)
+  const d=desgloseDelMes(m); // d.apNeto se usa más abajo en "Estado del aporte"
+  // Mes de referencia de TODA la ficha: el mes DEL SISTEMA (rm/ry), no el objetivo.
+  // Es deliberado: fichaHTML es lo que ven los asociados (enlace ?socio=, ?yo=, y
+  // "Mi reporte" en ?grupo=), y debe coincidir SIEMPRE con fichaResumenHTML (el
+  // reporte grupal que reciben por WhatsApp) — que también usa el mes del sistema para
+  // que el total del grupo sea "el mismo mes para todos". Si aquí usáramos el mes
+  // objetivo, un asociado podría leer "Agosto" en su enlace y "Julio" en el reporte
+  // grupal del mismo día. Solo cardHTML (la tarjeta de la lista de Asociados, vista
+  // interna de Ángel) usa el mes objetivo — y ahí no hay riesgo porque nadie más la ve.
+  const tot=totalDelMes(m,rm,ry);
   const isTerc=m.type==="tercero";
   const md=getMesData(rm,ry);
   const MS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -2637,11 +3040,10 @@ function fichaHTML(m,readonly=false){
 
   /* ────────────────────────────────────────────────
      2. LO QUE DEBES PAGAR ESTE MES
-     Basado en el MES OBJETIVO (próximo mes con algo pendiente),
-     no en el mes del sistema. Al pagar junio completo, salta a julio.
+     Mes de referencia: rm/ry (el del sistema) — el mismo que usa el bloque 3
+     "Estado del aporte" y fichaResumenHTML (reporte grupal). Deliberado, ver
+     comentario junto a "const tot=" más arriba.
   ──────────────────────────────────────────────── */
-  // Opción 1: el cuadro se basa en el MES DE REPORTE (no en el mes objetivo),
-  // para que el total coincida con el reporte grupal.
   const mesLabel=MF[MS.indexOf(rm)]+" "+ry;
   const _dr2=descuentoReferidoMes(m.id,rm,ry);
   const _extra2=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])?DATA.extras[m.id][getMesKey(rm,ry)].monto:0;
@@ -2666,7 +3068,7 @@ function fichaHTML(m,readonly=false){
   tot.cuotas.forEach(c=>{
     h+=`<div class="desg-fila">
       <span class="desg-lbl">Cuota ${escH(rm)} ${ry} · ${c.idx+1}/${c.loan.n}${c.aplazada?` · aplazada`:""}</span>
-      <span class="desg-val ${c.paid?"ok":"pend"}">${c.inst} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span>
+      <span class="desg-val ${c.paid?"ok":"pend"}">${fmtEur(c.inst)} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span>
     </div>`;
   });
   if(isTerc&&tot.cuotas.length===0){
@@ -2676,49 +3078,52 @@ function fichaHTML(m,readonly=false){
     <div class="tot-final">
       <div class="tot-final-lbl">Total ${escH(MF[MS.indexOf(rm)])} ${ry}</div>
       <div class="tot-final-row">
-        <span class="tot-final-num">${tot.total} €</span>
-        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${tot.pendiente} €`}</span>
+        <span class="tot-final-num">${fmtEur(tot.total)} €</span>
+        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
       </div>
     </div>
   </div>`;
 
   /* ────────────────────────────────────────────────
      3. MARCAR APORTE (solo admin, no readonly)
+     Mismo mes que el bloque 2: rm/ry (el del sistema) — NO el objetivo. Se
+     conserva el mes EXPLÍCITO en el título y en la llamada a toggleAporte (en vez
+     de dejar que use el valor por defecto) porque es más seguro y evita ambigüedad,
+     aunque coincida con el mes del sistema.
   ──────────────────────────────────────────────── */
   if(!isTerc&&!readonly){
-    // El botón de aporte opera siempre sobre el MES DEL SISTEMA (no el mes
-    // objetivo, que puede avanzar solo). Así, al marcar el aporte queda fijo
-    // en verde y no salta al mes siguiente; volver a pulsar lo desmarca.
-    const rmSis=DATA.reportMonth, rySis=DATA.reportYear;
-    const mdSis=getMesData(rmSis,rySis);
+    const mdSis=getMesData(rm,ry);
     const aptOk=!!(mdSis.aportes&&mdSis.aportes[m.id]);
     // Aviso del próximo mes: solo si YA está al día y estamos a partir del día
     // configurable (por defecto 25). Es informativo; no marca deuda ni cambia el botón.
     const diaAviso=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
     const hoyDia=new Date().getDate();
-    const iRep=MONTHS.indexOf(rmSis);
+    const iRep=MONTHS.indexOf(rm);
     const iSig=(iRep+1)%12;
+    const ySig=ry+(iRep+1>=12?1:0);
     const mesSigFull=(typeof MONTHS_FULL!=="undefined"?MONTHS_FULL[iSig]:MONTHS[iSig]).toLowerCase();
-    const aporteAsoc=aporteNetoMes(m,rmSis,rySis);
+    // FIX (Bloque 8): el aviso mostraba el importe del mes YA mostrado etiquetado
+    // como si fuera del mes siguiente. Ahora sí es el aporte neto del mes que viene.
+    const aporteSig=aporteNetoMes(m,MONTHS[iSig],ySig);
     let estadoLbl, subLbl;
     if(!aptOk){
       estadoLbl="Aporte pendiente ⏳";
       subLbl=`${d.apNeto} € netos a pagar este mes`;
     } else if(hoyDia>=diaAviso){
       estadoLbl="✅ Al día";
-      subLbl=`Próximo: ${aporteAsoc} € de ${mesSigFull}`;
+      subLbl=`Próximo: ${aporteSig} € de ${mesSigFull}`;
     } else {
       estadoLbl="✅ Al día";
       subLbl="Aporte de este mes recibido";
     }
     h+=`<div class="ficha-section">
-      <div class="ficha-sec-title">✅ Estado del aporte — ${escH(rmSis)} ${rySis}</div>
+      <div class="ficha-sec-title">✅ Estado del aporte — ${escH(rm)} ${ry}</div>
       <div class="ficha-row">
         <div>
           <div class="ficha-row-lbl">${estadoLbl}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px">${subLbl}</div>
         </div>
-        <button class="toggle-btn ${aptOk?"on":"off"}" onclick="toggleAporte('${esc(m.id)}','${rmSis}',${rySis})"></button>
+        <button class="toggle-btn ${aptOk?"on":"off"}" onclick="toggleAporte('${esc(m.id)}','${rm}',${ry})"></button>
       </div>
     </div>`;
   }
@@ -2775,7 +3180,7 @@ function fichaHTML(m,readonly=false){
       h+=`<div style="background:#F7F5F0;border-radius:10px;padding:2px 12px;margin-bottom:10px">
         <div class="ft-row"><span class="ft-lbl">Meses activo</span><span class="ft-val">${months} ${months===1?"mes":"meses"}</span></div>
         <div class="ft-row"><span class="ft-lbl">Aporte mensual</span><span class="ft-val">${aporteBase} €</span></div>
-        <div class="ft-row" style="border-bottom:none"><span class="ft-lbl">Ciclo de permanencia</span><span class="ft-val">${m.ciclo===0?"Indefinido":(m.ciclo||12)+" meses"}</span></div>
+        <div class="ft-row" style="border-bottom:none"><span class="ft-lbl">Ciclo de permanencia</span><span class="ft-val">${m.ciclo===0?"Indefinido":(m.ciclo!=null?m.ciclo:12)+" meses"}</span></div>
       </div>`;
       // Bloque 2: lo que se lleva (datos económicos, sin fondo)
       h+=`<div class="ft-row"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val">${totalAportado} €</span></div>
@@ -2792,7 +3197,7 @@ function fichaHTML(m,readonly=false){
 
   /* ── PESTAÑA BENEFICIOS ── */
   if(FICHA_TAB==="beneficios" && !isTerc && m.joinMonth){
-    const cicloTxt=m.ciclo===0?"indefinida":`de ${m.ciclo||12} meses`;
+    const cicloTxt=m.ciclo===0?"indefinida":`de ${m.ciclo!=null?m.ciclo:12} meses`;
     h+=`<div class="ft-card">
       <div class="ft-card-title">🎁 Permanencia ${cicloTxt}</div>
       <div class="ft-hero">
@@ -2844,9 +3249,9 @@ function fichaHTML(m,readonly=false){
           const isActive=(pi===activeIdx)&&!esCerrada;
           const st=(p.aplazada&&!p.paid)?"aplazada":p.paid?"paid":isActive?"due":"future";
           if(readonly){
-            c+=`<div class="cuota cuota-${st}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+            c+=`<div class="cuota cuota-${st}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${fmtEur(cuotaDe(loan,pi))} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
           } else {
-            c+=`<button class="cuota cuota-${st}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?p.instAplazada:loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+            c+=`<button class="cuota cuota-${st}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${fmtEur(cuotaDe(loan,pi))} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
           }
         });
         c+=`</div></div>`;
@@ -2879,7 +3284,7 @@ function fichaHTML(m,readonly=false){
   /* ── PESTAÑA APORTES ── */
   if(FICHA_TAB==="aportes" && !isTerc){
     // Resumen de aportes (regulares + extra)
-    const permTxt=m.ciclo===0?"Indefinida":`${m.ciclo||12} meses`;
+    const permTxt=m.ciclo===0?"Indefinida":`${m.ciclo!=null?m.ciclo:12} meses`;
     h+=`<div class="ft-card">
       <div class="ft-card-title">💰 Resumen de aportes</div>
       <div class="ft-row"><span class="ft-lbl">Mes de ingreso</span><span class="ft-val">${MF[MS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>
@@ -3055,7 +3460,7 @@ function saveReferido(){
 function cicloFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   if(!m)return "";
-  const cicloActual=m.ciclo||12;
+  const cicloActual=(m.ciclo!=null?m.ciclo:12); // ciclo 0 = indefinido, es un valor válido, no "falta"
   const aporteActual=m.aporte||50;
   return `<div class="modal-title">⚙️ Nivel y ciclo — ${escH(m.name)}</div>
     <label class="m-label" style="margin-top:4px">Aporte mensual (nivel de contribución)</label>
@@ -3091,9 +3496,10 @@ function saveCicloYAporte(mid){
   const ap=parseInt(document.querySelector(".l-ap-opt.active")?.dataset.ap||"50");
   DATA.members.forEach(m=>{
     if(m.id===mid){
-      // 0 = indefinido (siempre válido subir a indefinido)
-      const curr=m.ciclo||12;
-      if(c!==0&&curr!==0&&c<curr){alert("No se puede bajar el ciclo");return;}
+      // 0 = indefinido (siempre válido subir a indefinido; nunca se puede bajar DESDE indefinido)
+      const curr=(m.ciclo!=null?m.ciclo:12);
+      if(curr===0&&c!==0){alert("No se puede bajar desde permanencia indefinida");return;}
+      if(c!==0&&c<curr){alert("No se puede bajar el ciclo");return;}
       m.ciclo=c;
       m.aporte=ap;
     }
@@ -3288,12 +3694,15 @@ function recalcMesRecargo(){
     md.recargo=recargoAutoMes(DATA.reportMonth,DATA.reportYear);
   }
 }
-function recalcRecargoForzar(){
+// mes/anio opcionales: por defecto el mes activo (botón "↻ Recalcular"); el banner de
+// reconciliación de meses cerrados (Bloque 7) los pasa explícitamente.
+function recalcRecargoForzar(mes,anio){
   // Botón "Recalcular": vuelve al automático aunque estuviera manual
-  const md=getMesData(DATA.reportMonth,DATA.reportYear);
+  const rm=mes||DATA.reportMonth, ry=anio!=null?anio:DATA.reportYear;
+  const md=getMesData(rm,ry);
   md.recargoManual=false;
-  md.recargo=recargoAutoMes(DATA.reportMonth,DATA.reportYear);
-  save();render();toast("Recargo recalculado automáticamente ✓");
+  md.recargo=recargoAutoMes(rm,ry);
+  save();render();toast(`Recargo de ${rm} ${ry} recalculado automáticamente ✓`);
 }
 function setMesRecargo(val){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
@@ -3345,6 +3754,42 @@ function filtrarEnVivo(texto, scopeSelector){
     el.style.display=(!q||n.includes(q))?"":"none";
   });
 }
+// Banner de la pestaña Cierre: recorre TODOS los meses (no solo el activo — ese es
+// justo el bug de julio: recalcMesRecargo() solo toca el mes activo y los cerrados
+// nunca se reconcilian solos). Lista cada mes descuadrado con botón "Reconciliar"
+// que llama a recalcRecargoForzar(mes,año) — la corrección la decide Ángel, nunca automática.
+function bannerRecargoHTML(){
+  const problemas=[];
+  Object.keys(DATA.monthlyData||{}).forEach(k=>{
+    const md=DATA.monthlyData[k];
+    if(!md||md.recargoManual)return;
+    const[ys,ms]=k.split("-");
+    const ry=parseInt(ys),rm=MONTHS[parseInt(ms)-1];
+    if(!rm)return;
+    const calculado=recargoAutoMes(rm,ry);
+    const guardado=md.recargo||0;
+    if(Math.abs(guardado-calculado)>0.005)problemas.push({rm,ry,guardado,calculado,dif:Math.round((calculado-guardado)*100)/100});
+  });
+  if(problemas.length===0)return "";
+  problemas.sort((a,b)=>(a.ry-b.ry)||(MONTHS.indexOf(a.rm)-MONTHS.indexOf(b.rm)));
+  const filas=problemas.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0c9c2">
+    <div style="font-size:13px;color:#7A2418"><b>${escH(p.rm)} ${p.ry}</b> — guardado ${fmtEur(p.guardado)} € · calculado ${fmtEur(p.calculado)} € <span style="font-weight:700">(dif. ${p.dif>0?"+":""}${fmtEur(p.dif)} €)</span></div>
+    <button onclick="recalcRecargoForzar('${p.rm}',${p.ry})" style="white-space:nowrap;padding:7px 12px;border:none;border-radius:10px;background:#C0492C;color:#fff;font-weight:700;font-size:12px;cursor:pointer">Reconciliar</button>
+  </div>`).join("");
+  return `<div class="mes-card" style="background:#FDF0EE;border:2px solid #C0492C">
+    <div style="font-weight:800;color:#7A2418;font-size:14px;margin-bottom:6px">🔴 ${problemas.length} mes${problemas.length>1?"es":""} con el recargo descuadrado</div>
+    <div style="font-size:12px;color:#7A2418;margin-bottom:8px">El recargo guardado no coincide con lo que suman las cuotas realmente cobradas ese mes. La corrección la decides tú — no se aplica sola.</div>
+    ${filas}
+  </div>`;
+}
+// Chip permanente en la cabecera (todas las pestañas): resultado de auditarNH().
+// Clicable → salta a Gestión con la tarjeta de auditoría abierta.
+function chipAuditoriaHTML(){
+  const r=auditarNHCached();
+  const ok=r.errores.length===0;
+  const txt=ok?"✅ Todo cuadra":`🔴 ${r.errores.length} error${r.errores.length>1?"es":""}`;
+  return `<div style="margin-top:8px"><button onclick="TAB='manage';AUDIT_OPEN=true;render()" style="border:1px solid rgba(255,255,255,.4);background:${ok?"rgba(45,106,79,.35)":"rgba(192,73,44,.35)"};color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;cursor:pointer">🔍 Auditoría: ${txt}</button></div>`;
+}
 function render(){
   if(READONLY_ID){renderReadonly();return;}
   if(PREVIEW_ID){const pm=DATA.members.find(x=>x.id===PREVIEW_ID);if(pm){renderPreview(pm);return;}PREVIEW_ID=null;}
@@ -3367,6 +3812,7 @@ function render(){
       <select class="h-date-sel" onchange="setReportYear(this.value)" title="Cambiar año">${yOpts}</select>
     </div>
     <div class="sync-indicator" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.6)">${syncHTML()}</div>
+    ${chipAuditoriaHTML()}
   </div>`;
 
   h+=`<div class="tabs">
@@ -3392,6 +3838,8 @@ function render(){
     const totalPagado=beneficioMes*conDerecho.length;
     const excedente=md.recargo>0?Math.max(0,md.recargo-totalPagado):0;
     const aptPagados=Object.values(md.aportes||{}).filter(Boolean).length;
+
+    h+=bannerRecargoHTML();
 
     // ── CABECERA: título + selector de mes + buscador ──
     const idxMes=MONTHS.indexOf(rm);
@@ -3486,7 +3934,7 @@ function render(){
     // ── BLOQUE: CUOTAS COBRADAS (DESPLEGABLE) ──
     const cuotas=cuotasDelMes(rm,ry);
     const cuotasPagadas=cuotas.filter(c=>c.paid).length;
-    const totalCuotasCobr=cuotas.filter(c=>c.paid).reduce((s,c)=>s+c.inst,0);
+    const totalCuotasCobr=Math.round(cuotas.filter(c=>c.paid).reduce((s,c)=>s+c.inst,0)*100)/100;
     if(!hayAbierto||cuAbierto){
     h+=`<div class="mes-card" style="padding-bottom:${cuAbierto?'18px':'8px'}">
       <button onclick="DESP['cierre-cuotas']=!DESP['cierre-cuotas'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
@@ -3512,11 +3960,11 @@ function render(){
             tipoActual=tipo;
             h+=`<div style="font-size:12px;font-weight:700;color:${tipo==="asociado"?"var(--dark)":"var(--terc)"};margin:12px 0 6px">${tipo==="asociado"?"🏠 Asociados":"🤝 Terceros"}</div>`;
           }
-          const subtotal=lista.reduce((s,x)=>s+x.inst,0);
+          const subtotal=Math.round(lista.reduce((s,x)=>s+x.inst,0)*100)/100;
           h+=`<div data-nombre="${escH(lista[0].nombre)}" style="border-bottom:1px solid var(--border);padding:8px 0 6px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <div class="aporte-name" style="font-size:16px">${escH(lista[0].nombre)}</div>
-              <span style="font-size:13px;color:var(--muted)">${subtotal} €</span>
+              <span style="font-size:13px;color:var(--muted)">${fmtEur(subtotal)} €</span>
             </div>`;
           lista.forEach(c=>{
             _cuotaIdx++;
@@ -3527,7 +3975,7 @@ function render(){
                 ${c.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
               </div>
               <div style="display:flex;align-items:center;gap:10px">
-                <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm)"};font-size:14px">${c.inst} €</span>
+                <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm)"};font-size:14px">${fmtEur(c.inst)} €</span>
                 <button class="toggle-btn ${c.paid?"on":"off"}" onclick="toggleCuotaCierre('${esc(c.mid)}','${esc(c.lid)}',${c.pi})"></button>
               </div>
             </div>`;
@@ -3535,7 +3983,7 @@ function render(){
           h+=`</div>`;
         });
         h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:2px solid var(--border);margin-top:10px;padding-top:10px">
-          <span>Total cobrado este mes <span style="font-weight:400;color:var(--muted);font-size:12px">(${cuotas.length} ${cuotas.length===1?"cuota":"cuotas"})</span></span><span>${totalCuotasCobr} €</span>
+          <span>Total cobrado este mes <span style="font-weight:400;color:var(--muted);font-size:12px">(${cuotas.length} ${cuotas.length===1?"cuota":"cuotas"})</span></span><span>${fmtEur(totalCuotasCobr)} €</span>
         </div>`;
       }
       h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:14px" onclick="openModal('cierreloan',{})">＋ Registrar ayuda aprobada</button>`;
@@ -3580,15 +4028,15 @@ function render(){
         if(!principal)return;
         const items=itemsDeGrupo(g);
         const pendientes=items.filter(it=>!it.yaPagado);
-        const totalPend=pendientes.reduce((s,it)=>s+it.importe,0);
-        const totalPagado=items.filter(it=>it.yaPagado).reduce((s,it)=>s+it.importe,0);
+        const totalPend=Math.round(pendientes.reduce((s,it)=>s+it.importe,0)*100)/100;
+        const totalPagado=Math.round(items.filter(it=>it.yaPagado).reduce((s,it)=>s+it.importe,0)*100)/100;
         const gKey="grupo-"+g.id;
         const gOpen=!!DESP[gKey];
         h+=`<div style="border:1.5px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;background:#fff">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <button onclick="DESP['${gKey}']=!DESP['${gKey}'];render()" style="flex:1;background:none;border:none;text-align:left;cursor:pointer;padding:0">
               <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}</div>
-              <div style="font-size:12px;color:var(--muted)">${items.length} concepto(s) · pendiente ${totalPend} €</div>
+              <div style="font-size:12px;color:var(--muted)">${items.length} concepto(s) · pendiente ${fmtEur(totalPend)} €</div>
             </button>
             <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="DESP['${gKey}']=!DESP['${gKey}'];render()">›</span>
           </div>`;
@@ -3603,12 +4051,12 @@ function render(){
             const lista=porPersona[pid];
             const esPrincipal=(pid===g.principalId);
             const nombre=lista[0].nombre;
-            const subtotal=lista.reduce((s,x)=>s+x.importe,0);
+            const subtotal=Math.round(lista.reduce((s,x)=>s+x.importe,0)*100)/100;
             h+=`<div style="border-bottom:1px solid var(--border);padding:10px 0 8px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                 <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:10px;color:var(--muted);font-weight:600">(principal)</span>':''}</div>
                 <div style="display:flex;align-items:center;gap:8px">
-                  <span style="font-size:13px;color:var(--muted)">${subtotal} €</span>
+                  <span style="font-size:13px;color:var(--muted)">${fmtEur(subtotal)} €</span>
                   ${!esPrincipal?`<button onclick="quitarMiembroGrupo('${g.id}','${esc(pid)}')" style="background:none;border:none;color:#C0492C;font-size:17px;cursor:pointer;padding:0 2px">✕</button>`:""}
                 </div>
               </div>`;
@@ -3623,7 +4071,7 @@ function render(){
                   ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
                 </div>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <span class="aporte-amt" style="color:${colorImp};font-size:14px">${it.importe} €</span>
+                  <span class="aporte-amt" style="color:${colorImp};font-size:14px">${fmtEur(it.importe)} €</span>
                   <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
                 </div>
               </div>`;
@@ -3951,6 +4399,8 @@ function render(){
       tercAll.forEach(m=>{h+=manageHTML(m,true);});
     }
 
+    // 🔍 Auditoría interna (dinero/reglas) — antes del auto-chequeo técnico
+    h+=auditoriaInternaHTML();
     // 🛡️ Auto-chequeo del sistema (al final)
     h+=chequeoHTML();
     // ⚙️ Configuración (al final)
@@ -3965,7 +4415,7 @@ function render(){
       <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
     </div>`;
 
-    h+=`<button class="reset-btn" onclick="if(confirm('¿Resetear todos los datos? Se perderán todos los cambios.')){DATA=JSON.parse(JSON.stringify(INITIAL));save();toast('Datos reseteados');render();}">🔄 Resetear a datos originales</button>`;
+    h+=`<button class="reset-btn" onclick="if(confirm('¿Resetear todos los datos? Se perderán todos los cambios.')){DATA=sanitizeData(migrateData(JSON.parse(JSON.stringify(INITIAL))));save();toast('Datos reseteados');render();}">🔄 Resetear a datos originales</button>`;
   }
 
   h+=`</div>`;
@@ -4025,10 +4475,24 @@ function sendCardHTML(m,rm,ry,dimmed){
 
 function cardHTML(m,isT,tappable){
   const{reportMonth:rm,reportYear:ry}=DATA;
+  // Total: SIEMPRE el mes del sistema (misma fuente que fichaHTML y fichaResumenHTML —
+  // Bloque 8 v2: antes esta tarjeta usaba el mes OBJETIVO como mes principal y podía no
+  // coincidir con lo que el asociado ve al entrar en su ficha o en el reporte grupal).
+  const totSis=totalDelMes(m,rm,ry);
+  const d=totSis.totalCuotas; // Total de cuotas del MES DEL SISTEMA (sin el aporte mensual)
+  // mesObjetivo (desgloseDelMes) se usa SOLO para decidir si mostrar el aviso secundario
+  // "Próximo": informa de quien ya pagó por adelantado, sin cambiar el total principal.
   const dObj=desgloseDelMes(m);
-  const rmO=dObj.mesObj, ryO=dObj.anioObj;
-  // Total de cuotas del mes objetivo (sin el aporte mensual)
-  const d=dObj.cuotasMes.reduce((s,c)=>s+c.inst,0);
+  const hayAdelanto=(dObj.mesObj!==rm||dObj.anioObj!==ry);
+  let proximoHTML="";
+  if(hayAdelanto){
+    const iRep=MONTHS.indexOf(rm);
+    const iSig=(iRep+1)%12, ySig=ry+(iRep+1>=12?1:0);
+    const totSig=totalDelMes(m,MONTHS[iSig],ySig).totalCuotas;
+    if(totSig>0){
+      proximoHTML=`<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px">Próximo: ${fmtEur(totSig)} € de ${MONTHS_FULL[iSig]} ${ySig}</div>`;
+    }
+  }
   const hCount=memberHistoryCount(m);
   // Fundador: asociado que ingresó en agosto 2025
   const esFundador=(m.type==="asociado"&&m.joinMonth==="Ago"&&m.joinYear===2025);
@@ -4042,7 +4506,7 @@ function cardHTML(m,isT,tappable){
     h+=`<div class="member-info" style="font-size:14px"><span>📅 Miembro desde ${MONTHS_FULL[MONTHS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>`;
     h+=`<div class="member-stat-grid">
       <div class="mstat"><div class="mstat-val">${months}</div><div class="mstat-lbl">meses</div></div>
-      <div class="mstat"><div class="mstat-val nivel-badge" style="font-size:14px">${m.ciclo===0?"∞":(m.ciclo||12)}</div><div class="mstat-lbl">ciclo</div></div>
+      <div class="mstat"><div class="mstat-val nivel-badge" style="font-size:14px">${m.ciclo===0?"∞":(m.ciclo!=null?m.ciclo:12)}</div><div class="mstat-lbl">ciclo</div></div>
       <div class="mstat"><div class="mstat-val" style="color:#2D6A4F">${ben}€</div><div class="mstat-lbl">beneficio</div></div>
     </div>`;
   }
@@ -4058,17 +4522,18 @@ function cardHTML(m,isT,tappable){
     loan.pays.forEach((p,pi)=>{
       const isActive=(pi===activeIdx);
       const st=(p.aplazada&&!p.paid)?"aplazada":p.paid?"paid":isActive?"due":"future";
+      const impPi=fmtEur(cuotaDe(loan,pi));
       if(tappable){
-        h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
+        h+=`<div class="cuota cuota-${st}"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${impPi} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
       } else {
-        const confirmMsg=!p.paid?`if(!confirm('¿Marcar como pagado: ${p.aplazada?(p.instAplazada||0):loan.inst} € de ${escH(m.name)}?'))return;`:"";
-        h+=`<button class="cuota cuota-${st}" onclick="${confirmMsg}togglePay('${esc(m.id)}','${esc(loan.id)}',${pi})"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${p.aplazada?(p.instAplazada||0):loan.inst} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+        const confirmMsg=!p.paid?`if(!confirm('¿Marcar como pagado: ${impPi} € de ${escH(m.name)}?'))return;`:"";
+        h+=`<button class="cuota cuota-${st}" onclick="${confirmMsg}togglePay('${esc(m.id)}','${esc(loan.id)}',${pi})"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${impPi} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
       }
     });
     h+=`</div></div>`;
   });
   if(m.loans.length>0){
-    h+=`<div class="total-ban"><div class="total-ban-lbl">Total ${MONTHS_FULL[MONTHS.indexOf(rmO)]} ${ryO}${m.loans.length>1?` (${m.loans.length} ayudas)`:""}</div><div class="total-ban-val">${d} €</div></div>`;
+    h+=`<div class="total-ban"><div class="total-ban-lbl">Total ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}${m.loans.length>1?` (${m.loans.length} ayudas)`:""}</div><div class="total-ban-val">${fmtEur(d)} €</div>${proximoHTML}</div>`;
   }
   h+=`</div></div>`;
   return h;
@@ -4131,6 +4596,26 @@ function runCodeChecks(force){
     CODE_CHECKS.ran=true; CODE_CHECKS.running=false; CODE_CHECKS.ts=Date.now();
     if(TAB==="manage")render();
   });
+}
+// Tarjeta "🔍 Auditoría interna" (Gestión): SOLO informa (auditarNH nunca corrige nada).
+function auditoriaInternaHTML(){
+  const r=auditarNHCached();
+  const nE=r.errores.length,nA=r.advertencias.length;
+  const ok=nE===0;
+  const linea=(txt,esError)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin:4px 0;font-size:12.5px"><span>${esError?"❌":"⚠️"}</span><span>${escH(txt)}</span></div>`;
+  return `<div style="background:${ok?"#F0F7F2":"#FDF0EE"};border:2px solid ${ok?"#2D6A4F":"#C0492C"};border-radius:14px;padding:14px;margin-top:16px;margin-bottom:16px;font-size:13px;line-height:1.5;color:${ok?"#1B4332":"#7A2418"}">
+    <button onclick="AUDIT_OPEN=!AUDIT_OPEN;render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left;color:inherit">
+      <span style="font-weight:800;font-size:15px">🔍 Auditoría interna — ${ok?"✅ Todo cuadra":`${nE} error${nE>1?"es":""}`}${nA>0?` · ${nA} aviso${nA>1?"s":""}`:""}</span>
+      <span style="font-size:18px">${AUDIT_OPEN?"▲":"▼"}</span>
+    </button>
+    ${AUDIT_OPEN?`<div style="margin-top:10px">
+      ${nE===0&&nA===0?`<div style="font-size:12.5px">Sin errores ni avisos. Los ${(function(){let c=0;DATA.members.forEach(m=>{c+=(m.loans||[]).length+(m.closedLoans||[]).length;});return c;})()} apoyos registrados cuadran.</div>`:""}
+      ${r.errores.map(e=>linea(e,true)).join("")}
+      ${r.advertencias.map(a=>linea(a,false)).join("")}
+      <div style="border-top:1px solid ${ok?"#cfe0d5":"#f0c9c2"};margin:10px 0 8px"></div>
+      <button style="width:100%;padding:10px;border:none;border-radius:10px;background:${ok?"#2D6A4F":"#C0492C"};color:#fff;font-weight:700" onclick="AUDIT_OPEN=false;render();toast('Auditoría cerrada — no se ha corregido nada automáticamente')">Cerrar</button>
+    </div>`:""}
+  </div>`;
 }
 function chequeoHTML(){
   let totalLoans=0; DATA.members.forEach(m=>{totalLoans+=(m.loans||[]).length;});
@@ -4221,7 +4706,7 @@ function manageHTML(m,isT){
   m.loans.forEach(l=>{
     const armed=(_delLoanArmed===(m.id+"|"+l.id));
     h+=`<div class="mg-loan"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
-      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${l.capital} €</div><div style="font-size:12px;color:#999">${l.n} cuotas de ${l.inst} €</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${l.capital} €</div><div style="font-size:12px;color:#999">${l.n} cuotas de ${fmtEur(l.inst)} €</div></div>
       <button class="edit-btn" style="padding:6px 10px;font-size:12px" onclick="openModal('editloan',{mid:'${esc(m.id)}',lid:'${esc(l.id)}'})">✏️</button>
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delLoan('${esc(m.id)}','${esc(l.id)}')">${armed?"¿Seguro?":"✕"}</button>
     </div></div>`;
@@ -4346,8 +4831,10 @@ function updateLoanPreview(){
   let rate=parseFloat(document.getElementById("l-rate")?.value);
   if(isNaN(rate)||rate<0)rate=DATA.rate;
   if(cap<=0){document.getElementById("l-preview").innerHTML="";return;}
-  const total=cap+cap*(rate/100)*nn,inst=Math.ceil(total/nn);
-  document.getElementById("l-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + aporte adicional (${rate}% × ${nn})</span><span style="font-weight:700">${total} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${inst} €</span></div></div>`;
+  const{total,cuotas}=ayudaCuotas(cap,nn,rate);
+  const base=cuotas[0],ultima=cuotas[cuotas.length-1];
+  const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
+  document.getElementById("l-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + aporte adicional (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
 }
 
 // ── MODO SOLO LECTURA ──
