@@ -639,7 +639,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=9; // bump this when INITIAL data changes
-const APP_VERSION="v44.1"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.2"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -726,8 +726,10 @@ function migrateData(data){
         data.members.push(nuevo);
       }
     });
-    data.reportMonth=INITIAL.reportMonth;
-    data.reportYear=INITIAL.reportYear;
+    // El mes de reporte es un dato VIVO del usuario, no de INITIAL — solo se toma de
+    // INITIAL si de verdad falta (v44.2, mismo bug que causó el "615 de julio").
+    if(data.reportMonth==null)data.reportMonth=INITIAL.reportMonth;
+    if(data.reportYear==null)data.reportYear=INITIAL.reportYear;
     data._version=6;
     return data;
   }
@@ -752,9 +754,11 @@ function migrateData(data){
   }
 
   if(data._version>=DATA_VERSION)return data; // already up to date
-  // v3→v4: actualizar mes de reporte y monthlyData
-  data.reportMonth=INITIAL.reportMonth;
-  data.reportYear=INITIAL.reportYear;
+  // El mes de reporte es un dato VIVO del usuario — solo se toma de INITIAL si falta
+  // (v44.2: esta línea reseteaba el mes de Ángel de "Ago" a "Jul" en cada migración,
+  // lo que a su vez disparó el recalculo silencioso del recargo de julio, 565→615).
+  if(data.reportMonth==null)data.reportMonth=INITIAL.reportMonth;
+  if(data.reportYear==null)data.reportYear=INITIAL.reportYear;
   if(!data.monthlyData)data.monthlyData={};
   
   const initialMap={};
@@ -801,9 +805,9 @@ function migrateData(data){
     }
   });
   
-  // Update report month/year
-  data.reportMonth=INITIAL.reportMonth;
-  data.reportYear=INITIAL.reportYear;
+  // Update report month/year — solo si falta, mismo motivo que arriba (v44.2).
+  if(data.reportMonth==null)data.reportMonth=INITIAL.reportMonth;
+  if(data.reportYear==null)data.reportYear=INITIAL.reportYear;
 
   // ── v7→v8: recalcular total/cuotas con la función central, y corregir Maribel Checa ──
   // Idempotente: puede ejecutarse N veces con resultado idéntico (recalcularApoyo y el
@@ -3858,8 +3862,16 @@ function render(){
 
   // ── PESTAÑA MES ──
   if(TAB==="mes"){
+    // v44.2: el render ya NO escribe el recargo del mes activo (antes, recalcMesRecargo()
+    // lo sobrescribía en silencio en cada render, anulando el banner de reconciliación
+    // para ese mes — así cambió el recargo de julio de 565 a 615 sin que Ángel lo supiera).
+    // El render solo CALCULA (recAuto) y COMPARA; guardar es siempre una acción explícita
+    // (togglePay/toggleAporte/toggleCuotaCierre, o el botón "Reconciliar" del banner).
+    // Única excepción legítima: un mes que nunca se ha tocado (monthlyData no lo tenía
+    // todavía) se inicializa con el automático — eso no sobrescribe nada existente.
+    const _mesYaExistia=!!(DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)]);
     const md=getMesData(rm,ry);
-    recalcMesRecargo(); // recargo automático si no está fijado a mano
+    if(!_mesYaExistia&&!md.recargoManual)md.recargo=recargoAutoMes(rm,ry);
     const recAuto=recargoAutoMes(rm,ry);
     const asocMes=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
     const ri2=MONTHS.indexOf(rm);
