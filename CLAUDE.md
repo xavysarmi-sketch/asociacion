@@ -35,6 +35,16 @@ lenguaje sencillo antes de aplicarlos.
    aparece ningún .json, .xlsx, .docx ni carpeta de trabajo. (Incidente real: el 2026-07-31
    se dejaron NH_backup_Ago2026.json, NH_fixture_pruebas.json y una carpeta _trabajo_v44\
    dentro del repo — nunca llegaron a commitearse, pero fue un error evitable.)
+7. El render NUNCA escribe datos. Las funciones de pintado (render() y sus sub-bloques
+   por pestaña) solo CALCULAN y COMPARAN — nunca deben guardar en DATA como efecto
+   colateral de mostrar la pantalla. Toda escritura debe venir de una acción explícita
+   del usuario (marcar un aporte, una cuota, pulsar "Reconciliar") o de una migración
+   declarada (migrateData). Si al renderizar hace falta inicializar un dato que no
+   existe todavía, se hace SOLO cuando el registro no existía previamente (comprobar
+   la existencia ANTES de llamar a cualquier función tipo getMesData que pueda crearlo),
+   nunca sobre uno ya guardado. (Causa raíz real del bug "recargo de julio cambió de
+   565 a 615 sin que Ángel lo supiera", corregido en v44.2: recalcMesRecargo() se
+   ejecutaba en cada render de Cierre y pisaba el recargo guardado del mes activo.)
 
 ## Validación obligatoria antes de dar un cambio por terminado
 - `node --check` sobre el JS extraído (sintaxis).
@@ -56,13 +66,25 @@ lenguaje sencillo antes de aplicarlos.
   como ÚLTIMO paso, sin que Ángel lo pida:
   1. Copiar el index.html final a la carpeta-puente
      `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\`, sobrescribiendo el que haya.
-  2. Si la tarea tocó también el Excel (NH_Contabilidad_Maestra.xlsx) o el Documento Maestro
-     (NH_Documento_Maestro_*.docx), copiar igualmente esa versión actualizada a la misma carpeta.
-  3. Confirmar en el resumen final qué archivos quedaron copiados y con qué versión, así:
-     `✔ para_subir_a_Claude actualizada → index.html v43.XX`
+  2. Si la tarea tocó también el Excel (NH_Contabilidad_Maestra.xlsx), el Documento Maestro
+     (NH_Documento_Maestro_vNN.docx) o se usó un backup JSON para verificar, copiar igualmente
+     esa versión actualizada a la misma carpeta.
+  3. Confirmar en el resumen final, en una sección aparte, qué archivos quedaron copiados y
+     con qué versión ("sin cambios" si un archivo no se tocó esta vez):
+     ```
+     ARCHIVOS DEJADOS EN para_subir_a_Claude
+     · index.html — v44.1
+     · NH_Documento_Maestro_v16.docx — Versión 16, Julio 2026
+     · NH_Contabilidad_Maestra.xlsx — sin cambios / actualizado
+     · NH_backup_AAAAMMDD.json — sin cambios / nuevo
+     ```
   La carpeta-puente nunca debe quedarse en una versión anterior a la del repo. Si este paso no
-  se ejecuta, la tarea no está completa. Detalle completo en el CLAUDE.md de NH Oficial,
-  sección "Carpeta para_subir_a_Claude".
+  se ejecuta, la tarea no está completa.
+  COHERENCIA DE VERSIONES: el número de versión del contenido y el del nombre del archivo
+  deben coincidir siempre (documento y app). Si no coinciden, corregir el nombre antes de
+  seguir — no arrastrar la discrepancia (pasó una vez: un .docx llamado "v13" con contenido
+  de la versión 15 hizo que Claude diera instrucciones sobre contenido que ya existía).
+  Detalle completo en el CLAUDE.md de NH Oficial, sección "Carpeta para_subir_a_Claude".
 
 ## Terminología obligatoria (textos visibles y documentos)
 - Usar: asociados, aportaciones/aportes, apoyos, adelantos solidarios, retornos compartidos,
