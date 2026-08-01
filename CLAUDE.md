@@ -51,6 +51,12 @@ lenguaje sencillo antes de aplicarlos.
    no solo el formulario principal. (Causa raíz real: addCierreLoanSubmit — el botón
    "＋ Registrar ayuda aprobada" de Cierre — reimplementaba el cálculo por su cuenta y
    guardaba la ayuda sin total/cuotas/rate; corregido en v44.3.)
+9. Campos que guardan una referencia a otra persona (avalistaEnConcesion, ref, y
+   similares) SIEMPRE guardan el ID, nunca el nombre. El nombre se resuelve EN EL
+   MOMENTO DE MOSTRAR (pantalla, Excel, mensajes), no al guardar — así, si alguien
+   se renombra (ver ALIAS_NOMBRES: Kamen Pablov → Ariel Olivo), el dato histórico
+   sigue apuntando a la persona correcta en vez de quedar congelado con el nombre
+   antiguo.
 
 ## Validación obligatoria antes de dar un cambio por terminado
 - `node --check` sobre el JS extraído (sintaxis).
