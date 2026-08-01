@@ -639,7 +639,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=9; // bump this when INITIAL data changes
-const APP_VERSION="v44.2"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.3"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4751,8 +4751,13 @@ function manageHTML(m,isT){
   }
   m.loans.forEach(l=>{
     const armed=(_delLoanArmed===(m.id+"|"+l.id));
+    const _cu=(l.cuotas&&l.cuotas.length===l.n)?l.cuotas:ayudaCuotas(l.capital,l.n,l.rate).cuotas;
+    const _iguales=_cu.every(x=>x===_cu[0]);
+    const _txt=_iguales
+      ?`${l.n} cuotas de ${fmtEur(_cu[0])} € · total ${fmtEur(l.total)} €`
+      :`${l.n} cuotas · total ${fmtEur(l.total)} € (${fmtEur(Math.max(..._cu))} € y ${fmtEur(Math.min(..._cu))} €)`;
     h+=`<div class="mg-loan"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
-      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${l.capital} €</div><div style="font-size:12px;color:#999">${l.n} cuotas de ${fmtEur(l.inst)} €</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${l.capital} €</div><div style="font-size:12px;color:#999">${_txt}</div></div>
       <button class="edit-btn" style="padding:6px 10px;font-size:12px" onclick="openModal('editloan',{mid:'${esc(m.id)}',lid:'${esc(l.id)}'})">✏️</button>
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delLoan('${esc(m.id)}','${esc(l.id)}')">${armed?"¿Seguro?":"✕"}</button>
     </div></div>`;
@@ -4811,10 +4816,12 @@ function updateCierreLoanPreview(){
   const el=document.getElementById("cl-preview");
   if(!el)return;
   if(cap<=0){el.innerHTML="";return;}
-  const total=cap+cap*(DATA.rate/100)*nn, inst=Math.ceil(total/nn);
+  const{total,cuotas}=ayudaCuotas(cap,nn,DATA.rate);
+  const base=cuotas[0],ultima=cuotas[cuotas.length-1];
+  const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
   el.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + recargo (5% × ${nn})</span><b style="color:var(--dark)">${total} €</b></div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm)">${inst} €</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + recargo (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm)">${cuotaTxt}</b></div>
   </div>`;
 }
 function addCierreLoanSubmit(){
@@ -4824,13 +4831,22 @@ function addCierreLoanSubmit(){
   const rm=DATA.reportMonth, ry=DATA.reportYear;
   const ni=(MONTHS.indexOf(rm)+1)%12;
   const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
-  const total=cap+cap*(DATA.rate/100)*nn, inst=Math.ceil(total/nn);
-  const pays=[];let mi=ni,yr=ny;
-  for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
+  const rate=DATA.rate;
+  const{total,cuotas}=ayudaCuotas(cap,nn,rate);
+  const inst=cuotas[0]; // referencia visual (importe de la 1ª cuota); el cálculo real usa l.cuotas
+  const pays=[];let mi=ni,yr=ny;
+  for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
   if(!m.loans)m.loans=[];
-  m.loans.push({id:"L"+Date.now(),gMonth:rm,gYear:ry,capital:cap,n:nn,inst,pays});
+  const lid="L"+Date.now();
+  // Condición histórica de la ayuda en el momento de concederla (mismo patrón que addLoanSubmit).
+  const tipoEnConcesion=m.type;
+  const avalistaEnConcesion=(m.type==="tercero")?(m.ref||null):null;
+  const cicloEnConcesion=(m.ciclo!=null?m.ciclo:0);
+  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});
+  if(!m.history)m.history=[];
+  m.history.push({gMonth:rm,gYear:ry,capital:cap,lid});
   save();closeModal();render();toast("Ayuda registrada ✓");
 }
 function loanFormHTML(){
