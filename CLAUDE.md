@@ -45,6 +45,12 @@ lenguaje sencillo antes de aplicarlos.
    nunca sobre uno ya guardado. (Causa raíz real del bug "recargo de julio cambió de
    565 a 615 sin que Ángel lo supiera", corregido en v44.2: recalcMesRecargo() se
    ejecutaba en cada render de Cierre y pisaba el recargo guardado del mes activo.)
+8. Todo punto de creación o edición de una ayuda debe pasar por ayudaCuotas() o
+   recalcularApoyo() y guardar total, cuotas y rate. Antes de cerrar cualquier tarea
+   que toque el cálculo, auditar TODOS los puntos donde se crea o modifica una ayuda,
+   no solo el formulario principal. (Causa raíz real: addCierreLoanSubmit — el botón
+   "＋ Registrar ayuda aprobada" de Cierre — reimplementaba el cálculo por su cuenta y
+   guardaba la ayuda sin total/cuotas/rate; corregido en v44.3.)
 
 ## Validación obligatoria antes de dar un cambio por terminado
 - `node --check` sobre el JS extraído (sintaxis).
