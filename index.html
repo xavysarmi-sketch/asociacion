@@ -639,7 +639,7 @@ const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=9; // bump this when INITIAL data changes
-const APP_VERSION="v44.3"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.4"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1171,9 +1171,17 @@ function memberMonths(m){
   const ri=MONTHS.indexOf(DATA.reportMonth),ry=DATA.reportYear;
   return (ry-jy)*12+(ri-ji)+1;
 }
+// Nº de cuotas mensuales REALMENTE marcadas como pagadas (aportes[id]===true),
+// no meses de permanencia transcurridos.
+function aportesPagadosCount(m){
+  if(!DATA.monthlyData)return 0;
+  let n=0;
+  Object.values(DATA.monthlyData).forEach(md=>{ if(md.aportes&&md.aportes[m.id]===true)n++; });
+  return n;
+}
 function memberTotalAportes(m){
   if(!m.joinMonth)return 0;
-  return memberMonths(m)*DATA.monthlyFee;
+  return aportesPagadosCount(m)*(m.aporte||DATA.monthlyFee);
 }
 function memberHistoryCount(m){return (m.history||[]).length;}
 function memberHistoryTotal(m){return (m.history||[]).reduce((s,h)=>s+h.capital,0);}
@@ -1186,6 +1194,7 @@ function historyModalHTML(){
   });
   const total=hist.reduce((s,h)=>s+h.capital,0);
   const months=memberMonths(m);
+  const cuotasPagadas=aportesPagadosCount(m);
   const totalAp=memberTotalAportes(m);
   const isTerc=m.type==="tercero";
   let h=`<div class="modal-title">📋 Historial — ${escH(m.name)}</div>`;
@@ -1203,7 +1212,7 @@ function historyModalHTML(){
       h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Meses activo</div><div style="font-size:15px;font-weight:700;margin-top:2px">${months} ${months===1?"mes":"meses"}</div></div>`;
       h+=`</div>`;
       h+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);display:flex;justify-content:space-between;align-items:center">`;
-      h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Total de aportes acumulados</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${months} × ${DATA.monthlyFee} €</div></div>`;
+      h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Total de aportes acumulados</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${cuotasPagadas} × ${(m.aporte||DATA.monthlyFee)} €</div></div>`;
       h+=`<div style="font-size:22px;font-weight:800">${totalAp} €</div>`;
       h+=`</div>`;
     }
@@ -3175,7 +3184,8 @@ function fichaHTML(m,readonly=false){
   const hist=[...(m.history||[])].sort((a,b)=>b.gYear-a.gYear||(MS.indexOf(b.gMonth)-MS.indexOf(a.gMonth)));
   const totalAyudasRec=hist.reduce((s,x)=>s+x.capital,0);
   const aporteBase=m.aporte||50;
-  const totalMensuales=months*aporteBase;            // aportes regulares
+  const cuotasPagadas=aportesPagadosCount(m);
+  const totalMensuales=cuotasPagadas*aporteBase;     // solo cuotas REALMENTE marcadas como pagadas
   const totalAportado=totalMensuales+totalExtras;    // regulares + extra (se devuelve todo)
   const puntuales=(DATA.aportesPuntuales&&DATA.aportesPuntuales[m.id])||[];
 
@@ -3327,7 +3337,7 @@ function fichaHTML(m,readonly=false){
       <div class="ft-card-title">💰 Resumen de aportes</div>
       <div class="ft-row"><span class="ft-lbl">Mes de ingreso</span><span class="ft-val">${MF[MS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>
       <div class="ft-row"><span class="ft-lbl">Permanencia</span><span class="ft-val">${permTxt}</span></div>
-      <div class="ft-row"><span class="ft-lbl">Aportes mensuales (${months} × ${aporteBase} €)</span><span class="ft-val">${totalMensuales} €</span></div>`;
+      <div class="ft-row"><span class="ft-lbl">Aportes mensuales (${cuotasPagadas} × ${aporteBase} €)</span><span class="ft-val">${totalMensuales} €</span></div>`;
     if(totalExtras>0) h+=`<div class="ft-row"><span class="ft-lbl">Aportes extra puntuales</span><span class="ft-val" style="color:#B08D3E">+ ${totalExtras} €</span></div>`;
     h+=`<div class="ft-row ft-total"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val" style="color:#2D6A4F">${totalAportado} €</span></div>
     </div>`;
