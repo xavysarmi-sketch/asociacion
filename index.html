@@ -548,9 +548,19 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .cuota-importe{font-weight:800}
 .cuota-estado{font-size:11px;font-weight:700}
 
+/* Seguridad de entorno: aviso persistente cuando producción está bloqueada. */
+.dev-mode-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:100000;
+  padding:10px 44px;text-align:center;background:#7F1D1D;color:#fff;
+  font-size:13px;font-weight:900;letter-spacing:.03em;box-shadow:0 2px 10px #0004}
+.dev-mode-banner.visible{display:block}
+body.nh-development-mode{padding-top:42px}
+
 </style>
 </head>
 <body>
+<div id="devModeBanner" class="dev-mode-banner" role="alert">
+  MODO DESARROLLO — PRODUCCIÓN BLOQUEADA
+</div>
 <div id="toast" class="toast hidden"></div>
 <div id="app"></div>
 
@@ -576,7 +586,63 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
 <script>
+const NH_PROD_FIREBASE_PROJECT_ID="nuevos-horizontes-6d924";
+const NH_PRODUCTION_ORIGINS=new Set(["https://xavysarmi-sketch.github.io"]);
+// Preparado para un backend de pruebas separado. Mantener null hasta configurar
+// explícitamente un emulador o proyecto Firebase DEV sin datos ni credenciales reales.
+const NH_DEV_FIREBASE_CONFIG=null;
+
+function detectarEntornoNH(loc=window.location){
+  const protocol=(loc.protocol||"").toLowerCase();
+  const hostname=(loc.hostname||"").toLowerCase();
+  const origin=(loc.origin||"").toLowerCase();
+  const local=protocol==="file:"||hostname==="localhost"||hostname==="127.0.0.1"||
+    hostname==="::1"||hostname.endsWith(".localhost");
+  const produccion=protocol==="https:"&&NH_PRODUCTION_ORIGINS.has(origin);
+  // Fail closed: cualquier origen que no sea producción conocida es desarrollo.
+  return {modo:produccion?"produccion":"desarrollo",local,origin,protocol,hostname};
+}
+
+function bloquearFirestoreProduccion(motivo){
+  console.error("[NH SEGURIDAD] Firestore de producción bloqueado:",motivo);
+  window._fbSave=async function(){
+    console.error("[NH SEGURIDAD] Escritura remota bloqueada en modo desarrollo");
+    return false;
+  };
+  window._fbLoad=async function(){return null;};
+  window._fbReady=true;
+  const mostrar=()=>{
+    document.body?.classList.add("nh-development-mode");
+    document.getElementById("devModeBanner")?.classList.add("visible");
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mostrar,{once:true});
+  else mostrar();
+  window.dispatchEvent(new Event("firebase-ready"));
+}
+
 function initFirebase(){
+  const entorno=detectarEntornoNH();
+  const prodConfig={
+    apiKey:"AIzaSyCLYo-VZwtsEn807EgDtcz9_M0fsfkkIuI",
+    authDomain:"nuevos-horizontes-6d924.firebaseapp.com",
+    projectId:NH_PROD_FIREBASE_PROJECT_ID,
+    storageBucket:"nuevos-horizontes-6d924.firebasestorage.app",
+    messagingSenderId:"1093738262656",
+    appId:"1:1093738262656:web:405bf732dc1210b54db665"
+  };
+  const firebaseConfig=entorno.modo==="produccion"?prodConfig:NH_DEV_FIREBASE_CONFIG;
+
+  if(entorno.modo!=="produccion"){
+    if(!firebaseConfig){
+      bloquearFirestoreProduccion("origen no productivo; backend DEV no configurado");
+      return;
+    }
+    if(firebaseConfig.projectId===NH_PROD_FIREBASE_PROJECT_ID){
+      bloquearFirestoreProduccion("una configuración DEV intentó usar el projectId de producción");
+      return;
+    }
+  }
+
   if(typeof firebase==="undefined"){
     // Firebase no cargó (sin conexión o bloqueado) — seguir con localStorage
     console.warn("Firebase no disponible, usando solo localStorage");
@@ -587,14 +653,7 @@ function initFirebase(){
     return;
   }
   try{
-    firebase.initializeApp({
-      apiKey:"AIzaSyCLYo-VZwtsEn807EgDtcz9_M0fsfkkIuI",
-      authDomain:"nuevos-horizontes-6d924.firebaseapp.com",
-      projectId:"nuevos-horizontes-6d924",
-      storageBucket:"nuevos-horizontes-6d924.firebasestorage.app",
-      messagingSenderId:"1093738262656",
-      appId:"1:1093738262656:web:405bf732dc1210b54db665"
-    });
+    firebase.initializeApp(firebaseConfig);
     const db=firebase.firestore();
     const DOC_REF=db.collection("nh").doc("data");
 
