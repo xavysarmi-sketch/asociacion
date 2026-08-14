@@ -638,8 +638,8 @@ const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 const KEY="nh-app-v9";
 const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
 const YEARS=[2025,2026,2027,2028];
-const DATA_VERSION=9; // bump this when INITIAL data changes
-const APP_VERSION="v44.4"; // versión visible de la app (una sola fuente de verdad)
+const DATA_VERSION=10; // bump this when INITIAL data changes
+const APP_VERSION="v44.5"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -750,6 +750,28 @@ function migrateData(data){
       });
     });
     data._version=9;
+    return data;
+  }
+
+  // ── v9→v10: ref de terceros pasa de texto libre a avalistaId (Fase 1, ago 2026) ──
+  // Los 5 terceros existentes guardaban el nombre del avalista como texto en m.ref;
+  // a partir de ahora se guarda el id del asociado y el nombre se resuelve en pantalla
+  // con avalistaNombre(). Conversión puntual con la tabla aprobada en el diagnóstico —
+  // no toca ninguna ayuda, importe ni pago, solo el campo ref del tercero. Idempotente:
+  // si ref ya es un id (no está en la tabla), no hace nada.
+  if(data._version===9){
+    const AVALISTA_ID_POR_NOMBRE={
+      "stalyn villafuerte":"4",
+      "mario orozco":"3",
+      "gabriel fuentes":"20"
+    };
+    data.members.forEach(m=>{
+      if(m.type==="tercero"&&typeof m.ref==="string"){
+        const id=AVALISTA_ID_POR_NOMBRE[_normNombre(m.ref)];
+        if(id)m.ref=id;
+      }
+    });
+    data._version=10;
     return data;
   }
 
@@ -869,7 +891,11 @@ function sanitizeData(data){
     if(ref){
       m.id=ref.id;          // id correcto del archivo (fuente de verdad)
       m.type=ref.type;      // asociado / tercero
-      m.ref=ref.ref;        // avalista (o null)
+      // avalista (ref = avalistaId): ahora EDITABLE desde la app (Fase 1B, "Cambiar
+      // avalista"). Igual que loans/history, NO se sobrescribe con el de INITIAL si
+      // el miembro ya lo trae guardado — si no, cada carga revertiría la edición del
+      // admin. Solo se repone si faltase (primera sincronización de un alta nueva).
+      if(m.ref===undefined)m.ref=ref.ref;
     }
   });
   // Fusionar referidos del archivo (INITIAL) sin pisar los ya registrados
@@ -1033,20 +1059,20 @@ members:[
 ]},
 {id:"27",name:"Ana Palomino",type:"asociado",ref:null,joinMonth:"Jun",joinYear:2026,ciclo:12,history:[],loans:[]},
 // ── TERCEROS ──
-{id:"t1",name:"Fatima Leon",type:"tercero",ref:"Stalyn Villafuerte",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Mar",gYear:2026,capital:500}],loans:[
+{id:"t1",name:"Fatima Leon",type:"tercero",ref:"4",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Mar",gYear:2026,capital:500}],loans:[
   {id:"lt1_1",gMonth:"Mar",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:true},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}
 ]},
-{id:"t2",name:"Nicolas Rodriguez",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Mar",gYear:2026,capital:400},{gMonth:"Jun",gYear:2026,capital:500}],loans:[
+{id:"t2",name:"Nicolas Rodriguez",type:"tercero",ref:"3",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Mar",gYear:2026,capital:400},{gMonth:"Jun",gYear:2026,capital:500}],loans:[
   {id:"lt2_1",gMonth:"Mar",gYear:2026,capital:400,total:500,n:5,inst:100,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:true},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]},
   {id:"lt2_2",gMonth:"Jun",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false},{m:"Nov",y:2026,paid:false}]}
 ]},
-{id:"t3",name:"Andrea Rodriguez",type:"tercero",ref:"Mario Orozco",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Mar",gYear:2026,capital:300}],loans:[
+{id:"t3",name:"Andrea Rodriguez",type:"tercero",ref:"3",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Mar",gYear:2026,capital:300}],loans:[
   {id:"lt3_1",gMonth:"Mar",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"Abr",y:2026,paid:true},{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:true},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false}]}
 ]},
-{id:"t4",name:"Alexis Palacios",type:"tercero",ref:"Gabriel Fuentes",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Abr",gYear:2026,capital:300}],loans:[
+{id:"t4",name:"Alexis Palacios",type:"tercero",ref:"20",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"Abr",gYear:2026,capital:300}],loans:[
   {id:"lt4_1",gMonth:"Abr",gYear:2026,capital:300,total:375,n:5,inst:75,pays:[{m:"May",y:2026,paid:true},{m:"Jun",y:2026,paid:true},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false}]}
 ]},
-{id:"t6",name:"Carolina Poveda",type:"tercero",ref:"Gabriel Fuentes",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"May",gYear:2026,capital:500},{gMonth:"Jun",gYear:2026,capital:400}],loans:[
+{id:"t6",name:"Carolina Poveda",type:"tercero",ref:"20",joinMonth:null,joinYear:null,ciclo:null,history:[{gMonth:"May",gYear:2026,capital:500},{gMonth:"Jun",gYear:2026,capital:400}],loans:[
   {id:"lt6_1",gMonth:"May",gYear:2026,capital:500,total:625,n:5,inst:125,pays:[{m:"Jun",y:2026,paid:true},{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false}]},
   {id:"lt6_2",gMonth:"Jun",gYear:2026,capital:400,total:500,n:5,inst:100,pays:[{m:"Jul",y:2026,paid:false},{m:"Ago",y:2026,paid:false},{m:"Sep",y:2026,paid:false},{m:"Oct",y:2026,paid:false},{m:"Nov",y:2026,paid:false}]}
 ]}
@@ -1164,6 +1190,15 @@ function mergeTerceroIntoAsociado(name,joinMonth,joinYear){
   return true;
 }
 
+// Resuelve el nombre del avalista de un tercero a partir de su avalistaId (m.ref).
+// Busca en TODOS los miembros (no solo activos) para no romper apoyos vivos cuyo
+// avalista ya no esté activo. Si el id no resuelve, avisa en vez de romper el render.
+function avalistaNombre(m){
+  if(!m||!m.ref)return null;
+  const a=DATA.members.find(x=>x.id===m.ref);
+  return a?a.name:"⚠️ avalista no encontrado";
+}
+
 
 function memberMonths(m){
   if(!m.joinMonth||!m.joinYear)return 0;
@@ -1203,7 +1238,7 @@ function historyModalHTML(){
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:14px;padding:16px;margin-bottom:14px;color:#fff">`;
   if(isTerc){
     h+=`<div style="font-size:12px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🤝 Tercero</div>`;
-    h+=`<div style="font-size:14px">Avalado por <b>${escH(m.ref||"—")}</b></div>`;
+    h+=`<div style="font-size:14px">Avalado por <b>${escH(avalistaNombre(m)||"—")}</b></div>`;
   }else{
     h+=`<div style="font-size:12px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🏠 Asociado</div>`;
     if(m.joinMonth){
@@ -2075,7 +2110,8 @@ function delLoan(mid,lid){
 function mText(member){
   const{reportMonth:rm,reportYear:ry,monthlyFee:fee}=DATA;
   let t=`━━━━━━━━━━━━━━━━━━━━\n📋 *NUEVOS HORIZONTES*\nReporte ${rm} ${ry}\n━━━━━━━━━━━━━━━━━━━━\n\n👤 *${member.name}*\n`;
-  if(member.ref)t+=`   Referido por: ${member.ref}\n`;
+  const avalNomTxt=avalistaNombre(member);
+  if(avalNomTxt)t+=`   Referido por: ${avalNomTxt}\n`;
   t+=`\n`;
   member.loans.forEach(loan=>{
     t+=`📌 *Ayuda otorgada ${loan.gMonth} ${loan.gYear}*\n   Capital: ${loan.capital} € · Total: ${fmtEur(loan.total)} €\n   Pendiente: ${fmtEur(pendLoan(loan))} €\n\n`;
@@ -2239,7 +2275,7 @@ function waQueueModalHTML(){
 <div style="background:linear-gradient(135deg,#1a472a,#25855a);border-radius:14px;padding:14px;margin-bottom:16px;text-align:center">
   <div style="font-size:12px;color:rgba(255,255,255,.7);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Enviando ${done+1} de ${total}</div>
   <div style="font-size:20px;font-weight:800;color:#fff">${name}</div>
-  ${isTerc?`<div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">🤝 Ref: ${escH(m.ref)}</div>`:""}
+  ${isTerc?`<div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">🤝 Ref: ${escH(avalistaNombre(m)||"—")}</div>`:""}
   <div style="background:rgba(255,255,255,.15);border-radius:20px;margin:10px auto 0;height:6px;max-width:200px;overflow:hidden">
     <div style="background:#fff;height:100%;width:${Math.round((done/total)*100)}%;border-radius:20px;transition:width .3s"></div>
   </div>
@@ -2544,7 +2580,7 @@ function linkModalHTML(){
 function addMemberSubmit(){
   const name=document.getElementById("m-name").value.trim();if(!name)return;
   const type=document.querySelector(".m-opt.active")?.dataset.type||"asociado";
-  const ref=type==="tercero"?(document.getElementById("m-ref")?.value.trim()||null):null;
+  const ref=type==="tercero"?(document.getElementById("m-ref")?.value||null):null; // ref = avalistaId (select), no texto libre
   // Si se añade un ASOCIADO y existe un TERCERO con el mismo nombre, fusionar
   if(type==="asociado"){
     const key=name.toLowerCase().trim();
@@ -2576,7 +2612,7 @@ function addLoanSubmit(){
   const mOr=DATA.members.find(x=>x.id===MODAL.mid);
   // Condición histórica de la ayuda en el momento de concederla (no se migra a las antiguas).
   const tipoEnConcesion=mOr?mOr.type:"asociado";
-  const avalistaEnConcesion=(mOr&&mOr.type==="tercero")?(mOr.ref||null):null;
+  const avalistaEnConcesion=(mOr&&mOr.type==="tercero")?avalistaNombre(mOr):null; // nombre resuelto desde el id, texto congelado
   const cicloEnConcesion=mOr?(mOr.ciclo!=null?mOr.ciclo:0):0;
   DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
   closeModal();toast("Ayuda añadida ✓");save();
@@ -2965,7 +3001,7 @@ function fichaResumenHTML(m){
   h+=`<div class="card-head">
     <div>
       <div class="card-name" style="font-size:21px">${escH(m.name)}</div>
-      ${m.joinMonth?`<div class="member-info" style="font-size:13.5px"><span>📅 Miembro desde ${MF[MS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>`:`<div style="font-size:13.5px;color:var(--muted);margin-top:2px">${isTerc?"🤝 Tercero · Ref: "+escH(m.ref||"—"):""}</div>`}
+      ${m.joinMonth?`<div class="member-info" style="font-size:13.5px"><span>📅 Miembro desde ${MF[MS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>`:`<div style="font-size:13.5px;color:var(--muted);margin-top:2px">${isTerc?"🤝 Tercero · Ref: "+escH(avalistaNombre(m)||"—"):""}</div>`}
     </div>
   </div>`;
 
@@ -3077,7 +3113,7 @@ function fichaHTML(m,readonly=false){
       <div>
         <div class="fid-name">${escH(m.name)}</div>
         ${esFundadorF?`<span style="display:inline-block;margin:3px 0 1px;font-size:11px;font-weight:700;color:#9A7B1A;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:20px;padding:2px 10px;letter-spacing:.3px">⭐ Fundador</span>`:""}
-        <div class="fid-since">${isTerc?"Persona avalada · Ref: "+escH(m.ref||"—"):"Asociado desde "+escH(MF[MS.indexOf(m.joinMonth)]||m.joinMonth||"")+" "+(m.joinYear||"")}</div>
+        <div class="fid-since">${isTerc?"Persona avalada · Ref: "+escH(avalistaNombre(m)||"—"):"Asociado desde "+escH(MF[MS.indexOf(m.joinMonth)]||m.joinMonth||"")+" "+(m.joinYear||"")}</div>
       </div>
     </div>`;
   if(isTerc){
@@ -3236,7 +3272,7 @@ function fichaHTML(m,readonly=false){
       <div class="ft-row ft-total"><span class="ft-lbl">Llevas acumulado hasta ahora</span><span class="ft-val" style="color:#1B4332">${totalAportado+acumBen} €</span></div>`;
     } else {
       h+=`<div class="ft-row"><span class="ft-lbl">Tipo</span><span class="ft-val">Tercero avalado</span></div>
-      <div class="ft-row"><span class="ft-lbl">Avalista</span><span class="ft-val">${escH(m.ref||"—")}</span></div>`;
+      <div class="ft-row"><span class="ft-lbl">Avalista</span><span class="ft-val">${escH(avalistaNombre(m)||"—")}</span></div>`;
       const activasN=(m.loans||[]).length, cerradasN=(m.closedLoans||[]).length;
       h+=`<div class="ft-row"><span class="ft-lbl">Ayudas</span><span class="ft-val">${activasN} activo${activasN!==1?"s":""} · ${cerradasN} cerrado${cerradasN!==1?"s":""}</span></div>`;
     }
@@ -3415,6 +3451,7 @@ function fichaHTML(m,readonly=false){
         <button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>
         <button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Nivel / Ciclo</button>
         <button class="mgmt-btn" style="background:#1B4332;color:#fff" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte puntual</button>
+        ${isTerc?`<button class="mgmt-btn" style="background:var(--terc);color:#fff" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
       </div>
     </div>`;
   } else {
@@ -3553,6 +3590,32 @@ function saveCicloYAporte(mid){
     }
   });
   closeModal();save();toast("Nivel y ciclo actualizados ✓");render();
+}
+
+// ── CAMBIAR AVALISTA (solo terceros) ─────────────────────────────────────
+// Reasigna el aval VIVO (m.ref = avalistaId) de un tercero ya existente a otro
+// asociado activo. NO toca avalistaEnConcesion de las ayudas ya concedidas —
+// es una foto histórica congelada (ver addLoanSubmit/addCierreLoanSubmit).
+function avalistaFormHTML(){
+  const m=DATA.members.find(x=>x.id===MODAL.mid);
+  if(!m)return "";
+  const asocActivos=DATA.members.filter(x=>x.type==="asociado"&&x.joinMonth).sort((a,b)=>a.name.localeCompare(b.name));
+  const actual=m.ref?DATA.members.find(x=>x.id===m.ref):null;
+  const actualFueraDeLista=actual&&!asocActivos.some(a=>a.id===actual.id);
+  return`<div class="modal-title">🤝 Cambiar avalista — ${escH(m.name)}</div>
+  ${actualFueraDeLista?`<div style="font-size:12px;color:#B08D3E;margin-bottom:8px">Avalista actual (${escH(actual.name)}) ya no está activo. Se mantiene si no cambias la selección.</div>`:""}
+  <label class="m-label">Avalista (asociado)</label>
+  <select id="av-sel" class="m-select" style="margin-bottom:14px">
+    <option value="">Sin avalista</option>
+    ${actualFueraDeLista?`<option value="${esc(actual.id)}" selected>${escH(actual.name)} (inactivo)</option>`:""}
+    ${asocActivos.map(a=>`<option value="${esc(a.id)}" ${a.id===m.ref?"selected":""}>${escH(a.name)}</option>`).join("")}
+  </select>
+  <button class="m-primary" onclick="saveAvalista('${esc(m.id)}')">Guardar cambios</button>`;
+}
+function saveAvalista(mid){
+  const nuevoId=document.getElementById("av-sel")?.value||null;
+  DATA.members.forEach(m=>{if(m.id===mid)m.ref=nuevoId;});
+  closeModal();save();toast("Avalista actualizado ✓");render();
 }
 
 // ── APORTACIONES PUNTUALES AL FONDO (500–3000€, capital + 5%) ───────────────
@@ -4492,6 +4555,7 @@ function render(){
     if(MODAL.type==="referido")h+=referidoFormHTML();
     if(MODAL.type==="ciclo")h+=cicloFormHTML();
     if(MODAL.type==="puntual")h+=puntualFormHTML();
+    if(MODAL.type==="avalista")h+=avalistaFormHTML();
     if(MODAL.type==="grupo_link")h+=grupoLinkModalHTML();
     if(MODAL.type==="sync_conflict")h+=syncConflictModalHTML();
     if(MODAL.type==="restaurar_backups")h+=restaurarBackupsModalHTML();
@@ -4511,7 +4575,7 @@ function sendCardHTML(m,rm,ry,dimmed){
     <div class="send-card-head">
       <div class="send-card-info">
         <div class="send-card-name">${escH(m.name)}</div>
-        <div class="send-card-meta">${isTerc?"🤝 ref: "+escH(m.ref):"👥 Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div>
+        <div class="send-card-meta">${isTerc?"🤝 ref: "+escH(avalistaNombre(m)||"—"):"👥 Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div>
       </div>
       <div class="send-amt-wrap">
         ${dMes>0
@@ -4554,7 +4618,7 @@ function cardHTML(m,isT,tappable){
   const esFundador=(m.type==="asociado"&&m.joinMonth==="Ago"&&m.joinYear===2025);
   let h=`<div id="card-capture-${m.id}" style="background:#F5F0EB;padding:4px 0 8px">`;
   const tapAttr=tappable?` onclick="openFicha('${esc(m.id)}')" style="cursor:pointer${esFundador?';border-left:3px solid #C9A227':''}"`:(esFundador?' style="border-left:3px solid #C9A227"':"");
-  h+=`<div class="card ${isT?"terc":""}"${tapAttr}><div class="card-head" style="display:block"><div class="card-name" style="font-size:23px">${escH(m.name)}</div>${esFundador?`<span style="display:inline-block;margin-top:4px;font-size:11px;font-weight:700;color:#9A7B1A;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:20px;padding:2px 10px;letter-spacing:.3px">⭐ Fundador</span>`:""}${m.ref?`<div class="card-ref">Referido por ${escH(m.ref)}</div>`:""}`;
+  h+=`<div class="card ${isT?"terc":""}"${tapAttr}><div class="card-head" style="display:block"><div class="card-name" style="font-size:23px">${escH(m.name)}</div>${esFundador?`<span style="display:inline-block;margin-top:4px;font-size:11px;font-weight:700;color:#9A7B1A;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:20px;padding:2px 10px;letter-spacing:.3px">⭐ Fundador</span>`:""}${avalistaNombre(m)?`<div class="card-ref">Referido por ${escH(avalistaNombre(m))}</div>`:""}`;
   if(m.joinMonth){
     const lv=memberLevel(m);
     const months=memberMonths(m);
@@ -4755,7 +4819,7 @@ function configHTML(){
 }
 function manageHTML(m,isT){
   const memArmed=(_delMemberArmed===m.id);
-  let h=`<div class="mg-card" data-nombre="${escH((m.name||"").toLowerCase())}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-weight:700;font-size:16px;color:${isT?"var(--terc)":"var(--dark)"}">${escH(m.name)}</div><div style="font-size:12px;color:var(--muted)">${isT?"Ref: "+escH(m.ref):"Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div></div><button class="del-btn ${memArmed?"armed":""}" onclick="delMember('${esc(m.id)}')">${memArmed?"¿Seguro?":"🗑️"}</button></div>`;
+  let h=`<div class="mg-card" data-nombre="${escH((m.name||"").toLowerCase())}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-weight:700;font-size:16px;color:${isT?"var(--terc)":"var(--dark)"}">${escH(m.name)}</div><div style="font-size:12px;color:var(--muted)">${isT?"Ref: "+escH(avalistaNombre(m)||"—"):"Asociado"} · ${m.loans.length} ayuda${m.loans.length>1?"s":""}</div></div><button class="del-btn ${memArmed?"armed":""}" onclick="delMember('${esc(m.id)}')">${memArmed?"¿Seguro?":"🗑️"}</button></div>`;
   if(memArmed&&esPrincipalDeGrupo(m.id)){
     h+=`<div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:10px;padding:9px 11px;margin:-2px 0 12px;font-size:12px;color:#7A4A1E">⚠️ Es principal de un grupo de Cierre — su enlace de grupo dejará de funcionar. Toca 🗑️ otra vez para confirmar.</div>`;
   }
@@ -4789,13 +4853,15 @@ function previewFormHTML(){
 
 function memberFormHTML(){
   const pr=MODAL.preset||"asociado";
+  // Solo asociados ACTIVOS pueden avalar (regla del Documento Maestro Interno).
+  const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth).sort((a,b)=>a.name.localeCompare(b.name));
   return`<div class="modal-title">${pr==="tercero"?"Nuevo tercero":"Nuevo asociado"}</div>
 <input id="m-name" class="m-input" placeholder="Nombre completo">
 <div style="display:flex;gap:8px;margin-bottom:12px">
 <button class="m-opt ${pr==="asociado"?"active":""}" data-type="asociado" onclick="this.classList.add('active');this.nextElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='none'">👥 Asociado</button>
 <button class="m-opt ${pr==="tercero"?"active":""}" data-type="tercero" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='block'">🤝 Tercero</button>
 </div>
-<div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><input id="m-ref" class="m-input" placeholder="Referido por..."></div>
+<div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select></div>
 <button class="m-primary" onclick="addMemberSubmit()">Añadir</button>`;
 }
 
@@ -4852,7 +4918,7 @@ function addCierreLoanSubmit(){
   const lid="L"+Date.now();
   // Condición histórica de la ayuda en el momento de concederla (mismo patrón que addLoanSubmit).
   const tipoEnConcesion=m.type;
-  const avalistaEnConcesion=(m.type==="tercero")?(m.ref||null):null;
+  const avalistaEnConcesion=(m.type==="tercero")?avalistaNombre(m):null; // nombre resuelto desde el id, texto congelado
   const cicloEnConcesion=(m.ciclo!=null?m.ciclo:0);
   m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});
   if(!m.history)m.history=[];
