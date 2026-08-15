@@ -6,7 +6,8 @@
   "scripts": {
     "emulators": "firebase emulators:start --only firestore --project nh-local-dev",
     "dev-server": "node dev-server.js",
-    "test:isolation": "node test-emulator-isolation.js"
+    "test:isolation": "node test-emulator-isolation.js",
+    "test:migration": "node test-terceros-migration.js"
   },
   "devDependencies": {
     "firebase-tools": "^15.27.0"

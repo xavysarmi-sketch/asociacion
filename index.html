@@ -736,12 +736,75 @@ const NH_ES_DESARROLLO=detectarEntornoNH().modo==="desarrollo";
 const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
-const DATA_VERSION=10; // bump this when INITIAL data changes
+const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
 const APP_VERSION="v44.5"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
 let SYNC_DECISION_PENDING=false;
+
+// BEGIN NH_TERCEROS_REF_MIGRATION
+// Normalización compatible con el resto de la app: ignora caja, tildes y espacios
+// repetidos, pero exige que el nombre normalizado completo coincida exactamente.
+function _normNombre(s){
+  return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
+}
+
+// Convierte únicamente el avalista VIVO (member.ref). Las ayudas y, en especial,
+// avalistaEnConcesion no se recorren ni se modifican. Los casos sin solución única
+// se conservan literalmente y quedan expuestos como avisos estructurados.
+function migrarRefsTerceros(data,{convertir=true}={}){
+  const resultado={convertidos:[],conservados:[],avisos:[]};
+  if(!data||!Array.isArray(data.members))return resultado;
+
+  const idsExistentes=new Set(data.members.filter(Boolean).map(m=>m.id));
+  const asociadosPorNombre=new Map();
+  data.members.forEach(m=>{
+    if(!m||m.type!=="asociado"||typeof m.name!=="string")return;
+    const nombre=_normNombre(m.name);
+    if(!nombre)return;
+    if(!asociadosPorNombre.has(nombre))asociadosPorNombre.set(nombre,[]);
+    asociadosPorNombre.get(nombre).push(m);
+  });
+
+  data.members.forEach(m=>{
+    if(!m||m.type!=="tercero"||typeof m.ref!=="string"||!m.ref.trim())return;
+    if(idsExistentes.has(m.ref)){
+      resultado.conservados.push({terceroId:m.id,ref:m.ref,motivo:"id_valido"});
+      return;
+    }
+
+    const candidatos=asociadosPorNombre.get(_normNombre(m.ref))||[];
+    if(candidatos.length===1&&convertir){
+      const refAnterior=m.ref;
+      m.ref=candidatos[0].id;
+      resultado.convertidos.push({terceroId:m.id,refAnterior,refNueva:m.ref});
+      return;
+    }
+
+    const tipo=candidatos.length===0?"sin_coincidencia":candidatos.length>1?"ambiguo":"nombre_pendiente";
+    resultado.avisos.push({
+      tipo,
+      terceroId:m.id,
+      refConservada:m.ref,
+      candidatos:candidatos.map(a=>a.id)
+    });
+  });
+
+  if(typeof window!=="undefined")window.NH_TERCEROS_REF_WARNINGS=resultado.avisos;
+  resultado.avisos.forEach(aviso=>{
+    console.warn(`[NH MIGRACIÓN TERCEROS] ${aviso.tipo}: tercero=${aviso.terceroId}; ref conservada; candidatos=${aviso.candidatos.length}`);
+  });
+  return resultado;
+}
+
+function migrarRefsTercerosAV11(data){
+  if(!data||(data._version!==9&&data._version!==10))return{aplicada:false,resultado:null};
+  const resultado=migrarRefsTerceros(data);
+  data._version=11;
+  return{aplicada:true,resultado};
+}
+// END NH_TERCEROS_REF_MIGRATION
 
 // Migration: merge INITIAL metadata into existing DATA without losing payment states
 function migrateData(data){
@@ -851,29 +914,19 @@ function migrateData(data){
     return data;
   }
 
-  // ── v9→v10: ref de terceros pasa de texto libre a avalistaId (Fase 1, ago 2026) ──
-  // Los 5 terceros existentes guardaban el nombre del avalista como texto en m.ref;
-  // a partir de ahora se guarda el id del asociado y el nombre se resuelve en pantalla
-  // con avalistaNombre(). Conversión puntual con la tabla aprobada en el diagnóstico —
-  // no toca ninguna ayuda, importe ni pago, solo el campo ref del tercero. Idempotente:
-  // si ref ya es un id (no está en la tabla), no hace nada.
-  if(data._version===9){
-    const AVALISTA_ID_POR_NOMBRE={
-      "stalyn villafuerte":"4",
-      "mario orozco":"3",
-      "gabriel fuentes":"20"
-    };
-    data.members.forEach(m=>{
-      if(m.type==="tercero"&&typeof m.ref==="string"){
-        const id=AVALISTA_ID_POR_NOMBRE[_normNombre(m.ref)];
-        if(id)m.ref=id;
-      }
-    });
-    data._version=10;
+  // ── v9/v10→v11: refs históricas por nombre pasan a IDs sin tabla fija ──
+  // La conversión exige una coincidencia normalizada única entre asociados. Un ID
+  // válido se conserva; cero o varias coincidencias no se resuelven automáticamente.
+  // Esta es la única migración estructural nueva: APP_VERSION sigue siendo v44.5.
+  const migracionTerceros=migrarRefsTercerosAV11(data);
+  if(migracionTerceros.aplicada)return data;
+
+  if(data._version>=DATA_VERSION){
+    // Recalcular solo los avisos en cada carga. convertir:false garantiza que una
+    // versión ya migrada nunca vuelva a mutar datos de forma silenciosa.
+    migrarRefsTerceros(data,{convertir:false});
     return data;
   }
-
-  if(data._version>=DATA_VERSION)return data; // already up to date
   // El mes de reporte es un dato VIVO del usuario — solo se toma de INITIAL si falta
   // (v44.2: esta línea reseteaba el mes de Ángel de "Ago" a "Jul" en cada migración,
   // lo que a su vez disparó el recalculo silencioso del recargo de julio, 565→615).
@@ -955,6 +1008,9 @@ function migrateData(data){
     });
   }
 
+  // Versiones antiguas que llegan por la ruta general también adoptan la regla
+  // dinámica antes de marcarse como v11.
+  migrarRefsTerceros(data);
   data._version=DATA_VERSION;
   return data;
 }
@@ -1736,9 +1792,6 @@ function recargoAutoMes(rm,ry){
   return Math.round(t*100)/100;
 }
 
-function _normNombre(s){
-  return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
-}
 // Índice absoluto de mes (para comparar "Ago 2025" con "Jul 2027" con una sola resta).
 function _idxMes(mes,anio){ return anio*12+MONTHS.indexOf(mes); }
 
@@ -1865,6 +1918,21 @@ function auditarNH(){
   // 10: terceros sin avalista
   DATA.members.forEach(m=>{
     if(m.type==="tercero"&&!m.ref)errores.push(`Tercero sin avalista: ${m.name}`);
+  });
+
+  // 10b: refs históricas que la migración v11 no pudo resolver de forma segura.
+  // Son avisos, nunca autocorrecciones. Se recalculan en cada carga y no se guardan
+  // dentro de DATA, por lo que no añaden campos ni alteran el documento histórico.
+  (window.NH_TERCEROS_REF_WARNINGS||[]).forEach(aviso=>{
+    const tercero=DATA.members.find(m=>m.id===aviso.terceroId);
+    const nombre=tercero?tercero.name:aviso.terceroId;
+    if(aviso.tipo==="ambiguo"){
+      advertencias.push(`Avalista ambiguo: ${nombre} — ${aviso.candidatos.length} asociados coinciden; revisar manualmente`);
+    }else if(aviso.tipo==="sin_coincidencia"){
+      advertencias.push(`Avalista pendiente: ${nombre} — la referencia histórica no coincide con ningún asociado; revisar manualmente`);
+    }else if(aviso.tipo==="nombre_pendiente"){
+      advertencias.push(`Avalista pendiente de migración: ${nombre} — revisar manualmente`);
+    }
   });
 
   // 11: reglas del Documento Maestro §11/§12 sobre plazos y capital máximo.
