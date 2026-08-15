@@ -1,6 +1,9 @@
 # Datos de la asociación: NUNCA se publican (el repo se sirve en GitHub Pages)
 *.json
 !.claude/*.json
+!package.json
+!package-lock.json
+!firebase.json
 *.xlsx
 *.xlsm
 *.docx
@@ -12,3 +15,7 @@ _trabajo*/
 respaldos/
 *_COPIA_*.html
 *.bak
+node_modules/
+.firebase/
+firebase-debug.log
+firestore-debug.log

@@ -583,14 +583,15 @@ body.nh-development-mode{padding-top:42px}
 <!-- Ya NO se cargan al inicio — esto reducía la memoria disponible desde el principio -->
 
 <!-- Firebase compat (funciona con archivos locales en Safari/iPhone) -->
+<script src="./dev-fixture.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
 <script>
 const NH_PROD_FIREBASE_PROJECT_ID="nuevos-horizontes-6d924";
 const NH_PRODUCTION_ORIGINS=new Set(["https://xavysarmi-sketch.github.io"]);
-// Preparado para un backend de pruebas separado. Mantener null hasta configurar
-// explícitamente un emulador o proyecto Firebase DEV sin datos ni credenciales reales.
-const NH_DEV_FIREBASE_CONFIG=null;
+// Identidad ficticia: el SDK se conecta después al emulador local, nunca a este
+// projectId en la nube. No contiene credenciales ni corresponde a un proyecto real.
+const NH_DEV_FIREBASE_CONFIG={projectId:"nh-local-dev",apiKey:"demo-local",appId:"demo-local"};
 
 function detectarEntornoNH(loc=window.location){
   const protocol=(loc.protocol||"").toLowerCase();
@@ -603,6 +604,15 @@ function detectarEntornoNH(loc=window.location){
   return {modo:produccion?"produccion":"desarrollo",local,origin,protocol,hostname};
 }
 
+function mostrarModoDesarrollo(){
+  const mostrar=()=>{
+    document.body?.classList.add("nh-development-mode");
+    document.getElementById("devModeBanner")?.classList.add("visible");
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mostrar,{once:true});
+  else mostrar();
+}
+
 function bloquearFirestoreProduccion(motivo){
   console.error("[NH SEGURIDAD] Firestore de producción bloqueado:",motivo);
   window._fbSave=async function(){
@@ -611,12 +621,7 @@ function bloquearFirestoreProduccion(motivo){
   };
   window._fbLoad=async function(){return null;};
   window._fbReady=true;
-  const mostrar=()=>{
-    document.body?.classList.add("nh-development-mode");
-    document.getElementById("devModeBanner")?.classList.add("visible");
-  };
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mostrar,{once:true});
-  else mostrar();
+  mostrarModoDesarrollo();
   window.dispatchEvent(new Event("firebase-ready"));
 }
 
@@ -633,6 +638,11 @@ function initFirebase(){
   const firebaseConfig=entorno.modo==="produccion"?prodConfig:NH_DEV_FIREBASE_CONFIG;
 
   if(entorno.modo!=="produccion"){
+    mostrarModoDesarrollo();
+    if(!entorno.local){
+      bloquearFirestoreProduccion("origen no reconocido; solo localhost/127.0.0.1/file:// pueden usar DEV");
+      return;
+    }
     if(!firebaseConfig){
       bloquearFirestoreProduccion("origen no productivo; backend DEV no configurado");
       return;
@@ -655,6 +665,13 @@ function initFirebase(){
   try{
     firebase.initializeApp(firebaseConfig);
     const db=firebase.firestore();
+    if(entorno.modo==="desarrollo"){
+      db.useEmulator("127.0.0.1",8080);
+      window.NH_FIREBASE_MODE="emulator";
+      console.warn("[NH DESARROLLO] Firestore Emulator 127.0.0.1:8080 · projectId nh-local-dev");
+    }else{
+      window.NH_FIREBASE_MODE="production";
+    }
     const DOC_REF=db.collection("nh").doc("data");
 
     window._fbSave=async function(data){
@@ -674,6 +691,25 @@ function initFirebase(){
       }catch(e){console.error("Firebase load error:",e);return null;}
     };
 
+    if(entorno.modo==="desarrollo"){
+      const prepararFixture=async()=>{
+        const snap=await DOC_REF.get();
+        if(!snap.exists){
+          if(!window.NH_DEV_FIXTURE||window.NH_DEV_FIXTURE.fixtureLabel!=="DATOS DE PRUEBA — NO PRODUCCIÓN"){
+            throw new Error("Fixture ficticio ausente o sin marca de seguridad");
+          }
+          await DOC_REF.set({payload:JSON.stringify(window.NH_DEV_FIXTURE)});
+          console.warn("[NH DESARROLLO] Fixture ficticio creado en el emulador");
+        }
+        const banner=document.getElementById("devModeBanner");
+        if(banner)banner.textContent="MODO DESARROLLO — PRODUCCIÓN BLOQUEADA · DATOS DE PRUEBA — NO PRODUCCIÓN";
+      };
+      prepararFixture().catch(e=>console.error("[NH DESARROLLO] No se pudo preparar el fixture:",e)).finally(()=>{
+        window._fbReady=true;
+        window.dispatchEvent(new Event("firebase-ready"));
+      });
+      return;
+    }
   }catch(e){
     console.error("Firebase init error:",e);
     window._fbSave=async function(){return false;};
@@ -694,8 +730,11 @@ if(document.readyState==="loading"){
 <script>
 const MONTHS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const KEY="nh-app-v9";
-const KEY_BACKUPS="nh-app-v9-backups"; // respaldos locales con fecha (máx 3), ver guardarRespaldoLocal()
+const NH_ES_DESARROLLO=detectarEntornoNH().modo==="desarrollo";
+// Producción y desarrollo nunca comparten claves locales: una copia de pruebas no
+// puede imponerse a datos reales ni una copia real filtrarse al entorno de laboratorio.
+const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
+const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=10; // bump this when INITIAL data changes
 const APP_VERSION="v44.5"; // versión visible de la app (una sola fuente de verdad)
