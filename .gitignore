@@ -1,6 +1,8 @@
 # Datos de la asociación: NUNCA se publican (el repo se sirve en GitHub Pages)
 *.json
 !.claude/*.json
+.claude/settings.local.json
+.claude/skills/
 !package.json
 !package-lock.json
 !firebase.json
