@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.8"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.9"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1332,8 +1332,8 @@ function buildOrderedMembers(){
 // Fusiona un tercero existente en un asociado nuevo cuando comparten nombre.
 // Mantiene historial, ayudas activas y aportes; convierte el tipo a asociado.
 function mergeTerceroIntoAsociado(name,joinMonth,joinYear){
-  const key=name.toLowerCase().trim();
-  const tercero=DATA.members.find(m=>m.type==="tercero"&&m.name.toLowerCase().trim()===key);
+  const key=_normNombre(name); // mismo criterio que el detector y la auditoría (control 7)
+  const tercero=DATA.members.find(m=>m.type==="tercero"&&_normNombre(m.name)===key);
   if(!tercero)return false;
   tercero.type="asociado";
   tercero.ref=null;
@@ -2749,8 +2749,8 @@ function addMemberSubmit(){
   const ref=type==="tercero"?(document.getElementById("m-ref")?.value||null):null; // ref = avalistaId (select), no texto libre
   // Si se añade un ASOCIADO y existe un TERCERO con el mismo nombre, fusionar
   if(type==="asociado"){
-    const key=name.toLowerCase().trim();
-    const tercExist=DATA.members.find(x=>x.type==="tercero"&&x.name.toLowerCase().trim()===key);
+    const key=_normNombre(name); // mismo criterio que la auditoría (control 7): ignora tildes/mayúsculas/espacios
+    const tercExist=DATA.members.find(x=>x.type==="tercero"&&_normNombre(x.name)===key);
     if(tercExist){
       if(confirm(`Ya existe un tercero con el nombre "${tercExist.name}".\n\n¿Convertirlo en asociado conservando todo su historial y ayudas activas?`)){
         const ok=mergeTerceroIntoAsociado(name,DATA.reportMonth,DATA.reportYear);
