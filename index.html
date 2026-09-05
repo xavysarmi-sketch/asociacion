@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.6"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.7"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -2362,7 +2362,7 @@ async function sharePDF(){
 
 function fullText(){
   const{reportMonth:rm,reportYear:ry,members}=DATA;
-  const a=members.filter(m=>m.type==="asociado"),t=members.filter(m=>m.type==="tercero");
+  const a=members.filter(m=>m.type==="asociado"&&activoEnReporte(m)),t=members.filter(m=>m.type==="tercero");
   let sA=0,sT=0;
   let tx=`━━━━━━━━━━━━━━━━━━━━\n📋 *NUEVOS HORIZONTES*\nResumen ${rm} ${ry}\n━━━━━━━━━━━━━━━━━━━━\n\n*👥 ASOCIADOS*\n\n`;
   a.forEach(m=>{const d=due(m,rm,ry);if(d>0){tx+=`• ${m.name}: *${fmtEur(d)} €*\n`;sA+=d;}});
@@ -2386,7 +2386,7 @@ function sendFilteredMembers(){
 
 function toggleSendSelect(mid){if(SEND_SELECTED.has(mid))SEND_SELECTED.delete(mid);else SEND_SELECTED.add(mid);render();}
 function toggleSel(mid){toggleSendSelect(mid);}
-function selectAll(){(SEND_FILTER==="tercero"?DATA.members.filter(m=>m.type==="tercero"&&m.loans.some(l=>l.pays.some(p=>!p.paid))):SEND_FILTER==="asociado"?DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth):DATA.members.filter(m=>m.joinMonth||m.loans.some(l=>l.pays.some(p=>!p.paid)))).forEach(m=>SEND_SELECTED.add(m.id));render();}
+function selectAll(){(SEND_FILTER==="tercero"?DATA.members.filter(m=>m.type==="tercero"&&m.loans.some(l=>l.pays.some(p=>!p.paid))):SEND_FILTER==="asociado"?DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)):DATA.members.filter(m=>m.joinMonth||m.loans.some(l=>l.pays.some(p=>!p.paid)))).forEach(m=>SEND_SELECTED.add(m.id));render();}
 function selectNone(){SEND_SELECTED.clear();render();}
 
 async function copyBatch(){
@@ -2644,9 +2644,9 @@ function previewGrupo(){
     <button onclick="TAB='send';render()" style="width:100%;padding:9px;border:2px solid #C75B0E;border-radius:8px;background:transparent;color:#C75B0E;font-weight:700;font-size:13px;cursor:pointer">← Volver a Envíos</button>
   </div>`;
 
-  members.forEach(m=>{ h+=fichaResumenHTML(m); });
+  members.filter(activoEnReporte).forEach(m=>{ h+=fichaResumenHTML(m); }); // baja: fuera de la vista previa del enlace grupal
 
-  const totalAportesP=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
+  const totalAportesP=members.filter(m=>m.type!=="tercero"&&activoEnReporte(m)).reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
   const totalCuotasP=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).totalCuotas,0);
 
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
@@ -3765,7 +3765,7 @@ function saveCicloYAporte(mid){
 function avalistaFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   if(!m)return "";
-  const asocActivos=DATA.members.filter(x=>x.type==="asociado"&&x.joinMonth).sort((a,b)=>a.name.localeCompare(b.name));
+  const asocActivos=DATA.members.filter(x=>x.type==="asociado"&&x.joinMonth&&activoEnReporte(x)).sort((a,b)=>a.name.localeCompare(b.name));
   const actual=m.ref?DATA.members.find(x=>x.id===m.ref):null;
   const actualFueraDeLista=actual&&!asocActivos.some(a=>a.id===actual.id);
   return`<div class="modal-title">🤝 Cambiar avalista — ${escH(m.name)}</div>
@@ -3937,6 +3937,115 @@ function memberBenefitAccum(m){
   return Math.round(total*100)/100;
 }
 
+// ── BAJA DE ASOCIADO (salida anticipada, §7 del Documento Maestro) ────────────
+// La baja es un CAMBIO DE ESTADO: el miembro se conserva con su historial (nunca se
+// borra; regla crítica 3). Devolución = capital efectivamente PAGADO + bonificaciones
+// de los niveles COMPLETADOS. Nivel completado = 12/24/36 meses PAGADOS (decisión de
+// Ángel), topado por el ciclo declarado. El beneficio del nivel en curso se pierde y
+// se queda en el fondo. Bonificación por nivel: §6.1 (aporte 50); aporte 100 = el doble.
+const BONO_NIVEL = {1:120, 2:144, 3:180};
+// Niveles COMPLETADOS según meses realmente pagados, topados por el ciclo declarado.
+function nivelesCompletadosPagados(mesesPagados, ciclo){
+  let n = 0;
+  if(mesesPagados >= 12) n = 1;
+  if(mesesPagados >= 24) n = 2;
+  if(mesesPagados >= 36) n = 3;
+  const tope = (ciclo===12) ? 1 : (ciclo===24) ? 2 : 3; // ciclo 36 o 0(indef) → hasta N3
+  return Math.min(n, tope);
+}
+// Fecha de pago de la devolución: día 5 del mes SIGUIENTE a la baja (decisión de Ángel).
+function fechaPagoBaja(mesBaja, anioBaja){
+  const i = MONTHS.indexOf(mesBaja);
+  const im = (i+1)%12, iy = anioBaja + (i+1>=12 ? 1 : 0);
+  return "5 " + MONTHS_FULL[im] + " " + iy;
+}
+// Beneficio acumulado contando SOLO los meses realmente PAGADOS (decisión de Ángel),
+// excluyendo el mes de ingreso (que no genera beneficio, §5.1). Se usa solo para el
+// informativo "beneficio perdido"; no altera el total de la devolución.
+function beneficioAcumuladoPagados(m){
+  if(!DATA.monthlyData || !m.joinMonth || !m.joinYear) return 0;
+  const ingKey = m.joinYear + "-" + String(MONTHS.indexOf(m.joinMonth)+1).padStart(2,"0");
+  let total = 0;
+  Object.keys(DATA.monthlyData).forEach(k=>{
+    const md = DATA.monthlyData[k];
+    if(md && md.aportes && md.aportes[m.id] === true && k !== ingKey){
+      total += beneficioMiembroMes(m, k);
+    }
+  });
+  return Math.round(total*100)/100;
+}
+// Cálculo de la devolución de una baja. NO marca nada: solo calcula y devuelve el desglose.
+function devolucionBaja(m, mesBaja, anioBaja){
+  const aporte = m.aporte || DATA.monthlyFee;
+  const mesesPagados = aportesPagadosCount(m);
+  const capital = mesesPagados * aporte;                       // solo lo efectivamente pagado
+  const ciclo = (m.ciclo != null ? m.ciclo : 12);
+  const niveles = nivelesCompletadosPagados(mesesPagados, ciclo);
+  const mult = (aporte >= 100) ? 2 : 1;                        // §6.2: aporte 100 = el doble
+  let beneficioConservado = 0;
+  for(let l = 1; l <= niveles; l++) beneficioConservado += BONO_NIVEL[l] * mult;
+  const total = capital + beneficioConservado;                // lo que recibe el asociado
+  const acumulado = beneficioAcumuladoPagados(m); // solo meses pagados (decisión de Ángel)
+  const beneficioPerdido = Math.max(0, Math.round((acumulado - beneficioConservado)*100)/100); // queda en el fondo (informativo)
+  return {
+    mesesPagados, capital, niveles, beneficioConservado, beneficioPerdido,
+    total, fechaPago: fechaPagoBaja(mesBaja, anioBaja)
+  };
+}
+// ¿Es 'm' avalista de alguna ayuda ACTIVA de otro miembro? Devuelve el mensaje de
+// bloqueo, o null si puede darse de baja. Control de seguridad simple (Regla 2):
+// verificar y bloquear en la misma operación; ante la duda, no permitir.
+// PENDIENTE (fase futura): baja de un asociado CON DEUDA PROPIA — compensar la deuda
+// contra sus aportes, calcular el faltante, o trasladar la deuda a su avalista. Aquí
+// solo se contempla el caso simple: sin deuda propia y sin avalar nada activo.
+function motivoBloqueoBaja(m){
+  const activa = l => Array.isArray(l.pays) && l.pays.some(p => !p.paid);
+  for(const o of DATA.members){
+    if(o.id === m.id) continue;
+    // (a) tercero avalado por m (o.ref === m.id) con alguna ayuda activa
+    if(o.type === "tercero" && o.ref === m.id && (o.loans||[]).some(activa)){
+      return `No se puede dar de baja a ${m.name}: es avalista de una ayuda activa de ${o.name} (tercero).`;
+    }
+    // (b) cualquier ayuda activa que registró a m como avalista en su concesión
+    if((o.loans||[]).some(l => l.avalistaEnConcesion === m.id && activa(l))){
+      return `No se puede dar de baja a ${m.name}: es avalista de una ayuda activa de ${o.name}.`;
+    }
+  }
+  return null;
+}
+// Marca la baja (CAMBIO DE ESTADO explícito; nunca desde render(), regla crítica 7).
+// Conserva el miembro con su historial; solo añade el objeto 'baja'. Si el asociado
+// avala una ayuda activa, NO procede: devuelve {ok:false, motivo} sin tocar nada.
+function darDeBaja(m, mesBaja, anioBaja){
+  const motivo = motivoBloqueoBaja(m);
+  if(motivo) return {ok:false, motivo};
+  const d = devolucionBaja(m, mesBaja, anioBaja);
+  m.baja = {
+    month: mesBaja, year: anioBaja,
+    capitalDevuelto: d.capital,
+    beneficioConservado: d.beneficioConservado,
+    beneficioPerdido: d.beneficioPerdido,
+    total: d.total,
+    fechaPago: d.fechaPago
+  };
+  return {ok:true, baja:m.baja};
+}
+// ¿Cuenta como activo en el mes 'mesKey' ("AAAA-MM")? Activo si no tiene baja, o si la
+// baja es POSTERIOR a ese mes. Desde el mes de baja (inclusive) deja de contar.
+function cuentaComoActivo(m, mesKey){
+  if(!m.baja) return true;
+  const bajaKey = m.baja.year + "-" + String(MONTHS.indexOf(m.baja.month)+1).padStart(2,"0");
+  return mesKey < bajaKey;
+}
+// Conveniencia: ¿activo en el MES DE REPORTE actual? (para conteos/reparto/envíos).
+function activoEnReporte(m){
+  return cuentaComoActivo(m, DATA.reportYear + "-" + String(MONTHS.indexOf(DATA.reportMonth)+1).padStart(2,"0"));
+}
+// TAREA FUTURA (pendiente de revisar): salida de TERCEROS del grupo al saldar su última
+// cuota — mecanismo distinto al de baja de asociado. Un tercero no tiene permanencia ni
+// devolución; simplemente deja de tener ayudas activas. Revisar cuándo/cómo retirarlo de
+// las vistas de grupo/envíos sin perder su historial.
+
 // ── FUNCIONES CIERRE MENSUAL ─────────────────────────────────────────────────
 function getMesKey(m,y){return y+"-"+String(MONTHS.indexOf(m)+1).padStart(2,"0");}
 function getMesData(m,y){
@@ -3955,12 +4064,12 @@ function toggleAporte(memberId,mes,anio){
 }
 function marcarTodosAportes(){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
-  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth).forEach(m=>{md.aportes[m.id]=true;});
+  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).forEach(m=>{md.aportes[m.id]=true;});
   save();render();toast("Todos marcados como pagados ✓");
 }
 function desmarcarTodosAportes(){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
-  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth).forEach(m=>{md.aportes[m.id]=false;});
+  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).forEach(m=>{md.aportes[m.id]=false;});
   save();render();toast("Todos desmarcados");
 }
 function toggleCuotaCierre(mid,lid,pi){
@@ -4015,7 +4124,7 @@ function setMesReservaPct(val){
   if(el)renderMesKpis(md);
 }
 function renderMesKpis(md){
-  const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
+  const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
   // Asociados con derecho: llevan al menos 1 mes cumplido
   const ri=MONTHS.indexOf(DATA.reportMonth),ry=DATA.reportYear;
   const conDerecho=asocActivos.filter(m=>{
@@ -4111,6 +4220,7 @@ function render(){
     <button class="tab ${TAB==="asociados"?"active":""}" onclick="TAB='asociados';FICHA_ID=null;render()">👤 Asociados</button>
     <button class="tab ${TAB==="mes"?"active":""}" onclick="TAB='mes';render()">📊 Cierre</button>
     <button class="tab ${TAB==="send"?"active":""}" onclick="TAB='send';render()">📤 Envíos</button>
+    <button class="tab ${TAB==="historico"?"active":""}" onclick="TAB='historico';render()">📜 Histórico</button>
     <button class="tab ${TAB==="manage"?"active":""}" onclick="irGestion()">⚙️ Gestión</button>
   </div><div class="content">`;
 
@@ -4127,7 +4237,7 @@ function render(){
     const md=getMesData(rm,ry);
     if(!_mesYaExistia&&!md.recargoManual)md.recargo=recargoAutoMes(rm,ry);
     const recAuto=recargoAutoMes(rm,ry);
-    const asocMes=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
+    const asocMes=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
     const ri2=MONTHS.indexOf(rm);
     const conDerecho=asocMes.filter(m=>{const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;return(jy<ry)||(jy===ry&&ji<ri2);});
     const topeNivel=ri2>=8&&ry===2026?12:10;
@@ -4311,7 +4421,7 @@ function render(){
         // Crear nuevo grupo — solo asociados que NO estén ya en ningún grupo
         const enGrupo=new Set();
         grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
-        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
         h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
           <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
             <option value="">— Elegir principal —</option>
@@ -4457,7 +4567,7 @@ function render(){
       if(mFicha){h+=fichaHTML(mFicha);}
     } else {
       // Vista fusionada: filtros + fichas estilo reporte (tocables) + Recaudación + Resumen General
-      const ordered=buildOrderedMembers();
+      const ordered=buildOrderedMembers().filter(activoEnReporte); // baja: fuera de la lista de Asociados (solo en Histórico)
       const totApt=totalAportesMes(rm,ry);
       h+=`<div id="capture" style="background:#F5F0EB;padding-bottom:10px">`;
       // 1) Recaudación — cobrado vs pendiente del MES EN CURSO (cálculos; el bloque se
@@ -4477,7 +4587,7 @@ function render(){
       const totPen=intSplit.pen+extSplit.pen+aptSplit.pendiente;
       // Contador de aportes cobrados X/Y para mostrar junto a "Aportes del mes"
       const _mdRec=getMesData(rm,ry),_riRec=MONTHS.indexOf(rm);
-      const _asocAct=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&((m.joinYear<ry)||(m.joinYear===ry&&MONTHS.indexOf(m.joinMonth)<=_riRec)));
+      const _asocAct=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&((m.joinYear<ry)||(m.joinYear===ry&&MONTHS.indexOf(m.joinMonth)<=_riRec))&&activoEnReporte(m));
       const _aptPag=_asocAct.filter(m=>_mdRec.aportes&&_mdRec.aportes[m.id]).length;
       // Subtotal de devoluciones (internas + externas) antes de aportes
       const devCob=intSplit.cob+extSplit.cob;
@@ -4486,7 +4596,7 @@ function render(){
       const spl=salidasPuntualesSplit(rm,ry);
       const salidasYaDevueltas=spl.items.filter(it=>it.devuelto).reduce((s,it)=>s+it.total,0);
       // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
-      const nAsociados=DATA.members.filter(m=>m.type==="asociado").length;
+      const nAsociados=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).length;
       const nAyudasActivas=DATA.members.reduce((s,m)=>s+(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length,0);
       h+=`<button class="toggle-asoc" onclick="LISTA_ABIERTA=!LISTA_ABIERTA;render()">
         <span>👥 Ver asociados <span class="ta-num">${nAsociados}</span></span>
@@ -4534,7 +4644,7 @@ function render(){
       // 4) Resumen General
       const totIntPend=DATA.members.filter(m=>m.type==="asociado").reduce((s,m)=>s+pendAll(m),0);
       const totTercPend=DATA.members.filter(m=>m.type==="tercero").reduce((s,m)=>s+pendAll(m),0);
-      const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
+      const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
       // Ayudas nuevas otorgadas ESTE mes (activas y cerradas: una ayuda corta puede
       // otorgarse y cerrarse en el mismo mes, así que hay que mirar las dos listas).
       const ayudasNuevasMes=[];
@@ -4559,6 +4669,12 @@ function render(){
       const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
+        ${(()=>{const bm=DATA.members.filter(x=>x.baja&&x.baja.month===rm&&x.baja.year===ry);
+          if(!bm.length)return "";
+          const tot=bm.reduce((s,x)=>s+(x.baja.total||0),0);
+          const lst=bm.map(x=>`${escH(x.name)}: ${x.baja.total} €`).join(" · ");
+          return `<div class="rf-row" style="flex-wrap:wrap;gap:4px"><span>Bajas de ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry} — ${lst}. <b>Total devoluciones: ${tot} €</b></span></div>`;
+        })()}
         <div class="rf-row"><span>Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
         <div class="rf-divider"></div>
         <div class="rf-sec">Movimiento del mes</div>
@@ -4589,9 +4705,45 @@ function render(){
     }
   }
 
+  // ── PESTAÑA HISTÓRICO (solo admin; nunca se renderiza en enlaces de asociado/grupo,
+  //    porque render() hace return antes en READONLY_ID / ES_MODO_GRUPO / PREVIEW_ID) ──
+  if(TAB==="historico"){
+    const bajas=DATA.members.filter(m=>m.baja).sort((a,b)=>{
+      const ka=a.baja.year*12+MONTHS.indexOf(a.baja.month), kb=b.baja.year*12+MONTHS.indexOf(b.baja.month);
+      return kb-ka || a.name.localeCompare(b.name);
+    });
+    h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:10px">📜 Histórico — Bajas de asociados</div>`;
+    if(bajas.length===0){
+      h+=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Aún no hay bajas registradas.</div>`;
+    }else{
+      h+=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="text-align:left;color:var(--muted)">
+          <th style="padding:6px 8px">Asociado</th><th style="padding:6px 8px">Mes de baja</th>
+          <th style="padding:6px 8px;text-align:right">Capital devuelto</th>
+          <th style="padding:6px 8px;text-align:right">Beneficio perdido</th>
+          <th style="padding:6px 8px">Fecha de pago</th><th style="padding:6px 8px">Estado</th>
+        </tr></thead><tbody>`;
+      bajas.forEach(m=>{
+        const b=m.baja;
+        h+=`<tr style="border-top:1px solid #ece5da">
+          <td style="padding:6px 8px">${escH(m.name)}</td>
+          <td style="padding:6px 8px">${escH(b.month)} ${b.year}</td>
+          <td style="padding:6px 8px;text-align:right">${b.capitalDevuelto} €</td>
+          <td style="padding:6px 8px;text-align:right">${b.beneficioPerdido} €</td>
+          <td style="padding:6px 8px">${escH(b.fechaPago||"")}</td>
+          <td style="padding:6px 8px">${escH(b.estado||"Pendiente")}</td>
+        </tr>`;
+      });
+      const totalDev=bajas.reduce((s,m)=>s+(m.baja.total||0),0);
+      h+=`</tbody></table></div>
+        <div style="text-align:right;margin-top:10px;font-weight:800;color:#7A2418">Total devuelto: ${totalDev} €</div>`;
+    }
+    h+=`<div style="font-size:11px;color:var(--muted);margin-top:12px">Sección de administración. Preparada para crecer (futuros: reingresos, cesiones de plaza, cierres de ciclo).</div></div>`;
+  }
+
   // ── PESTAÑA ENVÍOS ──
   if(TAB==="send"){
-    const todosAsoc=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth);
+    const todosAsoc=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
     const tercPend=DATA.members.filter(m=>m.type==="tercero"&&m.loans.some(l=>l.pays.some(p=>!p.paid)));
     const allSend=[...todosAsoc,...tercPend];
     const filteredBase=SEND_FILTER==="asociado"?todosAsoc:SEND_FILTER==="tercero"?tercPend:allSend;
@@ -4676,7 +4828,7 @@ function render(){
 
   // ── PESTAÑA GESTIÓN ──
   if(TAB==="manage"){
-    const asocAll=DATA.members.filter(m=>m.type==="asociado");
+    const asocAll=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)); // baja: fuera de Gestión (solo en Histórico)
     const tercAll=DATA.members.filter(m=>m.type==="tercero");
 
     h+=`<div style="margin:8px 0 4px"><input id="mgSearch" type="text" placeholder="🔍 Buscar asociado o tercero por nombre…" value="${escH(MG_SEARCH||"")}" oninput="filtrarGestion(this.value)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box"></div>`;
@@ -4740,6 +4892,7 @@ function render(){
     if(MODAL.type==="grupo_link")h+=grupoLinkModalHTML();
     if(MODAL.type==="sync_conflict")h+=syncConflictModalHTML();
     if(MODAL.type==="restaurar_backups")h+=restaurarBackupsModalHTML();
+    if(MODAL.type==="baja")h+=bajaFormHTML();
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;
@@ -5022,8 +5175,57 @@ function manageHTML(m,isT){
   if((m.history||[]).length>0){
     h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`;
   }
+  if(!isT){ // Dar de baja: solo asociados (los terceros salen del grupo por otro mecanismo — ver TAREA FUTURA)
+    h+=`<button class="add-loan-btn" style="background:#FDECE8;color:#C0492C;margin-top:6px" onclick="openModal('baja',{mid:'${esc(m.id)}'})">🚪 Dar de baja</button>`;
+  }
   h+=`</div>`;
   return h;
+}
+
+// ── Modal "Dar de baja" (dos pasos: elegir mes → confirmar cifras). Solo cablea la
+//    interfaz; toda la lógica vive en devolucionBaja/darDeBaja/motivoBloqueoBaja. ──
+function bajaFormHTML(){
+  const m=DATA.members.find(x=>x.id===MODAL.mid);
+  if(!m)return "";
+  const bloqueo=motivoBloqueoBaja(m);
+  if(bloqueo){ // avalista de una ayuda activa → se muestra el bloqueo, no se puede continuar
+    return `<div class="modal-title">🚪 Dar de baja — ${escH(m.name)}</div>
+      <div style="background:#FDF0EE;border:2px solid #C0492C;border-radius:12px;padding:14px;font-size:13px;color:#7A2418;margin:10px 0 16px;line-height:1.55">⛔ ${escH(bloqueo)}</div>
+      <button class="m-primary" onclick="closeModal()">Entendido</button>`;
+  }
+  if(MODAL.bajaStep!==2){ // paso 1: elegir el mes de baja
+    return `<div class="modal-title">🚪 Dar de baja — ${escH(m.name)}</div>
+      <label class="m-label">Elige el mes de baja</label>
+      ${selectorMesAnio("baja-mes","baja-anio",DATA.reportMonth,DATA.reportYear)}
+      <div style="font-size:12px;color:var(--muted);margin:2px 0 16px">Por defecto, el mes actual. Al continuar verás la devolución calculada antes de confirmar.</div>
+      <button class="m-primary" onclick="bajaContinuar()">Continuar</button>
+      <button onclick="closeModal()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">Cancelar</button>`;
+  }
+  // paso 2: confirmación con las cifras reales del mes elegido
+  const mes=MODAL.bajaMes, anio=MODAL.bajaAnio;
+  const d=devolucionBaja(m,mes,anio);
+  const armed=!!MODAL.bajaArmed;
+  return `<div class="modal-title">🚪 Confirmar baja — ${escH(m.name)}</div>
+    <div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:12px;padding:14px;font-size:13.5px;color:#7A4A1E;margin:6px 0 16px;line-height:1.7">
+      Vas a dar de baja a <b>${escH(m.name)}</b> con efecto <b>${escH(mes)} ${anio}</b>.<br>
+      <b>Devolución: ${d.total} €</b> (capital ${d.capital} €${d.beneficioConservado?` + beneficios conservados ${d.beneficioConservado} €`:""}).<br>
+      Beneficio perdido (queda en el fondo): <b>${d.beneficioPerdido} €</b>.<br>
+      Fecha de pago: <b>${escH(d.fechaPago)}</b>.
+    </div>
+    <button class="m-primary" style="${armed?"background:#C0492C":""}" onclick="${armed?`confirmarBaja('${esc(m.id)}')`:"MODAL.bajaArmed=true;render()"}">${armed?"⚠️ Pulsa de nuevo para CONFIRMAR la baja":"Dar de baja"}</button>
+    <button onclick="MODAL.bajaStep=1;MODAL.bajaArmed=false;render()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">← Cambiar mes</button>`;
+}
+function bajaContinuar(){
+  const mes=document.getElementById("baja-mes").value;
+  const anio=parseInt(document.getElementById("baja-anio").value);
+  MODAL.bajaMes=mes; MODAL.bajaAnio=anio; MODAL.bajaStep=2; MODAL.bajaArmed=false; render();
+}
+function confirmarBaja(mid){
+  const m=DATA.members.find(x=>x.id===mid);
+  if(!m)return;
+  const r=darDeBaja(m,MODAL.bajaMes,MODAL.bajaAnio);
+  if(!r.ok){ closeModal(); toast(r.motivo||"No se pudo dar de baja"); return; }
+  save(); closeModal(); toast(m.name+" dado de baja ✓");
 }
 
 function previewFormHTML(){
@@ -5036,7 +5238,7 @@ function previewFormHTML(){
 function memberFormHTML(){
   const pr=MODAL.preset||"asociado";
   // Solo asociados ACTIVOS pueden avalar (regla del Documento Maestro Interno).
-  const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth).sort((a,b)=>a.name.localeCompare(b.name));
+  const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
   return`<div class="modal-title">${pr==="tercero"?"Nuevo tercero":"Nuevo asociado"}</div>
 <input id="m-name" class="m-input" placeholder="Nombre completo">
 <div style="display:flex;gap:8px;margin-bottom:12px">
@@ -5052,7 +5254,7 @@ function cierreLoanFormHTML(){
   // siguiente mes para 1ª cuota
   const ni=(MONTHS.indexOf(rm)+1)%12;
   const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
-  const asoc=DATA.members.filter(m=>m.type==="asociado").sort((a,b)=>a.name.localeCompare(b.name));
+  const asoc=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
   const terc=DATA.members.filter(m=>m.type==="tercero").sort((a,b)=>a.name.localeCompare(b.name));
   return`<div class="modal-title">🤝 Ayuda aprobada en la reunión</div>
 <label class="m-label">¿A quién?</label>
@@ -5194,6 +5396,17 @@ function renderReadonly(){
     </div>`;
     document.getElementById("app").innerHTML=h;return;
   }
+  // Enlace personal de un asociado dado de baja: la ficha ya no está disponible.
+  // Solo afecta a quien tiene objeto 'baja'; los enlaces de asociados ACTIVOS (sin baja)
+  // siguen funcionando exactamente igual (esta rama no se ejecuta para ellos).
+  if(m.baja){
+    document.getElementById("app").innerHTML=`<div style="text-align:center;padding:60px 20px">
+      <div style="font-size:48px;margin-bottom:16px">🚪</div>
+      <div style="font-size:18px;font-weight:700;color:var(--dark)">Esta ficha ya no está disponible.</div>
+      <div style="font-size:14px;color:var(--muted);margin-top:8px">Contacta con el administrador si tienes dudas.</div>
+    </div>`;
+    return;
+  }
   h+=`<div class="header" style="background:linear-gradient(135deg,#1B4332,#2D6A4F);padding:18px 20px 14px;border-radius:0 0 24px 24px;text-align:center;margin-bottom:0">
     <div class="h-title">NUEVOS HORIZONTES</div>
     <div class="h-sub">Tu ficha personal</div>
@@ -5310,7 +5523,7 @@ function renderGrupo(){
   }
 
   // ── Vista grupal (resumen entre todos) ──
-  members.forEach(m=>{ h+=fichaResumenHTML(m); });
+  members.filter(activoEnReporte).forEach(m=>{ h+=fichaResumenHTML(m); }); // baja: fuera de la vista de grupo (solo en Histórico)
 
   const totalAportes=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
   const totalCuotas2=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).totalCuotas,0);
