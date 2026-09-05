@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.5"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.6"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -3852,8 +3852,8 @@ function levelBenefit(m){
   return fee>=100?base*2:base;
 }
 
-// Beneficio real pagado por mes (fuente: Reparto_Mensual del Excel)
-// Para meses futuros sin dato real, se usa el tope del nivel vigente
+// Beneficio real pagado por mes (fuente: Reparto_Mensual del Excel).
+// Meses históricos con recargo real medido (hasta jun 2026): valor de la tabla.
 const BENEFICIO_MES = {
   "2025-09": 2.50,
   "2025-10": 5.00,
@@ -3866,14 +3866,28 @@ const BENEFICIO_MES = {
   "2026-05": 10.00,
   "2026-06": 10.00,
 };
-// Tope por nivel vigente para meses futuros (sin recargo registrado aún)
-function topeMesFuturo(mesKey){
-  // Sep 2026 en adelante → Nivel 2 = 12€
-  return mesKey >= "2026-09" ? 12 : 10;
+// Beneficio por NIVEL de permanencia (réplica de Reparto_Mensual del Excel).
+// "Meses vencidos" = idx(mes) - idx(ingreso): el mes de ingreso cuenta 0 y el primer
+// beneficio es el mes siguiente (a mes vencido, §5.1 del Maestro). Nivel 1 = 10 € (1-12) ·
+// Nivel 2 = 12 € (13-24, ciclo != 12) · Nivel 3 = 15 € (>=25, ciclo 36 o indefinido).
+// Un ciclo 12 que pasa del mes 12 se queda en Nivel 1.
+function tarifaNivelMes(m, mesKey){
+  if(!m.joinMonth || !m.joinYear) return 0;
+  const [y,mm]=mesKey.split("-").map(Number);
+  const idxK = y*12 + mm;                                // mm es 1-based, igual que el Excel
+  const idxJoin = m.joinYear*12 + (MONTHS.indexOf(m.joinMonth)+1);
+  const elapsed = idxK - idxJoin;                        // meses vencidos (mes de ingreso = 0)
+  if(elapsed < 1) return 0;                              // aún no genera beneficio
+  const ciclo = (m.ciclo != null ? m.ciclo : 12);       // 0 = indefinido
+  if(elapsed <= 12) return 10;                           // Nivel 1
+  if(elapsed <= 24 && ciclo !== 12) return 12;           // Nivel 2 (ciclo != 12)
+  if(elapsed >= 25 && (ciclo === 36 || ciclo === 0)) return 15; // Nivel 3 (ciclo 36 o indefinido)
+  return 10;                                             // ciclo 12 tras el mes 12, etc. → Nivel 1
 }
 function beneficioRealMes(mesKey){
-  if(BENEFICIO_MES[mesKey] !== undefined) return BENEFICIO_MES[mesKey];
-  return topeMesFuturo(mesKey);
+  // Solo meses históricos (tabla). Para meses futuros devuelve undefined y el importe
+  // lo resuelve por NIVEL beneficioMiembroDesglose (tarifaNivelMes).
+  return BENEFICIO_MES[mesKey];
 }
 
 // Beneficio de UN asociado en UN mes concreto.
@@ -3888,15 +3902,16 @@ function mesKeyAnterior(mesKey){
 // Desglose del beneficio de un miembro para el mes 'mesKey' (mes en que se COBRA, a mes vencido).
 // El aporte que genera el beneficio es el del MES ANTERIOR (el extra de junio se refleja en julio).
 function beneficioMiembroDesglose(m, mesKey){
-  const base = beneficioRealMes(mesKey);
+  const historico = BENEFICIO_MES[mesKey];
+  const base = (historico !== undefined) ? historico : tarifaNivelMes(m, mesKey);
   const aporteBase = m.aporte || DATA.monthlyFee;
   const keyAporte = mesKeyAnterior(mesKey);
   const extra = (DATA.extras && DATA.extras[m.id] && DATA.extras[m.id][keyAporte] && DATA.extras[m.id][keyAporte].monto) || 0;
   const aportadoEseMes = aporteBase + extra;
-  const tieneExtra = extra > 0 && aportadoEseMes >= 100;
-  const benBase = Math.round(base * 100) / 100;                 // parte regular
-  const benExtra = tieneExtra ? Math.round(base * 100) / 100 : 0; // parte por aporte extra (duplica)
-  return { base: benBase, extra: benExtra, total: Math.round((benBase+benExtra)*100)/100, tieneExtra, keyAporte };
+  const dobla = aportadoEseMes >= 100;                          // aporte base 100 O 50+extra=100
+  const benBase = Math.round(base * 100) / 100;                 // parte regular (nivel)
+  const benExtra = dobla ? Math.round(base * 100) / 100 : 0;    // duplica si aportó >=100
+  return { base: benBase, extra: benExtra, total: Math.round((benBase+benExtra)*100)/100, tieneExtra: dobla, keyAporte };
 }
 function beneficioMiembroMes(m, mesKey){
   return beneficioMiembroDesglose(m, mesKey).total;
@@ -4874,7 +4889,8 @@ function runCodeChecks(force){
     CODE_CHECKS.online=true; CODE_CHECKS.ok1=ok1; CODE_CHECKS.ok2=ok2; CODE_CHECKS.ok3=ok3; CODE_CHECKS.ok5=ok5;
   }).catch(()=>{ CODE_CHECKS.online=false; }).then(()=>{
     try{
-      const t1=topeMesFuturo("2026-08")===10, t2=topeMesFuturo("2026-09")===12;
+      const t1=tarifaNivelMes({joinMonth:"Ago",joinYear:2025,ciclo:24},"2026-08")===10; // mes venc 12 → Nivel 1
+      const t2=tarifaNivelMes({joinMonth:"Ago",joinYear:2025,ciclo:24},"2026-09")===12; // mes venc 13 → Nivel 2
       const b1=levelBenefit({joinMonth:DATA.reportMonth,joinYear:DATA.reportYear,aporte:100});
       const b2=levelBenefit({joinMonth:DATA.reportMonth,joinYear:DATA.reportYear,aporte:50});
       CODE_CHECKS.ok4 = t1 && t2 && b1===20 && b2===10;
