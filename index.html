@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.7"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.8"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4669,11 +4669,14 @@ function render(){
       const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
-        ${(()=>{const bm=DATA.members.filter(x=>x.baja&&x.baja.month===rm&&x.baja.year===ry);
+        ${(()=>{const _idxRm=MONTHS.indexOf(rm);
+          // Agrupa por MES DE PAGO (día 5 del mes siguiente a la baja), no por mes de baja:
+          // el dinero sale de caja el mes de pago. Una baja de agosto (pago 5 sep) sale en septiembre.
+          const bm=DATA.members.filter(x=>{if(!x.baja)return false;const _bi=MONTHS.indexOf(x.baja.month);const _pm=(_bi+1)%12,_py=x.baja.year+(_bi+1>=12?1:0);return _pm===_idxRm&&_py===ry;});
           if(!bm.length)return "";
           const tot=bm.reduce((s,x)=>s+(x.baja.total||0),0);
           const lst=bm.map(x=>`${escH(x.name)}: ${x.baja.total} €`).join(" · ");
-          return `<div class="rf-row" style="flex-wrap:wrap;gap:4px"><span>Bajas de ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry} — ${lst}. <b>Total devoluciones: ${tot} €</b></span></div>`;
+          return `<div class="rf-row" style="flex-wrap:wrap;gap:4px"><span>Devoluciones de ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry} — ${lst}. <b>Total: ${tot} €</b></span></div>`;
         })()}
         <div class="rf-row"><span>Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
         <div class="rf-divider"></div>
