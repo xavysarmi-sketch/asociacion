@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.9"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.11"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1040,11 +1040,40 @@ function sanitizeData(data){
     if(typeof m.id==="string" && m.id.charAt(0)==="m")return true;     // id de la app
     return false; // fantasma real: descartar
   });
+  // Reconciliación puntual: Andrea Rodriguez (t3) se convirtió a asociada desde la app
+  // ANTES de que existiera la marca `convertido` — su ref quedó en null pero el tipo se
+  // revertía a "tercero" en cada carga (control #10 "Tercero sin avalista"). Se estampa
+  // la marca UNA vez (idempotente) para que el mecanismo general de abajo la respete, y
+  // se conserva constancia del aval en su ayuda saldada. Fuente del avalista: Excel
+  // Maestro (Mario Orozco, ayuda marzo 2026, 300 €) e INITIAL (t3.ref="3"). Mismo estilo
+  // que los parches puntuales ya existentes (Maribel Checa id 15 / l15_1 en migrateData).
+  {
+    const and=data.members.find(m=>m.id==="t3");
+    if(and){
+      and.convertido=true;
+      [...(and.loans||[]),...(and.closedLoans||[])].forEach(l=>{
+        if(l.id==="lt3_1"&&(l.avalistaEnConcesion===undefined||l.avalistaEnConcesion===null)){
+          l.tipoEnConcesion="tercero";
+          l.avalistaEnConcesion="Mario Orozco";
+        }
+      });
+    }
+  }
   data.members.forEach(m=>{
     const ref=byName[(m.name||"").toLowerCase().trim()];
     if(ref){
       m.id=ref.id;          // id correcto del archivo (fuente de verdad)
-      m.type=ref.type;      // asociado / tercero
+      // tipo: por defecto lo fija el archivo (INITIAL); es la fuente de verdad y evita
+      // que un dato viejo del navegador falsee el tipo (regla crítica). ÚNICA excepción:
+      // una conversión tercero→asociado hecha DELIBERADAMENTE desde la app deja la marca
+      // m.convertido===true. Esa sí persiste, porque no es un dato viejo sino un cambio
+      // real, y solo la app puede escribirla (en Firestore solo escribe la app).
+      // Fallo cerrado: sin la marca, manda el archivo. El anclaje de id no se toca nunca.
+      if(m.convertido===true && ref.type==="tercero"){
+        m.type="asociado";
+      }else{
+        m.type=ref.type;      // asociado / tercero
+      }
       // avalista (ref = avalistaId): ahora EDITABLE desde la app (Fase 1B, "Cambiar
       // avalista"). Igual que loans/history, NO se sobrescribe con el de INITIAL si
       // el miembro ya lo trae guardado — si no, cada carga revertiría la edición del
@@ -1335,7 +1364,18 @@ function mergeTerceroIntoAsociado(name,joinMonth,joinYear){
   const key=_normNombre(name); // mismo criterio que el detector y la auditoría (control 7)
   const tercero=DATA.members.find(m=>m.type==="tercero"&&_normNombre(m.name)===key);
   if(!tercero)return false;
+  // Antes de perder el ref: congelar en cada ayuda a nombre de quién estaba avalada,
+  // para conservar esa constancia. Solo se rellena si falta; nunca se pisa una condición
+  // histórica ya registrada (mismo criterio "texto congelado" que addLoanSubmit).
+  const avalNombre=avalistaNombre(tercero);
+  if(avalNombre&&avalNombre!=="⚠️ avalista no encontrado"){
+    [...(tercero.loans||[]),...(tercero.closedLoans||[])].forEach(l=>{
+      if(l.tipoEnConcesion===undefined)l.tipoEnConcesion="tercero";
+      if(l.avalistaEnConcesion===undefined||l.avalistaEnConcesion===null)l.avalistaEnConcesion=avalNombre;
+    });
+  }
   tercero.type="asociado";
+  tercero.convertido=true;   // marca deliberada: sanitizeData respeta esta conversión y no la revierte con INITIAL
   tercero.ref=null;
   tercero.joinMonth=joinMonth||DATA.reportMonth;
   tercero.joinYear=joinYear||DATA.reportYear;
@@ -1728,6 +1768,9 @@ function aportesSplit(rm,ry){
     const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;
     const activoEseMes=(jy<ry)||(jy===ry&&ji<=ri);
     if(!activoEseMes)return;
+    // Baja: desde el mes de baja (inclusive) el asociado deja de aportar, así que
+    // no debe contar ni como cobrado ni como pendiente en la recaudación de ese mes.
+    if(!cuentaComoActivo(m,getMesKey(rm,ry)))return;
     const cuota=aporteNetoMes(m,rm,ry);
     if(aportes[m.id])cobrado+=cuota; else pendiente+=cuota;
   });
@@ -3670,16 +3713,19 @@ function saveExtra(){
 function referidoFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   if(!m)return "";
-  // Selector de mes: mes actual y los 5 anteriores
+  // Selector de mes: 3 meses anteriores, el mes actual y 3 meses futuros.
   const MS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const ri=MS.indexOf(DATA.reportMonth),ry=DATA.reportYear;
   const meses=[];
-  for(let i=5;i>=0;i--){
-    let mi=ri-i; let yi=ry;
-    if(mi<0){mi+=12;yi--;}
+  for(let i=-3;i<=3;i++){
+    let mi=ri+i, yi=ry;
+    while(mi<0){mi+=12;yi--;}
+    while(mi>11){mi-=12;yi++;}
     meses.push({m:MS[mi],y:yi,key:yi+"-"+String(mi+1).padStart(2,"0")});
   }
-  const selMesKey=MODAL.refMesKey||meses[meses.length-1].key;
+  // Por defecto se selecciona el mes actual (el del medio del rango).
+  const mesActualKey=ry+"-"+String(ri+1).padStart(2,"0");
+  const selMesKey=MODAL.refMesKey||mesActualKey;
   const actual=(DATA.referidos&&DATA.referidos[m.id]&&DATA.referidos[m.id][selMesKey])||{n:0,nombres:""};
   const mesOpts=meses.map(x=>`<option value="${x.key}" ${x.key===selMesKey?"selected":""}>${x.m} ${x.y}</option>`).join("");
   return`<div class="modal-title">🎁 Bonus referidos — ${escH(m.name)}</div>
@@ -3696,7 +3742,8 @@ function referidoFormHTML(){
 </div>
 <label class="m-label">Nombres de los nuevos miembros</label>
 <input id="ref-nombres" class="m-input" placeholder="Ej: Ana García, Luis Pérez" value="${escH(actual.nombres||"")}">
-<button class="m-primary" onclick="saveReferido()">Guardar</button>`;
+<button class="m-primary" onclick="saveReferido()">Guardar</button>
+${actual.n>0?`<button style="width:100%;margin-top:10px;padding:12px;border:2px solid #C0492C;border-radius:12px;background:#FDECE8;color:#C0492C;font-size:14px;font-weight:700;cursor:pointer" onclick="borrarReferido()">🗑 Eliminar este bono (${actual.n} · ${selMesKey})</button>`:""}`;
 }
 function saveReferido(){
   const n=parseInt(document.querySelector(".l-n-opt.active")?.dataset.n||"0");
@@ -3706,6 +3753,18 @@ function saveReferido(){
   if(!DATA.referidos[MODAL.mid])DATA.referidos[MODAL.mid]={};
   DATA.referidos[MODAL.mid][mesKey]={n,nombres};
   closeModal();save();toast("Referidos guardados para "+mesKey+" ✓");
+}
+// Eliminar un bono de referido registrado por error, para el mes seleccionado.
+function borrarReferido(){
+  const mesKey=MODAL.refMesKey||(DATA.reportYear+"-"+String(MONTHS.indexOf(DATA.reportMonth)+1).padStart(2,"0"));
+  if(DATA.referidos&&DATA.referidos[MODAL.mid]&&DATA.referidos[MODAL.mid][mesKey]){
+    delete DATA.referidos[MODAL.mid][mesKey];
+    if(Object.keys(DATA.referidos[MODAL.mid]).length===0)delete DATA.referidos[MODAL.mid];
+    save();toast("Bono eliminado de "+mesKey+" ✓");
+  }else{
+    toast("No había bono registrado en "+mesKey);
+  }
+  closeModal();render();
 }
 
 function cicloFormHTML(){
