@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.11"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.12"; // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1124,6 +1124,7 @@ function sanitizeData(data){
       });
     });
   }
+  parcheBonosReferidos2026(data); // v44.12: bonos de referido pendientes (una sola vez, idempotente)
   return data;
 }
 
@@ -1295,15 +1296,58 @@ function esc(str){return String(str).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
 function escH(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 // Registra el año actual del sistema en la lista de años (sin tocar el mes/año elegido)
-function setCurrentMonthYear(){
+function setCurrentMonthYear(persistir){
   if(!DATA)return;
   const now=new Date();
   const curY=now.getFullYear();
   if(YEARS.indexOf(curY)===-1)YEARS.push(curY);
-  // Opción A: respetar siempre el mes/año que el usuario dejó guardado.
+  // Opción A: respetar el mes/año que el usuario dejó guardado.
   // Solo se fija el mes actual si por algún motivo no hubiera ninguno guardado.
   if(!DATA.reportMonth)DATA.reportMonth=MONTHS[now.getMonth()];
   if(!DATA.reportYear)DATA.reportYear=curY;
+  // v44.12: excepción declarada — cambio automático de mes en el día de aviso.
+  avanceMesPorDiaAviso(now,!!persistir);
+}
+// Mes "operativo" según la fecha de hoy: desde el día de aviso (Configuración →
+// "Día de aviso del próximo aporte", por defecto 25) ya es el mes siguiente.
+function mesOperativoHoy(now){
+  now=now||new Date();
+  const dia=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
+  let mi=now.getMonth(), y=now.getFullYear();
+  if(now.getDate()>=dia){mi++; if(mi>11){mi=0;y++;}}
+  return {mes:MONTHS[mi],anio:y,key:y+"-"+String(mi+1).padStart(2,"0")};
+}
+// Desde el día de aviso la app pasa sola al mes siguiente (lo mismo que hacía el
+// administrador a mano), para que asociados y administrador vean ya los aportes y
+// cuotas del mes que viene. Reglas:
+//  · Solo avanza, nunca retrocede, y solo si el mes guardado es anterior al operativo.
+//  · UNA vez por mes (marca DATA.mesAutoAplicado): si después el administrador vuelve
+//    a un mes anterior a mano, se respeta su decisión hasta el siguiente día de aviso.
+//  · Solo se guarda (persistir) en modo administrador y tras la comprobación con la
+//    nube; en los enlaces de asociados se aplica solo en pantalla, sin escribir nada,
+//    para que vean el mes nuevo aunque el administrador aún no haya abierto la app.
+//  · Se llama desde la carga de datos, nunca desde render() (regla crítica 7).
+function avanceMesPorDiaAviso(now,persistir){
+  const obj=mesOperativoHoy(now);
+  if(DATA.mesAutoAplicado===obj.key)return;
+  const repKey=getMesKey(DATA.reportMonth,DATA.reportYear);
+  if(repKey<obj.key){
+    DATA.reportMonth=obj.mes; DATA.reportYear=obj.anio;
+    if(YEARS.indexOf(obj.anio)===-1)YEARS.push(obj.anio);
+  }
+  if(persistir&&!READONLY_ID&&!ES_MODO_GRUPO){
+    DATA.mesAutoAplicado=obj.key;
+    save();
+  }
+}
+// ¿Mostrar ya el mes siguiente al del reporte (aviso "Próximo", cascada de cuotas)?
+// Solo si hoy es día de aviso o posterior Y el reporte sigue en un mes anterior al
+// operativo. Si la app ya pasó al mes siguiente, no se adelanta un segundo mes.
+function avisoSiguienteActivo(){
+  const hoy=new Date();
+  const dia=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
+  if(hoy.getDate()<dia)return false;
+  return getMesKey(DATA.reportMonth,DATA.reportYear)<mesOperativoHoy(hoy).key;
 }
 
 // Devuelve la cuota "activa" de una ayuda en el mes-año dado.
@@ -1329,8 +1373,7 @@ function activePayIndex(loan,rm,ry){
   }
   // 3) Cascada: primera cuota futura sin pagar — SOLO a partir del día de aviso
   // (si no, una cuota de un mes que aún no ha llegado se vería "POR PAGAR").
-  const diaAviso=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
-  if(new Date().getDate()>=diaAviso){
+  if(avisoSiguienteActivo()){
     for(let i=0;i<loan.pays.length;i++){
       if(!loan.pays[i].paid)return i;
     }
@@ -1550,7 +1593,7 @@ function load(){
       console.error("Firebase load failed:",e);
       SYNC_STATUS="error";
     }
-    setCurrentMonthYear();
+    setCurrentMonthYear(SYNC_STATUS==="ok"); // v44.12: guarda el cambio automático de mes solo si la nube respondió bien
     render();
     // FIX IPHONE: NO llamamos a _fbListen aquí — eliminado completamente
   };
@@ -1597,7 +1640,7 @@ async function resolverConflictoSync(choice){
     // Continúa el flujo normal (caso de siempre): lo local es la verdad, se sube como respaldo.
     try{await window._fbSave(DATA);}catch(e){}
   }
-  setCurrentMonthYear();
+  setCurrentMonthYear(true); // v44.12: conflicto resuelto → se puede guardar el cambio automático de mes
   render();
 }
 
@@ -2086,6 +2129,112 @@ function aporteNetoMes(m,rm,ry){
   const base=(m.aporte||DATA.monthlyFee);
   const {descuento}=descuentoReferidoMes(m.id,rm,ry);
   return Math.max(0, base-descuento);
+}
+// v44.12: lo que quedó SIN PAGAR del mes anterior al del reporte (aporte + cuotas).
+// Con el cambio automático de mes, evita que una deuda del mes pasado deje de verse.
+// Solo lectura: no crea el registro del mes si no existe (regla crítica 7). Las cuotas
+// aplazadas no cuentan (tienen su propio tratamiento) y la baja se respeta.
+function pendienteMesAnterior(m,rm,ry){
+  let pi=MONTHS.indexOf(rm)-1, py=ry; if(pi<0){pi=11;py--;}
+  const pm=MONTHS[pi], pk=getMesKey(pm,py);
+  let pend=0;
+  [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
+    (l.pays||[]).forEach((p,idx)=>{ if(p.m===pm&&p.y===py&&!p.paid&&!p.aplazada) pend+=cuotaDe(l,idx); });
+  });
+  const md=DATA.monthlyData&&DATA.monthlyData[pk];
+  if(m.type!=="tercero"&&m.joinMonth&&md){
+    const ji=MONTHS.indexOf(m.joinMonth), jy=m.joinYear;
+    const yaEstaba=(jy<py)||(jy===py&&ji<=pi);
+    if(yaEstaba&&cuentaComoActivo(m,pk)&&!(md.aportes&&md.aportes[m.id])) pend+=aporteNetoMes(m,pm,py);
+  }
+  return {mes:pm,anio:py,pendiente:Math.round(pend*100)/100};
+}
+// ── v44.12: BONO POR REFERIDO (Documento Maestro §15.2) ─────────────────────────
+// Registra un bono de 10 € para el asociado 'refId' por traer a 'nombre', en el mes
+// 'mesKey' ("AAAA-MM"). Máximo 3 bonos por mes: si ese mes ya tiene 3, pasa al
+// siguiente con hueco (el excedente no se pierde). Devuelve la clave del mes usado.
+function registrarBonoReferido(refId,nombre,mesKey,d){
+  d=d||DATA;
+  if(!d.referidos)d.referidos={};
+  if(!d.referidos[refId])d.referidos[refId]={};
+  let [y,mo]=mesKey.split("-").map(Number);
+  for(let i=0;i<36;i++){
+    const k=y+"-"+String(mo).padStart(2,"0");
+    const r=d.referidos[refId][k]||{n:0,nombres:""};
+    if((r.n||0)<3){
+      const nombres=(r.nombres||"").split(",").map(s=>s.trim()).filter(Boolean);
+      nombres.push(nombre);
+      d.referidos[refId][k]={n:(r.n||0)+1,nombres:nombres.join(", ")};
+      return k;
+    }
+    mo++; if(mo>12){mo=1;y++;}
+  }
+  return null;
+}
+// Mes por defecto del bono: el mes del reporte; si el asociado que refirió ya pagó
+// el aporte de ese mes, el siguiente (el descuento ya no se puede aplicar a un aporte cobrado).
+function mesBonoPorDefecto(refId){
+  const rm=DATA.reportMonth, ry=DATA.reportYear;
+  const md=DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)];
+  if(!(md&&md.aportes&&md.aportes[refId]))return getMesKey(rm,ry);
+  let i=MONTHS.indexOf(rm)+1,y=ry; if(i>11){i=0;y++;}
+  return getMesKey(MONTHS[i],y);
+}
+// Opciones del selector de mes del bono: 3 meses antes, el del reporte y 3 después.
+function opcionesMesBono(selKey){
+  const ri=MONTHS.indexOf(DATA.reportMonth),ry=DATA.reportYear;let h="";
+  for(let i=-3;i<=3;i++){
+    let mi=ri+i,yi=ry; while(mi<0){mi+=12;yi--;} while(mi>11){mi-=12;yi++;}
+    const k=getMesKey(MONTHS[mi],yi);
+    h+=`<option value="${k}" ${k===selKey?"selected":""}>${MONTHS_FULL[mi]} ${yi}</option>`;
+  }
+  return h;
+}
+// Alta: al elegir "¿Quién lo trajo?", se propone el mes del bono (modificable).
+function altaReferidoCambio(){
+  const refId=document.getElementById("m-refdo")?.value||"";
+  const w=document.getElementById("m-bono-wrap"); if(!w)return;
+  if(!refId){w.style.display="none";return;}
+  const def=mesBonoPorDefecto(refId);
+  document.getElementById("m-bono-mes").innerHTML=opcionesMesBono(def);
+  const ref=DATA.members.find(x=>x.id===refId);
+  const nom=ref?ref.name.split(" ")[0]:"el asociado";
+  const repKey=getMesKey(DATA.reportMonth,DATA.reportYear);
+  document.getElementById("m-bono-hint").textContent= def!==repKey
+    ? `${nom} ya pagó el aporte de ${MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)]}, por eso el bono se propone para el mes siguiente. Puedes cambiarlo.`
+    : `Se descontarán 10 € del aporte de ${nom} en el mes elegido. Puedes cambiarlo.`;
+  w.style.display="block";
+}
+// Guarda quién trajo al nuevo asociado (ID, regla crítica 9) y le activa el bono al que refirió.
+function aplicarReferidoAlta(m,refId,mesKey){
+  if(!m||!refId)return null;
+  m.referidoPor=refId;
+  return registrarBonoReferido(refId,m.name,mesKey||mesBonoPorDefecto(refId));
+}
+// PARCHE PUNTUAL (una sola vez, idempotente) — datos dados por Ángel el 23/09/2026:
+// deja constancia de quién trajo a cada asociado y acredita los 6 bonos que faltaban.
+// Los 6 bonos pendientes van a Octubre 2026 (primer mes con aporte aún sin cobrar; no se
+// tocan meses ya cerrados). Si hace falta, el mes se cambia en Ficha → 🎁 Referido.
+function parcheBonosReferidos2026(data){
+  if(!data||!data.members)return;
+  const byId=id=>data.members.find(m=>m.id===id);
+  // [nuevo asociado, quién lo trajo] — por ID, nunca por nombre
+  const conBono=[["23","20"],["22","21"],["25","21"],["24","22"],["27","22"]]; // ya tenían su bono registrado
+  const pendientes=[["26","6"],["m1785779716462","20"],["m1786048607199","4"],["m1786181034106","2"],["m1788688212630","20"],["m1788793088810","26"]];
+  [...conBono,...pendientes].forEach(([nid,rid])=>{const n=byId(nid);if(n&&byId(rid)&&n.referidoPor===undefined)n.referidoPor=rid;});
+  if(!data.parches)data.parches={};
+  if(data.parches.bonosReferidos2026_09)return;
+  if(!pendientes.every(([nid,rid])=>byId(nid)&&byId(rid)))return; // datos incompletos (p.ej. el archivo base): no marcar
+  const yaTiene=(rid,nombre)=>Object.values((data.referidos&&data.referidos[rid])||{})
+    .some(r=>(r.nombres||"").split(",").map(s=>_normNombre(s)).includes(_normNombre(nombre)));
+  pendientes.forEach(([nid,rid])=>{const n=byId(nid); if(!yaTiene(rid,n.name))registrarBonoReferido(rid,n.name,"2026-10",data);});
+  data.parches.bonosReferidos2026_09=true;
+}
+function pendienteMesAnteriorHTML(m,rm,ry){
+  const p=pendienteMesAnterior(m,rm,ry);
+  if(!(p.pendiente>0))return "";
+  const mf=(typeof MONTHS_FULL!=="undefined"?MONTHS_FULL[MONTHS.indexOf(p.mes)]:p.mes);
+  return `<div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(255,217,163,.18);border:1px solid rgba(255,217,163,.55);color:#FFE7C2;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Además queda pendiente de ${escH(mf)} ${p.anio}: ${fmtEur(p.pendiente)} €</div>`;
 }
 
 // Items (aporte + cuotas) de un miembro en el mes seleccionado
@@ -2790,6 +2939,14 @@ function addMemberSubmit(){
   const name=document.getElementById("m-name").value.trim();if(!name)return;
   const type=document.querySelector(".m-opt.active")?.dataset.type||"asociado";
   const ref=type==="tercero"?(document.getElementById("m-ref")?.value||null):null; // ref = avalistaId (select), no texto libre
+  // v44.12: referido (solo asociados) → bono de 10 € automático para quien lo trajo
+  const refdoId=type==="asociado"?(document.getElementById("m-refdo")?.value||null):null;
+  const bonoMes=refdoId?(document.getElementById("m-bono-mes")?.value||mesBonoPorDefecto(refdoId)):null;
+  const msgBono=k=>{
+    if(!k)return "";
+    const r=DATA.members.find(x=>x.id===refdoId);const[yy,mm]=k.split("-").map(Number);
+    return ` · bono de 10 € para ${r?r.name.split(" ")[0]:"el asociado"} en ${MONTHS_FULL[mm-1]} ${yy}`+(k!==bonoMes?" (ese mes ya tenía 3 bonos)":"");
+  };
   // Si se añade un ASOCIADO y existe un TERCERO con el mismo nombre, fusionar
   if(type==="asociado"){
     const key=_normNombre(name); // mismo criterio que la auditoría (control 7): ignora tildes/mayúsculas/espacios
@@ -2797,14 +2954,20 @@ function addMemberSubmit(){
     if(tercExist){
       if(confirm(`Ya existe un tercero con el nombre "${tercExist.name}".\n\n¿Convertirlo en asociado conservando todo su historial y ayudas activas?`)){
         const ok=mergeTerceroIntoAsociado(name,DATA.reportMonth,DATA.reportYear);
-        if(ok){closeModal();save();toast("✓ Tercero convertido a asociado");return;}
+        if(ok){
+          const conv=DATA.members.find(x=>x.type==="asociado"&&_normNombre(x.name)===key);
+          const k=refdoId?aplicarReferidoAlta(conv,refdoId,bonoMes):null;
+          closeModal();save();toast("✓ Tercero convertido a asociado"+msgBono(k));return;
+        }
       }else{
         return; // El admin canceló — no crear duplicado
       }
     }
   }
-  DATA.members.push({id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:"",origen:"app"});
-  closeModal();save();toast("Miembro añadido ✓");
+  const nuevo={id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:"",origen:"app"};
+  DATA.members.push(nuevo);
+  const k=refdoId?aplicarReferidoAlta(nuevo,refdoId,bonoMes):null;
+  closeModal();save();toast("Miembro añadido ✓"+msgBono(k));
 }
 
 function addLoanSubmit(){
@@ -3072,9 +3235,7 @@ function mesObjetivo(m){
   // Tope normal: el mes de reporte (nadie "debe" un mes que aún no ha llegado).
   // A partir del día de aviso (por defecto 25), se permite avanzar UN mes más,
   // para que los que pagan por anticipado vean ya el próximo pago pendiente.
-  const diaAviso=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
-  const hoyDia=new Date().getDate();
-  const permiteSiguiente = hoyDia>=diaAviso;
+  const permiteSiguiente = avisoSiguienteActivo(); // v44.12: no adelanta si la app ya pasó de mes
   const topeMi=mi + (permiteSiguiente?1:0);
   const todosLoans=[...(m.loans||[]),...(m.closedLoans||[])];
   // Avanzar como máximo 24 meses para evitar bucles
@@ -3257,6 +3418,7 @@ function fichaResumenHTML(m){
         <span class="tot-final-num">${fmtEur(tot.total)} €</span>
         <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
       </div>
+      ${pendienteMesAnteriorHTML(m,rm,ry)}
     </div>
   </div>`;
 
@@ -3373,6 +3535,7 @@ function fichaHTML(m,readonly=false){
         <span class="tot-final-num">${fmtEur(tot.total)} €</span>
         <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
       </div>
+      ${pendienteMesAnteriorHTML(m,rm,ry)}
     </div>
   </div>`;
 
@@ -3401,7 +3564,7 @@ function fichaHTML(m,readonly=false){
     if(!aptOk){
       estadoLbl="Aporte pendiente ⏳";
       subLbl=`${d.apNeto} € netos a pagar este mes`;
-    } else if(hoyDia>=diaAviso){
+    } else if(avisoSiguienteActivo()){
       estadoLbl="✅ Al día";
       subLbl=`Próximo: ${aporteSig} € de ${mesSigFull}`;
     } else {
@@ -5304,10 +5467,19 @@ function memberFormHTML(){
   return`<div class="modal-title">${pr==="tercero"?"Nuevo tercero":"Nuevo asociado"}</div>
 <input id="m-name" class="m-input" placeholder="Nombre completo">
 <div style="display:flex;gap:8px;margin-bottom:12px">
-<button class="m-opt ${pr==="asociado"?"active":""}" data-type="asociado" onclick="this.classList.add('active');this.nextElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='none'">👥 Asociado</button>
-<button class="m-opt ${pr==="tercero"?"active":""}" data-type="tercero" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='block'">🤝 Tercero</button>
+<button class="m-opt ${pr==="asociado"?"active":""}" data-type="asociado" onclick="this.classList.add('active');this.nextElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='none';document.getElementById('m-refdo-wrap').style.display='block'">👥 Asociado</button>
+<button class="m-opt ${pr==="tercero"?"active":""}" data-type="tercero" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='block';document.getElementById('m-refdo-wrap').style.display='none'">🤝 Tercero</button>
 </div>
 <div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select></div>
+<div id="m-refdo-wrap" style="display:${pr==="tercero"?"none":"block"};margin-bottom:12px">
+<label class="m-label">🎁 ¿Quién lo trajo? (referido por)</label>
+<select id="m-refdo" class="m-select" onchange="altaReferidoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>
+<div id="m-bono-wrap" style="display:none;margin-top:10px;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:12px;padding:10px 12px">
+<label class="m-label" style="color:#7A5A12">Mes en que se aplica el bono de 10 €</label>
+<select id="m-bono-mes" class="m-select"></select>
+<div id="m-bono-hint" style="font-size:12px;color:#7A5A12;margin-top:6px;line-height:1.4"></div>
+</div>
+</div>
 <button class="m-primary" onclick="addMemberSubmit()">Añadir</button>`;
 }
 
