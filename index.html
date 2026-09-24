@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.12"; // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.13"; // v44.13: contador de aportes + devoluciones por baja (mes de pago, reserva, pagada) // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1125,6 +1125,7 @@ function sanitizeData(data){
     });
   }
   parcheBonosReferidos2026(data); // v44.12: bonos de referido pendientes (una sola vez, idempotente)
+  parcheBajasPagoOct2026(data);   // v44.13: bajas de Jorge y Yanessa se pagan en Oct 2026 con la reserva
   return data;
 }
 
@@ -2229,6 +2230,50 @@ function parcheBonosReferidos2026(data){
     .some(r=>(r.nombres||"").split(",").map(s=>_normNombre(s)).includes(_normNombre(nombre)));
   pendientes.forEach(([nid,rid])=>{const n=byId(nid); if(!yaTiene(rid,n.name))registrarBonoReferido(rid,n.name,"2026-10",data);});
   data.parches.bonosReferidos2026_09=true;
+}
+// ── v44.13: PAGO DE DEVOLUCIONES POR BAJA ─────────────────────────────────────
+// Es devolución del CAPITAL aportado (no un gasto): sale del fondo el mes en que se
+// PAGA. Mes de pago: el que fije el administrador (b.pagoMonth/pagoYear) o, por
+// defecto, el mes siguiente a la baja (día 5, decisión de Ángel). Si se paga con la
+// reserva (b.conReserva), la reserva aporta ese importe y el mes no lo soporta.
+function mesPagoBaja(b){
+  if(b.pagoMonth&&b.pagoYear)return {mes:b.pagoMonth,anio:b.pagoYear};
+  const i=MONTHS.indexOf(b.month);
+  return {mes:MONTHS[(i+1)%12],anio:b.year+(i+1>=12?1:0)};
+}
+function bajasDelMes(rm,ry){
+  return DATA.members.filter(m=>{if(!m.baja)return false;const p=mesPagoBaja(m.baja);return p.mes===rm&&p.anio===ry;});
+}
+// Resumen de las bajas que se pagan en rm/ry (total, parte con reserva, parte ya pagada).
+function resumenBajasMes(rm,ry){
+  const bm=bajasDelMes(rm,ry), suma=f=>bm.filter(f).reduce((s,m)=>s+(m.baja.total||0),0);
+  return {lista:bm,total:suma(()=>true),reserva:suma(m=>m.baja.conReserva),
+    pagadas:suma(m=>m.baja.pagada),pagadasReserva:suma(m=>m.baja.pagada&&m.baja.conReserva)};
+}
+// Acción explícita del administrador (Histórico): mes de pago, "con la reserva" y "pagada".
+function setPagoBaja(mid,campo,valor){
+  const m=DATA.members.find(x=>x.id===mid); if(!m||!m.baja)return;
+  const b=m.baja;
+  if(campo==="mes"){const[mm,yy]=String(valor).split("|");b.pagoMonth=mm;b.pagoYear=parseInt(yy);b.fechaPago="5 "+MONTHS_FULL[MONTHS.indexOf(mm)]+" "+yy;}
+  if(campo==="reserva")b.conReserva=!!valor;
+  if(campo==="pagada"){b.pagada=!!valor;b.estado=valor?"Pagado":"Pendiente";b.fechaPagada=valor?new Date().toLocaleDateString("es-ES"):null;}
+  save();render();
+  toast(campo==="pagada"?(valor?"✓ Devolución marcada como pagada":"Devolución marcada como pendiente"):"Pago de la baja actualizado ✓");
+}
+// PARCHE PUNTUAL (una sola vez) — decisión de Ángel el 24/09/2026: Jorge Rivera (18) y
+// Yanessa Peña (19) aún no han cobrado; se les paga en Octubre 2026 con la reserva.
+function parcheBajasPagoOct2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.bajasPagoOct2026)return;
+  const bs=["18","19"].map(id=>data.members.find(m=>m.id===id)).filter(m=>m&&m.baja);
+  if(bs.length<2)return; // datos incompletos (p.ej. el archivo base): no marcar
+  bs.forEach(m=>{const b=m.baja;
+    if(b.pagoMonth===undefined){b.pagoMonth="Oct";b.pagoYear=2026;b.fechaPago="5 Octubre 2026";}
+    if(b.conReserva===undefined)b.conReserva=true;
+    if(b.pagada===undefined){b.pagada=false;b.estado="Pendiente";}
+  });
+  data.parches.bajasPagoOct2026=true;
 }
 function pendienteMesAnteriorHTML(m,rm,ry){
   const p=pendienteMesAnterior(m,rm,ry);
@@ -4469,7 +4514,9 @@ function render(){
     const beneficioMes=md.recargo>0?Math.min(repartoPorAsoc,topeNivel):(benHistorico!==undefined?benHistorico:0);
     const totalPagado=beneficioMes*conDerecho.length;
     const excedente=md.recargo>0?Math.max(0,md.recargo-totalPagado):0;
-    const aptPagados=Object.values(md.aportes||{}).filter(Boolean).length;
+    // v44.13: contar SOLO a los asociados de la lista (activos). Antes contaba todas las marcas
+    // guardadas del mes, incluidas las de fichas borradas o dadas de baja → "31/30".
+    const aptPagados=asocMes.filter(m=>!!(md.aportes&&md.aportes[m.id])).length;
 
     h+=bannerRecargoHTML();
 
@@ -4816,6 +4863,7 @@ function render(){
       // Desglose de aportes puntuales a devolver este mes (pendiente vs ya devuelto) —
       // se calcula aquí porque Recaudación (punto 3, abajo) también lo necesita.
       const spl=salidasPuntualesSplit(rm,ry);
+      const bj=resumenBajasMes(rm,ry); // v44.13: devoluciones por baja que se pagan este mes
       const salidasYaDevueltas=spl.items.filter(it=>it.devuelto).reduce((s,it)=>s+it.total,0);
       // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
       const nAsociados=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).length;
@@ -4855,12 +4903,14 @@ function render(){
           <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Aportaciones <span style="opacity:.6;font-size:12px">(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}</span></span><span class="rec-imp">${aptCob} €</span></div></div>
           <div class="gb-row gb-total" style="margin-top:6px"><span>SUMA</span><b>${totCob} €</b></div>
           ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">Pendiente</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">Todo cobrado este mes</span><b></b></div>`}
-          ${spl.total>0?`<div class="gb-salida">
+          ${(spl.total>0||bj.total>0)?`<div class="gb-salida">
             <div class="gb-salida-lbl">Salida del fondo</div>
-            <div class="gb-salida-row"><span class="gb-salida-txt">Devolución de aporte puntual</span><span class="gb-salida-imp">−${spl.total} €</span></div>
+            ${spl.total>0?`<div class="gb-salida-row"><span class="gb-salida-txt">Devolución de aporte puntual</span><span class="gb-salida-imp">−${spl.total} €</span></div>`:""}
+            ${bj.total>0?`<div class="gb-salida-row"><span class="gb-salida-txt">Devolución por baja (${bj.lista.length})</span><span class="gb-salida-imp">−${bj.total} €</span></div>`:""}
+            ${bj.reserva>0?`<div class="gb-salida-row"><span class="gb-salida-txt">↳ cubierta con la reserva</span><span class="gb-salida-imp" style="color:#8CE0B0">+${bj.reserva} €</span></div>`:""}
             <div class="gb-salida-sub">Ya descontada en Disponible neto real y Caja real (Resumen General)</div>
           </div>
-          <div class="gb-row gb-total" style="margin-top:10px"><span>TOTAL NETO</span><b>${totCob-spl.total} €</b></div>`:""}
+          <div class="gb-row gb-total" style="margin-top:10px"><span>TOTAL NETO</span><b>${totCob-spl.total-bj.total+bj.reserva} €</b></div>`:""}
         </div>
       </div>`;
       // 4) Resumen General
@@ -4885,21 +4935,13 @@ function render(){
       if(DATA.extras){Object.values(DATA.extras).forEach(o=>{ if(o[_mkE]&&o[_mkE].monto) _extras+=o[_mkE].monto; });}
       const entradas=_apt.cobrado+_apt.pendiente+_extras+tA+tT;
       // Disponible neto real: PREVISTO del mes (incluye lo aún pendiente de cobrar).
-      const dispNeto=entradas-spl.total-totalAyudasNuevas;
+      // v44.13: + devoluciones por baja del mes de pago (la parte cubierta con la reserva no la soporta el mes).
+      const dispNeto=entradas-spl.total-totalAyudasNuevas-bj.total+bj.reserva;
       // Caja real: solo dinero que YA se movió — cobrado real, menos lo que ya salió
-      // (ayudas nuevas se entregan al otorgarse; devoluciones puntuales solo si ya se pagaron).
-      const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas;
+      // (ayudas nuevas se entregan al otorgarse; devoluciones puntuales y por baja solo si ya se pagaron).
+      const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas-bj.pagadas+bj.pagadasReserva;
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
-        ${(()=>{const _idxRm=MONTHS.indexOf(rm);
-          // Agrupa por MES DE PAGO (día 5 del mes siguiente a la baja), no por mes de baja:
-          // el dinero sale de caja el mes de pago. Una baja de agosto (pago 5 sep) sale en septiembre.
-          const bm=DATA.members.filter(x=>{if(!x.baja)return false;const _bi=MONTHS.indexOf(x.baja.month);const _pm=(_bi+1)%12,_py=x.baja.year+(_bi+1>=12?1:0);return _pm===_idxRm&&_py===ry;});
-          if(!bm.length)return "";
-          const tot=bm.reduce((s,x)=>s+(x.baja.total||0),0);
-          const lst=bm.map(x=>`${escH(x.name)}: ${x.baja.total} €`).join(" · ");
-          return `<div class="rf-row" style="flex-wrap:wrap;gap:4px"><span>Devoluciones de ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry} — ${lst}. <b>Total: ${tot} €</b></span></div>`;
-        })()}
         <div class="rf-row"><span>Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
         <div class="rf-divider"></div>
         <div class="rf-sec">Movimiento del mes</div>
@@ -4908,10 +4950,13 @@ function render(){
           ?`<div class="rf-row"><span>Devolución puntual (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
           :`<div class="rf-row"><span>Devolución pendiente (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
         ).join("")}
+        ${bj.lista.map(x=>`<div class="rf-row"><span>Devolución por baja (${escH(x.name)})${x.baja.pagada?"":` <small style="opacity:.7">· pendiente de pagar</small>`}</span><span class="rf-val v-neg">−${x.baja.total} €</span></div>`).join("")}
+        ${bj.reserva>0?`<div class="rf-row"><span style="padding-left:12px">↳ cubierta con la reserva</span><span class="rf-val v-pos">+${bj.reserva} €</span></div>`:""}
         ${ayudasNuevasMes.length>0?`<div class="rf-row ayn-row" onclick="AYUDAS_NUEVAS_ABIERTA=!AYUDAS_NUEVAS_ABIERTA;render()"><span>Ayudas nuevas otorgadas (${ayudasNuevasMes.length}) <span class="arrow">${AYUDAS_NUEVAS_ABIERTA?"▲":"▼"}</span></span><span class="rf-val v-neg">−${totalAyudasNuevas} €</span></div>
         ${AYUDAS_NUEVAS_ABIERTA?ayudasNuevasMes.map(a=>`<div class="rf-row ayn-sub"><span>${escH(a.nombre)}</span><span class="rf-val">${a.capital} €</span></div>`).join(""):""}`:""}
         <div class="rf-neto"><span>Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
         <div class="rf-neto"><span>Caja real<small>(solo cobrado)</small></span><b>${cajaReal} €</b></div>
+        ${dispNeto<0?`<div style="margin:6px 0 4px;padding:9px 12px;border-radius:10px;background:rgba(255,179,71,.16);border:1px solid rgba(255,179,71,.55);color:#FFD9A3;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Déficit del mes: ${Math.round(-dispNeto*100)/100} € → lo cubre la reserva (Documento Maestro §14). Anótalo como uso de la reserva en el Excel.</div>`:""}
         ${totPen>0?`<div class="rf-falta">faltan ${totPen} € por cobrar</div>`:""}
         <div class="rf-divider"></div>
         <div class="rf-sec">Devoluciones y aportes</div>
@@ -4941,27 +4986,30 @@ function render(){
     if(bajas.length===0){
       h+=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Aún no hay bajas registradas.</div>`;
     }else{
-      h+=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="text-align:left;color:var(--muted)">
-          <th style="padding:6px 8px">Asociado</th><th style="padding:6px 8px">Mes de baja</th>
-          <th style="padding:6px 8px;text-align:right">Capital devuelto</th>
-          <th style="padding:6px 8px;text-align:right">Beneficio perdido</th>
-          <th style="padding:6px 8px">Fecha de pago</th><th style="padding:6px 8px">Estado</th>
-        </tr></thead><tbody>`;
+      // v44.13: tarjetas (legibles en el iPhone) con la gestión del pago de cada baja
       bajas.forEach(m=>{
-        const b=m.baja;
-        h+=`<tr style="border-top:1px solid #ece5da">
-          <td style="padding:6px 8px">${escH(m.name)}</td>
-          <td style="padding:6px 8px">${escH(b.month)} ${b.year}</td>
-          <td style="padding:6px 8px;text-align:right">${b.capitalDevuelto} €</td>
-          <td style="padding:6px 8px;text-align:right">${b.beneficioPerdido} €</td>
-          <td style="padding:6px 8px">${escH(b.fechaPago||"")}</td>
-          <td style="padding:6px 8px">${escH(b.estado||"Pendiente")}</td>
-        </tr>`;
+        const b=m.baja, pAct=mesPagoBaja(b);
+        let optsPago="";{let i=MONTHS.indexOf(b.month)+1,y=b.year;for(let k=0;k<6;k++){if(i>11){i=0;y++;}const sel=(MONTHS[i]===pAct.mes&&y===pAct.anio)?"selected":"";optsPago+=`<option value="${MONTHS[i]}|${y}" ${sel}>${MONTHS_FULL[i]} ${y}</option>`;i++;}}
+        h+=`<div style="border:1px solid #ece5da;border-radius:14px;padding:12px 14px;margin-bottom:12px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(m.name)}</div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Baja: ${escH(MONTHS_FULL[MONTHS.indexOf(b.month)]||b.month)} ${b.year}</div></div>
+            <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${b.pagada?"#E3F1E7":"#FDECE8"};color:${b.pagada?"#1B7A3D":"#C0492C"}">${b.pagada?"✓ Pagado":"Pendiente"}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:10px"><span>Capital a devolver</span><b>${b.capitalDevuelto} €</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Beneficio perdido (queda en el fondo)</span><span>${b.beneficioPerdido} €</span></div>
+          ${b.pagada&&b.fechaPagada?`<div style="font-size:12px;color:#1B7A3D;margin-top:4px">Pagado el ${escH(b.fechaPagada)}</div>`:""}
+          <div style="margin-top:12px;background:#FAF6F0;border:1px solid #ece5da;border-radius:10px;padding:10px">
+            <label class="m-label" style="margin-bottom:6px">Se paga en (día 5)</label>
+            <select class="m-select" style="font-size:14px;margin-bottom:10px" onchange="setPagoBaja('${esc(m.id)}','mes',this.value)">${optsPago}</select>
+            <button onclick="setPagoBaja('${esc(m.id)}','reserva',${b.conReserva?"false":"true"})" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid ${b.conReserva?"#9A7B1A":"#D9C9B0"};background:${b.conReserva?"#FBF3DC":"#fff"};color:${b.conReserva?"#7A5A12":"#8A7A60"};font-size:13.5px;font-weight:700;cursor:pointer;margin-bottom:8px">${b.conReserva?"🏦 Se paga con la reserva ✓":"🏦 Pagar con la reserva"}</button>
+            <button onclick="setPagoBaja('${esc(m.id)}','pagada',${b.pagada?"false":"true"})" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid ${b.pagada?"#D9C9B0":"#2D6A4F"};background:${b.pagada?"#fff":"#2D6A4F"};color:${b.pagada?"#8A7A60":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${b.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
+          </div>
+        </div>`;
       });
       const totalDev=bajas.reduce((s,m)=>s+(m.baja.total||0),0);
-      h+=`</tbody></table></div>
-        <div style="text-align:right;margin-top:10px;font-weight:800;color:#7A2418">Total devuelto: ${totalDev} €</div>`;
+      const totalPag=bajas.filter(m=>m.baja.pagada).reduce((s,m)=>s+(m.baja.total||0),0);
+      h+=`<div style="text-align:right;margin-top:4px;font-weight:800;color:#7A2418;line-height:1.5">Total a devolver: ${totalDev} €<br><span style="font-size:13px">Pagado: ${totalPag} € · Pendiente: ${totalDev-totalPag} €</span></div>`;
     }
     h+=`<div style="font-size:11px;color:var(--muted);margin-top:12px">Sección de administración. Preparada para crecer (futuros: reingresos, cesiones de plaza, cierres de ciclo).</div></div>`;
   }
