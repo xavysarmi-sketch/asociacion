@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.13"; // v44.13: contador de aportes + devoluciones por baja (mes de pago, reserva, pagada) // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.14"; // v44.14: Cierre con beneficio por nivel (Documento Maestro) y textos de fase de crecimiento // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4390,28 +4390,34 @@ function setMesReservaPct(val){
   const el=document.getElementById("mes-kpi-beneficio");
   if(el)renderMesKpis(md);
 }
+// v44.13: reparto del mes según el Documento Maestro (§4.1 y §14.1). La obligación del
+// mes es la SUMA del beneficio de CADA asociado con derecho según su nivel (aporte 100 =
+// doble), la misma función que acumula el beneficio de cada ficha. Retorno (recargo) −
+// obligación = excedente, que en esta fase de crecimiento se reinvierte en ayudas. Si el
+// retorno no alcanza, los asociados siguen ganando su nivel y la diferencia la pone el fondo.
+function repartoBeneficioMes(recargo,rm,ry){
+  const ri=MONTHS.indexOf(rm), key=getMesKey(rm,ry);
+  const conDerecho=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&cuentaComoActivo(m,key)
+    &&((m.joinYear<ry)||(m.joinYear===ry&&MONTHS.indexOf(m.joinMonth)<ri)));
+  const obligacion=Math.round(conDerecho.reduce((s,m)=>s+beneficioMiembroMes(m,key),0)*100)/100;
+  const excedente=Math.round(((recargo||0)-obligacion)*100)/100;
+  const media=conDerecho.length?Math.round(obligacion/conDerecho.length*100)/100:0;
+  return {conDerecho,obligacion,excedente,media};
+}
 function renderMesKpis(md){
-  const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
-  // Asociados con derecho: llevan al menos 1 mes cumplido
-  const ri=MONTHS.indexOf(DATA.reportMonth),ry=DATA.reportYear;
-  const conDerecho=asocActivos.filter(m=>{
-    const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;
-    return (jy<ry)||(jy===ry&&ji<ri);
-  });
-  const tope=ri>=8?12:10; // sep 2026 en adelante → 12€
-  const repartoPorAsoc=conDerecho.length>0?md.recargo/conDerecho.length:0;
-  const beneficio=Math.min(repartoPorAsoc,tope);
-  const totalPagado=beneficio*conDerecho.length;
-  const excedente=md.recargo-totalPagado;
-  const reserva=excedente>0?excedente:0;
+  const r=repartoBeneficioMes(md.recargo,DATA.reportMonth,DATA.reportYear);
   const el=document.getElementById("mes-kpi-beneficio");
   const el2=document.getElementById("mes-kpi-reserva");
   const el3=document.getElementById("mes-kpi-excedente");
+  const el3l=document.getElementById("mes-kpi-excedente-lbl");
   const el4=document.getElementById("mes-kpi-conDerecho");
-  if(el)el.textContent=beneficio.toFixed(2)+" €";
-  if(el2)el2.textContent=reserva.toFixed(2)+" €";
-  if(el3)el3.textContent=excedente.toFixed(2)+" €";
-  if(el4)el4.textContent=conDerecho.length;
+  const el5=document.getElementById("mes-kpi-media");
+  if(el)el.textContent=r.obligacion.toFixed(2)+" €";
+  if(el2)el2.textContent=Math.max(0,r.excedente).toFixed(2)+" €";
+  if(el3)el3.textContent=Math.abs(r.excedente).toFixed(2)+" €";
+  if(el3l)el3l.textContent=r.excedente<0?"Falta retorno (lo pone el fondo)":"Excedente";
+  if(el4)el4.textContent=r.conDerecho.length;
+  if(el5)el5.textContent=r.media.toFixed(2)+" €";
 }
 
 function filtrarEnVivo(texto, scopeSelector){
@@ -4507,13 +4513,8 @@ function render(){
     const asocMes=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
     const ri2=MONTHS.indexOf(rm);
     const conDerecho=asocMes.filter(m=>{const ji=MONTHS.indexOf(m.joinMonth),jy=m.joinYear;return(jy<ry)||(jy===ry&&ji<ri2);});
-    const topeNivel=ri2>=8&&ry===2026?12:10;
-    const mesKey2=ry+"-"+String(ri2+1).padStart(2,"0");
-    const benHistorico=BENEFICIO_MES[mesKey2];
-    const repartoPorAsoc=conDerecho.length>0?md.recargo/conDerecho.length:0;
-    const beneficioMes=md.recargo>0?Math.min(repartoPorAsoc,topeNivel):(benHistorico!==undefined?benHistorico:0);
-    const totalPagado=beneficioMes*conDerecho.length;
-    const excedente=md.recargo>0?Math.max(0,md.recargo-totalPagado):0;
+    // v44.13: beneficio por nivel de cada asociado (Documento Maestro), no un tope igual para todos
+    const _rep=repartoBeneficioMes(md.recargo,rm,ry);
     // v44.13: contar SOLO a los asociados de la lista (activos). Antes contaba todas las marcas
     // guardadas del mes, incluidas las de fichas borradas o dadas de baja → "31/30".
     const aptPagados=asocMes.filter(m=>!!(md.aportes&&md.aportes[m.id])).length;
@@ -4549,9 +4550,9 @@ function render(){
     const kpiHTML=`<div class="mes-card">
       <div class="mes-kpi-grid">
         <div class="mes-kpi green"><div class="mes-kpi-val">${totalAportesMes(rm,ry)} €</div><div class="mes-kpi-lbl">Aportes cobrados</div></div>
-        <div class="mes-kpi orange"><div class="mes-kpi-val" id="mes-kpi-beneficio">${beneficioMes.toFixed(2)} €</div><div class="mes-kpi-lbl">Beneficio / asociado</div></div>
-        <div class="mes-kpi blue"><div class="mes-kpi-val" id="mes-kpi-excedente">${excedente>0?excedente.toFixed(2):"0"} €</div><div class="mes-kpi-lbl">Excedente</div></div>
-        <div class="mes-kpi"><div class="mes-kpi-val" id="mes-kpi-reserva">${excedente>0?excedente.toFixed(2):"0"} €</div><div class="mes-kpi-lbl">→ Reserva</div></div>
+        <div class="mes-kpi orange"><div class="mes-kpi-val" id="mes-kpi-beneficio">${_rep.obligacion.toFixed(2)} €</div><div class="mes-kpi-lbl">Beneficio del mes (según nivel)</div></div>
+        <div class="mes-kpi blue"><div class="mes-kpi-val" id="mes-kpi-excedente">${Math.abs(_rep.excedente).toFixed(2)} €</div><div class="mes-kpi-lbl" id="mes-kpi-excedente-lbl">${_rep.excedente<0?"Falta retorno (lo pone el fondo)":"Excedente"}</div></div>
+        <div class="mes-kpi"><div class="mes-kpi-val" id="mes-kpi-reserva">${Math.max(0,_rep.excedente).toFixed(2)} €</div><div class="mes-kpi-lbl">↻ Se reinvierte en ayudas</div></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
         <label style="font-size:13px;font-weight:600;color:var(--muted);flex:1">📈 Recargo recaudado este mes (€)</label>
@@ -4563,8 +4564,8 @@ function render(){
         ${md.recargoManual?`<button onclick="recalcRecargoForzar()" style="background:none;border:none;color:#2D6A4F;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px">↻ Recalcular</button>`:""}
       </div>
       <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px">
-        <span>Asociados con derecho a beneficio: <b style="color:var(--dark)">${conDerecho.length}</b></span>
-        <span>Tope nivel: <b style="color:var(--dark)">${topeNivel} €</b></span>
+        <span>Asociados con derecho a beneficio: <b style="color:var(--dark)" id="mes-kpi-conDerecho">${_rep.conDerecho.length}</b></span>
+        <span>Media: <b style="color:var(--dark)" id="mes-kpi-media">${_rep.media.toFixed(2)} €</b></span>
       </div>
     </div>`;
 
@@ -4956,7 +4957,7 @@ function render(){
         ${AYUDAS_NUEVAS_ABIERTA?ayudasNuevasMes.map(a=>`<div class="rf-row ayn-sub"><span>${escH(a.nombre)}</span><span class="rf-val">${a.capital} €</span></div>`).join(""):""}`:""}
         <div class="rf-neto"><span>Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
         <div class="rf-neto"><span>Caja real<small>(solo cobrado)</small></span><b>${cajaReal} €</b></div>
-        ${dispNeto<0?`<div style="margin:6px 0 4px;padding:9px 12px;border-radius:10px;background:rgba(255,179,71,.16);border:1px solid rgba(255,179,71,.55);color:#FFD9A3;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Déficit del mes: ${Math.round(-dispNeto*100)/100} € → lo cubre la reserva (Documento Maestro §14). Anótalo como uso de la reserva en el Excel.</div>`:""}
+        ${dispNeto<0?`<div style="margin:6px 0 4px;padding:9px 12px;border-radius:10px;background:rgba(255,179,71,.16);border:1px solid rgba(255,179,71,.55);color:#FFD9A3;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Déficit del mes: ${Math.round(-dispNeto*100)/100} € → reduce lo disponible para nuevas ayudas (fase de crecimiento, sin reserva).</div>`:""}
         ${totPen>0?`<div class="rf-falta">faltan ${totPen} € por cobrar</div>`:""}
         <div class="rf-divider"></div>
         <div class="rf-sec">Devoluciones y aportes</div>
