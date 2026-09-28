@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.15"; // v44.15: historial completo (Javier Garcia, ayuda cerrada ene 2026) // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.16"; // v44.16: quita el apoyo duplicado de Javier Garcia, cierre grupal sin bajas ni terceros sin apoyo activo, ficha sin el bloque duplicado de estado del aporte, grupo de Gabriel sin referencias rotas // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1127,6 +1127,8 @@ function sanitizeData(data){
   parcheBonosReferidos2026(data); // v44.12: bonos de referido pendientes (una sola vez, idempotente)
   parcheBajasPagoOct2026(data);   // v44.13: bajas de Jorge y Yanessa se pagan en Oct 2026 con la reserva
   parcheJavierGarcia2026(data);   // v44.15: historial completo — ayuda cerrada de Javier Garcia (ene 2026)
+  parcheJavierGarciaDuplicado2026(data); // v44.16: quita la copia de esa ayuda añadida a mano el 28/09
+  parcheGrupoGabrielRefs2026(data);      // v44.16: quita 2 referencias a fichas que ya no existen
   return data;
 }
 
@@ -2302,6 +2304,45 @@ function parcheJavierGarcia2026(data){
     });
   }
   data.parches.javierGarcia2026=true;
+}
+// PARCHE PUNTUAL (una sola vez) — 28/09/2026: tras publicar v44.15, Ángel añadió a mano
+// la misma ayuda de Javier Garcia (250 € · Ene 2026 · 3 meses, ya pagada) sin ver que ya
+// estaba. Quedaron DOS ayudas cerradas iguales ("Ayudas pagadas (2)"). Se conserva la del
+// parche (lt5_1, con su condición histórica de tercero) y se quita cualquier otra IDÉNTICA
+// (mismo capital, mes, año, plazo y todas las cuotas pagadas). Si no hay copia, no hace nada.
+function parcheJavierGarciaDuplicado2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.javierGarciaDup2026)return;
+  const m=data.members.find(x=>x.id==="t5");
+  if(!m)return; // aún no está Javier (datos incompletos): no marcar
+  const esCopia=l=>l&&l.id!=="lt5_1"&&l.capital===250&&l.gMonth==="Ene"&&l.gYear===2026&&l.n===3
+    &&Array.isArray(l.pays)&&l.pays.length===3&&l.pays.every(p=>p.paid);
+  if((m.closedLoans||[]).some(l=>l.id==="lt5_1")){
+    const quitadas=(m.closedLoans||[]).filter(esCopia).map(l=>l.id);
+    if(quitadas.length){
+      m.closedLoans=m.closedLoans.filter(l=>!esCopia(l));
+      m.history=(m.history||[]).filter(h=>!quitadas.includes(h.lid));
+    }
+  }
+  data.parches.javierGarciaDup2026=true;
+}
+// PARCHE PUNTUAL (una sola vez) — 28/09/2026, aprobado por Ángel: el grupo de cierre de
+// Gabriel Fuentes guardaba dos ids de fichas que ya no existen: "t3" (ficha antigua de
+// Andrea Rodríguez como tercera, fusionada en su ficha de asociada en sep-2026; ella ya
+// está en el grupo con su id nuevo) y "m1782727622580" (ficha creada el 29/06/2026 y
+// borrada antes del 19/07/2026). Solo se quitan si de verdad no existe ninguna ficha con
+// ese id. No afectaba a ningún cálculo.
+function parcheGrupoGabrielRefs2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.grupoGabrielRefs2026)return;
+  if(!data.members.some(m=>m.id==="1"))return; // datos incompletos: no marcar
+  const huerfanos=["t3","m1782727622580"].filter(id=>!data.members.some(m=>m.id===id));
+  (data.gruposCierre||[]).forEach(g=>{
+    if(Array.isArray(g.miembros))g.miembros=g.miembros.filter(id=>!huerfanos.includes(id));
+  });
+  data.parches.grupoGabrielRefs2026=true;
 }
 function pendienteMesAnteriorHTML(m,rm,ry){
   const p=pendienteMesAnterior(m,rm,ry);
@@ -3612,49 +3653,9 @@ function fichaHTML(m,readonly=false){
     </div>
   </div>`;
 
-  /* ────────────────────────────────────────────────
-     3. MARCAR APORTE (solo admin, no readonly)
-     Mismo mes que el bloque 2: rm/ry (el del sistema) — NO el objetivo. Se
-     conserva el mes EXPLÍCITO en el título y en la llamada a toggleAporte (en vez
-     de dejar que use el valor por defecto) porque es más seguro y evita ambigüedad,
-     aunque coincida con el mes del sistema.
-  ──────────────────────────────────────────────── */
-  if(!isTerc&&!readonly){
-    const mdSis=getMesData(rm,ry);
-    const aptOk=!!(mdSis.aportes&&mdSis.aportes[m.id]);
-    // Aviso del próximo mes: solo si YA está al día y estamos a partir del día
-    // configurable (por defecto 25). Es informativo; no marca deuda ni cambia el botón.
-    const diaAviso=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25);
-    const hoyDia=new Date().getDate();
-    const iRep=MONTHS.indexOf(rm);
-    const iSig=(iRep+1)%12;
-    const ySig=ry+(iRep+1>=12?1:0);
-    const mesSigFull=(typeof MONTHS_FULL!=="undefined"?MONTHS_FULL[iSig]:MONTHS[iSig]).toLowerCase();
-    // FIX (Bloque 8): el aviso mostraba el importe del mes YA mostrado etiquetado
-    // como si fuera del mes siguiente. Ahora sí es el aporte neto del mes que viene.
-    const aporteSig=aporteNetoMes(m,MONTHS[iSig],ySig);
-    let estadoLbl, subLbl;
-    if(!aptOk){
-      estadoLbl="Aporte pendiente ⏳";
-      subLbl=`${d.apNeto} € netos a pagar este mes`;
-    } else if(avisoSiguienteActivo()){
-      estadoLbl="✅ Al día";
-      subLbl=`Próximo: ${aporteSig} € de ${mesSigFull}`;
-    } else {
-      estadoLbl="✅ Al día";
-      subLbl="Aporte de este mes recibido";
-    }
-    h+=`<div class="ficha-section">
-      <div class="ficha-sec-title">✅ Estado del aporte — ${escH(rm)} ${ry}</div>
-      <div class="ficha-row">
-        <div>
-          <div class="ficha-row-lbl">${estadoLbl}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">${subLbl}</div>
-        </div>
-        <button class="toggle-btn ${aptOk?"on":"off"}" onclick="toggleAporte('${esc(m.id)}','${rm}',${ry})"></button>
-      </div>
-    </div>`;
-  }
+  /* 3. (v44.16) Aquí estaba el bloque "Estado del aporte" con un botón para marcar el
+     aporte. Se quitó entero: el aporte se marca en el Cierre mensual y el estado ya se ve
+     arriba, en "Lo que corresponde pagar" (Total del mes: Al día / Falta …). */
 
   /* ════════════════════════════════════════════════
      DETALLE DEL ASOCIADO — PESTAÑAS
@@ -4789,7 +4790,8 @@ function render(){
           // Añadir miembro a este grupo — excluir a quien ya esté en CUALQUIER grupo
           const enCualquierGrupo=new Set();
           grupos.forEach(gg=>{enCualquierGrupo.add(gg.principalId);(gg.miembros||[]).forEach(x=>enCualquierGrupo.add(x));});
-          const cand=DATA.members.filter(m=>!enCualquierGrupo.has(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+          // v44.16: fuera quien no tiene nada que pagar — bajas y terceros sin ayuda activa
+          const cand=DATA.members.filter(m=>!enCualquierGrupo.has(m.id)&&activoEnReporte(m)&&(m.type==="asociado"||(m.loans||[]).length>0)).sort((a,b)=>a.name.localeCompare(b.name));
           h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
             <select class="m-select" style="margin-bottom:10px;font-size:14px" onchange="if(this.value)añadirMiembroGrupo('${g.id}',this.value);this.value=''">
               <option value="">— Añadir persona —</option>
