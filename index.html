@@ -737,7 +737,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.14"; // v44.14: Cierre con beneficio por nivel (Documento Maestro) y textos de fase de crecimiento // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.15"; // v44.15: historial completo (Javier Garcia, ayuda cerrada ene 2026) // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1126,6 +1126,7 @@ function sanitizeData(data){
   }
   parcheBonosReferidos2026(data); // v44.12: bonos de referido pendientes (una sola vez, idempotente)
   parcheBajasPagoOct2026(data);   // v44.13: bajas de Jorge y Yanessa se pagan en Oct 2026 con la reserva
+  parcheJavierGarcia2026(data);   // v44.15: historial completo — ayuda cerrada de Javier Garcia (ene 2026)
   return data;
 }
 
@@ -2274,6 +2275,33 @@ function parcheBajasPagoOct2026(data){
     if(b.pagada===undefined){b.pagada=false;b.estado="Pendiente";}
   });
   data.parches.bajasPagoOct2026=true;
+}
+// PARCHE PUNTUAL (una sola vez) — decisión de Ángel el 26/09/2026: la app debe tener TODO
+// el historial. Javier Garcia (tercero T-05 del Excel, avalista Angel Sarmiento) tuvo una
+// ayuda de 250 € en Enero 2026 a 3 meses (Feb–Abr), ya pagada, que quedó fuera de la app
+// ("histórico pre-app"). Se incorpora como ayuda CERRADA, con su condición histórica.
+// Con ella, el recargo automático de Feb–Abr 2026 pasa a coincidir con el histórico del
+// Excel (232,5 / 247,5 / 307,5 €): solo se ajusta si seguía el valor antiguo sin esta ayuda.
+function parcheJavierGarcia2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.javierGarcia2026)return;
+  if(!data.members.some(m=>m.id==="1"))return; // datos incompletos (p.ej. el archivo base): no marcar
+  const yaEsta=data.members.some(m=>m.id==="t5"||_normNombre(m.name)===_normNombre("Javier Garcia"));
+  if(!yaEsta){
+    const {total,cuotas}=ayudaCuotas(250,3,5);
+    const loan={id:"lt5_1",gMonth:"Ene",gYear:2026,capital:250,total,n:3,inst:cuotas[0],cuotas,rate:5,
+      pays:[{m:"Feb",y:2026,paid:true},{m:"Mar",y:2026,paid:true},{m:"Abr",y:2026,paid:true}],
+      tipoEnConcesion:"tercero",avalistaEnConcesion:"Angel Sarmiento",cicloEnConcesion:null};
+    data.members.push({id:"t5",name:"Javier Garcia",type:"tercero",ref:"1",joinMonth:null,joinYear:null,
+      history:[{gMonth:"Ene",gYear:2026,capital:250,lid:"lt5_1"}],loans:[],closedLoans:[loan],
+      phone:"",origen:"app",historicoPreApp:true});
+    const md=data.monthlyData||{};
+    [["2026-02",220,232.5],["2026-03",235,247.5],["2026-04",295,307.5]].forEach(([k,antes,despues])=>{
+      if(md[k]&&!md[k].recargoManual&&md[k].recargo===antes)md[k].recargo=despues;
+    });
+  }
+  data.parches.javierGarcia2026=true;
 }
 function pendienteMesAnteriorHTML(m,rm,ry){
   const p=pendienteMesAnterior(m,rm,ry);
