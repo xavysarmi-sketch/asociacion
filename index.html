@@ -103,7 +103,12 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .cuota-status{font-size:11px;font-weight:700;margin-top:3px}
 
 /* v44.17: documentos imprimibles (Hoja de cobro / Acta de cierre) */
-.doc-barra{position:sticky;top:0;z-index:5;display:flex;gap:8px;padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border)}
+/* v44.18: la barra deja libre la zona de la hora/notch del iPhone (app instalada): antes quedaba debajo y no respondía */
+.doc-barra{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:var(--bg);border-bottom:1px solid var(--border)}
+.doc-aviso-imp{flex-basis:100%;font-size:12px;line-height:1.35;color:#7A2418;background:#FDF0EE;border:1px solid #f0c9c2;border-radius:10px;padding:8px 10px}
+body.doc-abierto #appVersionTag{display:none}
+.doc-raya{display:inline-block;width:100%;min-width:34px;border-bottom:1px solid #444;height:1.05em;vertical-align:bottom}
+.doc-raya-e{display:inline-block;width:60px;border-bottom:1px solid #444;height:1.05em;vertical-align:bottom;margin-right:3px}
 .doc-barra button{flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700}
 .doc-barra .doc-imp{background:var(--dark);color:#fff;border-color:var(--dark)}
 .doc-a4{background:#fff;color:#1d1d1d;padding:16px 14px 20px;font-size:12px;line-height:1.4}
@@ -163,6 +168,20 @@ input,select,textarea{font-family:inherit;-webkit-appearance:none}
 .doc-medir .doc-cab{margin-bottom:6px;padding-bottom:5px}
 .doc-medir .doc-lin{padding:2.5px 4px}
 .doc-medir .doc-mini td{font-size:10px}
+/* v44.18: vista en el móvil (solo pantalla; la impresión no cambia) — columnas que caben sin montarse */
+@media screen and (max-width:640px){
+  .doc-a4{padding:12px 8px 18px;font-size:11px}
+  .doc-tit{font-size:16px}
+  .doc-kpis{gap:4px} .doc-kpi{padding:5px 6px} .doc-kpi .v{font-size:13px}
+  .doc-t th,.doc-t td{padding:3px 3px}
+  .doc-t th{font-size:9px}
+  .doc-fija th.n,.doc-fija th.c,.doc-fija td.c{white-space:normal}
+  .doc-lin{gap:4px;padding:3px}
+  .doc-caja2{grid-template-columns:1fr}
+  .doc-cobro col:nth-child(1){width:22%!important} .doc-cobro col:nth-child(2){width:41%!important}
+  .doc-cobro col:nth-child(3){width:13%!important} .doc-cobro col:nth-child(4){width:12%!important} .doc-cobro col:nth-child(5){width:12%!important}
+  .doc-t th{hyphens:manual}
+}
 @media print{.doc-nueva-pag{margin-top:0;border-top:none;padding-top:0}}
 @media print{
   body>*:not(#app){display:none!important}   /* avisos fijos, versión, banner de actualización */
@@ -829,7 +848,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.17"; // v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.18"; // v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4768,7 +4787,7 @@ function chipAuditoriaHTML(){
 // ══════════════════════════════════════════════════════════════════════════════
 let DOC_IMP=null; // {tipo:"cobro"|"acta", rm, ry}
 function abrirDocImp(tipo){ DOC_IMP={tipo,rm:DATA.reportMonth,ry:DATA.reportYear}; window.scrollTo(0,0); render(); }
-function cerrarDocImp(){ DOC_IMP=null; render(); }
+function cerrarDocImp(){ DOC_IMP=null; document.body.classList.remove("doc-abierto"); render(); }
 function _mdSoloLectura(rm,ry){ return (DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)])||{aportes:{}}; }
 function _eur(x){ return fmtEur(Math.round((x||0)*100)/100)+" €"; }
 // Lo que corresponde a una persona en rm/ry: aportación (neta) + cuotas de ese mes.
@@ -4974,8 +4993,8 @@ function docCobroHTML(rm,ry){
   let totPend=0,totYa=0;
   R.bloques.forEach(b=>{
     let sub=0,subYa=0;
-    h+=`<div class="doc-grupo"><table class="doc-t doc-fija"><colgroup><col style="width:25%"><col style="width:43%"><col style="width:12%"><col style="width:9%"><col style="width:11%"></colgroup><thead><tr><th colspan="5" class="doc-gtit">${escH(b.titulo)}</th></tr>
-      <tr><th>Persona</th><th>Concepto</th><th class="n">A pagar</th><th class="c">Cobrado</th><th class="n">Recibido</th></tr></thead><tbody>`;
+    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:25%"><col style="width:43%"><col style="width:12%"><col style="width:9%"><col style="width:11%"></colgroup><thead><tr><th colspan="5" class="doc-gtit">${escH(b.titulo)}</th></tr>
+      <tr><th>Persona</th><th>Concepto</th><th class="n">A pagar</th><th class="c">Cobra&shy;do</th><th class="n">Reci&shy;bido</th></tr></thead><tbody>`;
     b.filas.forEach(f=>{
       const total=f.items.reduce((s,i)=>s+i.importe,0), ya=f.items.filter(i=>i.pagado).reduce((s,i)=>s+i.importe,0);
       const pend=Math.round((total-ya)*100)/100; sub+=total; subYa+=ya;
@@ -4983,18 +5002,18 @@ function docCobroHTML(rm,ry){
       h+=`<tr class="${todoPagado?"doc-ya":""}"><td class="doc-nom">${escH(f.m.name)}${f.m.type==="tercero"?`<div class="doc-sub">tercero</div>`:""}</td>
         <td class="doc-conc">${f.items.map(i=>`<div class="doc-lin${i.tipo==="aporte"?" doc-lin-ap":""}"><span>${i.ultima?`<b>${escH(i.txt)}</b>`:escH(i.txt)}</span><span class="doc-lin-imp">${_eur(i.importe)}${i.pagado?" ✓":""}</span></div>`).join("")}</td>
         <td class="n"><b>${_eur(pend)}</b>${ya>0&&!todoPagado?`<div class="doc-sub">de ${_eur(total)}</div>`:""}</td>
-        <td class="c">${todoPagado?"✓ ya pagado":"☐"}</td><td class="n">${todoPagado?"":"________"}</td></tr>`;
+        <td class="c">${todoPagado?"✓ ya pagado":"☐"}</td><td class="n">${todoPagado?"":`<span class="doc-raya"></span>`}</td></tr>`;
     });
     totPend+=sub-subYa; totYa+=subYa;
-    h+=`<tr class="doc-subt"><td colspan="2">Subtotal ${escH(b.titulo.replace(/^Grupo de /,""))}</td><td class="n">${_eur(sub-subYa)}</td><td></td><td class="n">________</td></tr></tbody></table></div>`;
+    h+=`<tr class="doc-subt"><td colspan="2">Subtotal ${escH(b.titulo.replace(/^Grupo de /,""))}</td><td class="n">${_eur(sub-subYa)}</td><td></td><td class="n"><span class="doc-raya"></span></td></tr></tbody></table></div>`;
   });
   h+=`</div><div class="doc-final"><h3>3. Arqueo de caja</h3>
   <table class="doc-t doc-arq"><tbody>
     <tr><td>Total previsto del mes</td><td class="n">${_eur(R.totPrev)}</td></tr>
     <tr><td>Ya registrado como pagado en la app</td><td class="n">${_eur(totYa)}</td></tr>
     <tr><td><b>A cobrar en la reunión</b></td><td class="n"><b>${_eur(totPend)}</b></td></tr>
-    <tr><td>Efectivo contado</td><td class="n">________ €</td></tr>
-    <tr><td>Diferencia (contado − a cobrar)</td><td class="n">________ €</td></tr>
+    <tr><td>Efectivo contado</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
+    <tr><td>Diferencia (contado − a cobrar)</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
     <tr><td colspan="2" style="height:54px;vertical-align:top">Observaciones:</td></tr>
   </tbody></table></div>`;
   return h;
@@ -5065,9 +5084,11 @@ function docCarpetaHTML(){
 function renderDocImp(){
   const {tipo,rm,ry}=DOC_IMP;
   _CAJA_CACHE=null; // se recalcula con los datos actuales en cada apertura
+  document.body.classList.add("doc-abierto");
   let h=`<div class="no-print doc-barra">
       <button onclick="cerrarDocImp()">← Volver al Cierre</button>
-      <button class="doc-imp" onclick="window.print()">🖨️ Imprimir / guardar PDF</button>
+      <button class="doc-imp" onclick="imprimirDoc()">🖨️ Imprimir / guardar PDF</button>
+      <div id="doc-aviso-imp" class="doc-aviso-imp" style="display:none"></div>
     </div>
     <div class="doc-a4">${tipo==="carpeta"?docCarpetaHTML():`<div class="doc-unidad">${tipo==="acta"?docActaHTML(rm,ry):docCobroHTML(rm,ry)}</div>`}
       <div class="doc-gen">Documento generado por la app de Nuevos Horizontes · ${escH(APP_VERSION)}</div></div>`;
@@ -5078,6 +5099,20 @@ function renderDocImp(){
 // aproveche el papel. Mide cada grupo con el ancho y la letra de impresión y los reparte
 // por páginas (primero los más grandes; cada uno en la primera página donde quepa).
 // Además cada grupo lleva break-inside:avoid: aunque la medida fallase, nunca se parte.
+// v44.18: imprime y, si el iPhone no abre el cuadro de impresión (pasa en algunas apps
+// instaladas en la pantalla de inicio), lo avisa con la alternativa en vez de no hacer nada.
+function imprimirDoc(){
+  let abierto=false; const f=()=>{abierto=true;};
+  window.addEventListener("beforeprint",f);
+  try{ window.print(); }catch(e){}
+  setTimeout(()=>{
+    window.removeEventListener("beforeprint",f);
+    if(abierto)return;
+    const el=document.getElementById("doc-aviso-imp"); if(!el)return;
+    el.innerHTML="El móvil no abrió la impresión desde la app instalada. Abre la app en <b>Safari</b> (xavysarmi-sketch.github.io/asociacion), entra en Cierre → este documento → <b>Imprimir / guardar PDF</b>.";
+    el.style.display="block";
+  },1500);
+}
 function paginarGruposSinCortes(){
   document.querySelectorAll(".doc-unidad").forEach(u=>paginarUnidad(u));
 }
