@@ -128,6 +128,7 @@ body.doc-abierto #appVersionTag{display:none}
 .doc-t th{background:#EEF4F0;font-size:10.5px}
 .doc-t .n{text-align:right;white-space:nowrap}
 .doc-t .c{text-align:center;white-space:nowrap}
+.doc-t .n .doc-sub{white-space:normal;line-height:1.2}
 .doc-gtit{background:#1B4332!important;color:#fff;font-size:12px!important;letter-spacing:.3px}
 .doc-nom{font-weight:700}
 .doc-fija{table-layout:fixed}
@@ -178,8 +179,9 @@ body.doc-abierto #appVersionTag{display:none}
   .doc-fija th.n,.doc-fija th.c,.doc-fija td.c{white-space:normal}
   .doc-lin{gap:4px;padding:3px}
   .doc-caja2{grid-template-columns:1fr}
-  .doc-cobro col:nth-child(1){width:22%!important} .doc-cobro col:nth-child(2){width:41%!important}
-  .doc-cobro col:nth-child(3){width:13%!important} .doc-cobro col:nth-child(4){width:12%!important} .doc-cobro col:nth-child(5){width:12%!important}
+  .doc-cobro col:nth-child(1){width:22%!important} .doc-cobro col:nth-child(2){width:14%!important}
+  .doc-cobro col:nth-child(3){width:30%!important} .doc-cobro col:nth-child(4){width:12%!important}
+  .doc-cobro col:nth-child(5){width:10%!important} .doc-cobro col:nth-child(6){width:12%!important}
   .doc-t th{hyphens:manual}
 }
 @media print{.doc-nueva-pag{margin-top:0;border-top:none;padding-top:0}}
@@ -848,7 +850,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.18"; // v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.19"; // v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1242,7 +1244,8 @@ function sanitizeData(data){
   parcheGrupoGabrielRefs2026(data);      // v44.16: quita 2 referencias a fichas que ya no existen
   parcheCondicionHistorica2026(data);    // v44.17: condición histórica de los 54 apoyos anteriores a ago-2026
   parcheApoyosAgosto2025(data);          // v44.17: los dos primeros apoyos (ago-2025) que faltaban
-  parcheCuotasCobradas2026(data);        // v44.17: cuotas antiguas = lo que realmente se cobró (actas originales)
+  parcheCuotasCobradas2026(data);
+  parcheReferidosGabriel2026(data);       // v44.19: bono de Joaquín duplicado en octubre → Andrea Rodríguez        // v44.17: cuotas antiguas = lo que realmente se cobró (actas originales)
   return data;
 }
 
@@ -2214,6 +2217,16 @@ function auditarNH(){
     });
   }
 
+  // v44.19: un mismo referido no puede dar bono en dos meses (bono duplicado)
+  Object.keys(DATA.referidos||{}).forEach(rid=>{
+    const r=DATA.referidos[rid], vistos={};
+    Object.keys(r).forEach(k=>String(r[k].nombres||"").split(",").map(x=>x.trim()).filter(Boolean).forEach(nm=>{
+      const n=_normNombre(nm); (vistos[n]=vistos[n]||{nombre:nm,meses:[]}).meses.push(k);
+    }));
+    const quien=(DATA.members.find(m=>m.id===rid)||{}).name||rid;
+    Object.values(vistos).filter(v=>v.meses.length>1).forEach(v=>
+      advertencias.push(`Bono por referido duplicado: ${quien} tiene el bono de ${v.nombre} en ${v.meses.sort().map(k=>{const[yy,mm]=k.split("-").map(Number);return MONTHS_FULL[mm-1]+" "+yy;}).join(" y ")} — dejarlo solo en un mes (Ficha → 🎁 Referido)`));
+  });
   return {errores,advertencias};
 }
 
@@ -2343,7 +2356,36 @@ function altaReferidoCambio(){
 function aplicarReferidoAlta(m,refId,mesKey){
   if(!m||!refId)return null;
   m.referidoPor=refId;
+  // v44.19: si quien lo trajo ya tiene el bono de esta persona en algún mes, no se duplica.
+  const ya=mesBonoDe(refId,m.name);
+  if(ya){ aplicarReferidoAlta.yaExistia=true; return ya; }
+  aplicarReferidoAlta.yaExistia=false;
   return registrarBonoReferido(refId,m.name,mesKey||mesBonoPorDefecto(refId));
+}
+// v44.19: mes ("AAAA-MM") en el que 'refId' ya tiene registrado el bono por 'nombre', o null.
+function mesBonoDe(refId,nombre,d){
+  d=d||DATA; const r=(d.referidos&&d.referidos[refId])||{}; const n=_normNombre(nombre);
+  return Object.keys(r).sort().find(k=>String(r[k].nombres||"").split(",").map(x=>_normNombre(x)).includes(n))||null;
+}
+// v44.19: quita el bono por 'nombre' de la ficha de 'refId' en los meses cuyo aporte aún no
+// se ha cobrado (los meses ya cobrados no se tocan: ese descuento ya se aplicó en caja).
+// Devuelve {quitados:[meses], cobrados:[meses que se dejan]}.
+function quitarBonoReferido(refId,nombre){
+  const out={quitados:[],cobrados:[]};
+  const r=DATA.referidos&&DATA.referidos[refId]; if(!r)return out;
+  const n=_normNombre(nombre);
+  Object.keys(r).forEach(k=>{
+    const lista=String(r[k].nombres||"").split(",").map(x=>x.trim()).filter(Boolean);
+    if(!lista.some(x=>_normNombre(x)===n))return;
+    const md=DATA.monthlyData&&DATA.monthlyData[k];
+    if(md&&md.aportes&&md.aportes[refId]){ out.cobrados.push(k); return; }
+    const resto=lista.filter(x=>_normNombre(x)!==n);
+    const nNuevo=Math.max(0,(r[k].n||0)-(lista.length-resto.length));
+    if(nNuevo>0)r[k]={n:nNuevo,nombres:resto.join(", ")}; else delete r[k];
+    out.quitados.push(k);
+  });
+  if(Object.keys(r).length===0)delete DATA.referidos[refId];
+  return out;
 }
 // PARCHE PUNTUAL (una sola vez, idempotente) — datos dados por Ángel el 23/09/2026:
 // deja constancia de quién trajo a cada asociado y acredita los 6 bonos que faltaban.
@@ -2363,6 +2405,35 @@ function parcheBonosReferidos2026(data){
     .some(r=>(r.nombres||"").split(",").map(s=>_normNombre(s)).includes(_normNombre(nombre)));
   pendientes.forEach(([nid,rid])=>{const n=byId(nid); if(!yaTiene(rid,n.name))registrarBonoReferido(rid,n.name,"2026-10",data);});
   data.parches.bonosReferidos2026_09=true;
+}
+// PARCHE PUNTUAL (una sola vez, idempotente) — 01/10/2026, aprobado por Ángel:
+// Joaquín Matos quedó con el bono de Gabriel Fuentes en Octubre y en Noviembre 2026 (va en
+// Noviembre, como se eligió en el alta). Andrea Rodríguez (traída por Gabriel al pasar de
+// tercero a asociada en Septiembre 2026) no tenía su bono en ningún mes: septiembre ya está
+// cobrado, así que se acredita en el primer mes con el aporte de Gabriel aún sin cobrar.
+function parcheReferidosGabriel2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.referidosGabriel2026_10)return;
+  const G="20", AND="m1788688212630", JOA="m1790877273122";
+  const byId=id=>data.members.find(m=>m.id===id);
+  if(!byId(G)||!byId(AND)||!byId(JOA))return; // datos incompletos: no marcar
+  if(!data.referidos)data.referidos={};
+  const r=data.referidos[G]=data.referidos[G]||{};
+  const nomJ=byId(JOA).name, nomA=byId(AND).name, nJ=_normNombre(nomJ);
+  const lista=k=>String((r[k]&&r[k].nombres)||"").split(",").map(x=>x.trim()).filter(Boolean);
+  // 1) Joaquín: si está en Noviembre, sale de Octubre
+  if(lista("2026-11").some(x=>_normNombre(x)===nJ)&&lista("2026-10").some(x=>_normNombre(x)===nJ)){
+    const resto=lista("2026-10").filter(x=>_normNombre(x)!==nJ);
+    if(resto.length)r["2026-10"]={n:resto.length,nombres:resto.join(", ")}; else delete r["2026-10"];
+  }
+  // 2) Andrea: si no tiene su bono en ningún mes, primer mes con el aporte de Gabriel sin cobrar (desde Octubre)
+  if(!mesBonoDe(G,nomA,data)){
+    const pagado=k=>{const md=data.monthlyData&&data.monthlyData[k];return !!(md&&md.aportes&&md.aportes[G]);};
+    let y=2026,mo=10; while(pagado(y+"-"+String(mo).padStart(2,"0"))){mo++;if(mo>12){mo=1;y++;}}
+    registrarBonoReferido(G,nomA,y+"-"+String(mo).padStart(2,"0"),data);
+  }
+  data.parches.referidosGabriel2026_10=true;
 }
 // ── v44.13: PAGO DE DEVOLUCIONES POR BAJA ─────────────────────────────────────
 // Es devolución del CAPITAL aportado (no un gasto): sale del fondo el mes en que se
@@ -2725,8 +2796,17 @@ function delMember(mid){
     return;
   }
   _delMemberArmed=null;
+  // v44.19: su bono por referido sale de la ficha de quien lo trajo (solo meses aún sin cobrar)
+  const borrado=DATA.members.find(m=>m.id===mid);
+  let extra="";
+  if(borrado&&borrado.referidoPor){
+    const q=quitarBonoReferido(borrado.referidoPor,borrado.name);
+    const ref=DATA.members.find(m=>m.id===borrado.referidoPor), nom=ref?ref.name.split(" ")[0]:"quien lo trajo";
+    if(q.quitados.length)extra+=` · bono de ${nom} retirado`;
+    if(q.cobrados.length)extra+=` · ojo: el bono de ${nom} en ${q.cobrados.join(", ")} ya se cobró y se deja`;
+  }
   DATA.members=DATA.members.filter(m=>m.id!==mid);
-  save();toast("Eliminado ✓");render();
+  save();toast("Eliminado ✓"+extra,extra?6000:undefined);render();
 }
 let _delLoanArmed=null;
 // Recalcula los importes de un apoyo. ÚNICA función (junto con ayudaCuotas) que puede
@@ -3274,6 +3354,7 @@ function addMemberSubmit(){
   const msgBono=k=>{
     if(!k)return "";
     const r=DATA.members.find(x=>x.id===refdoId);const[yy,mm]=k.split("-").map(Number);
+    if(aplicarReferidoAlta.yaExistia)return ` · ${r?r.name.split(" ")[0]:"El asociado"} ya tenía este bono en ${MONTHS_FULL[mm-1]} ${yy}: no se duplica (para cambiar el mes: Ficha → 🎁 Referido)`;
     return ` · bono de 10 € para ${r?r.name.split(" ")[0]:"el asociado"} en ${MONTHS_FULL[mm-1]} ${yy}`+(k!==bonoMes?" (ese mes ya tenía 3 bonos)":"");
   };
   // Si se añade un ASOCIADO y existe un TERCERO con el mismo nombre, fusionar
@@ -4559,7 +4640,10 @@ function beneficioAcumuladoPagados(m){
 function devolucionBaja(m, mesBaja, anioBaja){
   const aporte = m.aporte || DATA.monthlyFee;
   const mesesPagados = aportesPagadosCount(m);
-  const capital = mesesPagados * aporte;                       // solo lo efectivamente pagado
+  // v44.19: + aportes extra de meses pagados (Maestro §9.1: se devuelven con el resto del capital)
+  const extrasPag = Object.entries((DATA.extras&&DATA.extras[m.id])||{}).reduce((s,[k,e])=>{
+    const md=DATA.monthlyData&&DATA.monthlyData[k]; return s+((md&&md.aportes&&md.aportes[m.id]===true&&e&&e.monto)||0);},0);
+  const capital = mesesPagados * aporte + extrasPag;           // solo lo efectivamente pagado
   const ciclo = (m.ciclo != null ? m.ciclo : 12);
   const niveles = nivelesCompletadosPagados(mesesPagados, ciclo);
   const mult = (aporte >= 100) ? 2 : 1;                        // §6.2: aporte 100 = el doble
@@ -4709,6 +4793,13 @@ function setMesReservaPct(val){
 // doble), la misma función que acumula el beneficio de cada ficha. Retorno (recargo) −
 // obligación = excedente, que en esta fase de crecimiento se reinvierte en ayudas. Si el
 // retorno no alcanza, los asociados siguen ganando su nivel y la diferencia la pone el fondo.
+// v44.19: bonos por referido del mes (descuentos en el aporte; los asume el fondo, Maestro §15.2)
+function bonosReferidoMes(rm,ry,soloCobrados){
+  let t=0; DATA.members.forEach(m=>{ if(m.type!=="asociado")return;
+    const it=itemsMiembroMes(m,rm,ry).find(i=>i.tipo==="aporte");
+    if(!it||it.noCobrable||(soloCobrados&&!it.pagado))return; t+=it.descuento||0; });
+  return t;
+}
 function repartoBeneficioMes(recargo,rm,ry){
   const ri=MONTHS.indexOf(rm), key=getMesKey(rm,ry);
   const conDerecho=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&cuentaComoActivo(m,key)
@@ -4727,9 +4818,10 @@ function renderMesKpis(md){
   const el4=document.getElementById("mes-kpi-conDerecho");
   const el5=document.getElementById("mes-kpi-media");
   if(el)el.textContent=r.obligacion.toFixed(2)+" €";
-  if(el2)el2.textContent=Math.max(0,r.excedente).toFixed(2)+" €";
-  if(el3)el3.textContent=Math.abs(r.excedente).toFixed(2)+" €";
-  if(el3l)el3l.textContent=r.excedente<0?"Falta retorno (lo pone el fondo)":"Excedente";
+  const bon=bonosReferidoMes(DATA.reportMonth,DATA.reportYear), ex=Math.round((r.excedente-bon)*100)/100;
+  if(el2)el2.textContent=Math.max(0,ex).toFixed(2)+" €";
+  if(el3)el3.textContent=Math.abs(ex).toFixed(2)+" €";
+  if(el3l)el3l.textContent=ex<0?"Falta retorno (lo pone el fondo)":(bon?`Excedente (tras ${fmtEur(bon)} € de bonos)`:"Excedente");
   if(el4)el4.textContent=r.conDerecho.length;
   if(el5)el5.textContent=r.media.toFixed(2)+" €";
 }
@@ -4804,6 +4896,8 @@ function itemsMiembroMes(m,rm,ry){
       const ex=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][key]&&DATA.extras[m.id][key].monto)||0;
       out.push({tipo:"aporte",txt:"Aportación"+(descuento>0?` (−${descuento} € por ${nReferidos} referido${nReferidos>1?"s":""})`:"")+(ex>0?` + ${ex} € extra`:""),
         importe:neto+ex,pagado,recargo:0,
+        // v44.19: el bono lo asume el fondo (Maestro §15.2): al asociado se le acredita el aporte íntegro
+        bruto:(m.aporte||DATA.monthlyFee)+ex,descuento,nReferidos,extra:ex,
         // v44.17: no pagó y después causó baja → no se reclama (su devolución ya cuenta solo lo pagado)
         noCobrable:!pagado&&!!m.baja});
     }
@@ -4811,7 +4905,8 @@ function itemsMiembroMes(m,rm,ry){
   cuotasDelMes(rm,ry).filter(c=>c.mid===m.id).forEach(c=>{
     const ult=c.totalCuotas>1&&c.numCuota>=c.totalCuotas;
     out.push({tipo:"cuota",txt:(c.aplazada?"Cuota aplazada (solo retorno)":ult?"🏁 Última cuota":c.totalCuotas<=1?"Cuota única":`Cuota ${c.numCuota}/${c.totalCuotas}`)+` · apoyo ${c.gMonth} ${c.gYear}`,
-      importe:c.inst,pagado:!!c.paid,recargo:c.recargo,ultima:ult,aplazada:!!c.aplazada});
+      importe:c.inst,pagado:!!c.paid,recargo:c.recargo,ultima:ult,aplazada:!!c.aplazada,
+      num:c.numCuota,de:c.totalCuotas,gMonth:c.gMonth,gYear:c.gYear});
   });
   return out;
 }
@@ -4833,11 +4928,13 @@ function bloquesCobroMes(rm,ry){
 function resumenMesDoc(rm,ry){
   const key=getMesKey(rm,ry), md=_mdSoloLectura(rm,ry);
   const bloques=bloquesCobroMes(rm,ry);
-  let apPrev=0,apCob=0,nAp=0,nApPag=0,cuPrev=0,cuCob=0,nCu=0,nCuPag=0,recPrev=0,recCob=0,noCob=0;
+  let apPrev=0,apCob=0,nAp=0,nApPag=0,cuPrev=0,cuCob=0,nCu=0,nCuPag=0,recPrev=0,recCob=0,noCob=0,
+      bonosPrev=0,bonosCob=0,apBrutoCob=0;
   const noCobLista=[];
   bloques.forEach(b=>b.filas.forEach(f=>f.items.forEach(it=>{
     if(it.noCobrable){noCob+=it.importe;noCobLista.push({m:f.m,it});}
-    if(it.tipo==="aporte"){apPrev+=it.importe;nAp++;if(it.pagado){apCob+=it.importe;nApPag++;}}
+    if(it.tipo==="aporte"){apPrev+=it.importe;nAp++;if(!it.noCobrable)bonosPrev+=it.descuento||0;
+      if(it.pagado){apCob+=it.importe;nApPag++;bonosCob+=it.descuento||0;apBrutoCob+=it.bruto||it.importe;}}
     else{cuPrev+=it.importe;nCu++;recPrev+=it.recargo;if(it.pagado){cuCob+=it.importe;nCuPag++;recCob+=it.recargo;}}
   })));
   const r2=x=>Math.round(x*100)/100;
@@ -4859,6 +4956,7 @@ function resumenMesDoc(rm,ry){
   return {bloques,apPrev:r2(apPrev),apCob:r2(apCob),nAp,nApPag,cuPrev:r2(cuPrev),cuCob:r2(cuCob),nCu,nCuPag,
     recPrev:r2(recPrev),recCob:r2(recCob),totPrev:r2(apPrev+cuPrev),totCob:r2(apCob+cuCob),
     noCob:r2(noCob),noCobLista,pendiente:r2(apPrev+cuPrev-apCob-cuCob-noCob),
+    bonosPrev:r2(bonosPrev),bonosCob:r2(bonosCob),apBrutoCob:r2(apBrutoCob),
     terminan,concedidos,aplazadas,niveles,referidos,altas,bajas,pendAnt,recargoMes};
 }
 // Quién trajo a un asociado: campo referidoPor (id) o, si falta, el bono registrado con su nombre.
@@ -4906,8 +5004,10 @@ function cajaMensual(){
     const ini=r2(saldo); saldo=r2(saldo+ent-sal);
     // ¿De quién es el dinero? aportaciones acumuladas (se devuelven al terminar el ciclo),
     // beneficios devengados (idem) y aportes puntuales aún no devueltos; el resto es el
-    // excedente acumulado del fondo (retornos − beneficios − retornos pagados a puntuales).
-    acAp+=R.apCob; acBen+=repartoBeneficioMes(R.recargoMes,rm,y).obligacion;
+    // excedente acumulado del fondo (retornos − beneficios − bonos por referido − retornos
+    // pagados a puntuales). v44.19: a cada asociado se le acredita su aporte ÍNTEGRO aunque
+    // pagara menos por un bono por referido (lo asume el fondo, Maestro §15.2) + sus extras.
+    acAp+=R.apBrutoCob; acBen+=repartoBeneficioMes(R.recargoMes,rm,y).obligacion;
     Object.values(DATA.aportesPuntuales||{}).forEach(arr=>(arr||[]).forEach(a=>{
       if(a.mes===rm&&a.anio===y)puntPend+=a.capital||0;
       if(a.devuelto&&a.mesDev===rm&&a.anioDev===y)puntPend-=a.capital||0;
@@ -4916,7 +5016,7 @@ function cajaMensual(){
       if(b.month===rm&&b.year===y)acBen-=(b.beneficioPerdido||0);          // lo que pierde pasa al fondo
       if(b.pagada){const p=mesPagoBaja(b); if(p.mes===rm&&p.anio===y){acAp-=(b.capitalDevuelto||0);acBen-=(b.beneficioConservado||0);}}
     });
-    out[key]={ini,aportes:R.apCob,cuotas:R.cuCob,retornos:R.recCob,capDev:r2(R.cuCob-R.recCob),puntIn,nPuntIn,entradas:ent,
+    out[key]={ini,aportes:R.apCob,bonos:R.bonosCob,aportesBrutos:R.apBrutoCob,cuotas:R.cuCob,retornos:R.recCob,capDev:r2(R.cuCob-R.recCob),puntIn,nPuntIn,entradas:ent,
       apoyos,nApoyos:R.concedidos.length,puntOut,nPuntOut,bajas,salidas:sal,fin:saldo,cartera:r2(cartera),
       acAp:r2(acAp),acBen:r2(acBen),puntPend:r2(puntPend),reserva:r2(saldo+cartera-acAp-acBen-puntPend)};
     i++; if(i>11){i=0;y++;}
@@ -4932,7 +5032,7 @@ function cajaMesHTML(rm,ry){
   <div class="doc-caja2">
   <table class="doc-t doc-caja"><tbody>
     <tr class="doc-subt"><td>Saldo al empezar ${mesF}</td><td class="n">${_eur(c.ini)}</td></tr>
-    <tr><td>＋ Aportaciones cobradas</td><td class="n">${_eur(c.aportes)}</td></tr>
+    <tr><td>＋ Aportaciones cobradas${c.bonos?` <span class="doc-sub">(íntegras ${_eur(c.aportesBrutos)} − bonos por referido ${_eur(c.bonos)})</span>`:""}</td><td class="n">${_eur(c.aportes)}</td></tr>
     <tr><td>＋ Cuotas cobradas <span class="doc-sub">(capital ${_eur(c.capDev)} + retornos ${_eur(c.retornos)})</span></td><td class="n">${_eur(c.cuotas)}</td></tr>
     ${c.puntIn?`<tr><td>＋ Aportes puntuales recibidos (${c.nPuntIn})</td><td class="n">${_eur(c.puntIn)}</td></tr>`:""}
     <tr><td><b>Total entradas</b></td><td class="n"><b>${_eur(c.entradas)}</b></td></tr>
@@ -4947,7 +5047,7 @@ function cajaMesHTML(rm,ry){
     <tr><td>Capital prestado pendiente de devolver</td><td class="n">${_eur(c.cartera)}</td></tr>
     <tr class="doc-subt"><td>Dinero total del fondo</td><td class="n">${_eur(c.fin+c.cartera)}</td></tr>
     <tr><td colspan="2" class="doc-sub"><b>¿De quién es ese dinero?</b></td></tr>
-    <tr><td>Aportaciones de los asociados</td><td class="n">${_eur(c.acAp)}</td></tr>
+    <tr><td>Aportaciones de los asociados <span class="doc-sub">(íntegras)</span></td><td class="n">${_eur(c.acAp)}</td></tr>
     <tr><td>Beneficios acumulados de los asociados</td><td class="n">${_eur(c.acBen)}</td></tr>
     ${c.puntPend?`<tr><td>Aportes puntuales por devolver</td><td class="n">${_eur(c.puntPend)}</td></tr>`:""}
     <tr class="doc-subt"><td>Excedente acumulado del fondo</td><td class="n">${_eur(c.reserva)}</td></tr>
@@ -4957,6 +5057,8 @@ function _lista(items){ return items.length?`<ul class="doc-ul">${items.map(x=>`
 function _seccionesReunion(R,rm,ry,cerrado){
   const mesF=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
   const rep=repartoBeneficioMes(cerrado?R.recargoMes:R.recPrev,rm,ry);
+  const bonos=cerrado?R.bonosCob:R.bonosPrev; // v44.19: los bonos por referido los asume el fondo
+  const exc=Math.round((rep.excedente-bonos)*100)/100;
   let h=`<div class="doc-kpis">
     <div class="doc-kpi"><div class="k">${cerrado?"Cobrado":"Total previsto"}</div><div class="v">${_eur(cerrado?R.totCob:R.totPrev)}</div>${cerrado?`<div class="s">de ${_eur(R.totPrev)} previstos</div>`:""}</div>
     <div class="doc-kpi"><div class="k">Aportaciones</div><div class="v">${_eur(cerrado?R.apCob:R.apPrev)}</div><div class="s">${cerrado?`${R.nApPag} de ${R.nAp} asociados`:`${R.nAp} asociados`}</div></div>
@@ -4965,7 +5067,8 @@ function _seccionesReunion(R,rm,ry,cerrado){
   <table class="doc-t doc-mini"><tbody>
     <tr><td>Retornos compartidos ${cerrado?"del mes":"previstos"} (5 % de cada cuota)</td><td class="n">${_eur(cerrado?R.recargoMes:R.recPrev)}</td></tr>
     <tr><td>Beneficio para los asociados según su nivel (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>
-    <tr><td><b>${rep.excedente>=0?"Excedente":"Diferencia que aporta el fondo"}</b> ${rep.excedente>=0?"(se reinvierte en nuevos apoyos)":""}</td><td class="n"><b>${_eur(rep.excedente)}</b></td></tr>
+    ${bonos?`<tr><td>Bonos por referido ${cerrado?"del mes":"previstos"} (los asume el fondo)</td><td class="n">${_eur(bonos)}</td></tr>`:""}
+    <tr><td><b>${exc>=0?"Excedente":"Diferencia que aporta el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""}; se reinvierte en nuevos apoyos)`:""}</td><td class="n"><b>${_eur(exc)}</b></td></tr>
   </tbody></table>
   ${(()=>{ // v44.17: solo los apartados con contenido; los vacíos en una línea (ahorra papel)
     const secs=[];
@@ -4989,23 +5092,32 @@ function docCobroHTML(rm,ry){
     <div class="doc-fecha">Reunión del ____ / ____ / ________</div></div>
   <h3>1. Resumen para la reunión</h3>`+_seccionesReunion(R,rm,ry,false)+`
   <div class="doc-grupos" data-cab="1"><div class="doc-cabgrupos"><h3>2. Cobro por grupos (efectivo)</h3>
-  <div class="doc-nota">Marca ☐ al cobrar y apunta el importe recibido. "Ya pagado" = registrado en la app antes de imprimir.</div></div>`;
+  <div class="doc-nota">Marca ☐ al cobrar y apunta el importe recibido. "Ya pagado" = registrado en la app antes de imprimir. Al pie de cada grupo: total de aportes, de cuotas y de los dos que quedan por cobrar.</div></div>`;
+  // v44.19: columnas separadas Aporte · Cuotas · Total (sin repetir importes) y, al pie de
+  // cada grupo, el total de aportes, de cuotas y de los dos (lo que queda por cobrar).
   let totPend=0,totYa=0;
+  const mesC=(m,y)=>m.toLowerCase()+" "+String(y).slice(2);
   R.bloques.forEach(b=>{
-    let sub=0,subYa=0;
-    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:25%"><col style="width:43%"><col style="width:12%"><col style="width:9%"><col style="width:11%"></colgroup><thead><tr><th colspan="5" class="doc-gtit">${escH(b.titulo)}</th></tr>
-      <tr><th>Persona</th><th>Concepto</th><th class="n">A pagar</th><th class="c">Cobra&shy;do</th><th class="n">Reci&shy;bido</th></tr></thead><tbody>`;
+    let gAp=0,gCu=0,subYa=0;
+    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:24%"><col style="width:13%"><col style="width:32%"><col style="width:12%"><col style="width:8%"><col style="width:11%"></colgroup><thead><tr><th colspan="6" class="doc-gtit">${escH(b.titulo)}</th></tr>
+      <tr><th>Persona</th><th class="n">Aporte</th><th>Cuotas de apoyos</th><th class="n">Total</th><th class="c">Cobra&shy;do</th><th class="n">Reci&shy;bido</th></tr></thead><tbody>`;
     b.filas.forEach(f=>{
+      const ap=f.items.find(i=>i.tipo==="aporte"), cus=f.items.filter(i=>i.tipo==="cuota");
       const total=f.items.reduce((s,i)=>s+i.importe,0), ya=f.items.filter(i=>i.pagado).reduce((s,i)=>s+i.importe,0);
-      const pend=Math.round((total-ya)*100)/100; sub+=total; subYa+=ya;
+      const pend=Math.round((total-ya)*100)/100; subYa+=ya;
+      if(ap&&!ap.pagado)gAp+=ap.importe; cus.forEach(c=>{if(!c.pagado)gCu+=c.importe;});
       const todoPagado=pend<=0;
-      h+=`<tr class="${todoPagado?"doc-ya":""}"><td class="doc-nom">${escH(f.m.name)}${f.m.type==="tercero"?`<div class="doc-sub">tercero</div>`:""}</td>
-        <td class="doc-conc">${f.items.map(i=>`<div class="doc-lin${i.tipo==="aporte"?" doc-lin-ap":""}"><span>${i.ultima?`<b>${escH(i.txt)}</b>`:escH(i.txt)}</span><span class="doc-lin-imp">${_eur(i.importe)}${i.pagado?" ✓":""}</span></div>`).join("")}</td>
+      const notaAp=ap?[ap.descuento?`−${ap.descuento} € (${ap.nReferidos>1?ap.nReferidos+" referidos":"1 referido"})`:"",ap.extra?`incl. ${ap.extra} € extra`:""].filter(Boolean).join(" · "):"";
+      const celAp=ap?`<b>${_eur(ap.importe)}</b>${ap.pagado?" ✓":""}${notaAp?`<div class="doc-sub">${notaAp}</div>`:""}`:`<span class="doc-sub">—</span>`;
+      const celCu=cus.length?cus.map(c=>`<div class="doc-lin"><span>${c.ultima?"🏁 ":""}${c.aplazada?"aplazada · solo retorno":c.de<=1?"cuota única":(c.ultima?"<b>última</b> ":"")+c.num+"/"+c.de} · ${mesC(c.gMonth,c.gYear)}</span><span class="doc-lin-imp">${_eur(c.importe)}${c.pagado?" ✓":""}</span></div>`).join(""):`<div class="doc-lin"><span class="doc-sub">—</span></div>`;
+      h+=`<tr class="${todoPagado?"doc-ya":""}"><td class="doc-nom">${escH(f.m.name)}<div class="doc-sub">${f.m.type==="tercero"?"tercero":"asociado"}</div></td>
+        <td class="n">${celAp}</td><td class="doc-conc">${celCu}</td>
         <td class="n"><b>${_eur(pend)}</b>${ya>0&&!todoPagado?`<div class="doc-sub">de ${_eur(total)}</div>`:""}</td>
         <td class="c">${todoPagado?"✓ ya pagado":"☐"}</td><td class="n">${todoPagado?"":`<span class="doc-raya"></span>`}</td></tr>`;
     });
-    totPend+=sub-subYa; totYa+=subYa;
-    h+=`<tr class="doc-subt"><td colspan="2">Subtotal ${escH(b.titulo.replace(/^Grupo de /,""))}</td><td class="n">${_eur(sub-subYa)}</td><td></td><td class="n"><span class="doc-raya"></span></td></tr></tbody></table></div>`;
+    const gTot=Math.round((gAp+gCu)*100)/100;
+    totPend+=gTot; totYa+=subYa;
+    h+=`<tr class="doc-subt"><td>Total del grupo${subYa>0?`<div class="doc-sub">ya pagado ${_eur(subYa)}</div>`:""}</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gTot)}</td><td></td><td class="n"><span class="doc-raya"></span></td></tr></tbody></table></div>`;
   });
   h+=`</div><div class="doc-final"><h3>3. Arqueo de caja</h3>
   <table class="doc-t doc-arq"><tbody>
@@ -5061,23 +5173,23 @@ function docCarpetaHTML(){
   const nom=m=>MONTHS_FULL[MONTHS.indexOf(m.rm)]+" "+m.ry;
   let T={prev:0,cob:0,ap:0,cu:0,ret:0,ben:0,exc:0,nConc:0,conc:0};
   const filas=meses.map(m=>{
-    const R=resumenMesDoc(m.rm,m.ry), rep=repartoBeneficioMes(R.recargoMes,m.rm,m.ry);
+    const R=resumenMesDoc(m.rm,m.ry), rep=repartoBeneficioMes(R.recargoMes,m.rm,m.ry), exc=Math.round((rep.excedente-R.bonosCob)*100)/100;
     const conc=R.concedidos.reduce((s,x)=>s+(x.l.capital||0),0);
-    T.prev+=R.totPrev;T.cob+=R.totCob;T.ap+=R.apCob;T.cu+=R.cuCob;T.ret+=R.recargoMes;T.ben+=rep.obligacion;T.exc+=rep.excedente;T.nConc+=R.concedidos.length;T.conc+=conc;
+    T.prev+=R.totPrev;T.cob+=R.totCob;T.ap+=R.apCob;T.cu+=R.cuCob;T.ret+=R.recargoMes;T.ben+=rep.obligacion;T.bon=(T.bon||0)+R.bonosCob;T.exc+=exc;T.nConc+=R.concedidos.length;T.conc+=conc;
     T.noCob=(T.noCob||0)+R.noCob;
     return `<tr><td>${nom(m)}</td><td class="n">${_eur(R.totPrev)}</td><td class="n">${_eur(R.totCob)}</td><td class="n">${_eur(R.pendiente)}${R.noCob>0?`<div class="doc-sub">+${_eur(R.noCob)} baja</div>`:""}</td>
-      <td class="n">${_eur(R.recargoMes)}</td><td class="n">${_eur(rep.obligacion)}</td><td class="n">${_eur(rep.excedente)}</td><td class="n">${R.concedidos.length} · ${_eur(conc)}</td></tr>`;
+      <td class="n">${_eur(R.recargoMes)}</td><td class="n">${_eur(rep.obligacion)}</td><td class="n">${_eur(R.bonosCob)}</td><td class="n">${_eur(exc)}</td><td class="n">${R.concedidos.length} · ${_eur(conc)}</td></tr>`;
   }).join("");
   let h=`<div class="doc-unidad doc-portada"><div class="doc-cab"><div><div class="doc-org">NUEVOS HORIZONTES</div><div class="doc-tit">Carpeta de control · Actas de cierre</div></div>
     <div class="doc-fecha">De ${nom(ini)} a ${nom(ult)}<br>Generada el ${hoy}</div></div>
     <h3>Índice y resumen por mes</h3>
-    <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Excedente</th><th class="n">Apoyos concedidos</th></tr></thead>
-    <tbody>${filas}<tr class="doc-subt"><td>Total</td><td class="n">${_eur(T.prev)}</td><td class="n">${_eur(T.cob)}</td><td class="n">${_eur(T.prev-T.cob-(T.noCob||0))}</td><td class="n">${_eur(T.ret)}</td><td class="n">${_eur(T.ben)}</td><td class="n">${_eur(T.exc)}</td><td class="n">${T.nConc} · ${_eur(T.conc)}</td></tr></tbody></table>
-    <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados según su nivel · Excedente = retornos − beneficio (se reinvierte en apoyos) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
+    <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Bonos</th><th class="n">Excedente</th><th class="n">Apoyos concedidos</th></tr></thead>
+    <tbody>${filas}<tr class="doc-subt"><td>Total</td><td class="n">${_eur(T.prev)}</td><td class="n">${_eur(T.cob)}</td><td class="n">${_eur(T.prev-T.cob-(T.noCob||0))}</td><td class="n">${_eur(T.ret)}</td><td class="n">${_eur(T.ben)}</td><td class="n">${_eur(T.bon||0)}</td><td class="n">${_eur(T.exc)}</td><td class="n">${T.nConc} · ${_eur(T.conc)}</td></tr></tbody></table>
+    <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados según su nivel · Bonos = bonos por referido (los asume el fondo) · Excedente = retornos − beneficio − bonos (se reinvierte en apoyos) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
     <h3>Libro de caja por mes</h3>
     <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Saldo inicial</th><th class="n">Entradas</th><th class="n">Salidas</th><th class="n">Saldo final</th><th class="n">Capital prestado</th><th class="n">Total fondo</th><th class="n">Excedente acum.</th></tr></thead>
     <tbody>${meses.map(m=>{const c=cajaMensual()[getMesKey(m.rm,m.ry)];return `<tr><td>${nom(m)}</td><td class="n">${_eur(c.ini)}</td><td class="n">${_eur(c.entradas)}</td><td class="n">${_eur(c.salidas)}</td><td class="n">${_eur(c.fin)}</td><td class="n">${_eur(c.cartera)}</td><td class="n">${_eur(c.fin+c.cartera)}</td><td class="n">${_eur(c.reserva)}</td></tr>`;}).join("")}</tbody></table>
-    <div class="doc-nota">Saldo inicial (ago-2025): 0 €. Total fondo = caja + capital prestado; de él, aportaciones y beneficios acumulados son de los asociados y el resto es el excedente del fondo. Detalle de cada mes en su acta.</div></div>`;
+    <div class="doc-nota">Saldo inicial (ago-2025): 0 €. Total fondo = caja + capital prestado; de él, aportaciones (íntegras) y beneficios acumulados son de los asociados y el resto es el excedente del fondo. Detalle de cada mes en su acta.</div></div>`;
   meses.forEach(m=>{ h+=`<div class="doc-unidad doc-nueva-pag">${docActaHTML(m.rm,m.ry)}</div>`; });
   return h;
 }
@@ -5253,12 +5365,13 @@ function render(){
     const hayAbierto=apAbierto||cuAbierto||grAbierto;
 
     // KPIs (se muestran AL FINAL)
+    const _bonM=bonosReferidoMes(rm,ry), _excN=Math.round((_rep.excedente-_bonM)*100)/100; // v44.19
     const kpiHTML=`<div class="mes-card">
       <div class="mes-kpi-grid">
         <div class="mes-kpi green"><div class="mes-kpi-val">${totalAportesMes(rm,ry)} €</div><div class="mes-kpi-lbl">Aportes cobrados</div></div>
         <div class="mes-kpi orange"><div class="mes-kpi-val" id="mes-kpi-beneficio">${_rep.obligacion.toFixed(2)} €</div><div class="mes-kpi-lbl">Beneficio del mes (según nivel)</div></div>
-        <div class="mes-kpi blue"><div class="mes-kpi-val" id="mes-kpi-excedente">${Math.abs(_rep.excedente).toFixed(2)} €</div><div class="mes-kpi-lbl" id="mes-kpi-excedente-lbl">${_rep.excedente<0?"Falta retorno (lo pone el fondo)":"Excedente"}</div></div>
-        <div class="mes-kpi"><div class="mes-kpi-val" id="mes-kpi-reserva">${Math.max(0,_rep.excedente).toFixed(2)} €</div><div class="mes-kpi-lbl">↻ Se reinvierte en ayudas</div></div>
+        <div class="mes-kpi blue"><div class="mes-kpi-val" id="mes-kpi-excedente">${Math.abs(_excN).toFixed(2)} €</div><div class="mes-kpi-lbl" id="mes-kpi-excedente-lbl">${_excN<0?"Falta retorno (lo pone el fondo)":(_bonM?`Excedente (tras ${fmtEur(_bonM)} € de bonos)`:"Excedente")}</div></div>
+        <div class="mes-kpi"><div class="mes-kpi-val" id="mes-kpi-reserva">${Math.max(0,_excN).toFixed(2)} €</div><div class="mes-kpi-lbl">↻ Se reinvierte en ayudas</div></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
         <label style="font-size:13px;font-weight:600;color:var(--muted);flex:1">📈 Recargo recaudado este mes (€)</label>
