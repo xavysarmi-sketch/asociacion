@@ -129,6 +129,11 @@ body.doc-abierto #appVersionTag{display:none}
 .doc-t .n{text-align:right;white-space:nowrap}
 .doc-t .c{text-align:center;white-space:nowrap}
 .doc-t .n .doc-sub{white-space:normal;line-height:1.2}
+.doc-cobro td{vertical-align:middle}
+.doc-check{display:inline-block;width:15px;height:15px;border:1.6px solid #333;border-radius:3px;vertical-align:middle}
+.doc-cobro tr.doc-cont td.doc-cpt,.doc-cobro tr.doc-cont td.n{border-top:1px dashed #b9c4bd}
+.doc-cobro tr.doc-fila-ap td.doc-cpt{background:#F3F7F4}
+.doc-cobro .doc-cpt .doc-sub{font-size:.9em}
 .doc-gtit{background:#1B4332!important;color:#fff;font-size:12px!important;letter-spacing:.3px}
 .doc-nom{font-weight:700}
 .doc-fija{table-layout:fixed}
@@ -179,9 +184,10 @@ body.doc-abierto #appVersionTag{display:none}
   .doc-fija th.n,.doc-fija th.c,.doc-fija td.c{white-space:normal}
   .doc-lin{gap:4px;padding:3px}
   .doc-caja2{grid-template-columns:1fr}
-  .doc-cobro col:nth-child(1){width:22%!important} .doc-cobro col:nth-child(2){width:14%!important}
-  .doc-cobro col:nth-child(3){width:30%!important} .doc-cobro col:nth-child(4){width:12%!important}
-  .doc-cobro col:nth-child(5){width:10%!important} .doc-cobro col:nth-child(6){width:12%!important}
+  .doc-cobro col:nth-child(1){width:19%!important} .doc-cobro col:nth-child(2){width:29%!important}
+  .doc-cobro col:nth-child(3){width:12%!important} .doc-cobro col:nth-child(4){width:12%!important}
+  .doc-cobro col:nth-child(5){width:12%!important} .doc-cobro col:nth-child(6){width:6%!important} .doc-cobro col:nth-child(7){width:10%!important}
+  .doc-cobro .doc-raya{min-width:0}
   .doc-t th{hyphens:manual}
 }
 @media print{.doc-nueva-pag{margin-top:0;border-top:none;padding-top:0}}
@@ -850,7 +856,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.19"; // v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.20"; // v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -2648,7 +2654,10 @@ function itemsDeMiembro(mid){
     const pagado=!!(md.aportes&&md.aportes[m.id]);
     const {nReferidos,descuento}=descuentoReferidoMes(m.id,rm,ry);
     const neto=aporteNetoMes(m,rm,ry);
-    const concepto=descuento>0?`Aporte mensual (−${descuento}€ por ${nReferidos} referido${nReferidos>1?"s":""})`:"Aporte mensual";
+    // v44.20: con bono por referido se muestran también los nombres de los referidos
+    const nomRef=descuento>0?nombresReferidosMes(m.id,rm,ry):[];
+    const concepto=descuento>0?`Aporte mensual (−${descuento}€ por ${nReferidos} referido${nReferidos>1?"s":""})`
+      +`<div style="font-size:12px;color:#8A6D1E;margin-top:2px">🎁 ${nomRef.map(escH).join(", ")}</div>`:"Aporte mensual";
     items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto,importe:neto,yaPagado:pagado});
   }
   cuotasDelMes(rm,ry).filter(c=>c.mid===mid).forEach(c=>{
@@ -5092,38 +5101,49 @@ function docCobroHTML(rm,ry){
     <div class="doc-fecha">Reunión del ____ / ____ / ________</div></div>
   <h3>1. Resumen para la reunión</h3>`+_seccionesReunion(R,rm,ry,false)+`
   <div class="doc-grupos" data-cab="1"><div class="doc-cabgrupos"><h3>2. Cobro por grupos (efectivo)</h3>
-  <div class="doc-nota">Marca ☐ al cobrar y apunta el importe recibido. "Ya pagado" = registrado en la app antes de imprimir. Al pie de cada grupo: total de aportes, de cuotas y de los dos que quedan por cobrar.</div></div>`;
-  // v44.19: columnas separadas Aporte · Cuotas · Total (sin repetir importes) y, al pie de
-  // cada grupo, el total de aportes, de cuotas y de los dos (lo que queda por cobrar).
+  </div>`;
+  // v44.19b: una línea por concepto (aportación / cada cuota) con su detalle completo
+  // ("Cuota 4/9 · apoyo de junio 2026", nombres de los referidos del bono) y el importe en su
+  // columna (Aporte o Cuota). Persona, Total, ✓ y Recibido ocupan todas sus líneas.
+  // Al pie de cada grupo: total de aportes, de cuotas y de los dos (lo que queda por cobrar).
   let totPend=0,totYa=0;
-  const mesC=(m,y)=>m.toLowerCase()+" "+String(y).slice(2);
+  const mesL=(m,y)=>MONTHS_FULL[MONTHS.indexOf(m)].toLowerCase()+" "+y;
+  const lista=a=>a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" y "+a[a.length-1];
   R.bloques.forEach(b=>{
     let gAp=0,gCu=0,subYa=0;
-    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:24%"><col style="width:13%"><col style="width:32%"><col style="width:12%"><col style="width:8%"><col style="width:11%"></colgroup><thead><tr><th colspan="6" class="doc-gtit">${escH(b.titulo)}</th></tr>
-      <tr><th>Persona</th><th class="n">Aporte</th><th>Cuotas de apoyos</th><th class="n">Total</th><th class="c">Cobra&shy;do</th><th class="n">Reci&shy;bido</th></tr></thead><tbody>`;
+    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:19%"><col style="width:37%"><col style="width:9.5%"><col style="width:9.5%"><col style="width:9.5%"><col style="width:5.5%"><col style="width:10%"></colgroup><thead><tr><th colspan="7" class="doc-gtit">${escH(b.titulo)}</th></tr>
+      <tr><th>Persona</th><th>Concepto</th><th class="n">Aporte</th><th class="n">Cuota</th><th class="n">Total</th><th class="c">✓</th><th class="n">Reci&shy;bido</th></tr></thead><tbody>`;
     b.filas.forEach(f=>{
-      const ap=f.items.find(i=>i.tipo==="aporte"), cus=f.items.filter(i=>i.tipo==="cuota");
-      const total=f.items.reduce((s,i)=>s+i.importe,0), ya=f.items.filter(i=>i.pagado).reduce((s,i)=>s+i.importe,0);
-      const pend=Math.round((total-ya)*100)/100; subYa+=ya;
-      if(ap&&!ap.pagado)gAp+=ap.importe; cus.forEach(c=>{if(!c.pagado)gCu+=c.importe;});
-      const todoPagado=pend<=0;
-      const notaAp=ap?[ap.descuento?`−${ap.descuento} € (${ap.nReferidos>1?ap.nReferidos+" referidos":"1 referido"})`:"",ap.extra?`incl. ${ap.extra} € extra`:""].filter(Boolean).join(" · "):"";
-      const celAp=ap?`<b>${_eur(ap.importe)}</b>${ap.pagado?" ✓":""}${notaAp?`<div class="doc-sub">${notaAp}</div>`:""}`:`<span class="doc-sub">—</span>`;
-      const celCu=cus.length?cus.map(c=>`<div class="doc-lin"><span>${c.ultima?"🏁 ":""}${c.aplazada?"aplazada · solo retorno":c.de<=1?"cuota única":(c.ultima?"<b>última</b> ":"")+c.num+"/"+c.de} · ${mesC(c.gMonth,c.gYear)}</span><span class="doc-lin-imp">${_eur(c.importe)}${c.pagado?" ✓":""}</span></div>`).join(""):`<div class="doc-lin"><span class="doc-sub">—</span></div>`;
-      h+=`<tr class="${todoPagado?"doc-ya":""}"><td class="doc-nom">${escH(f.m.name)}<div class="doc-sub">${f.m.type==="tercero"?"tercero":"asociado"}</div></td>
-        <td class="n">${celAp}</td><td class="doc-conc">${celCu}</td>
-        <td class="n"><b>${_eur(pend)}</b>${ya>0&&!todoPagado?`<div class="doc-sub">de ${_eur(total)}</div>`:""}</td>
-        <td class="c">${todoPagado?"✓ ya pagado":"☐"}</td><td class="n">${todoPagado?"":`<span class="doc-raya"></span>`}</td></tr>`;
+      // v44.20: hoja para apuntar el cobro a mano → no usa lo ya marcado en la app (para eso está el acta)
+      const total=f.items.reduce((s,i)=>s+i.importe,0), ya=0;
+      const pend=Math.round(total*100)/100;
+      const todoPagado=false, n=f.items.length;
+      f.items.forEach(i=>{ if(i.tipo==="aporte")gAp+=i.importe; else gCu+=i.importe; });
+      f.items.forEach((i,k)=>{
+        let txt;
+        if(i.tipo==="aporte"){
+          const nom=nombresReferidosMes(f.m.id,rm,ry);
+          txt="Aportación mensual"+(i.extra?` <span class="doc-sub">(incluye ${i.extra} € extra)</span>`:"")
+            +(i.descuento?`<div class="doc-sub">bono −${i.descuento} € por ${escH(lista(nom))}</div>`:"");
+        }else{
+          const base=i.aplazada?"Cuota aplazada (solo retorno)":i.de<=1?"Cuota única":i.ultima?`🏁 <b>Última cuota</b> ${i.num}/${i.de}`:`Cuota ${i.num}/${i.de}`;
+          txt=`${base} · apoyo de ${mesL(i.gMonth,i.gYear)}`;
+        }
+        const imp=_eur(i.importe);
+        h+=`<tr class="${todoPagado?"doc-ya":""}${k>0?" doc-cont":""}${i.tipo==="aporte"?" doc-fila-ap":""}">`
+          +(k===0?`<td class="doc-nom" rowspan="${n}">${escH(f.m.name)}<div class="doc-sub">${f.m.type==="tercero"?"tercero":"asociado"}</div></td>`:"")
+          +`<td class="doc-cpt">${txt}</td><td class="n">${i.tipo==="aporte"?imp:""}</td><td class="n">${i.tipo==="cuota"?imp:""}</td>`
+          +(k===0?`<td class="n" rowspan="${n}"><b>${_eur(pend)}</b>${ya>0&&!todoPagado?`<div class="doc-sub">de ${_eur(total)}</div>`:""}</td><td class="c" rowspan="${n}">${todoPagado?"✓":`<span class="doc-check"></span>`}</td><td class="n" rowspan="${n}">${todoPagado?"":`<span class="doc-raya"></span>`}</td>`:"")
+          +`</tr>`;
+      });
     });
     const gTot=Math.round((gAp+gCu)*100)/100;
     totPend+=gTot; totYa+=subYa;
-    h+=`<tr class="doc-subt"><td>Total del grupo${subYa>0?`<div class="doc-sub">ya pagado ${_eur(subYa)}</div>`:""}</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gTot)}</td><td></td><td class="n"><span class="doc-raya"></span></td></tr></tbody></table></div>`;
+    h+=`<tr class="doc-subt"><td colspan="2">Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gTot)}</td><td></td><td class="n"><span class="doc-raya"></span></td></tr></tbody></table></div>`;
   });
   h+=`</div><div class="doc-final"><h3>3. Arqueo de caja</h3>
   <table class="doc-t doc-arq"><tbody>
-    <tr><td>Total previsto del mes</td><td class="n">${_eur(R.totPrev)}</td></tr>
-    <tr><td>Ya registrado como pagado en la app</td><td class="n">${_eur(totYa)}</td></tr>
-    <tr><td><b>A cobrar en la reunión</b></td><td class="n"><b>${_eur(totPend)}</b></td></tr>
+    <tr><td><b>Total a cobrar del mes</b> <span class="doc-sub">(aportes ${_eur(R.apPrev)} + cuotas ${_eur(R.cuPrev)})</span></td><td class="n"><b>${_eur(totPend)}</b></td></tr>
     <tr><td>Efectivo contado</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
     <tr><td>Diferencia (contado − a cobrar)</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
     <tr><td colspan="2" style="height:54px;vertical-align:top">Observaciones:</td></tr>
