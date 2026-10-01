@@ -856,7 +856,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.20"; // v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v44.21"; // v44.21: al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1251,7 +1251,8 @@ function sanitizeData(data){
   parcheCondicionHistorica2026(data);    // v44.17: condición histórica de los 54 apoyos anteriores a ago-2026
   parcheApoyosAgosto2025(data);          // v44.17: los dos primeros apoyos (ago-2025) que faltaban
   parcheCuotasCobradas2026(data);
-  parcheReferidosGabriel2026(data);       // v44.19: bono de Joaquín duplicado en octubre → Andrea Rodríguez        // v44.17: cuotas antiguas = lo que realmente se cobró (actas originales)
+  parcheReferidosGabriel2026(data);
+  parcheCicloGloriaOct2026(data);        // v44.21: apoyo de Gloria (oct-2026) concedido con la permanencia ya a 24       // v44.19: bono de Joaquín duplicado en octubre → Andrea Rodríguez        // v44.17: cuotas antiguas = lo que realmente se cobró (actas originales)
   return data;
 }
 
@@ -2441,6 +2442,18 @@ function parcheReferidosGabriel2026(data){
   }
   data.parches.referidosGabriel2026_10=true;
 }
+// PARCHE PUNTUAL (una sola vez) — 01/10/2026, Ángel: a Gloria Celorio se le concedió un apoyo
+// de 1.000 € a 12 meses y su permanencia se cambió de 12 a 24 para poder dárselo (como con Maria
+// Rojas en junio). La condición guardada en la concesión quedó con 12 → se corrige a 24.
+function parcheCicloGloriaOct2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.cicloGloriaOct2026)return;
+  const g=data.members.find(m=>m.id==="21"); if(!g)return;
+  const l=(g.loans||[]).find(x=>x.id==="l1790882273440");
+  if(l&&g.ciclo===24&&l.cicloEnConcesion===12&&l.capital===1000&&l.gMonth==="Oct"&&l.gYear===2026)l.cicloEnConcesion=24;
+  data.parches.cicloGloriaOct2026=true;
+}
 // ── v44.13: PAGO DE DEVOLUCIONES POR BAJA ─────────────────────────────────────
 // Es devolución del CAPITAL aportado (no un gasto): sale del fondo el mes en que se
 // PAGA. Mes de pago: el que fije el administrador (b.pagoMonth/pagoYear) o, por
@@ -3389,9 +3402,33 @@ function addMemberSubmit(){
   closeModal();save();toast("Miembro añadido ✓"+msgBono(k));
 }
 
+// v44.21: reglas del Maestro (§11.1) al conceder o editar un apoyo — las mismas que revisa la
+// auditoría. Devuelve {bloqueo, aviso}: con bloqueo no se guarda; el aviso solo informa.
+function validarApoyo(m,cap,nn,tipo,ciclo){
+  const nom=m?m.name.split(" ")[0]:"Esta persona";
+  if(tipo==="tercero"){
+    if(cap>500)return {bloqueo:`Un tercero puede recibir como máximo 500 € (Maestro §11.1).`};
+    if(nn>5)return {bloqueo:`Un tercero puede devolver el apoyo en 5 cuotas como máximo (Maestro §11.1).`};
+    return {};
+  }
+  if(cap>3000)return {bloqueo:`El máximo de un apoyo es 3.000 € (Maestro §11.1).`};
+  if(nn>5&&!(ciclo===24||ciclo===36||ciclo===0)){
+    return {bloqueo:`Para devolverlo en más de 5 cuotas, ${escH(nom)} tiene que tener permanencia de 24 o 36 meses o indefinida (ahora tiene ${ciclo} meses). Cambia primero su permanencia en Gestión → ⚙️ Nivel / Ciclo y luego da de alta el apoyo.`};
+  }
+  if(cap>1000)return {aviso:`Entre 1.000 € y 3.000 € necesita la aprobación previa del coordinador (Maestro §11.1).`};
+  return {};
+}
+function _condicionActual(m){ return {tipo:m?m.type:"asociado", ciclo:m?(m.ciclo!=null?m.ciclo:12):12}; }
+function _avisoApoyoHTML(v){
+  if(v.bloqueo)return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#FDF0EE;border:1.5px solid #C0492C;color:#7A2418;font-size:13px;line-height:1.45">⛔ ${v.bloqueo}</div>`;
+  if(v.aviso)return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#FFF8F0;border:1px solid #F5D5B0;color:#7A4A1E;font-size:13px;line-height:1.45">⚠️ ${v.aviso}</div>`;
+  return "";
+}
 function addLoanSubmit(){
   const cap=parseInt(document.getElementById("l-cap").value)||0;if(cap<=0)return;
   const nn=parseInt(document.getElementById("l-n")?.value||"3");
+  { const mV=DATA.members.find(x=>x.id===MODAL.mid), c=_condicionActual(mV), v=validarApoyo(mV,cap,nn,c.tipo,c.ciclo);
+    if(v.bloqueo){ const pv=document.getElementById("l-preview"); if(pv)updateLoanPreview(); toast("⛔ No se puede guardar: revisa el aviso",4000); return; } }
   let rate=parseFloat(document.getElementById("l-rate")?.value);
   if(isNaN(rate)||rate<0)rate=DATA.rate; // fallback a la tasa global del fondo
   const gm=document.getElementById("l-gm").value,gy=parseInt(document.getElementById("l-gy").value);
@@ -3550,6 +3587,10 @@ function saveEditLoan(){
   if(!l){closeModal();return;}
   const cap=parseInt(document.getElementById("el-cap").value)||0;if(cap<=0){alert("Capital inválido");return;}
   const nn=parseInt(document.getElementById("el-n")?.value||"3");
+  { // v44.21: se valida con la condición que tenía al concederse
+    const tipo=l.tipoEnConcesion!=null?l.tipoEnConcesion:m.type, ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:(m.ciclo!=null?m.ciclo:12);
+    const nApl=(l.pays||[]).filter(p=>p.aplazada).length, v=validarApoyo(m,cap,nn-nApl,tipo,ciclo);
+    if(v.bloqueo){ toast("⛔ "+v.bloqueo.replace(/<[^>]+>/g,""),7000); return; } }
   const gm=document.getElementById("el-gm").value,gy=parseInt(document.getElementById("el-gy").value);
   const sm=document.getElementById("el-sm").value,sy=parseInt(document.getElementById("el-sy").value);
   // Preservar estado 'paid' Y 'aplazada' por mes-año al reconstruir
@@ -6479,7 +6520,9 @@ function updateLoanPreview(){
   const{total,cuotas}=ayudaCuotas(cap,nn,rate);
   const base=cuotas[0],ultima=cuotas[cuotas.length-1];
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
-  document.getElementById("l-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + aporte adicional (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
+  const mV=DATA.members.find(x=>x.id===MODAL.mid), cV=_condicionActual(mV);
+  const aviso=_avisoApoyoHTML(validarApoyo(mV,cap,nn,cV.tipo,cV.ciclo));
+  document.getElementById("l-preview").innerHTML=aviso+`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + aporte adicional (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
 }
 
 // ── MODO SOLO LECTURA ──
