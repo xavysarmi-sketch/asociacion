@@ -130,6 +130,7 @@ body.doc-abierto #appVersionTag{display:none}
 .doc-t .c{text-align:center;white-space:nowrap}
 .doc-t .n .doc-sub{white-space:normal;line-height:1.2}
 .doc-cobro td{vertical-align:middle}
+.doc-nuevos tr.doc-hueco td{height:30px;vertical-align:middle} /* v45.3 */
 .doc-check{display:inline-block;width:15px;height:15px;border:1.6px solid #333;border-radius:3px;vertical-align:middle}
 .doc-cobro tr.doc-cont td.doc-cpt,.doc-cobro tr.doc-cont td.n{border-top:1px dashed #b9c4bd}
 .doc-cobro tr.doc-fila-ap td.doc-cpt{background:#F3F7F4}
@@ -184,9 +185,9 @@ body.doc-abierto #appVersionTag{display:none}
   .doc-fija th.n,.doc-fija th.c,.doc-fija td.c{white-space:normal}
   .doc-lin{gap:4px;padding:3px}
   .doc-caja2{grid-template-columns:1fr}
-  .doc-cobro col:nth-child(1){width:19%!important} .doc-cobro col:nth-child(2){width:29%!important}
-  .doc-cobro col:nth-child(3){width:12%!important} .doc-cobro col:nth-child(4){width:12%!important}
-  .doc-cobro col:nth-child(5){width:12%!important} .doc-cobro col:nth-child(6){width:6%!important} .doc-cobro col:nth-child(7){width:10%!important}
+  .doc-cobro col:nth-child(1){width:20%!important} .doc-cobro col:nth-child(2){width:36%!important}
+  .doc-cobro col:nth-child(3){width:13%!important} .doc-cobro col:nth-child(4){width:13%!important}
+  .doc-cobro col:nth-child(5){width:13%!important} .doc-cobro col:nth-child(6){width:5%!important}
   .doc-cobro .doc-raya{min-width:0}
   .doc-t th{hyphens:manual}
 }
@@ -859,7 +860,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.2"; // v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.3"; // v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4165,9 +4166,8 @@ function _salidaDetalle(x){ return x.clase==="pos"?(x.tipo==="fin"?`sin decidir:
 function salidasPrevistasDocHTML(rm,ry){
   const S=salidasPrevistas(rm,ry); if(!S.lista.length)return "";
   return `<h4 style="margin:8px 0 3px">💸 Salidas previstas (${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} y el mes siguiente)</h4>
-  <table class="doc-t doc-mini"><tbody>${S.lista.map(x=>`<tr><td>${escH(x.m.name)} — ${x.txt}${x.clase==="pos"?` <span class="doc-sub">(${_salidaDetalle(x)})</span>`:""}</td><td>del 5 al 10 de ${_txtIdx(x.pagoIdx)}</td><td class="n">${x.clase==="pos"?"posible ":""}${_eur(x.importe)}</td></tr>`).join("")}
-  <tr class="doc-subt"><td colspan="2">Comprometido${S.posible?` <span class="doc-sub">(posible además: ${_eur(S.posible)})</span>`:""}</td><td class="n">${_eur(S.comprometido)}</td></tr></tbody></table>
-  <div class="doc-nota">Antes de aprobar ayudas nuevas, lo que entra estos dos meses debe cubrir lo comprometido (Maestro FO-4).</div>`;
+  <table class="doc-t doc-mini"><tbody>${S.lista.map(x=>`<tr><td>${escH(x.m.name)} — ${x.txt}${x.clase==="pos"?` <span class="doc-sub">(${_salidaDetalle(x)})</span>`:""}</td><td>del 5 al 10 de ${_txtIdx(x.pagoIdx)}</td><td class="n">${x.clase==="pos"?"posible ":""}${_eur(x.importe)}</td><td class="c"><span class="doc-check"></span></td></tr>`).join("")}
+  <tr class="doc-subt"><td colspan="2">Pagado${S.posible?` <span class="doc-sub">(posible además: ${_eur(S.posible)})</span>`:""}</td><td class="n">${_eur(S.comprometido)}</td><td></td></tr></tbody></table>`;
 }
 function salidasPrevistasHTML(rm,ry){
   const S=salidasPrevistas(rm,ry); if(!S.lista.length)return "";
@@ -5623,7 +5623,7 @@ function _seccionesReunion(R,rm,ry,cerrado){
     secs.push(["⚠️ Pendiente del mes anterior","pendientes del mes anterior",R.pendAnt.map(x=>`${escH(x.m.name)} — ${_eur(x.p.pendiente)} de ${MONTHS_FULL[MONTHS.indexOf(x.p.mes)].toLowerCase()}`)]);
     const llenas=secs.filter(x=>x[2].length), vacias=secs.filter(x=>!x[2].length).map(x=>x[1]);
     return (llenas.length?`<div class="doc-cols">${llenas.map(x=>`<div><h4>${x[0]}</h4>${_lista(x[2])}</div>`).join("")}</div>`:"")
-      +(vacias.length?`<div class="doc-nota" style="margin-top:4px">Este mes sin: ${vacias.join(" · ")}.</div>`:"");
+      +(vacias.length&&cerrado?`<div class="doc-nota" style="margin-top:4px">Este mes sin: ${vacias.join(" · ")}.</div>`:""); // v45.3: en la hoja de cobro solo lo que hay
   })()}`;
   return h;
 }
@@ -5643,8 +5643,8 @@ function docCobroHTML(rm,ry){
   const lista=a=>a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" y "+a[a.length-1];
   R.bloques.forEach(b=>{
     let gAp=0,gCu=0,subYa=0;
-    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:19%"><col style="width:37%"><col style="width:9.5%"><col style="width:9.5%"><col style="width:9.5%"><col style="width:5.5%"><col style="width:10%"></colgroup><thead><tr><th colspan="7" class="doc-gtit">${escH(b.titulo)}</th></tr>
-      <tr><th>Persona</th><th>Concepto</th><th class="n">Aporte</th><th class="n">Cuota</th><th class="n">Total</th><th class="c">✓</th><th class="n">Reci&shy;bido</th></tr></thead><tbody>`;
+    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro"><colgroup><col style="width:20%"><col style="width:45%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:5%"></colgroup><thead><tr><th colspan="6" class="doc-gtit">${escH(b.titulo)}</th></tr>
+      <tr><th>Persona</th><th>Concepto</th><th class="n">Aporte</th><th class="n">Cuota</th><th class="n">Total</th><th class="c">✓</th></tr></thead><tbody>`; // v45.3: sin columna «Recibido»
     b.filas.forEach(f=>{
       // v44.20: hoja para apuntar el cobro a mano → no usa lo ya marcado en la app (para eso está el acta)
       const total=f.items.reduce((s,i)=>s+i.importe,0), ya=0;
@@ -5665,21 +5665,31 @@ function docCobroHTML(rm,ry){
         h+=`<tr class="${todoPagado?"doc-ya":""}${k>0?" doc-cont":""}${i.tipo==="aporte"?" doc-fila-ap":""}">`
           +(k===0?`<td class="doc-nom" rowspan="${n}">${escH(f.m.name)}<div class="doc-sub">${f.m.type==="tercero"?"tercero":"asociado"}</div></td>`:"")
           +`<td class="doc-cpt">${txt}</td><td class="n">${i.tipo==="aporte"?imp:""}</td><td class="n">${i.tipo==="cuota"?imp:""}</td>`
-          +(k===0?`<td class="n" rowspan="${n}"><b>${_eur(pend)}</b>${ya>0&&!todoPagado?`<div class="doc-sub">de ${_eur(total)}</div>`:""}</td><td class="c" rowspan="${n}">${todoPagado?"✓":`<span class="doc-check"></span>`}</td><td class="n" rowspan="${n}">${todoPagado?"":`<span class="doc-raya"></span>`}</td>`:"")
+          +(k===0?`<td class="n" rowspan="${n}"><b>${_eur(pend)}</b>${ya>0&&!todoPagado?`<div class="doc-sub">de ${_eur(total)}</div>`:""}</td><td class="c" rowspan="${n}">${todoPagado?"✓":`<span class="doc-check"></span>`}</td>`:"")
           +`</tr>`;
       });
     });
     const gTot=Math.round((gAp+gCu)*100)/100;
     totPend+=gTot; totYa+=subYa;
-    h+=`<tr class="doc-subt"><td colspan="2">Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gTot)}</td><td></td><td class="n"><span class="doc-raya"></span></td></tr></tbody></table></div>`;
+    h+=`<tr class="doc-subt"><td colspan="2">Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gTot)}</td><td></td></tr></tbody></table></div>`;
   });
-  h+=`</div><div class="doc-final"><h3>3. Arqueo de caja</h3>
+  // v45.3: huecos para apuntar a mano en la reunión los nuevos asociados y las ayudas nuevas
+  const filasVacias=(n,cols)=>Array.from({length:n},()=>`<tr class="doc-hueco">${cols.map(c=>`<td class="${c}">${c==="perm"?`<span class="doc-sub">12 · 24 · 36 · ∞</span>`:c==="c"?`<span class="doc-check"></span>`:""}</td>`).join("")}</tr>`).join("");
+  h+=`</div><div class="doc-final"><h3>3. Nuevos asociados</h3>
+  <table class="doc-t doc-fija doc-nuevos"><colgroup><col style="width:30%"><col style="width:27%"><col style="width:20%"><col style="width:15%"><col style="width:8%"></colgroup>
+    <thead><tr><th>Nombre</th><th>Recomendado por (aval)</th><th class="c">Permanencia</th><th class="n">Aporte</th><th class="c">✓</th></tr></thead>
+    <tbody>${filasVacias(3,["","","perm","n","c"])}</tbody></table>
+  <h3>4. Arqueo de caja</h3>
   <table class="doc-t doc-arq"><tbody>
     <tr><td><b>Total a cobrar del mes</b> <span class="doc-sub">(aportes ${_eur(R.apPrev)} + cuotas ${_eur(R.cuPrev)})</span></td><td class="n"><b>${_eur(totPend)}</b></td></tr>
     <tr><td>Efectivo contado</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
     <tr><td>Diferencia (contado − a cobrar)</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
     <tr><td colspan="2" style="height:54px;vertical-align:top">Observaciones:</td></tr>
-  </tbody></table></div>`;
+  </tbody></table>
+  <h3>5. Ayudas nuevas</h3>
+  <table class="doc-t doc-fija doc-nuevos"><colgroup><col style="width:30%"><col style="width:15%"><col style="width:13%"><col style="width:15%"><col style="width:27%"></colgroup>
+    <thead><tr><th>Nombre</th><th class="n">Importe</th><th class="c">Meses</th><th class="n">Cuota</th><th>Aval (si es tercero)</th></tr></thead>
+    <tbody>${filasVacias(10,["","n","c0","n",""])}</tbody></table></div>`;
   return h;
 }
 function docActaHTML(rm,ry){
