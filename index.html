@@ -263,6 +263,8 @@ body.doc-abierto #appVersionTag{display:none}
 .toggle-btn.off{background:#D0D0D0}
 .toggle-btn::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle-btn.on::after{transform:translateX(18px)}
+.ap-sel{font:inherit;font-size:15px;font-weight:800;color:var(--warm);background:#FFF8EE;border:1.5px solid #EBC99A;border-radius:10px;padding:6px 6px;min-width:84px;text-align:center;-webkit-appearance:menulist;appearance:auto}
+.ap-ok .ap-sel{color:#2D6A4F;background:#EEF7F1;border-color:#9FD3B5}
 .aporte-amt{font-size:14px;font-weight:700;color:var(--dark);min-width:42px;text-align:right}
 .reserva-bar-bg{background:#E8E8E8;border-radius:8px;height:10px;overflow:hidden;margin:8px 0}
 .reserva-bar-fill{background:linear-gradient(90deg,#2D6A4F,#52B788);height:100%;border-radius:8px;transition:width .5s}
@@ -856,7 +858,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v44.21"; // v44.21: al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.0"; // v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1252,6 +1254,7 @@ function sanitizeData(data){
   parcheApoyosAgosto2025(data);          // v44.17: los dos primeros apoyos (ago-2025) que faltaban
   parcheCuotasCobradas2026(data);
   parcheReferidosGabriel2026(data);
+  parchePermanenciasOct2026(data);       // v45: Walter España (12) y Joaquín Matos (24) sin permanencia guardada
   parcheCicloGloriaOct2026(data);        // v44.21: apoyo de Gloria (oct-2026) concedido con la permanencia ya a 24       // v44.19: bono de Joaquín duplicado en octubre → Andrea Rodríguez        // v44.17: cuotas antiguas = lo que realmente se cobró (actas originales)
   return data;
 }
@@ -1581,7 +1584,42 @@ function aportesPagadosCount(m){
 }
 function memberTotalAportes(m){
   if(!m.joinMonth)return 0;
-  return aportesPagadosCount(m)*(m.aporte||DATA.monthlyFee);
+  return totalAportadoMiembro(m);
+}
+// v45 (Maestro v18.2 · AP-1..AP-4): cada mes el asociado pone 50, 100, 150 o 200 €.
+// m.aporte = APORTE HABITUAL (lo que suele poner; la hoja de cobro lo propone).
+// DATA.extras[id][mes].monto = AJUSTE de ese mes respecto al habitual (puede ser negativo:
+// habitual 100 que un mes pone 50 → −50). Aporte del mes = habitual + ajuste.
+const APORTE_OPCIONES=[50,100,150,200];
+function aporteBaseDe(m){ return (m&&m.aporte)||DATA.monthlyFee; }
+function ajusteAporteKey(m,key){ const e=DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][key]; return (e&&e.monto)||0; }
+function aporteBrutoKey(m,key){ return Math.max(0,aporteBaseDe(m)+ajusteAporteKey(m,key)); }
+function aporteBrutoMes(m,rm,ry){ return aporteBrutoKey(m,getMesKey(rm,ry)); }
+// Total aportado = suma del aporte de cada mes PAGADO (se devuelve al terminar o salir · AP-5)
+function totalAportadoMiembro(m){
+  if(!DATA.monthlyData)return 0;
+  let t=0;
+  Object.keys(DATA.monthlyData).forEach(k=>{ const md=DATA.monthlyData[k]; if(md&&md.aportes&&md.aportes[m.id]===true)t+=aporteBrutoKey(m,k); });
+  return t;
+}
+// Elegir el aporte de un mes (cierre, cierre grupal o ficha). Solo 50/100/150/200 (AP-2, AP-3).
+function setAporteMes(mid,monto,key){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  monto=parseInt(monto)||0;
+  if(!APORTE_OPCIONES.includes(monto)){toast("El aporte debe ser 50, 100, 150 o 200 €");render();return;}
+  key=key||getMesKey(DATA.reportMonth,DATA.reportYear);
+  if(!DATA.extras)DATA.extras={};
+  if(!DATA.extras[mid])DATA.extras[mid]={};
+  DATA.extras[mid][key]={monto:monto-aporteBaseDe(m)}; // 0 = el habitual
+  save();render();
+  toast(m.name.split(" ")[0]+": aporte de "+monto+" € ✓");
+}
+// Selector compacto de aporte (50–200). En solo lectura muestra el importe.
+function selectorAporteHTML(m,key,ro){
+  const v=aporteBrutoKey(m,key);
+  if(ro)return `${v} €`;
+  const ops=APORTE_OPCIONES.slice(); if(!ops.includes(v))ops.push(v);
+  return `<select class="ap-sel" aria-label="Aporte del mes" onclick="event.stopPropagation()" onchange="setAporteMes('${esc(m.id)}',this.value,'${key}')">${ops.map(o=>`<option value="${o}"${o===v?" selected":""}>${o} €</option>`).join("")}</select>`;
 }
 function memberHistoryCount(m){return (m.history||[]).length;}
 function memberHistoryTotal(m){return (m.history||[]).reduce((s,h)=>s+h.capital,0);}
@@ -1612,7 +1650,7 @@ function historyModalHTML(){
       h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Meses activo</div><div style="font-size:15px;font-weight:700;margin-top:2px">${months} ${months===1?"mes":"meses"}</div></div>`;
       h+=`</div>`;
       h+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);display:flex;justify-content:space-between;align-items:center">`;
-      h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Total de aportes acumulados</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${cuotasPagadas} × ${(m.aporte||DATA.monthlyFee)} €</div></div>`;
+      h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Total de aportes acumulados</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${cuotasPagadas} ${cuotasPagadas===1?"mes pagado":"meses pagados"}</div></div>`;
       h+=`<div style="font-size:22px;font-weight:800">${totalAp} €</div>`;
       h+=`</div>`;
     }
@@ -1857,10 +1895,7 @@ function totalAportesMes(rm,ry){
   let t=0;
   DATA.members.forEach(m=>{
     if(m.type==="tercero")return;
-    if(aportes[m.id]) t+=aporteNetoMes(m,rm,ry);
-    // aportes extra de ese mes (los paga aunque cuenten aparte)
-    const ex=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][mesKey]);
-    if(ex&&ex.monto) t+=ex.monto;
+    if(aportes[m.id]) t+=aporteNetoMes(m,rm,ry); // v45: aporte elegido ese mes − bono por referido
   });
   return t;
 }
@@ -2090,11 +2125,11 @@ function auditarNH(){
     const calculado=recargoAutoMes(rm,ry);
     const guardado=md.recargo;
     if(Math.abs(guardado-calculado)>0.005){
-      errores.push(`Recargo ${rm} ${ry}: guardado ${guardado}€, calculado ${calculado}€ (diferencia ${Math.round((calculado-guardado)*100)/100}€)`);
+      errores.push(`Retorno ${rm} ${ry}: guardado ${guardado}€, calculado ${calculado}€ (diferencia ${Math.round((calculado-guardado)*100)/100}€)`);
     }
   });
   if(mesesRecargoAusente.length>0){
-    advertencias.push(`${mesesRecargoAusente.length} mes${mesesRecargoAusente.length>1?"es":""} desde ${RECARGO_DESDE} sin recargo registrado en la app (${mesesRecargoAusente.join(", ")}) — revisar si están pendientes de cerrar`);
+    advertencias.push(`${mesesRecargoAusente.length} mes${mesesRecargoAusente.length>1?"es":""} desde ${RECARGO_DESDE} sin retorno registrado en la app (${mesesRecargoAusente.join(", ")}) — revisar si están pendientes de cerrar`);
   }
 
   // 7: personas duplicadas por nombre (tildes/mayúsculas/espacios)
@@ -2167,21 +2202,30 @@ function auditarNH(){
       }
     }else{
       if(l.capital>3000){
-        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo absoluto de 3.000€ (§11.1)`);
+        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo absoluto de 3.000€ (Maestro AY-5)`);
       }else if(l.capital>1000){
-        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ está entre 1.000€ y 3.000€ (§11.1)`);
+        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ está entre 1.000€ y 3.000€ (Maestro AY-5)`);
       }
     }
     if(esTerc&&plazoBase>5){
       errores.push(`Plazo excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses (máximo 5 para terceros)`);
     }
+    if(!esTerc&&_idxMes(l.gMonth,l.gYear)>=AY_V18_DESDE){
+      const cicloC=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
+      if(cicloC===12&&l.capital>500)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ con permanencia de 12 meses (máximo 500 €, Maestro AY-1)`);
+    }
     if(!esTerc&&plazoBase>5){
       const ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
       const cicloOk=(ciclo===24||ciclo===36||ciclo===0);
       if(!cicloOk){
-        errores.push(`Plazo largo sin ciclo habilitado: ${m.name} — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses requiere ciclo 24, 36 o indefinido (0); tiene ciclo ${ciclo}`);
+        errores.push(`Plazo largo sin permanencia suficiente: ${m.name} — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses requiere permanencia de 24, 36 meses o indefinida; tenía ${ciclo===0?"indefinida":ciclo+" meses"} (Maestro AY-1)`);
       }
     }
+  });
+
+  // 11b (v45 · Maestro PE-1): asociados activos sin permanencia guardada (la ficha no debe suponer 12)
+  DATA.members.filter(m=>m.type==="asociado"&&!m.baja&&m.ciclo==null).forEach(m=>{
+    errores.push(`Sin permanencia: ${m.name} no tiene permanencia guardada — guárdala en Gestión → ⚙️ Permanencia y aporte (Maestro PE-1)`);
   });
 
   // 12: ayudas sin condición histórica (tipoEnConcesion) — UNA sola advertencia agrupada.
@@ -2201,7 +2245,7 @@ function auditarNH(){
     const ultima=pays[pays.length-1];
     const idxUltima=_idxMes(ultima.m,ultima.y);
     if(idxUltima>finCiclo){
-      errores.push(`Plazo excede permanencia: ${m.name} ${l.id} — la última cuota (${ultima.m} ${ultima.y}) excede su permanencia (ciclo ${m.ciclo}m desde ${m.joinMonth} ${m.joinYear}) en ${idxUltima-finCiclo} mes(es)`);
+      errores.push(`Plazo excede permanencia: ${m.name} ${l.id} — la última cuota (${ultima.m} ${ultima.y}) excede su permanencia (${m.ciclo} meses desde ${m.joinMonth} ${m.joinYear}) en ${idxUltima-finCiclo} mes(es)`);
     }
   });
 
@@ -2280,9 +2324,62 @@ function referidosDesplegableHTML(mid,rm,ry,clave){
 }
 // Aporte NETO que corresponde pagar a un asociado ese mes (base − descuento, mínimo 0).
 function aporteNetoMes(m,rm,ry){
-  const base=(m.aporte||DATA.monthlyFee);
   const {descuento}=descuentoReferidoMes(m.id,rm,ry);
-  return Math.max(0, base-descuento);
+  return Math.max(0, aporteMostradoMes(m,rm,ry).importe-descuento); // v45: incluye el aporte elegido ese mes
+}
+// v45.0 (decisión de Ángel 03/10/2026): en lo que ve el asociado (su enlace, el del grupo y la
+// vista previa) un aporte AÚN NO PAGADO se muestra como «desde 50 €» (el mínimo, Maestro AP-1),
+// nunca con lo que puso el mes pasado: no está obligado a repetirlo. Lo ya pagado se ve tal cual.
+// El administrador sigue viendo el aporte habitual / elegido para cobrar.
+let _VP=0;
+function vistaPersonal(){ return _VP>0; }
+function _enVistaPersonal(fn){ return function(){ _VP++; try{ return fn.apply(this,arguments); } finally{ _VP--; } }; }
+const APORTE_MINIMO=50;
+function _nBaseG(members,rm,ry){ return members.filter(m=>m.type==="asociado"&&activoEnReporte(m)&&aporteMostradoMes(m,rm,ry).base).length; }
+function _nAbiertosG(members,rm,ry){ return members.filter(m=>m.type==="asociado"&&activoEnReporte(m)&&aporteMostradoMes(m,rm,ry).abierto).length; }
+function aportePagadoMes(m,rm,ry){ const md=DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)]; return !!(md&&md.aportes&&md.aportes[m.id]===true); }
+// En la vista personal, un aporte sin pagar queda «abierto»: no tiene importe (lo elige el asociado
+// al pagar) y no suma en los totales; el total muestra lo que sí es fijo (cuotas) «+ tu aporte».
+// v45.0 (decisión de Ángel 03/10/2026): en la vista del asociado un aporte sin pagar se muestra
+// simplemente como «Aporte 50 €» (el aporte base, Maestro AP-1). Si paga más, Ángel lo cambia en
+// el cierre y ya se ve lo pagado. La Guía para asociados explica que puede poner hasta 200 €.
+function aporteMostradoMes(m,rm,ry){
+  if(vistaPersonal()&&m.type==="asociado"&&!aportePagadoMes(m,rm,ry))return {importe:APORTE_MINIMO,abierto:false,base:true};
+  return {importe:aporteBrutoMes(m,rm,ry),abierto:false};
+}
+// Línea del aporte del mes (vista personal y administrador)
+function filaAporteValorHTML(m,rm,ry,pagado){
+  const a=aporteMostradoMes(m,rm,ry);
+  if(a.abierto)return `pendiente ⏳`;
+  return `${a.importe} € ${pagado?"✅":"⏳"}`;
+}
+const AYUDA_ELIGE_APORTE="Tú eliges cuánto: 50, 100, 150 o 200 €";
+// Bloque del total del mes (ficha y enlace de grupo)
+function totalMesBloqueHTML(m,rm,ry,tot,isTerc,MF,MS){
+  const mesN=escH(MF[MS.indexOf(rm)]);
+  const abierto=!isTerc&&aporteMostradoMes(m,rm,ry).abierto;
+  if(abierto){
+    const fijo=tot.pendiente; // cuotas sin pagar (el aporte abierto no suma)
+    // Solo el aporte: no hace falta un total (se sobreentiende). El mes ya va en la cabecera.
+    if(!(fijo>0)){ const pa=pendienteMesAnteriorHTML(m,rm,ry); return pa?`<div class="tot-final">${pa}</div>`:""; }
+    return `<div class="tot-final">
+      <div class="tot-final-lbl">Total por pagar</div>
+      <div class="tot-final-row" style="justify-content:flex-start;gap:12px;align-items:baseline">
+        <span class="tot-final-num">${fmtEur(fijo)} €</span><span style="font-size:20px;font-weight:800;color:#F5B989">+ tu aporte</span>
+      </div>
+      ${pendienteMesAnteriorHTML(m,rm,ry)}
+    </div>`;
+  }
+  // Vista del asociado sin cuotas este mes: solo está el aporte, el total sobra
+  if(vistaPersonal()&&!isTerc&&!(tot.cuotas&&tot.cuotas.length)){ const pa=pendienteMesAnteriorHTML(m,rm,ry); return pa?`<div class="tot-final">${pa}</div>`:""; }
+  return `<div class="tot-final">
+      <div class="tot-final-lbl">${vistaPersonal()?"Total":`Total ${mesN} ${ry}`}</div>
+      <div class="tot-final-row">
+        <span class="tot-final-num">${fmtEur(tot.total)} €</span>
+        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
+      </div>
+      ${pendienteMesAnteriorHTML(m,rm,ry)}
+    </div>`;
 }
 // v44.12: lo que quedó SIN PAGAR del mes anterior al del reporte (aporte + cuotas).
 // Con el cambio automático de mes, evita que una deuda del mes pasado deje de verse.
@@ -2299,9 +2396,12 @@ function pendienteMesAnterior(m,rm,ry){
   if(m.type!=="tercero"&&m.joinMonth&&md){
     const ji=MONTHS.indexOf(m.joinMonth), jy=m.joinYear;
     const yaEstaba=(jy<py)||(jy===py&&ji<=pi);
-    if(yaEstaba&&cuentaComoActivo(m,pk)&&!(md.aportes&&md.aportes[m.id])) pend+=aporteNetoMes(m,pm,py);
+    if(yaEstaba&&cuentaComoActivo(m,pk)&&!(md.aportes&&md.aportes[m.id])){
+      if(aporteMostradoMes(m,pm,py).abierto) var aporteAbierto=true; // vista personal: el aporte no tiene importe fijo
+      else pend+=aporteNetoMes(m,pm,py);
+    }
   }
-  return {mes:pm,anio:py,pendiente:Math.round(pend*100)/100};
+  return {mes:pm,anio:py,pendiente:Math.round(pend*100)/100,aporteAbierto:!!aporteAbierto};
 }
 // ── v44.12: BONO POR REFERIDO (Documento Maestro §15.2) ─────────────────────────
 // Registra un bono de 10 € para el asociado 'refId' por traer a 'nombre', en el mes
@@ -2445,6 +2545,24 @@ function parcheReferidosGabriel2026(data){
 // PARCHE PUNTUAL (una sola vez) — 01/10/2026, Ángel: a Gloria Celorio se le concedió un apoyo
 // de 1.000 € a 12 meses y su permanencia se cambió de 12 a 24 para poder dárselo (como con Maria
 // Rojas en junio). La condición guardada en la concesión quedó con 12 → se corrige a 24.
+// v45 (decisión de Ángel, 02/10/2026 · Maestro v18.2, casos resueltos): Walter España y Joaquín
+// Matos se dieron de alta sin permanencia (la ficha enseñaba 12 por defecto). Solo rellena lo que
+// FALTA; si Ángel ya lo guardó a mano, no toca nada. La ayuda de Joaquín (1.000 € a 12 meses)
+// quedó con condición «indefinida» (0) por el mismo fallo: pasa a 24.
+function parchePermanenciasOct2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.permanenciasOct2026)return;
+  const w=data.members.find(m=>m.id==="m1788793088810"&&m.name==="Walter España");
+  if(w&&w.ciclo==null)w.ciclo=12;
+  const j=data.members.find(m=>m.id==="m1790877273122"&&m.name==="Joaquín Matos");
+  if(j){
+    if(j.ciclo==null)j.ciclo=24;
+    const l=(j.loans||[]).find(x=>x.id==="l1790877291124");
+    if(l&&j.ciclo===24&&l.cicloEnConcesion===0&&l.capital===1000)l.cicloEnConcesion=24;
+  }
+  data.parches.permanenciasOct2026=true;
+}
 function parcheCicloGloriaOct2026(data){
   if(!data||!data.members)return;
   if(!data.parches)data.parches={};
@@ -2651,9 +2769,10 @@ function parcheCuotasCobradas2026(data){
 }
 function pendienteMesAnteriorHTML(m,rm,ry){
   const p=pendienteMesAnterior(m,rm,ry);
-  if(!(p.pendiente>0))return "";
+  if(!(p.pendiente>0)&&!p.aporteAbierto)return "";
   const mf=(typeof MONTHS_FULL!=="undefined"?MONTHS_FULL[MONTHS.indexOf(p.mes)]:p.mes);
-  return `<div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(255,217,163,.18);border:1px solid rgba(255,217,163,.55);color:#FFE7C2;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Además queda pendiente de ${escH(mf)} ${p.anio}: ${fmtEur(p.pendiente)} €</div>`;
+  const que=p.pendiente>0?`${fmtEur(p.pendiente)} €${p.aporteAbierto?` y tu aporte de ${escH(mf.toLowerCase())}`:""}`:`tu aporte de ${escH(mf.toLowerCase())}`;
+  return `<div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(255,217,163,.18);border:1px solid rgba(255,217,163,.55);color:#FFE7C2;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Además queda pendiente de ${escH(mf)} ${p.anio}: ${que}</div>`;
 }
 
 // Items (aporte + cuotas) de un miembro en el mes seleccionado
@@ -2916,7 +3035,7 @@ function mText(member){
   const d=due(member,rm,ry);
   t+=`━━━━━━━━━━━━━━━━━━━━\n💰 *TOTAL A PAGAR EN ${rm.toUpperCase()} ${ry}: ${fmtEur(d)} €*\n`;
   if(member.loans.length>1)t+=`   (${member.loans.length} ayudas activas)\n`;
-  t+=`━━━━━━━━━━━━━━━━━━━━\n\n_Aporte mensual de ${fee} € es adicional_`;
+  t+=`━━━━━━━━━━━━━━━━━━━━\n\n_El aporte del mes va aparte: desde 50 € (puedes poner 50, 100, 150 o 200 €)_`;
   return t;
 }
 
@@ -3022,7 +3141,7 @@ async function copyBatch(){
 function startWAQueue(){
   const allVisible=DATA.members;
   const ids=[...SEND_SELECTED].filter(id=>allVisible.some(m=>m.id===id));
-  if(!ids.length){toast("Selecciona al menos un socio");return;}
+  if(!ids.length){toast("Selecciona al menos un asociado");return;}
   WA_QUEUE=ids;
   WA_IDX=0;
   MODAL={type:"wa_queue"};
@@ -3242,7 +3361,8 @@ function copyGrupoUrl(){
   }
 }
 function setGrupoTitular(id){ if(MODAL){MODAL.yo=id;render();} }
-function previewGrupo(){
+const previewGrupo=_enVistaPersonal(_previewGrupoBase);
+function _previewGrupoBase(){
   if(!MODAL||!MODAL.ids)return;
   const ids=[...MODAL.ids];
   const members=ids.map(id=>DATA.members.find(x=>x.id===id)).filter(Boolean);
@@ -3275,10 +3395,11 @@ function previewGrupo(){
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resumen total — ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
     ${totalAportesP>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total aportes mensuales</span><span style="font-size:14px;font-weight:700;color:#fff">${totalAportesP} €</span></div>`:""}
+    ${_nBaseG(members,rm,ry)>0?`<div style="font-size:12px;color:rgba(255,255,255,.7);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)">Aportes contados con 50 € · cada uno puede aportar 50, 100, 150 o 200 €</div>`:""}
     ${totalCuotasP>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total cuotas de ayudas</span><span style="font-size:14px;font-weight:700;color:#fff">${totalCuotasP} €</span></div>`:""}
     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:2px">
       <span style="font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px">Total entre todos</span>
-      <span style="font-size:36px;font-weight:900;color:#fff">${totalGrupo} €</span>
+      <span style="font-size:36px;font-weight:900;color:#fff">${totalGrupo} €${_nAbiertosG(members,rm,ry)>0?`<span style="display:block;text-align:right;font-size:15px;font-weight:800;color:#F5B989;margin-top:2px">+ los aportes</span>`:""}</span>
     </div>
     <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">${members.length} fichas incluidas</div>
   </div>`;
@@ -3368,7 +3489,11 @@ function linkModalHTML(){
 
 function addMemberSubmit(){
   const name=document.getElementById("m-name").value.trim();if(!name)return;
-  const type=document.querySelector(".m-opt.active")?.dataset.type||"asociado";
+  const type=document.querySelector(".m-opt.active[data-type]")?.dataset.type||"asociado";
+  // v45 (PE-1): un asociado no se da de alta sin permanencia
+  const cicloEl=document.querySelector(".l-ci-opt.active"), apEl=document.querySelector(".l-ap-opt.active");
+  if(type==="asociado"&&!cicloEl){toast("⛔ Elige su permanencia (12, 24, 36 meses o indefinida)",3500);return;}
+  const cicloAlta=cicloEl?parseInt(cicloEl.dataset.ciclo):null, aporteAlta=apEl?parseInt(apEl.dataset.ap):50;
   const ref=type==="tercero"?(document.getElementById("m-ref")?.value||null):null; // ref = avalistaId (select), no texto libre
   // v44.12: referido (solo asociados) → bono de 10 € automático para quien lo trajo
   const refdoId=type==="asociado"?(document.getElementById("m-refdo")?.value||null):null;
@@ -3388,6 +3513,7 @@ function addMemberSubmit(){
         const ok=mergeTerceroIntoAsociado(name,DATA.reportMonth,DATA.reportYear);
         if(ok){
           const conv=DATA.members.find(x=>x.type==="asociado"&&_normNombre(x.name)===key);
+          if(conv){conv.ciclo=cicloAlta;conv.aporte=aporteAlta;}
           const k=refdoId?aplicarReferidoAlta(conv,refdoId,bonoMes):null;
           closeModal();save();toast("✓ Tercero convertido a asociado"+msgBono(k));return;
         }
@@ -3397,6 +3523,7 @@ function addMemberSubmit(){
     }
   }
   const nuevo={id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:"",origen:"app"};
+  if(type==="asociado"){nuevo.ciclo=cicloAlta;nuevo.aporte=aporteAlta;} // v45 (PE-1, AP-4)
   DATA.members.push(nuevo);
   const k=refdoId?aplicarReferidoAlta(nuevo,refdoId,bonoMes):null;
   closeModal();save();toast("Miembro añadido ✓"+msgBono(k));
@@ -3404,21 +3531,40 @@ function addMemberSubmit(){
 
 // v44.21: reglas del Maestro (§11.1) al conceder o editar un apoyo — las mismas que revisa la
 // auditoría. Devuelve {bloqueo, aviso}: con bloqueo no se guarda; el aviso solo informa.
-function validarApoyo(m,cap,nn,tipo,ciclo){
-  const nom=m?m.name.split(" ")[0]:"Esta persona";
-  if(tipo==="tercero"){
-    if(cap>500)return {bloqueo:`Un tercero puede recibir como máximo 500 € (Maestro §11.1).`};
-    if(nn>5)return {bloqueo:`Un tercero puede devolver el apoyo en 5 cuotas como máximo (Maestro §11.1).`};
+// v45 (Maestro v18.2 · AY-1, AY-5, AY-6): reglas al conceder o editar una ayuda. Devuelve
+// {bloqueo, aviso}: con bloqueo no se guarda. Las ayudas concedidas antes de octubre 2026 se
+// juzgan con las reglas del v17 (conservan sus condiciones · Maestro 16.1).
+const AY_V18_DESDE=2026*12+MONTHS.indexOf("Oct");
+function validarApoyo(m,cap,nn,tipo,ciclo,ini,concedida){
+  const nom=escH(m?m.name.split(" ")[0]:"Esta persona");
+  const v17=concedida&&_idxMes(concedida.m,concedida.y)<AY_V18_DESDE;
+  const dondePerm="Gestión → ⚙️ Permanencia y aporte";
+  if(cap<100)return {bloqueo:`El mínimo de una ayuda es 100 € (Maestro AY-1).`};
+  if(tipo==="tercero"||tipo==="libre"){
+    if(cap>500)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} puede recibir como máximo 500 € (Maestro AY-1).`};
+    if(nn>5)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} devuelve la ayuda en 5 cuotas como máximo (Maestro AY-1).`};
     return {};
   }
-  if(cap>3000)return {bloqueo:`El máximo de un apoyo es 3.000 € (Maestro §11.1).`};
-  if(nn>5&&!(ciclo===24||ciclo===36||ciclo===0)){
-    return {bloqueo:`Para devolverlo en más de 5 cuotas, ${escH(nom)} tiene que tener permanencia de 24 o 36 meses o indefinida (ahora tiene ${ciclo} meses). Cambia primero su permanencia en Gestión → ⚙️ Nivel / Ciclo y luego da de alta el apoyo.`};
+  if(ciclo==null)return {bloqueo:`${nom} no tiene permanencia guardada. Guárdala primero en ${dondePerm} (Maestro PE-1).`};
+  if(cap>3000)return {bloqueo:`El máximo de una ayuda es 3.000 € (Maestro AY-5).`};
+  if(nn>12)return {bloqueo:`Una ayuda se devuelve en 12 cuotas como máximo (Maestro AY-1).`};
+  if(ciclo===12&&(nn>5||(!v17&&cap>500))){
+    return {bloqueo:v17
+      ?`Con permanencia de 12 meses, la ayuda se devuelve en 5 cuotas como máximo (regla del v17).`
+      :`Con permanencia de 12 meses, ${nom} puede recibir de 100 a 500 € y devolverlos en 5 cuotas como máximo (Maestro AY-1). Para más importe o más plazo, sube primero su permanencia a 24, 36 meses o indefinida en ${dondePerm}.`};
   }
-  if(cap>1000)return {aviso:`Entre 1.000 € y 3.000 € necesita la aprobación previa del coordinador (Maestro §11.1).`};
+  // No puede pasar del final de su permanencia (Maestro AY-1 y AY-6; misma regla que la auditoría, control 13)
+  if(!v17&&ciclo!==0&&ini&&m&&m.joinMonth){
+    const fin=_idxMes(m.joinMonth,m.joinYear)+ciclo, ult=_idxMes(ini.m,ini.y)+nn-1;
+    if(ult>fin){
+      const t=x=>MONTHS_FULL[x%12].toLowerCase()+" "+Math.floor(x/12);
+      return {bloqueo:`La última cuota sería en ${t(ult)} y con su permanencia de ${ciclo} meses (termina en ${t(fin-1)}) ${nom} puede pagar cuotas como mucho hasta ${t(fin)} (Maestro AY-1). Usa menos cuotas o sube primero su permanencia en ${dondePerm}.`};
+    }
+  }
+  if(cap>1000)return {aviso:`Entre 1.000 € y 3.000 € necesita la aprobación previa del coordinador (Maestro AY-5).`};
   return {};
 }
-function _condicionActual(m){ return {tipo:m?m.type:"asociado", ciclo:m?(m.ciclo!=null?m.ciclo:12):12}; }
+function _condicionActual(m){ return {tipo:m?m.type:"asociado", ciclo:m&&m.ciclo!=null?m.ciclo:null}; } // v45: sin permanencia guardada → se bloquea (PE-1)
 function _avisoApoyoHTML(v){
   if(v.bloqueo)return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#FDF0EE;border:1.5px solid #C0492C;color:#7A2418;font-size:13px;line-height:1.45">⛔ ${v.bloqueo}</div>`;
   if(v.aviso)return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#FFF8F0;border:1px solid #F5D5B0;color:#7A4A1E;font-size:13px;line-height:1.45">⚠️ ${v.aviso}</div>`;
@@ -3427,7 +3573,8 @@ function _avisoApoyoHTML(v){
 function addLoanSubmit(){
   const cap=parseInt(document.getElementById("l-cap").value)||0;if(cap<=0)return;
   const nn=parseInt(document.getElementById("l-n")?.value||"3");
-  { const mV=DATA.members.find(x=>x.id===MODAL.mid), c=_condicionActual(mV), v=validarApoyo(mV,cap,nn,c.tipo,c.ciclo);
+  { const mV=DATA.members.find(x=>x.id===MODAL.mid), c=_condicionActual(mV),
+      v=validarApoyo(mV,cap,nn,c.tipo,c.ciclo,{m:document.getElementById("l-sm").value,y:parseInt(document.getElementById("l-sy").value)});
     if(v.bloqueo){ const pv=document.getElementById("l-preview"); if(pv)updateLoanPreview(); toast("⛔ No se puede guardar: revisa el aviso",4000); return; } }
   let rate=parseFloat(document.getElementById("l-rate")?.value);
   if(isNaN(rate)||rate<0)rate=DATA.rate; // fallback a la tasa global del fondo
@@ -3441,7 +3588,7 @@ function addLoanSubmit(){
   // Condición histórica de la ayuda en el momento de concederla (no se migra a las antiguas).
   const tipoEnConcesion=mOr?mOr.type:"asociado";
   const avalistaEnConcesion=(mOr&&mOr.type==="tercero")?avalistaNombre(mOr):null; // nombre resuelto desde el id, texto congelado
-  const cicloEnConcesion=mOr?(mOr.ciclo!=null?mOr.ciclo:0):0;
+  const cicloEnConcesion=mOr&&mOr.ciclo!=null?mOr.ciclo:null; // v45: sin inventar (antes 0 = indefinida)
   DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
   closeModal();toast("Ayuda añadida ✓");save();
 }
@@ -3461,7 +3608,7 @@ function histLoanFormHTML(){
   }).join("");
   if(hist.length===0)filas=`<p style="color:var(--muted);font-size:13px">Sin entradas en el historial.</p>`;
   return `<div class="modal-title">📋 Historial de ayudas — ${escH(m.name)}</div>
-  <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Cada entrada es un apoyo registrado. Elimina las que sobren (por ejemplo, registros de prueba). Esto solo corrige el historial acumulado; no afecta a las ayudas activas.</p>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Cada entrada es una ayuda registrada. Elimina las que sobren (por ejemplo, registros de prueba). Esto solo corrige el historial acumulado; no afecta a las ayudas activas.</p>
   <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:12px"><span style="font-weight:700;color:var(--dark)">Total historial</span><span style="font-weight:700;color:var(--warm)">${total} €</span></div>
   ${filas}
   <button class="m-primary" onclick="closeModal()" style="margin-top:6px">Cerrar</button>`;
@@ -3589,7 +3736,8 @@ function saveEditLoan(){
   const nn=parseInt(document.getElementById("el-n")?.value||"3");
   { // v44.21: se valida con la condición que tenía al concederse
     const tipo=l.tipoEnConcesion!=null?l.tipoEnConcesion:m.type, ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:(m.ciclo!=null?m.ciclo:12);
-    const nApl=(l.pays||[]).filter(p=>p.aplazada).length, v=validarApoyo(m,cap,nn-nApl,tipo,ciclo);
+    const nApl=(l.pays||[]).filter(p=>p.aplazada).length,
+      v=validarApoyo(m,cap,nn-nApl,tipo,ciclo,{m:document.getElementById("el-sm").value,y:parseInt(document.getElementById("el-sy").value)},{m:l.gMonth,y:l.gYear});
     if(v.bloqueo){ toast("⛔ "+v.bloqueo.replace(/<[^>]+>/g,""),7000); return; } }
   const gm=document.getElementById("el-gm").value,gy=parseInt(document.getElementById("el-gy").value);
   const sm=document.getElementById("el-sm").value,sy=parseInt(document.getElementById("el-sy").value);
@@ -3679,9 +3827,9 @@ function closeFicha(){FICHA_ID=null;render();}
 
 function mesesToStr(n,ciclo){
   if(ciclo===0)return "Permanencia indefinida · mes "+n;
-  if(n<=12)return "Nivel 1 (mes "+n+" de 12)";
-  if(n<=24)return "Nivel 2 (mes "+(n-12)+" de 12)";
-  return "Nivel 3 (mes "+(n-24)+" de 12)";
+  if(n<=12)return "Año 1 de permanencia (mes "+n+" de 12)";
+  if(n<=24)return "Año 2 de permanencia (mes "+(n-12)+" de 12)";
+  return "Año 3 de permanencia (mes "+(n-24)+" de 12)";
 }
 
 // Devuelve el "mes objetivo" del asociado: el primer mes (desde el mes del
@@ -3739,11 +3887,7 @@ function totalDelMes(m,rm,ry){
   // Aporte (terceros no aportan)
   const aportePagado=esTerc?true:!!(md.aportes&&md.aportes[m.id]);
   // Aporte neto = base + extra puntual − descuento por referido (mínimo 0)
-  const _extraData=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])||null;
-  const apExtra=_extraData?_extraData.monto:0;
-  const _base=(m.aporte||DATA.monthlyFee);
-  const _desc=descuentoReferidoMes(m.id,rm,ry).descuento;
-  const aporteImporte=esTerc?0:Math.max(0,_base+apExtra-_desc);
+  const aporteImporte=esTerc?0:aporteNetoMes(m,rm,ry); // v45: aporte elegido ese mes − bono
   // Cuotas que vencen ESTE mes (todos los apoyos), con importe real (aplazada=retorno)
   const cuotas=[];
   [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
@@ -3775,8 +3919,7 @@ function desgloseDelMes(m){
 
   // Aporte base
   const aportePagado=!!(md.aportes&&md.aportes[m.id]);
-  const extraData=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])||null;
-  const apExtra=extraData?extraData.monto:0;
+  const apExtra=0; // v45: el aporte elegido ese mes ya va en aporteBrutoMes
 
   // Descuento por referidos
   const refData=(DATA.referidos&&DATA.referidos[m.id]&&DATA.referidos[m.id][getMesKey(rm,ry)])||null;
@@ -3802,7 +3945,7 @@ function desgloseDelMes(m){
 
   // Total neto — terceros solo pagan cuotas, no aporte mensual
   const esTerc=m.type==="tercero";
-  const apNeto=esTerc?0:Math.max(0,fee+apExtra-descuento);
+  const apNeto=esTerc?0:aporteNetoMes(m,rm,ry); // v45
   const totalNeto=Math.round((apNeto+totalCuotas)*100)/100;
 
   // Valores de PENDIENTE REAL (descontando lo ya pagado), para el cuadro individual:
@@ -3814,7 +3957,8 @@ function desgloseDelMes(m){
   return{fee,apExtra,descuento,nReferidos,cuotasMes,totalCuotas,apNeto,totalNeto,apNetoPend,totalPendiente,alDia,aportePagado,esTerc,mesObj:rm,anioObj:ry};
 }
 
-function fichaResumenHTML(m){
+const fichaResumenHTML=_enVistaPersonal(_fichaResumenHTMLbase); // solo se usa en los enlaces de grupo
+function _fichaResumenHTMLbase(m){
   const rm=DATA.reportMonth,ry=DATA.reportYear;
   const isTerc=m.type==="tercero";
   const months=memberMonths(m);
@@ -3863,23 +4007,18 @@ function fichaResumenHTML(m){
   // Opción 1: líneas de detalle del MES DE REPORTE (coherentes con el total).
   const _dr=descuentoReferidoMes(m.id,rm,ry);
   const _descRef=_dr.descuento;
-  const _extraR=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])?DATA.extras[m.id][getMesKey(rm,ry)].monto:0;
-  const _baseR=(m.aporte||DATA.monthlyFee);
-  const lineaAporte=!isTerc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Aporte mensual ${escH(rm)} ${ry}</span><span style="font-weight:700;color:${tot.aportePagado?okColor:"#fff"}">${_baseR} € ${tot.aportePagado?"✅":"⏳"}</span></div>`:"";
-  const lineaExtra=(!isTerc&&_extraR>0)?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>＋ Aporte extra puntual</span><span style="font-weight:700">${_extraR} €</span></div>`:"";
-  const lineaDesc=(!isTerc&&_descRef>0)?`<div onclick="DESP['${esc(m.id)}-refdescG']=!DESP['${esc(m.id)}-refdescG'];render()" style="cursor:pointer;display:flex;justify-content:space-between;font-size:12px;color:#FFE0A3;padding:3px 0"><span>🎁 Descuento por referir (${_dr.nReferidos}) <span style="opacity:.7">${DESP[m.id+"-refdescG"]?"▲":"▼"}</span></span><span style="font-weight:700">− ${_descRef} €</span></div>`+referidosDesplegableHTML(m.id,rm,ry,m.id+"-refdescG"):"";
+  const _baseR=aporteBrutoMes(m,rm,ry); // v45: aporte elegido ese mes
+  const lineaAporte=!isTerc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>Aporte</span><span style="font-weight:700;color:${tot.aportePagado?okColor:"#fff"}">${filaAporteValorHTML(m,rm,ry,tot.aportePagado)}</span></div>${aporteMostradoMes(m,rm,ry).base?`<div style="font-size:11px;color:rgba(255,255,255,.7);padding:0 0 3px">${AYUDA_ELIGE_APORTE}</div>`:""}`:"";
+  const lineaExtra="";
+  const lineaDesc=(!isTerc&&_descRef>0)?(aporteMostradoMes(m,rm,ry).abierto
+    ?`<div onclick="DESP['${esc(m.id)}-refdescG']=!DESP['${esc(m.id)}-refdescG'];render()" style="cursor:pointer;font-size:11.5px;color:#FFE0A3;padding:0 0 3px">🎁 Por referir te descontamos ${_descRef} € del aporte que elijas <span style="opacity:.7">${DESP[m.id+"-refdescG"]?"▲":"▼"}</span></div>`
+    :`<div onclick="DESP['${esc(m.id)}-refdescG']=!DESP['${esc(m.id)}-refdescG'];render()" style="cursor:pointer;display:flex;justify-content:space-between;font-size:12px;color:#FFE0A3;padding:3px 0"><span>🎁 Descuento por referir (${_dr.nReferidos}) <span style="opacity:.7">${DESP[m.id+"-refdescG"]?"▲":"▼"}</span></span><span style="font-weight:700">− ${_descRef} €</span></div>`)+referidosDesplegableHTML(m.id,rm,ry,m.id+"-refdescG"):"";
   const lineasCuotas=tot.cuotas.map(c=>{return `<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.9);padding:3px 0"><span>${etiquetaCuotaHTML(c.idx+1,c.loan.n,rm,ry)}${c.aplazada?` <span style="color:#E8A04B">· aplazada</span>`:""}</span><span style="font-weight:700;color:${c.paid?okColor:"#fff"}">${fmtEur(c.inst)} € ${c.aplazada?"⏸️":c.paid?"✅":"⏳"}</span></div>`;}).join("");
   const hayLineas=lineaAporte||lineaExtra||lineaDesc||lineasCuotas;
+  const _tbG=totalMesBloqueHTML(m,rm,ry,tot,isTerc,MF,MS);
   h+=`<div class="total-ban" style="flex-direction:column;align-items:stretch;gap:0">
-    ${hayLineas?`<div style="padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25);margin-bottom:8px">${lineaAporte}${lineaExtra}${lineaDesc}${lineasCuotas}</div>`:""}
-    <div class="tot-final">
-      <div class="tot-final-lbl">Total ${escH(MF[MS.indexOf(rm)])} ${ry}</div>
-      <div class="tot-final-row">
-        <span class="tot-final-num">${fmtEur(tot.total)} €</span>
-        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
-      </div>
-      ${pendienteMesAnteriorHTML(m,rm,ry)}
-    </div>
+    ${hayLineas?`<div style="${_tbG?"padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25);margin-bottom:8px":""}">${lineaAporte}${lineaExtra}${lineaDesc}${lineasCuotas}</div>`:""}
+    ${_tbG}
   </div>`;
 
   h+=`</div>`;
@@ -3936,12 +4075,49 @@ function subidaNivelReciente(m,rm,ry){
     const antes=tarifaNivelMes(m,k(yp,ip)), ahora=tarifaNivelMes(m,k(y,i));
     if(antes>0&&ahora>antes){
       const nivel=ahora>=15?3:2;
-      const doble=(m.aporte||DATA.monthlyFee)>=100;
-      return {antes:doble?antes*2:antes,ahora:doble?ahora*2:ahora,nivel,meses:nivel===3?24:12,
-              mesNombre:MONTHS_FULL[i].toLowerCase(),anio:y,doble};
+      return {antes,ahora,nivel,meses:nivel===3?24:12,
+              mesNombre:MONTHS_FULL[i].toLowerCase(),anio:y,doble:false};
     }
   }
   return null;
+}
+// v45 (Maestro v18.2 · PE-5, PE-7): permanencias que terminan (aviso un mes antes) y aniversarios
+// de la indefinida (cada 12 meses puede retirar el beneficio guardado). Solo lectura.
+function avisosPermanencia(rm,ry){
+  const idx=_idxMes(rm,ry), out=[];
+  const t=x=>MONTHS_FULL[x%12].toLowerCase()+" "+Math.floor(x/12);
+  DATA.members.forEach(m=>{
+    if(m.type!=="asociado"||!m.joinMonth||m.ciclo==null||!activoEnReporte(m))return;
+    const ini=_idxMes(m.joinMonth,m.joinYear);
+    if(m.ciclo===0){
+      for(const fin of [idx,idx+1]){ // aniversario este mes o el siguiente
+        const n=fin-ini+1; // meses de permanencia cumplidos en 'fin' (el de entrada = 1)
+        if(n>=12&&n%12===0){ out.push({m,tipo:"aniv",fin,txt:`Cumple ${n} meses de permanencia indefinida en ${t(fin)}: puede retirar su beneficio guardado (hoy ${fmtEur(memberBenefitAccum(m))} €) y seguir.`}); break; }
+      }
+      return;
+    }
+    const fin=ini+m.ciclo-1; // último mes de su permanencia
+    if(idx===fin-1||idx===fin){
+      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(memberBenefitAccum(m))} €) o termina (cobra el 5 de ${t(fin+1)}).`});
+    }else if(idx>fin){
+      out.push({m,tipo:"pasada",fin,txt:`Su permanencia de ${m.ciclo} meses terminó en ${t(fin)} y no consta que la haya ampliado. Anota la decisión: amplía en ⚙️ Permanencia y aporte, o da la salida.`});
+    }
+  });
+  return out;
+}
+function avisosPermanenciaHTML(rm,ry){
+  const av=avisosPermanencia(rm,ry); if(!av.length)return "";
+  const k="avisos-perm", ab=!!DESP[k];
+  let h=`<div class="mes-card" style="border:1.5px solid #E3C766;background:#FFFBEF">
+    <button onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+      <span class="mes-title" style="margin:0;color:#6B5310">⏰ Permanencias — ${av.length} aviso${av.length>1?"s":""}</span>
+      <span class="ft-drop-chevron" style="${ab?'transform:rotate(90deg)':''}">›</span>
+    </button>`;
+  if(ab){
+    h+=`<div style="margin-top:10px">`+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">
+      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#C0492C;font-weight:700">· pendiente</span>':""}<br>${a.txt}</div>`).join("")+`</div>`;
+  }
+  return h+`</div>`;
 }
 function avisoSubidaNivelHTML(m,rm,ry){
   const s=subidaNivelReciente(m,rm,ry);
@@ -3952,16 +4128,16 @@ function avisoSubidaNivelHTML(m,rm,ry){
   let h=`<button onclick="DESP['${esc(clave)}']=!DESP['${esc(clave)}'];render()" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;margin:0 0 12px;padding:13px 15px;border-radius:16px;border:1.5px solid #E3C766;background:linear-gradient(135deg,#FFF8E1,#FBEFC7);box-shadow:0 2px 8px rgba(201,162,39,.18)">
     <span style="font-size:26px;line-height:1">🎉</span>
     <span style="flex:1;min-width:0">
-      <span style="display:block;font-size:15px;font-weight:800;color:#6B5310">¡Subes al Nivel ${s.nivel}!</span>
-      <span style="display:block;font-size:12.5px;color:#8A6D1C;margin-top:2px">Tu beneficio pasa de ${s.antes} € a ${s.ahora} € al mes · ${abierto?"toca para cerrar":"toca para leer"}</span>
+      <span style="display:block;font-size:15px;font-weight:800;color:#6B5310">¡Empiezas tu ${s.nivel===3?"3.er":"2.º"} año de permanencia!</span>
+      <span style="display:block;font-size:12.5px;color:#8A6D1C;margin-top:2px">Cada 50 € ganan ${s.ahora} € en lugar de ${s.antes} € · ${abierto?"toca para cerrar":"toca para leer"}</span>
     </span>
     <span style="font-size:20px;color:#B08A1E;transform:rotate(${abierto?90:0}deg)">›</span>
   </button>`;
   if(abierto){
     h+=`<div style="margin:-4px 0 14px;padding:16px 18px;border-radius:16px;background:#fff;border:1px solid #EAD9A0;box-shadow:0 2px 10px rgba(0,0,0,.05);font-size:14px;line-height:1.55;color:#2E3B33">
       <div style="font-size:16px;font-weight:800;color:#1B4332;margin-bottom:8px">Enhorabuena, ${nombre} 👏</div>
-      <p style="margin:0 0 10px">Has cumplido <b>${s.meses} meses de permanencia</b> en Nuevos Horizontes y pasas al <b>Nivel ${s.nivel}</b>.</p>
-      <p style="margin:0 0 10px">Desde <b>${s.mesNombre} de ${s.anio}</b>, tu beneficio mensual por permanencia sube de <b>${s.antes} €</b> a <b>${s.ahora} €</b>${s.doble?" (con tu aportación de nivel 100, el beneficio es doble)":""}. Se suma cada mes a tu beneficio acumulado, que puedes consultar en la pestaña <b>Beneficios</b>.</p>
+      <p style="margin:0 0 10px">Has cumplido <b>${s.meses} meses de permanencia</b> en Nuevos Horizontes y empiezas tu <b>${s.nivel===3?"tercer":"segundo"} año</b>.</p>
+      <p style="margin:0 0 10px">Desde <b>${s.mesNombre} de ${s.anio}</b>, por cada 50 € que aportes ganas <b>${s.ahora} €</b> en lugar de <b>${s.antes} €</b>. Se suma cada mes a tu beneficio guardado, que puedes consultar en la pestaña <b>Beneficios</b>.</p>
       <p style="margin:0 0 12px">Gracias por tu constancia y tu confianza: cada aportación hace más fuerte el apoyo entre todos los asociados.</p>
       <div style="font-size:12.5px;color:#6B7A70;font-weight:700">— Coordinación de Nuevos Horizontes</div>
     </div>`;
@@ -3969,7 +4145,9 @@ function avisoSubidaNivelHTML(m,rm,ry){
   return h;
 }
 
-function fichaHTML(m,readonly=false){
+function fichaHTML(m,readonly=false){ return readonly?_fichaHTMLpersonal(m,true):_fichaHTMLbase(m,false); }
+const _fichaHTMLpersonal=_enVistaPersonal((m,ro)=>_fichaHTMLbase(m,ro));
+function _fichaHTMLbase(m,readonly=false){
   const rm=DATA.reportMonth,ry=DATA.reportYear;
   const months=memberMonths(m);
   const lv=memberLevel(m);
@@ -4022,23 +4200,21 @@ function fichaHTML(m,readonly=false){
   ──────────────────────────────────────────────── */
   const mesLabel=MF[MS.indexOf(rm)]+" "+ry;
   const _dr2=descuentoReferidoMes(m.id,rm,ry);
-  const _extra2=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][getMesKey(rm,ry)])?DATA.extras[m.id][getMesKey(rm,ry)].monto:0;
-  const _base2=(m.aporte||DATA.monthlyFee);
+  const _base2=aporteBrutoMes(m,rm,ry); // v45: aporte elegido ese mes
   h+=`<div class="desg-card">
     <div class="desg-titulo">📋 Corresponde este mes · ${mesLabel}</div>`;
 
   if(!isTerc){
     h+=`<div class="desg-fila">
-      <span class="desg-lbl">Aporte mensual ${escH(rm)} ${ry}</span>
-      <span class="desg-val ${tot.aportePagado?"ok":"pend"}">${_base2} € ${tot.aportePagado?"✅":"⏳"}</span>
+      <span class="desg-lbl">${vistaPersonal()?"Aporte":`Aporte de ${escH(MF[MS.indexOf(rm)].toLowerCase())}`}</span>
+      <span class="desg-val ${tot.aportePagado?"ok":"pend"}">${filaAporteValorHTML(m,rm,ry,tot.aportePagado)}</span>
     </div>`;
-    if(_extra2>0) h+=`<div class="desg-fila">
-      <span class="desg-lbl">＋ Aporte extra puntual</span>
-      <span class="desg-val">${_extra2} €</span>
-    </div>`;
+    if(aporteMostradoMes(m,rm,ry).base)h+=`<div style="font-size:12.5px;color:rgba(255,255,255,.75);margin:-2px 0 6px">${AYUDA_ELIGE_APORTE}</div>`;
     if(_dr2.descuento>0){
       const _kRef=mid+"-refdesc"; // v44.17: toca la línea para ver a quién refirió
-      h+=`<div class="desg-fila" onclick="DESP['${esc(_kRef)}']=!DESP['${esc(_kRef)}'];render()" style="cursor:pointer">
+      h+=aporteMostradoMes(m,rm,ry).abierto
+        ?`<div onclick="DESP['${esc(_kRef)}']=!DESP['${esc(_kRef)}'];render()" style="cursor:pointer;font-size:12.5px;color:#FFE0A3;margin:0 0 8px">🎁 Por referir te descontamos ${_dr2.descuento} € del aporte que elijas <span style="font-size:11px;opacity:.75">${DESP[_kRef]?"▲ ocultar":"▼ ver quién"}</span></div>`
+        :`<div class="desg-fila" onclick="DESP['${esc(_kRef)}']=!DESP['${esc(_kRef)}'];render()" style="cursor:pointer">
       <span class="desg-lbl">− Descuento por referidos (${_dr2.nReferidos} × 10 €) <span style="font-size:11px;opacity:.7">${DESP[_kRef]?"▲ ocultar":"▼ ver quién"}</span></span>
       <span class="desg-val desc">−${_dr2.descuento} €</span>
     </div>`;
@@ -4054,16 +4230,8 @@ function fichaHTML(m,readonly=false){
   if(isTerc&&tot.cuotas.length===0){
     h+=`<div style="color:rgba(255,255,255,.55);font-size:13px;padding:8px 0">Sin cuotas este mes</div>`;
   }
-  h+=`<div class="desg-separador"></div>
-    <div class="tot-final">
-      <div class="tot-final-lbl">Total ${escH(MF[MS.indexOf(rm)])} ${ry}</div>
-      <div class="tot-final-row">
-        <span class="tot-final-num">${fmtEur(tot.total)} €</span>
-        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
-      </div>
-      ${pendienteMesAnteriorHTML(m,rm,ry)}
-    </div>
-  </div>`;
+  { const _tb=totalMesBloqueHTML(m,rm,ry,tot,isTerc,MF,MS);
+    h+=(_tb?`<div class="desg-separador"></div>${_tb}`:"")+`</div>`; }
 
   /* 3. (v44.16) Aquí estaba el bloque "Estado del aporte" con un botón para marcar el
      aporte. Se quitó entero: el aporte se marca en el Cierre mensual y el estado ya se ve
@@ -4074,13 +4242,13 @@ function fichaHTML(m,readonly=false){
      Resumen · Beneficios · Ayudas · Aportes
      ("Lo que corresponde pagar" ya se mostró arriba, fuera de pestañas)
   ════════════════════════════════════════════════ */
-  const totalExtras=totalExtrasMiembro(m);
+  const totalExtras=0; // v45: el aporte de cada mes ya incluye lo que puso de más o de menos
   const hist=[...(m.history||[])].sort((a,b)=>b.gYear-a.gYear||(MS.indexOf(b.gMonth)-MS.indexOf(a.gMonth)));
   const totalAyudasRec=hist.reduce((s,x)=>s+x.capital,0);
-  const aporteBase=m.aporte||50;
+  const aporteBase=aporteBaseDe(m);                  // v45: aporte habitual
   const cuotasPagadas=aportesPagadosCount(m);
-  const totalMensuales=cuotasPagadas*aporteBase;     // solo cuotas REALMENTE marcadas como pagadas
-  const totalAportado=totalMensuales+totalExtras;    // regulares + extra (se devuelve todo)
+  const totalMensuales=totalAportadoMiembro(m);      // suma del aporte de cada mes pagado
+  const totalAportado=totalMensuales;                // se devuelve todo (AP-5)
   const puntuales=(DATA.aportesPuntuales&&DATA.aportesPuntuales[m.id])||[];
 
   // Beneficios por permanencia (cálculo mes a mes)
@@ -4094,7 +4262,7 @@ function fichaHTML(m,readonly=false){
       const dg=beneficioMiembroDesglose(m,key);
       const bn=dg.total;
       acumBen=Math.round((acumBen+bn)*100)/100;
-      benRows.push({mes:MS[cm],anio:cy,bn,acum:acumBen,base:dg.base,extra:dg.extra,tieneExtra:dg.tieneExtra});
+      benRows.push({mes:MS[cm],anio:cy,bn,acum:acumBen,base:dg.base,extra:dg.extra,tieneExtra:dg.tieneExtra,bloques:dg.bloques,v18:dg.keyAporte>=V18_APORTES_DESDE,aportado:aporteBrutoKey(m,dg.keyAporte)});
       cm++; if(cm>=12){cm=0;cy++;}
     }
   }
@@ -4121,8 +4289,8 @@ function fichaHTML(m,readonly=false){
       // Bloque 1: información del asociado (fondo gris muy sutil)
       h+=`<div style="background:#F7F5F0;border-radius:10px;padding:2px 12px;margin-bottom:10px">
         <div class="ft-row"><span class="ft-lbl">Meses activo</span><span class="ft-val">${months} ${months===1?"mes":"meses"}</span></div>
-        <div class="ft-row"><span class="ft-lbl">Aporte mensual</span><span class="ft-val">${aporteBase} €</span></div>
-        <div class="ft-row" style="border-bottom:none"><span class="ft-lbl">Ciclo de permanencia</span><span class="ft-val">${m.ciclo===0?"Indefinido":(m.ciclo!=null?m.ciclo:12)+" meses"}</span></div>
+        <div class="ft-row"><span class="ft-lbl">${vistaPersonal()?"Aporte mínimo al mes":"Aporte habitual"}</span><span class="ft-val">${vistaPersonal()?APORTE_MINIMO:aporteBase} €</span></div>
+        <div class="ft-row" style="border-bottom:none"><span class="ft-lbl">Permanencia</span><span class="ft-val">${m.ciclo===0?"Indefinida":m.ciclo!=null?m.ciclo+" meses":"⛔ sin guardar"}</span></div>
       </div>`;
       // Bloque 2: lo que se lleva (datos económicos, sin fondo)
       h+=`<div class="ft-row"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val">${totalAportado} €</span></div>
@@ -4139,7 +4307,7 @@ function fichaHTML(m,readonly=false){
 
   /* ── PESTAÑA BENEFICIOS ── */
   if(FICHA_TAB==="beneficios" && !isTerc && m.joinMonth){
-    const cicloTxt=m.ciclo===0?"indefinida":`de ${m.ciclo!=null?m.ciclo:12} meses`;
+    const cicloTxt=m.ciclo===0?"indefinida":m.ciclo!=null?`de ${m.ciclo} meses`:"(sin guardar)";
     h+=`<div class="ft-card">
       <div class="ft-card-title">🎁 Permanencia ${cicloTxt}</div>
       <div class="ft-hero">
@@ -4151,8 +4319,10 @@ function fichaHTML(m,readonly=false){
     if(benRows.length>0){
       let cont="";
       benRows.slice().reverse().forEach(r=>{
-        const etqExtra = r.tieneExtra
-          ? `<div style="font-size:12px;color:#B08D3E;margin-top:2px">incluye + ${r.extra} € por aporte extra</div>`
+        const etqExtra = (r.v18&&r.bloques===0)
+          ? `<div style="font-size:12px;color:#C0492C;margin-top:2px">el mes anterior no hubo aporte pagado</div>`
+          : r.tieneExtra
+          ? `<div style="font-size:12px;color:#B08D3E;margin-top:2px">${r.v18?`por ${r.aportado} € aportados (${r.bloques} × 50 €)`:`incluye + ${r.extra} € por aporte de 100 €`}</div>`
           : "";
         cont+=`<div class="ft-row"><span class="ft-lbl">${r.mes} ${r.anio}${etqExtra}</span><span class="ft-val"><span style="color:#2D6A4F;font-weight:700">+ ${r.bn} €</span></span></div>`;
       });
@@ -4226,27 +4396,25 @@ function fichaHTML(m,readonly=false){
   /* ── PESTAÑA APORTES ── */
   if(FICHA_TAB==="aportes" && !isTerc){
     // Resumen de aportes (regulares + extra)
-    const permTxt=m.ciclo===0?"Indefinida":`${m.ciclo!=null?m.ciclo:12} meses`;
+    const permTxt=m.ciclo===0?"Indefinida":m.ciclo!=null?`${m.ciclo} meses`:"⛔ sin guardar";
     h+=`<div class="ft-card">
       <div class="ft-card-title">💰 Resumen de aportes</div>
       <div class="ft-row"><span class="ft-lbl">Mes de ingreso</span><span class="ft-val">${MF[MS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>
       <div class="ft-row"><span class="ft-lbl">Permanencia</span><span class="ft-val">${permTxt}</span></div>
-      <div class="ft-row"><span class="ft-lbl">Aportes mensuales (${cuotasPagadas} × ${aporteBase} €)</span><span class="ft-val">${totalMensuales} €</span></div>`;
-    if(totalExtras>0) h+=`<div class="ft-row"><span class="ft-lbl">Aportes extra puntuales</span><span class="ft-val" style="color:#B08D3E">+ ${totalExtras} €</span></div>`;
+      <div class="ft-row"><span class="ft-lbl">${vistaPersonal()?"Aporte mínimo":"Aporte habitual"}</span><span class="ft-val">${vistaPersonal()?APORTE_MINIMO:aporteBase} € al mes</span></div>
+      <div class="ft-row"><span class="ft-lbl">Meses pagados</span><span class="ft-val">${cuotasPagadas}</span></div>`;
     h+=`<div class="ft-row ft-total"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val" style="color:#2D6A4F">${totalAportado} €</span></div>
     </div>`;
 
     // Detalle de aportes extra (con su mes)
     const exMap=(DATA.extras&&DATA.extras[m.id])||{};
     const refMap=(DATA.referidos&&DATA.referidos[m.id])||{};
-    const claves=[...new Set([...Object.keys(exMap),...Object.keys(refMap)])].sort();
+    const claves=Object.keys(refMap).filter(k=>refMap[k]&&refMap[k].n>0).sort(); // v45: los meses con otro aporte se ven en el historial
     if(claves.length>0){
       h+=`<div class="ft-card">
-        <div class="ft-card-title">📒 Aportes extra y bonos</div>`;
+        <div class="ft-card-title">🎁 Bonos por referido</div>`;
       claves.forEach(k=>{
         const [yy,mm]=k.split("-"); const mesNom=MF[parseInt(mm)-1]+" "+yy;
-        if(exMap[k]&&exMap[k].monto>0)
-          h+=`<div class="ft-row"><span class="ft-lbl">＋ Aporte extra · ${mesNom}</span><span class="ft-val">+ ${exMap[k].monto} €</span></div>`;
         if(refMap[k]&&refMap[k].n>0)
           h+=`<div class="ft-row"><span class="ft-lbl">🎁 Bono referido · ${mesNom} (${refMap[k].n})${refMap[k].nombres?" — "+escH(refMap[k].nombres):""}</span><span class="ft-val" style="color:#C0492C">− ${refMap[k].n*10} €</span></div>`;
       });
@@ -4280,16 +4448,14 @@ function fichaHTML(m,readonly=false){
         const k=cy+"-"+String(cm+1).padStart(2,"0");
         const md2=(DATA.monthlyData&&DATA.monthlyData[k])||{};
         const pagado=!!(md2.aportes&&md2.aportes[m.id]);
-        const extra=(exMap2[k]&&exMap2[k].monto)||0;
-        filas.push({mes:MS[cm],anio:cy,pagado,extra});
+        filas.push({mes:MS[cm],anio:cy,pagado,importe:aporteBrutoKey(m,k),key:k});
         cm++; if(cm>=12){cm=0;cy++;}
       }
       if(filas.length>0){
         let contH="";
         const nPag=filas.filter(f=>f.pagado).length;
         filas.slice().reverse().forEach(f=>{
-          const extraTxt=f.extra>0?` <span style="color:#B08D3E;font-weight:700">+ ${f.extra} € extra</span>`:"";
-          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#C0492C'}">${f.pagado?aporteBase+" € ✅":"Pendiente ⏳"}${extraTxt}</span></div>`;
+          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#C0492C'}">${f.pagado?f.importe+" € ✅":vistaPersonal()?"Pendiente ⏳":"Pendiente ⏳ ("+f.importe+" €)"}</span></div>`;
         });
         h+=dropFicha(mid,"apthist","📅 Historial de aportes mensuales",nPag+" de "+filas.length+" pagados",contH,isOpen("apthist"));
       }
@@ -4305,10 +4471,10 @@ function fichaHTML(m,readonly=false){
       <div class="ficha-sec-title">⚙️ Gestión</div>
       <div class="mgmt-grid">
         <button class="mgmt-btn primary" onclick="openModal('loan',{mid:'${esc(m.id)}'})">＋ Nueva ayuda</button>
-        <button class="mgmt-btn warn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">＋ Aporte extra</button>
+        ${isTerc?"":`<button class="mgmt-btn warn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">💶 Aporte de un mes</button>`}
         <button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>
-        <button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Nivel / Ciclo</button>
-        <button class="mgmt-btn" style="background:#1B4332;color:#fff" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte puntual</button>
+        ${isTerc?"":`<button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
+        <button class="mgmt-btn" style="background:#1B4332;color:#fff" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte temporal</button>
         ${isTerc?`<button class="mgmt-btn" style="background:var(--terc);color:#fff" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
       </div>
     </div>`;
@@ -4339,24 +4505,22 @@ function selectorMesAnio(idMes,idAnio,mesSel,anioSel){
 function extraFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   if(!m)return "";
-  return`<div class="modal-title">＋ Aporte extra — ${escH(m.name)}</div>
-<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Registra un aporte extra puntual sobre la cuota mensual. No cambia su ciclo ni nivel.</p>
-<label class="m-label">Mes al que corresponde</label>
+  const v=aporteBrutoMes(m,DATA.reportMonth,DATA.reportYear);
+  return`<div class="modal-title">💶 Aporte de un mes — ${escH(m.name)}</div>
+<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Cada mes puede poner 50, 100, 150 o 200 € (Maestro AP-2). Su aporte habitual es de <b>${aporteBaseDe(m)} €</b>. Normalmente se elige en el cierre al cobrar; aquí puedes corregir otro mes.</p>
+<label class="m-label">Mes</label>
 ${selectorMesAnio("ex-mes","ex-anio")}
-<label class="m-label">Importe extra (€)</label>
-<input id="ex-monto" class="m-input" type="number" placeholder="50" style="font-size:20px;font-weight:700">
-<div style="font-size:12px;color:var(--muted);margin-bottom:16px">El retorno compartido de ese mes NO cambia por el aporte extra (según el modelo).</div>
-<button class="m-primary" onclick="saveExtra()">Guardar aporte extra</button>`;
+<label class="m-label">Aporte de ese mes</label>
+<select id="ex-monto" class="m-select" style="font-size:20px;font-weight:700;margin-bottom:16px">${APORTE_OPCIONES.map(o=>`<option value="${o}"${o===v?" selected":""}>${o} €</option>`).join("")}</select>
+<button class="m-primary" onclick="saveExtra()">Guardar</button>`;
 }
 function saveExtra(){
   const monto=parseInt(document.getElementById("ex-monto")?.value)||0;
   const mes=document.getElementById("ex-mes")?.value||DATA.reportMonth;
   const anio=parseInt(document.getElementById("ex-anio")?.value)||DATA.reportYear;
-  if(monto<=0){alert("Introduce un importe válido");return;}
-  if(!DATA.extras)DATA.extras={};
-  if(!DATA.extras[MODAL.mid])DATA.extras[MODAL.mid]={};
-  DATA.extras[MODAL.mid][getMesKey(mes,anio)]={monto};
-  closeModal();save();toast("Aporte extra registrado para "+mes+" "+anio+" ✓");
+  const mid=MODAL.mid;
+  closeModal();
+  setAporteMes(mid,monto,getMesKey(mes,anio)); // v45: 50–200 (AP-2, AP-3)
 }
 
 function referidoFormHTML(){
@@ -4416,54 +4580,54 @@ function borrarReferido(){
   closeModal();render();
 }
 
+// v45 (Maestro v18.2 · PE-1, PE-3, AP-4): permanencia (solo se sube) y aporte habitual (50–200).
+function _opcionesHTML(clase,attr,valores,actual,etiqueta){
+  return valores.map(v=>`<button class="m-opt ${clase} ${actual===v?"active":""}" data-${attr}="${v}"
+        onclick="document.querySelectorAll('.${clase}').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${etiqueta(v)}</button>`).join("");
+}
+const PERM_OPCIONES=[12,24,36,0];
+const permEtiqueta=v=>v===0?"Indefinida ∞":v+" meses";
 function cicloFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   if(!m)return "";
-  const cicloActual=(m.ciclo!=null?m.ciclo:12); // ciclo 0 = indefinido, es un valor válido, no "falta"
-  const aporteActual=m.aporte||50;
-  return `<div class="modal-title">⚙️ Nivel y ciclo — ${escH(m.name)}</div>
-    <label class="m-label" style="margin-top:4px">Aporte mensual (nivel de contribución)</label>
-    <div style="display:flex;gap:8px;margin-bottom:4px">
-      <button class="m-opt l-ap-opt ${aporteActual===50?"active":""}" data-ap="50"
-        onclick="document.querySelectorAll('.l-ap-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">
-        50 € / mes
-      </button>
-      <button class="m-opt l-ap-opt ${aporteActual===100?"active":""}" data-ap="100"
-        onclick="document.querySelectorAll('.l-ap-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">
-        100 € / mes (beneficio doble)
-      </button>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Con 100€/mes el beneficio mensual es el doble (20€ en Nivel 1)</div>
-    <label class="m-label">Ciclo de permanencia</label>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="m-opt l-ci-opt ${cicloActual===12?"active":""}" data-ciclo="12"
-        onclick="document.querySelectorAll('.l-ci-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">12 meses</button>
-      <button class="m-opt l-ci-opt ${cicloActual===24?"active":""}" data-ciclo="24"
-        onclick="document.querySelectorAll('.l-ci-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">24 meses</button>
-      <button class="m-opt l-ci-opt ${cicloActual===36?"active":""}" data-ciclo="36"
-        onclick="document.querySelectorAll('.l-ci-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">36 meses</button>
-      <button class="m-opt l-ci-opt ${cicloActual===0?"active":""}" data-ciclo="0"
-        onclick="document.querySelectorAll('.l-ci-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">Indefinido ∞</button>
-    </div>
+  const cicloActual=(m.ciclo!=null?m.ciclo:null); // 0 = indefinida (valor válido); null = falta (error PE-1)
+  const aporteActual=aporteBaseDe(m);
+  return `<div class="modal-title">⚙️ Permanencia y aporte — ${escH(m.name)}</div>
+    <label class="m-label">Permanencia</label>
+    ${cicloActual==null?`<div style="background:#FDF0EE;border:1.5px solid #C0492C;border-radius:12px;padding:10px 12px;font-size:13px;color:#7A2418;margin-bottom:8px">⛔ No tiene permanencia guardada. Elige la que acordó al entrar.</div>`:""}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,cicloActual,permEtiqueta)}</div>
     <div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:12px;padding:12px;font-size:13px;color:#7A4A1E;margin-bottom:16px">
-      ⚠️ Solo se puede subir el ciclo. Informar al asociado del compromiso que implica.
+      ⚠️ La permanencia solo se puede subir, nunca bajar (Maestro PE-3). Con 24 meses o más puede pedir ayudas mayores y más largas.
     </div>
+    <label class="m-label">Aporte habitual</label>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px">${_opcionesHTML("l-ap-opt","ap",APORTE_OPCIONES,aporteActual,v=>v+" €")}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.4">Es lo que suele poner y lo que propone la hoja de cobro. Cada mes puede poner otra cantidad (se elige en el cierre). Cada 50 € ganan su beneficio.</div>
     <button class="m-primary" onclick="saveCicloYAporte('${esc(m.id)}')">Guardar cambios</button>`;
 }
-function saveCicloYAporte(mid){
-  const c=parseInt(document.querySelector(".l-ci-opt.active")?.dataset.ciclo||"12");
-  const ap=parseInt(document.querySelector(".l-ap-opt.active")?.dataset.ap||"50");
-  DATA.members.forEach(m=>{
-    if(m.id===mid){
-      // 0 = indefinido (siempre válido subir a indefinido; nunca se puede bajar DESDE indefinido)
-      const curr=(m.ciclo!=null?m.ciclo:12);
-      if(curr===0&&c!==0){alert("No se puede bajar desde permanencia indefinida");return;}
-      if(c!==0&&c<curr){alert("No se puede bajar el ciclo");return;}
-      m.ciclo=c;
-      m.aporte=ap;
-    }
+// Al cambiar el aporte habitual, los meses ya PAGADOS conservan lo que se pagó (se guarda como
+// ajuste de ese mes); solo cambia lo que se propone desde ahora.
+function fijarAportesPagados(m,nuevoBase){
+  const viejo=aporteBaseDe(m); if(viejo===nuevoBase||!DATA.monthlyData)return;
+  Object.keys(DATA.monthlyData).forEach(k=>{
+    const md=DATA.monthlyData[k]; if(!(md&&md.aportes&&md.aportes[m.id]===true))return;
+    const pagado=aporteBrutoKey(m,k);
+    if(!DATA.extras)DATA.extras={}; if(!DATA.extras[m.id])DATA.extras[m.id]={};
+    DATA.extras[m.id][k]={monto:pagado-nuevoBase};
   });
-  closeModal();save();toast("Nivel y ciclo actualizados ✓");render();
+}
+function saveCicloYAporte(mid){
+  const cEl=document.querySelector(".l-ci-opt.active"), aEl=document.querySelector(".l-ap-opt.active");
+  if(!cEl){toast("⛔ Elige la permanencia",3000);return;}
+  const c=parseInt(cEl.dataset.ciclo), ap=parseInt(aEl?aEl.dataset.ap:"50");
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  if(m.ciclo!=null){
+    if(m.ciclo===0&&c!==0){toast("⛔ No se puede bajar desde permanencia indefinida",3500);return;}
+    if(c!==0&&c<m.ciclo){toast("⛔ La permanencia no se puede bajar (Maestro PE-3)",3500);return;}
+  }
+  fijarAportesPagados(m,ap);
+  m.ciclo=c;
+  m.aporte=ap;
+  closeModal();save();toast("Permanencia y aporte actualizados ✓");render();
 }
 
 // ── CAMBIAR AVALISTA (solo terceros) ─────────────────────────────────────
@@ -4555,9 +4719,8 @@ function memberLevel(m){
 }
 function levelBenefit(m){
   const lv=memberLevel(m);
-  const fee=m.aporte||DATA.monthlyFee;
   const base=lv===1?10:lv===2?12:15;
-  return fee>=100?base*2:base;
+  return base*Math.min(4,Math.floor(aporteBaseDe(m)/50)); // v45: por cada 50 € del aporte habitual
 }
 
 // Beneficio real pagado por mes (fuente: Reparto_Mensual del Excel).
@@ -4612,18 +4775,28 @@ function mesKeyAnterior(mesKey){
 function beneficioMiembroDesglose(m, mesKey){
   const historico = BENEFICIO_MES[mesKey];
   const base = (historico !== undefined) ? historico : tarifaNivelMes(m, mesKey);
-  const aporteBase = m.aporte || DATA.monthlyFee;
   const keyAporte = mesKeyAnterior(mesKey);
-  const extra = (DATA.extras && DATA.extras[m.id] && DATA.extras[m.id][keyAporte] && DATA.extras[m.id][keyAporte].monto) || 0;
-  const aportadoEseMes = aporteBase + extra;
-  const dobla = aportadoEseMes >= 100;                          // aporte base 100 O 50+extra=100
+  const aportadoEseMes = aporteBrutoKey(m,keyAporte);
+  const bloques = bloquesBeneficio(m,keyAporte,aportadoEseMes);
   // v44.17: los meses históricos (BENEFICIO_MES) no se redondean mes a mes: 105 € entre 13 da
   // 8,0769… a cada uno y la suma cuadra al céntimo; el total acumulado se redondea al final.
   const r2=x=>historico!==undefined?x:Math.round(x*100)/100;
-  const benBase = r2(base);                                   // parte regular (nivel)
-  const benExtra = dobla ? r2(base) : 0;                      // duplica si aportó >=100
-  const total = r2(benBase+benExtra);
-  return { base: benBase, extra: benExtra, total, tieneExtra: dobla, keyAporte };
+  const total = r2(base*bloques);
+  const benBase = r2(base*Math.min(bloques,1));               // primer bloque de 50 €
+  const benExtra = r2(total-benBase);                         // bloques 2.º a 4.º
+  return { base: benBase, extra: benExtra, total, tieneExtra: bloques>1, bloques, keyAporte };
+}
+// v45 (Maestro v18.2 · BE-1, BE-4, BE-7): desde los aportes de noviembre 2026, el beneficio es
+// por cada bloque de 50 € aportado ese mes (máx. 4) y un mes sin aporte pagado no gana.
+// Hasta octubre 2026 sigue la regla v17: doble si el aporte del mes fue de 100 € o más.
+const V18_APORTES_DESDE="2026-11";
+function bloquesBeneficio(m,keyAporte,aportado){
+  if(keyAporte>=V18_APORTES_DESDE){
+    const md=DATA.monthlyData&&DATA.monthlyData[keyAporte];
+    const pagado=!!(md&&md.aportes&&md.aportes[m.id]===true);
+    return pagado?Math.max(0,Math.min(4,Math.floor(aportado/50))):0;
+  }
+  return aportado>=100?2:1;
 }
 function beneficioMiembroMes(m, mesKey){
   return beneficioMiembroDesglose(m, mesKey).total;
@@ -4818,7 +4991,7 @@ function recalcRecargoForzar(mes,anio){
   const md=getMesData(rm,ry);
   md.recargoManual=false;
   md.recargo=recargoAutoMes(rm,ry);
-  save();render();toast(`Recargo de ${rm} ${ry} recalculado automáticamente ✓`);
+  save();render();toast(`Retorno de ${rm} ${ry} recalculado automáticamente ✓`);
 }
 function setMesRecargo(val){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
@@ -4907,8 +5080,8 @@ function bannerRecargoHTML(){
     <button onclick="recalcRecargoForzar('${p.rm}',${p.ry})" style="white-space:nowrap;padding:7px 12px;border:none;border-radius:10px;background:#C0492C;color:#fff;font-weight:700;font-size:12px;cursor:pointer">Reconciliar</button>
   </div>`).join("");
   return `<div class="mes-card" style="background:#FDF0EE;border:2px solid #C0492C">
-    <div style="font-weight:800;color:#7A2418;font-size:14px;margin-bottom:6px">🔴 ${problemas.length} mes${problemas.length>1?"es":""} con el recargo descuadrado</div>
-    <div style="font-size:12px;color:#7A2418;margin-bottom:8px">El recargo guardado no coincide con lo que suman las cuotas realmente cobradas ese mes. La corrección la decides tú — no se aplica sola.</div>
+    <div style="font-weight:800;color:#7A2418;font-size:14px;margin-bottom:6px">🔴 ${problemas.length} mes${problemas.length>1?"es":""} con el retorno descuadrado</div>
+    <div style="font-size:12px;color:#7A2418;margin-bottom:8px">El retorno guardado no coincide con lo que suman las cuotas realmente cobradas ese mes. La corrección la decides tú — no se aplica sola.</div>
     ${filas}
   </div>`;
 }
@@ -4942,19 +5115,19 @@ function itemsMiembroMes(m,rm,ry){
       const {nReferidos,descuento}=descuentoReferidoMes(m.id,rm,ry);
       const neto=aporteNetoMes(m,rm,ry);
       const pagado=!!(md.aportes&&md.aportes[m.id]);
-      // v44.17 (auditoría): el aporte extra del mes también es dinero que entra (p.ej. 50 + 50)
-      const ex=(DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][key]&&DATA.extras[m.id][key].monto)||0;
-      out.push({tipo:"aporte",txt:"Aportación"+(descuento>0?` (−${descuento} € por ${nReferidos} referido${nReferidos>1?"s":""})`:"")+(ex>0?` + ${ex} € extra`:""),
-        importe:neto+ex,pagado,recargo:0,
-        // v44.19: el bono lo asume el fondo (Maestro §15.2): al asociado se le acredita el aporte íntegro
-        bruto:(m.aporte||DATA.monthlyFee)+ex,descuento,nReferidos,extra:ex,
+      // v45: el aporte del mes (50–200) ya incluye lo que el asociado elige poner ese mes
+      const bruto=aporteBrutoKey(m,key), ex=bruto-aporteBaseDe(m);
+      out.push({tipo:"aporte",txt:"Aportación"+(descuento>0?` (−${descuento} € por ${nReferidos} referido${nReferidos>1?"s":""})`:""),
+        importe:neto,pagado,recargo:0,
+        // v44.19: el bono lo asume el fondo (Maestro BO-3): al asociado se le acredita el aporte íntegro
+        bruto,descuento,nReferidos,extra:ex,
         // v44.17: no pagó y después causó baja → no se reclama (su devolución ya cuenta solo lo pagado)
         noCobrable:!pagado&&!!m.baja});
     }
   }
   cuotasDelMes(rm,ry).filter(c=>c.mid===m.id).forEach(c=>{
     const ult=c.totalCuotas>1&&c.numCuota>=c.totalCuotas;
-    out.push({tipo:"cuota",txt:(c.aplazada?"Cuota aplazada (solo retorno)":ult?"🏁 Última cuota":c.totalCuotas<=1?"Cuota única":`Cuota ${c.numCuota}/${c.totalCuotas}`)+` · apoyo ${c.gMonth} ${c.gYear}`,
+    out.push({tipo:"cuota",txt:(c.aplazada?"Cuota aplazada (solo retorno)":ult?"🏁 Última cuota":c.totalCuotas<=1?"Cuota única":`Cuota ${c.numCuota}/${c.totalCuotas}`)+` · ayuda ${c.gMonth} ${c.gYear}`,
       importe:c.inst,pagado:!!c.paid,recargo:c.recargo,ultima:ult,aplazada:!!c.aplazada,
       num:c.numCuota,de:c.totalCuotas,gMonth:c.gMonth,gYear:c.gYear});
   });
@@ -5086,7 +5259,7 @@ function cajaMesHTML(rm,ry){
     <tr><td>＋ Cuotas cobradas <span class="doc-sub">(capital ${_eur(c.capDev)} + retornos ${_eur(c.retornos)})</span></td><td class="n">${_eur(c.cuotas)}</td></tr>
     ${c.puntIn?`<tr><td>＋ Aportes puntuales recibidos (${c.nPuntIn})</td><td class="n">${_eur(c.puntIn)}</td></tr>`:""}
     <tr><td><b>Total entradas</b></td><td class="n"><b>${_eur(c.entradas)}</b></td></tr>
-    <tr><td>− Apoyos entregados (${c.nApoyos})</td><td class="n">${_eur(c.apoyos)}</td></tr>
+    <tr><td>− Ayudas entregadas (${c.nApoyos})</td><td class="n">${_eur(c.apoyos)}</td></tr>
     ${c.puntOut?`<tr><td>− Aportes puntuales devueltos (${c.nPuntOut})</td><td class="n">${_eur(c.puntOut)}</td></tr>`:""}
     ${c.bajas?`<tr><td>− Devoluciones por baja</td><td class="n">${_eur(c.bajas)}</td></tr>`:""}
     <tr><td><b>Total salidas</b></td><td class="n"><b>${_eur(c.salidas)}</b></td></tr>
@@ -5112,23 +5285,23 @@ function _seccionesReunion(R,rm,ry,cerrado){
   let h=`<div class="doc-kpis">
     <div class="doc-kpi"><div class="k">${cerrado?"Cobrado":"Total previsto"}</div><div class="v">${_eur(cerrado?R.totCob:R.totPrev)}</div>${cerrado?`<div class="s">de ${_eur(R.totPrev)} previstos</div>`:""}</div>
     <div class="doc-kpi"><div class="k">Aportaciones</div><div class="v">${_eur(cerrado?R.apCob:R.apPrev)}</div><div class="s">${cerrado?`${R.nApPag} de ${R.nAp} asociados`:`${R.nAp} asociados`}</div></div>
-    <div class="doc-kpi"><div class="k">Cuotas de apoyos</div><div class="v">${_eur(cerrado?R.cuCob:R.cuPrev)}</div><div class="s">${cerrado?`${R.nCuPag} de ${R.nCu} cuotas`:`${R.nCu} cuotas`}</div></div>
+    <div class="doc-kpi"><div class="k">Cuotas de ayudas</div><div class="v">${_eur(cerrado?R.cuCob:R.cuPrev)}</div><div class="s">${cerrado?`${R.nCuPag} de ${R.nCu} cuotas`:`${R.nCu} cuotas`}</div></div>
   </div>
   <table class="doc-t doc-mini"><tbody>
     <tr><td>Retornos compartidos ${cerrado?"del mes":"previstos"} (5 % de cada cuota)</td><td class="n">${_eur(cerrado?R.recargoMes:R.recPrev)}</td></tr>
-    <tr><td>Beneficio para los asociados según su nivel (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>
+    <tr><td>Beneficio para los asociados según su permanencia y aporte (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>
     ${bonos?`<tr><td>Bonos por referido ${cerrado?"del mes":"previstos"} (los asume el fondo)</td><td class="n">${_eur(bonos)}</td></tr>`:""}
-    <tr><td><b>${exc>=0?"Excedente":"Diferencia que aporta el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""}; se reinvierte en nuevos apoyos)`:""}</td><td class="n"><b>${_eur(exc)}</b></td></tr>
+    <tr><td><b>${exc>=0?"Excedente":"Diferencia que aporta el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""}; va a la reserva, Maestro FO-2)`:""}</td><td class="n"><b>${_eur(exc)}</b></td></tr>
   </tbody></table>
   ${(()=>{ // v44.17: solo los apartados con contenido; los vacíos en una línea (ahorra papel)
     const secs=[];
-    if(cerrado)secs.push(["🏁 Apoyos que terminan este mes","apoyos que terminan",R.terminan.map(c=>`${escH(c.nombre)} — apoyo ${c.gMonth} ${c.gYear} (última cuota ${_eur(c.inst)})`)]);
-    secs.push(["🤝 Apoyos concedidos en "+mesF,"apoyos concedidos",R.concedidos.map(x=>`${escH(x.m.name)}${x.m.type==="tercero"?" (tercero)":""} — ${_eur(x.l.capital)} a ${x.l.n} meses`)]);
-    if(cerrado)secs.push(["🎉 Suben de nivel","subidas de nivel",R.niveles.map(x=>`${escH(x.m.name)} — de ${x.s.antes} € a ${x.s.ahora} € (desde ${x.s.mesNombre})`)]);
+    if(cerrado)secs.push(["🏁 Ayudas que terminan este mes","ayudas que terminan",R.terminan.map(c=>`${escH(c.nombre)} — ayuda ${c.gMonth} ${c.gYear} (última cuota ${_eur(c.inst)})`)]);
+    secs.push(["🤝 Ayudas concedidas en "+mesF,"ayudas concedidas",R.concedidos.map(x=>`${escH(x.m.name)}${x.m.type==="tercero"?" (tercero)":""} — ${_eur(x.l.capital)} a ${x.l.n} meses`)]);
+    if(cerrado)secs.push(["🎉 Empiezan un nuevo año de permanencia","nuevos años de permanencia",R.niveles.map(x=>`${escH(x.m.name)} — de ${x.s.antes} € a ${x.s.ahora} € (desde ${x.s.mesNombre})`)]);
     secs.push(["🎁 Bonos por referido","bonos por referido",R.referidos.map(x=>`${escH(x.m.name)} — ${x.nombres.map(escH).join(", ")}`)]);
     secs.push(["👋 Nuevos asociados","nuevos asociados",R.altas.map(m=>{const q=quienRefirio(m);return escH(m.name)+(q?` <span class="doc-sub">(referido por ${escH(q)})</span>`:"");})]);
     secs.push(["↩️ Devoluciones por baja","devoluciones por baja",R.bajas.lista.map(m=>`${escH(m.name)} — ${_eur(m.baja.total)}${m.baja.pagada?" (pagada)":" (pendiente)"}`)]);
-    secs.push(["⏸️ Aplazamientos","aplazamientos",R.aplazadas.map(c=>`${escH(c.nombre)} — apoyo ${c.gMonth} ${c.gYear} (paga ${_eur(c.inst)} de retorno)`)]);
+    secs.push(["⏸️ Aplazamientos","aplazamientos",R.aplazadas.map(c=>`${escH(c.nombre)} — ayuda ${c.gMonth} ${c.gYear} (paga ${_eur(c.inst)} de retorno)`)]);
     secs.push(["⚠️ Pendiente del mes anterior","pendientes del mes anterior",R.pendAnt.map(x=>`${escH(x.m.name)} — ${_eur(x.p.pendiente)} de ${MONTHS_FULL[MONTHS.indexOf(x.p.mes)].toLowerCase()}`)]);
     const llenas=secs.filter(x=>x[2].length), vacias=secs.filter(x=>!x[2].length).map(x=>x[1]);
     return (llenas.length?`<div class="doc-cols">${llenas.map(x=>`<div><h4>${x[0]}</h4>${_lista(x[2])}</div>`).join("")}</div>`:"")
@@ -5164,11 +5337,11 @@ function docCobroHTML(rm,ry){
         let txt;
         if(i.tipo==="aporte"){
           const nom=nombresReferidosMes(f.m.id,rm,ry);
-          txt="Aportación mensual"+(i.extra?` <span class="doc-sub">(incluye ${i.extra} € extra)</span>`:"")
+          txt="Aportación mensual" // v45: el importe del mes (50–200) va en la columna Aporte
             +(i.descuento?`<div class="doc-sub">bono −${i.descuento} € por ${escH(lista(nom))}</div>`:"");
         }else{
           const base=i.aplazada?"Cuota aplazada (solo retorno)":i.de<=1?"Cuota única":i.ultima?`🏁 <b>Última cuota</b> ${i.num}/${i.de}`:`Cuota ${i.num}/${i.de}`;
-          txt=`${base} · apoyo de ${mesL(i.gMonth,i.gYear)}`;
+          txt=`${base} · ayuda de ${mesL(i.gMonth,i.gYear)}`;
         }
         const imp=_eur(i.importe);
         h+=`<tr class="${todoPagado?"doc-ya":""}${k>0?" doc-cont":""}${i.tipo==="aporte"?" doc-fila-ap":""}">`
@@ -5210,7 +5383,7 @@ function docActaHTML(rm,ry){
       if(falta>0)pend.push({m:f.m,falta,items:f.items.filter(i=>!i.pagado&&!i.noCobrable)});
       const bajaTxt=f.m.baja?` · causó baja en ${MONTHS_FULL[MONTHS.indexOf(f.m.baja.month)].toLowerCase()} (no se reclama)`:"";
       h+=`<tr class="${falta>0?"doc-pend":""}"><td class="doc-nom">${escH(f.m.name)}</td><td class="n">${_eur(total)}</td><td class="n">${_eur(cob)}</td>
-        <td>${falta>0?`⏳ Pendiente ${_eur(falta)}`:nc>0?`— No cobrado ${_eur(nc)}${bajaTxt}`:"✓ Pagado"}${apl?" · ⏸️ aplazamiento":""}${f.items.some(i=>i.ultima&&i.pagado)?" · 🏁 apoyo terminado":""}</td></tr>`;
+        <td>${falta>0?`⏳ Pendiente ${_eur(falta)}`:nc>0?`— No cobrado ${_eur(nc)}${bajaTxt}`:"✓ Pagado"}${apl?" · ⏸️ aplazamiento":""}${f.items.some(i=>i.ultima&&i.pagado)?" · 🏁 ayuda terminada":""}</td></tr>`;
     });
     h+=`</tbody></table></div>`;
   });
@@ -5244,9 +5417,9 @@ function docCarpetaHTML(){
   let h=`<div class="doc-unidad doc-portada"><div class="doc-cab"><div><div class="doc-org">NUEVOS HORIZONTES</div><div class="doc-tit">Carpeta de control · Actas de cierre</div></div>
     <div class="doc-fecha">De ${nom(ini)} a ${nom(ult)}<br>Generada el ${hoy}</div></div>
     <h3>Índice y resumen por mes</h3>
-    <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Bonos</th><th class="n">Excedente</th><th class="n">Apoyos concedidos</th></tr></thead>
+    <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Bonos</th><th class="n">Excedente</th><th class="n">Ayudas concedidas</th></tr></thead>
     <tbody>${filas}<tr class="doc-subt"><td>Total</td><td class="n">${_eur(T.prev)}</td><td class="n">${_eur(T.cob)}</td><td class="n">${_eur(T.prev-T.cob-(T.noCob||0))}</td><td class="n">${_eur(T.ret)}</td><td class="n">${_eur(T.ben)}</td><td class="n">${_eur(T.bon||0)}</td><td class="n">${_eur(T.exc)}</td><td class="n">${T.nConc} · ${_eur(T.conc)}</td></tr></tbody></table>
-    <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados según su nivel · Bonos = bonos por referido (los asume el fondo) · Excedente = retornos − beneficio − bonos (se reinvierte en apoyos) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
+    <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados por cada 50 € aportado y su año de permanencia · Bonos = bonos por referido (los asume el fondo) · Excedente = retornos − beneficio − bonos (va a la reserva) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
     <h3>Libro de caja por mes</h3>
     <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Saldo inicial</th><th class="n">Entradas</th><th class="n">Salidas</th><th class="n">Saldo final</th><th class="n">Capital prestado</th><th class="n">Total fondo</th><th class="n">Excedente acum.</th></tr></thead>
     <tbody>${meses.map(m=>{const c=cajaMensual()[getMesKey(m.rm,m.ry)];return `<tr><td>${nom(m)}</td><td class="n">${_eur(c.ini)}</td><td class="n">${_eur(c.entradas)}</td><td class="n">${_eur(c.salidas)}</td><td class="n">${_eur(c.fin)}</td><td class="n">${_eur(c.cartera)}</td><td class="n">${_eur(c.fin+c.cartera)}</td><td class="n">${_eur(c.reserva)}</td></tr>`;}).join("")}</tbody></table>
@@ -5394,6 +5567,7 @@ function render(){
     const aptPagados=asocMes.filter(m=>!!(md.aportes&&md.aportes[m.id])).length;
 
     h+=bannerRecargoHTML();
+    h+=avisosPermanenciaHTML(rm,ry); // v45 (Maestro PE-5, PE-7)
 
     // ── CABECERA: título + selector de mes + buscador ──
     const idxMes=MONTHS.indexOf(rm);
@@ -5430,12 +5604,12 @@ function render(){
     const kpiHTML=`<div class="mes-card">
       <div class="mes-kpi-grid">
         <div class="mes-kpi green"><div class="mes-kpi-val">${totalAportesMes(rm,ry)} €</div><div class="mes-kpi-lbl">Aportes cobrados</div></div>
-        <div class="mes-kpi orange"><div class="mes-kpi-val" id="mes-kpi-beneficio">${_rep.obligacion.toFixed(2)} €</div><div class="mes-kpi-lbl">Beneficio del mes (según nivel)</div></div>
+        <div class="mes-kpi orange"><div class="mes-kpi-val" id="mes-kpi-beneficio">${_rep.obligacion.toFixed(2)} €</div><div class="mes-kpi-lbl">Beneficio del mes (por permanencia)</div></div>
         <div class="mes-kpi blue"><div class="mes-kpi-val" id="mes-kpi-excedente">${Math.abs(_excN).toFixed(2)} €</div><div class="mes-kpi-lbl" id="mes-kpi-excedente-lbl">${_excN<0?"Falta retorno (lo pone el fondo)":(_bonM?`Excedente (tras ${fmtEur(_bonM)} € de bonos)`:"Excedente")}</div></div>
         <div class="mes-kpi"><div class="mes-kpi-val" id="mes-kpi-reserva">${Math.max(0,_excN).toFixed(2)} €</div><div class="mes-kpi-lbl">↻ Se reinvierte en ayudas</div></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <label style="font-size:13px;font-weight:600;color:var(--muted);flex:1">📈 Recargo recaudado este mes (€)</label>
+        <label style="font-size:13px;font-weight:600;color:var(--muted);flex:1">📈 Retorno recaudado este mes (€)</label>
         <input type="number" value="${md.recargo}" style="width:90px;padding:8px;border:2px solid ${md.recargoManual?'var(--warm)':'var(--border)'};border-radius:10px;font-size:15px;font-weight:700;text-align:right"
           oninput="setMesRecargo(this.value)">
       </div>
@@ -5475,13 +5649,14 @@ function render(){
         const paid=!!(md.aportes&&md.aportes[m.id]);
         const months=memberMonths(m);
         const lv=memberLevel(m);
+        const _dRef=descuentoReferidoMes(m.id,rm,ry).descuento;
         h+=`<div class="aporte-row" data-nombre="${escH(m.name)}">
           <div>
             <div class="aporte-name">${escH(m.name)}</div>
-            <div class="aporte-meta">Mes ${months} · <span class="nivel-badge">Nivel ${lv}</span></div>
+            <div class="aporte-meta">Mes ${months} · <span class="nivel-badge">Año ${lv}</span>${_dRef>0?` · <span style="color:#8A6D1E">🎁 −${_dRef} € bono</span>`:""}</div>
           </div>
           <div class="aporte-toggle">
-            <span class="aporte-amt" style="color:${paid?"#2D6A4F":"var(--warm)"}">${DATA.monthlyFee} €</span>
+            <span class="aporte-amt ${paid?"ap-ok":""}">${selectorAporteHTML(m,getMesKey(rm,ry),false)}</span>
             <button class="toggle-btn ${paid?"on":"off"}" onclick="toggleAporte('${esc(m.id)}')"></button>
           </div>
         </div>`;
@@ -5506,7 +5681,7 @@ function render(){
       if(cuotas.length===0){
         h+=`<div style="text-align:center;color:var(--muted);font-size:14px;padding:14px 0">No hay cuotas que venzan este mes.</div>`;
       } else {
-        h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Marca las cuotas que se cobran en la reunión. El recargo se actualiza solo.</div>`;
+        h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Marca las cuotas que se cobran en la reunión. El retorno se actualiza solo.</div>`;
         // Agrupar por persona, manteniendo separación asociados/terceros
         const orden=[];
         const porPersona={};
@@ -5631,7 +5806,7 @@ function render(){
                   ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
                 </div>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <span class="aporte-amt" style="color:${colorImp};font-size:14px">${fmtEur(it.importe)} €</span>
+                  ${it.tipo==="aporte"?`<span class="aporte-amt ${it.yaPagado?"ap-ok":""}">${selectorAporteHTML(DATA.members.find(x=>x.id===it.mid),getMesKey(DATA.reportMonth,DATA.reportYear),false)}</span>`:`<span class="aporte-amt" style="color:${colorImp};font-size:14px">${fmtEur(it.importe)} €</span>`}
                   <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
                 </div>
               </div>`;
@@ -5730,10 +5905,7 @@ function render(){
       const aptSplit=aportesSplit(rm,ry);
       // Aportes extra del mes (p.ej. aporte adicional al fondo). Se registran ya entregados,
       // por eso cuentan como cobrado dentro de "Aportes del mes".
-      const _mkExt=getMesKey(rm,ry);
-      let aptExtra=0;
-      if(DATA.extras){Object.values(DATA.extras).forEach(o=>{ if(o[_mkExt]&&o[_mkExt].monto) aptExtra+=o[_mkExt].monto; });}
-      const aptCob=aptSplit.cobrado+aptExtra;
+      const aptCob=aptSplit.cobrado; // v45: el aporte elegido ese mes ya va en aportesSplit
       const totCob=intSplit.cob+extSplit.cob+aptCob;
       const totPen=intSplit.pen+extSplit.pen+aptSplit.pendiente;
       // Contador de aportes cobrados X/Y para mostrar junto a "Aportes del mes"
@@ -5782,7 +5954,7 @@ function render(){
         <div class="grand-label">Recaudación — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="grand-breakdown">
           <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Devoluciones</span><span class="rec-imp">${devCob} €</span></div></div>
-          <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Aportaciones <span style="opacity:.6;font-size:12px">(${_aptPag}/${_asocAct.length})${aptExtra>0?` +${aptExtra} extra`:""}</span></span><span class="rec-imp">${aptCob} €</span></div></div>
+          <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Aportaciones <span style="opacity:.6;font-size:12px">(${_aptPag}/${_asocAct.length})</span></span><span class="rec-imp">${aptCob} €</span></div></div>
           <div class="gb-row gb-total" style="margin-top:6px"><span>SUMA</span><b>${totCob} €</b></div>
           ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">Pendiente</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">Todo cobrado este mes</span><b></b></div>`}
           ${(spl.total>0||bj.total>0)?`<div class="gb-salida">
@@ -5812,10 +5984,7 @@ function render(){
       // + aportes EXTRA del mes (p.ej. aporte adicional al fondo) + cuotas internas + terceros.
       // El cuadro superior muestra cobrado vs pendiente; aquí interesa el total a cobrar.
       const _apt=aportesSplit(rm,ry);
-      const _mkE=getMesKey(rm,ry);
-      let _extras=0;
-      if(DATA.extras){Object.values(DATA.extras).forEach(o=>{ if(o[_mkE]&&o[_mkE].monto) _extras+=o[_mkE].monto; });}
-      const entradas=_apt.cobrado+_apt.pendiente+_extras+tA+tT;
+      const entradas=_apt.cobrado+_apt.pendiente+tA+tT; // v45: el aporte elegido ya va en aportesSplit
       // Disponible neto real: PREVISTO del mes (incluye lo aún pendiente de cobrar).
       // v44.13: + devoluciones por baja del mes de pago (la parte cubierta con la reserva no la soporta el mes).
       const dispNeto=entradas-spl.total-totalAyudasNuevas-bj.total+bj.reserva;
@@ -5971,7 +6140,7 @@ function render(){
     const batch=[...SEND_SELECTED].filter(id=>DATA.members.some(m=>m.id===id));
     h+=`<div class="send-batch-bar">
       <button class="send-batch-btn" onclick="startWAQueue()" ${!batch.length?"disabled":""}>
-        📲 Enviar por WhatsApp${batch.length>0?" ("+batch.length+" socio"+(batch.length>1?"s":"")+")":" — Selecciona socios"}
+        📲 Enviar por WhatsApp${batch.length>0?" ("+batch.length+" asociado"+(batch.length>1?"s":"")+")":" — Selecciona asociados"}
       </button>
       <button style="width:100%;margin-top:8px;padding:13px;border:2px solid var(--dark);border-radius:14px;background:#fff;color:var(--dark);font-size:14px;font-weight:700;cursor:pointer" onclick="copyBatch()" ${!batch.length?"disabled":""}>
         📋 Copiar todos al portapapeles
@@ -5994,7 +6163,7 @@ function render(){
       <span>🏠 Ayudas Internas <span class="mg-acc-num">${asocAll.length}</span></span>
       <span class="mg-acc-fl">${MG_INT_OPEN?"▲ ocultar":"▼ mostrar"}</span></div>`;
     if(MG_INT_OPEN){
-      h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir socio interno</button>`;
+      h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir asociado</button>`;
       asocAll.forEach(m=>{h+=manageHTML(m);});
     }
     // 🤝 Ayudas Externas (desplegable, arranca cerrado)
@@ -6115,7 +6284,7 @@ function cardHTML(m,isT,tappable){
     h+=`<div class="member-info" style="font-size:14px"><span>📅 Miembro desde ${MONTHS_FULL[MONTHS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>`;
     h+=`<div class="member-stat-grid">
       <div class="mstat"><div class="mstat-val">${months}</div><div class="mstat-lbl">meses</div></div>
-      <div class="mstat"><div class="mstat-val nivel-badge" style="font-size:14px">${m.ciclo===0?"∞":(m.ciclo!=null?m.ciclo:12)}</div><div class="mstat-lbl">ciclo</div></div>
+      <div class="mstat"><div class="mstat-val nivel-badge" style="font-size:14px">${m.ciclo===0?"∞":m.ciclo!=null?m.ciclo:"⛔"}</div><div class="mstat-lbl">permanencia</div></div>
       <div class="mstat"><div class="mstat-val" style="color:#2D6A4F">${ben}€</div><div class="mstat-lbl">beneficio</div></div>
     </div>`;
   }
@@ -6219,7 +6388,7 @@ function auditoriaInternaHTML(){
       <span style="font-size:18px">${AUDIT_OPEN?"▲":"▼"}</span>
     </button>
     ${AUDIT_OPEN?`<div style="margin-top:10px">
-      ${nE===0&&nA===0?`<div style="font-size:12.5px">Sin errores ni avisos. Los ${(function(){let c=0;DATA.members.forEach(m=>{c+=(m.loans||[]).length+(m.closedLoans||[]).length;});return c;})()} apoyos registrados cuadran.</div>`:""}
+      ${nE===0&&nA===0?`<div style="font-size:12.5px">Sin errores ni avisos. Los ${(function(){let c=0;DATA.members.forEach(m=>{c+=(m.loans||[]).length+(m.closedLoans||[]).length;});return c;})()} ayudas registradas cuadran.</div>`:""}
       ${r.errores.map(e=>linea(e,true)).join("")}
       ${r.advertencias.map(a=>linea(a,false)).join("")}
       <div style="border-top:1px solid ${ok?"#cfe0d5":"#f0c9c2"};margin:10px 0 8px"></div>
@@ -6402,6 +6571,10 @@ function memberFormHTML(){
 </div>
 <div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select></div>
 <div id="m-refdo-wrap" style="display:${pr==="tercero"?"none":"block"};margin-bottom:12px">
+<label class="m-label">Permanencia (obligatoria)</label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,null,permEtiqueta)}</div>
+<label class="m-label">Aporte habitual</label>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">${_opcionesHTML("l-ap-opt","ap",APORTE_OPCIONES,50,v=>v+" €")}</div>
 <label class="m-label">🎁 ¿Quién lo trajo? (referido por)</label>
 <select id="m-refdo" class="m-select" onchange="altaReferidoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>
 <div id="m-bono-wrap" style="display:none;margin-top:10px;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:12px;padding:10px 12px">
@@ -6422,7 +6595,7 @@ function cierreLoanFormHTML(){
   const terc=DATA.members.filter(m=>m.type==="tercero").sort((a,b)=>a.name.localeCompare(b.name));
   return`<div class="modal-title">🤝 Ayuda aprobada en la reunión</div>
 <label class="m-label">¿A quién?</label>
-<select id="cl-mid" class="m-select" style="margin-bottom:12px;font-size:15px">
+<select id="cl-mid" class="m-select" style="margin-bottom:12px;font-size:15px" onchange="updateCierreLoanPreview()">
   <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup>
   <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup>
 </select>
@@ -6443,8 +6616,10 @@ function updateCierreLoanPreview(){
   const{total,cuotas}=ayudaCuotas(cap,nn,DATA.rate);
   const base=cuotas[0],ultima=cuotas[cuotas.length-1];
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
-  el.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + recargo (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
+  const mC=DATA.members.find(x=>x.id===document.getElementById("cl-mid")?.value), cC=_condicionActual(mC);
+  const ni=(MONTHS.indexOf(DATA.reportMonth)+1)%12, ny=MONTHS.indexOf(DATA.reportMonth)===11?DATA.reportYear+1:DATA.reportYear;
+  el.innerHTML=_avisoApoyoHTML(validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny}))+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + retorno (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm)">${cuotaTxt}</b></div>
   </div>`;
 }
@@ -6457,6 +6632,8 @@ function addCierreLoanSubmit(){
   const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
+  { const c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny}); // v45: mismas reglas que en la ficha
+    if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
   const rate=DATA.rate;
   const{total,cuotas}=ayudaCuotas(cap,nn,rate);
   const inst=cuotas[0]; // referencia visual (importe de la 1ª cuota); el cálculo real usa l.cuotas
@@ -6467,7 +6644,7 @@ function addCierreLoanSubmit(){
   // Condición histórica de la ayuda en el momento de concederla (mismo patrón que addLoanSubmit).
   const tipoEnConcesion=m.type;
   const avalistaEnConcesion=(m.type==="tercero")?avalistaNombre(m):null; // nombre resuelto desde el id, texto congelado
-  const cicloEnConcesion=(m.ciclo!=null?m.ciclo:0);
+  const cicloEnConcesion=(m.ciclo!=null?m.ciclo:null);
   m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});
   if(!m.history)m.history=[];
   m.history.push({gMonth:rm,gYear:ry,capital:cap,lid});
@@ -6485,7 +6662,7 @@ function loanFormHTML(){
 <input id="l-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateLoanPreview()">
 <label class="m-label">Nº cuotas</label>
 <select id="l-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===3?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
-<label class="m-label">Aporte adicional por cuota (%)</label>
+<label class="m-label">Retorno mensual (%)</label>
 <input id="l-rate" class="m-input" type="number" value="${DATA.rate}" min="0" step="0.5" style="margin-bottom:12px" oninput="updateLoanPreview()">
 <div style="display:flex;gap:8px;margin-bottom:12px">
 <div style="flex:1"><label class="m-label">Mes otorgada</label><select id="l-gm" class="m-select" onchange="syncPrimeraCuota()">${MONTHS.map(m=>`<option${m===gm?" selected":""}>${m}</option>`).join("")}</select></div>
@@ -6521,8 +6698,8 @@ function updateLoanPreview(){
   const base=cuotas[0],ultima=cuotas[cuotas.length-1];
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
   const mV=DATA.members.find(x=>x.id===MODAL.mid), cV=_condicionActual(mV);
-  const aviso=_avisoApoyoHTML(validarApoyo(mV,cap,nn,cV.tipo,cV.ciclo));
-  document.getElementById("l-preview").innerHTML=aviso+`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + aporte adicional (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
+  const aviso=_avisoApoyoHTML(validarApoyo(mV,cap,nn,cV.tipo,cV.ciclo,{m:document.getElementById("l-sm")?.value,y:parseInt(document.getElementById("l-sy")?.value)}));
+  document.getElementById("l-preview").innerHTML=aviso+`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + retorno (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
 }
 
 // ── MODO SOLO LECTURA ──
@@ -6595,7 +6772,8 @@ function renderReadonly(){
 
 // ── MODO GRUPO ──
 function setGrupoVista(v){ GRUPO_VISTA=v; renderGrupo(); }
-function renderGrupo(){
+const renderGrupo=_enVistaPersonal(_renderGrupoBase);
+function _renderGrupoBase(){
   // Resolver la lista de miembros según el tipo de enlace:
   // - Nuevo (?grupoppal=ID): buscar el grupo guardado cuyo principal sea ese asociado
   //   y usar SU lista actual (principal + miembros). Así el enlace se auto-actualiza.
@@ -6634,7 +6812,7 @@ function renderGrupo(){
     <div class="h-sub">Reporte · ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
     <div style="color:#fff;font-size:15px;font-weight:700;margin-top:2px">Hola, ${escH(titular.name)} 👋</div>
     <div style="margin-top:10px;background:rgba(255,255,255,.15);border-radius:12px;padding:8px 16px;display:inline-block">
-      <span style="color:#fff;font-size:13px;font-weight:600">${members.length} fichas · Total grupal: <b style="font-size:18px">${totalGrupo} €</b></span>
+      <span style="color:#fff;font-size:13px;font-weight:600">${members.length} fichas · Total grupal: <b style="font-size:18px">${totalGrupo} €</b>${_nAbiertosG(members,rm,ry)>0?" + aportes":""}</span>
     </div>
   </div>`;
 
@@ -6697,10 +6875,11 @@ function renderGrupo(){
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resumen total — ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
     ${totalAportes>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total aportes mensuales</span><span style="font-size:14px;font-weight:700;color:#fff">${totalAportes} €</span></div>`:""}
+    ${_nBaseG(members,rm,ry)>0?`<div style="font-size:12px;color:rgba(255,255,255,.7);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)">Aportes contados con 50 € · cada uno puede aportar 50, 100, 150 o 200 €</div>`:""}
     ${totalCuotas2>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total cuotas de ayudas</span><span style="font-size:14px;font-weight:700;color:#fff">${totalCuotas2} €</span></div>`:""}
     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:2px">
       <span style="font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px">Total entre todos</span>
-      <span style="font-size:36px;font-weight:900;color:#fff">${totalGrupo} €</span>
+      <span style="font-size:36px;font-weight:900;color:#fff">${totalGrupo} €${_nAbiertosG(members,rm,ry)>0?`<span style="display:block;text-align:right;font-size:15px;font-weight:800;color:#F5B989;margin-top:2px">+ los aportes</span>`:""}</span>
     </div>
     <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">${members.length} fichas incluidas</div>
   </div>`;
