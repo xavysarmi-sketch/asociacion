@@ -188,6 +188,9 @@ body.doc-abierto #appVersionTag{display:none}
   .doc-cobro col:nth-child(1){width:20%!important} .doc-cobro col:nth-child(2){width:36%!important}
   .doc-cobro col:nth-child(3){width:13%!important} .doc-cobro col:nth-child(4){width:13%!important}
   .doc-cobro col:nth-child(5){width:13%!important} .doc-cobro col:nth-child(6){width:5%!important}
+  .doc-cobro.doc-actad col:nth-child(1){width:18%!important} .doc-cobro.doc-actad col:nth-child(2){width:28%!important}
+  .doc-cobro.doc-actad col:nth-child(3){width:12%!important} .doc-cobro.doc-actad col:nth-child(4){width:12%!important}
+  .doc-cobro.doc-actad col:nth-child(5){width:12%!important} .doc-cobro.doc-actad col:nth-child(6){width:18%!important}
   .doc-cobro .doc-raya{min-width:0}
   .doc-t th{hyphens:manual}
 }
@@ -860,7 +863,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.3"; // v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.4"; // v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -5563,34 +5566,38 @@ function cajaMensual(){
   _CAJA_CACHE=out;
   return out;
 }
+// v45.4 (fase de crecimiento: todo se reinvierte): el acta muestra solo lo que entró y salió en el
+// mes, un hueco para el efectivo contado y el dinero del fondo, sin saldo arrastrado desde 2025.
 function cajaMesHTML(rm,ry){
   const c=cajaMensual()[getMesKey(rm,ry)]; if(!c)return "";
   const mesF=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
-  // v44.17: dos columnas (caja | de quién es el dinero) para que quepa en menos papel
-  return `<h3>4. Movimiento de caja (libro de caja)</h3>
+  const neto=Math.round((c.entradas-c.salidas)*100)/100;
+  return `<h3>4. Caja del mes</h3>
   <div class="doc-caja2">
   <table class="doc-t doc-caja"><tbody>
-    <tr class="doc-subt"><td>Saldo al empezar ${mesF}</td><td class="n">${_eur(c.ini)}</td></tr>
-    <tr><td>＋ Aportaciones cobradas${c.bonos?` <span class="doc-sub">(íntegras ${_eur(c.aportesBrutos)} − bonos por referido ${_eur(c.bonos)})</span>`:""}</td><td class="n">${_eur(c.aportes)}</td></tr>
-    <tr><td>＋ Cuotas cobradas <span class="doc-sub">(capital ${_eur(c.capDev)} + retornos ${_eur(c.retornos)})</span></td><td class="n">${_eur(c.cuotas)}</td></tr>
-    ${c.puntIn?`<tr><td>＋ Aportes puntuales recibidos (${c.nPuntIn})</td><td class="n">${_eur(c.puntIn)}</td></tr>`:""}
-    <tr><td><b>Total entradas</b></td><td class="n"><b>${_eur(c.entradas)}</b></td></tr>
-    <tr><td>− Ayudas entregadas (${c.nApoyos})</td><td class="n">${_eur(c.apoyos)}</td></tr>
-    ${c.puntOut?`<tr><td>− Aportes puntuales devueltos (${c.nPuntOut})</td><td class="n">${_eur(c.puntOut)}</td></tr>`:""}
-    ${c.bajas?`<tr><td>− Devoluciones por baja</td><td class="n">${_eur(c.bajas)}</td></tr>`:""}
-    ${c.retir?`<tr><td>− Beneficio retirado sin salir (${c.nRetir})</td><td class="n">${_eur(c.retir)}</td></tr>`:""}
-    <tr><td><b>Total salidas</b></td><td class="n"><b>${_eur(c.salidas)}</b></td></tr>
-    <tr class="doc-subt"><td>Saldo al cerrar ${mesF}${c.fin<0?" (negativo)":""}</td><td class="n">${_eur(c.fin)}</td></tr>
+    <tr class="doc-subt"><td colspan="2">Entró en ${mesF}</td></tr>
+    <tr><td>Aportes cobrados${c.bonos?` <span class="doc-sub">(íntegros ${_eur(c.aportesBrutos)} − bonos ${_eur(c.bonos)})</span>`:""}</td><td class="n">${_eur(c.aportes)}</td></tr>
+    <tr><td>Cuotas cobradas <span class="doc-sub">(capital ${_eur(c.capDev)} + retornos ${_eur(c.retornos)})</span></td><td class="n">${_eur(c.cuotas)}</td></tr>
+    ${c.puntIn?`<tr><td>Aportes temporales recibidos (${c.nPuntIn})</td><td class="n">${_eur(c.puntIn)}</td></tr>`:""}
+    <tr><td><b>Total entró</b></td><td class="n"><b>${_eur(c.entradas)}</b></td></tr>
+    <tr class="doc-subt"><td colspan="2">Salió en ${mesF}</td></tr>
+    <tr><td>Ayudas entregadas (${c.nApoyos})</td><td class="n">${_eur(c.apoyos)}</td></tr>
+    ${c.puntOut?`<tr><td>Aportes temporales devueltos (${c.nPuntOut})</td><td class="n">${_eur(c.puntOut)}</td></tr>`:""}
+    ${c.bajas?`<tr><td>Salidas del fondo pagadas</td><td class="n">${_eur(c.bajas)}</td></tr>`:""}
+    ${c.retir?`<tr><td>Beneficio retirado sin salir (${c.nRetir})</td><td class="n">${_eur(c.retir)}</td></tr>`:""}
+    <tr><td><b>Total salió</b></td><td class="n"><b>${_eur(c.salidas)}</b></td></tr>
+    <tr class="doc-subt"><td>Queda del mes (entró − salió)</td><td class="n">${neto>0?"+":""}${_eur(neto)}</td></tr>
+    <tr><td>Efectivo contado</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
+    <tr><td>Diferencia</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
   </tbody></table>
   <table class="doc-t doc-caja"><tbody>
-    <tr><td>Caja al cerrar el mes</td><td class="n">${_eur(c.fin)}</td></tr>
-    <tr><td>Capital prestado pendiente de devolver</td><td class="n">${_eur(c.cartera)}</td></tr>
-    <tr class="doc-subt"><td>Dinero total del fondo</td><td class="n">${_eur(c.fin+c.cartera)}</td></tr>
-    <tr><td colspan="2" class="doc-sub"><b>¿De quién es ese dinero?</b></td></tr>
-    <tr><td>Aportaciones de los asociados <span class="doc-sub">(íntegras)</span></td><td class="n">${_eur(c.acAp)}</td></tr>
-    <tr><td>Beneficios acumulados de los asociados</td><td class="n">${_eur(c.acBen)}</td></tr>
-    ${c.puntPend?`<tr><td>Aportes puntuales por devolver</td><td class="n">${_eur(c.puntPend)}</td></tr>`:""}
-    <tr class="doc-subt"><td>Excedente acumulado del fondo <span class="doc-sub">(dato informativo: se reinvierte en ayudas)</span></td><td class="n">${_eur(c.reserva)}</td></tr>
+    <tr class="doc-subt"><td colspan="2">Dinero del fondo al cerrar ${mesF}</td></tr>
+    <tr><td>Prestado en ayudas <span class="doc-sub">(falta que lo devuelvan)</span></td><td class="n">${_eur(c.cartera)}</td></tr>
+    <tr class="doc-subt"><td colspan="2">De los asociados</td></tr>
+    <tr><td>Sus aportes</td><td class="n">${_eur(c.acAp)}</td></tr>
+    <tr><td>Su beneficio guardado</td><td class="n">${_eur(c.acBen)}</td></tr>
+    ${c.puntPend?`<tr><td>Aportes temporales por devolver</td><td class="n">${_eur(c.puntPend)}</td></tr>`:""}
+    <tr><td><b>Total de los asociados</b></td><td class="n"><b>${_eur(c.acAp+c.acBen+c.puntPend)}</b></td></tr>
   </tbody></table></div>`;
 }
 function _lista(items){ return items.length?`<ul class="doc-ul">${items.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="doc-vacio">— Ninguno este mes</div>`; }
@@ -5612,9 +5619,11 @@ function _seccionesReunion(R,rm,ry,cerrado){
   </tbody></table>
   ${(()=>{ // v44.17: solo los apartados con contenido; los vacíos en una línea (ahorra papel)
     const secs=[];
-    if(cerrado)secs.push(["🏁 Ayudas que terminan este mes","ayudas que terminan",R.terminan.map(c=>`${escH(c.nombre)} — ayuda ${c.gMonth} ${c.gYear} (última cuota ${_eur(c.inst)})`)]);
+    // v45.4: las ayudas que terminan y las cuotas cobradas se ven en el detalle por persona del acta
     secs.push(["🤝 Ayudas concedidas en "+mesF,"ayudas concedidas",R.concedidos.map(x=>`${escH(x.m.name)}${x.m.type==="tercero"?" (tercero)":""} — ${_eur(x.l.capital)} a ${x.l.n} meses`)]);
-    if(cerrado)secs.push(["🎉 Empiezan un nuevo año de permanencia","nuevos años de permanencia",R.niveles.map(x=>`${escH(x.m.name)} — de ${x.s.antes} € a ${x.s.ahora} € (desde ${x.s.mesNombre})`)]);
+    // v45.4: solo el resumen (cuántos y de qué tarifa a cuál), sin la lista de nombres
+    if(cerrado)secs.push(["🎉 Empiezan un nuevo año de permanencia","nuevos años de permanencia",(()=>{const g={};R.niveles.forEach(x=>{const k=x.s.antes+"→"+x.s.ahora;g[k]=(g[k]||0)+1;});
+      return Object.entries(g).map(([k,n])=>{const [a,b]=k.split("→");return `${n} asociado${n>1?"s":""} — de ${a} € a ${b} € por cada 50 €`;});})()]);
     secs.push(["🎁 Bonos por referido","bonos por referido",R.referidos.map(x=>`${escH(x.m.name)} — ${x.nombres.map(escH).join(", ")}`)]);
     secs.push(["👋 Nuevos asociados","nuevos asociados",R.altas.map(m=>{const q=quienRefirio(m);return escH(m.name)+(q?` <span class="doc-sub">(referido por ${escH(q)})</span>`:"");})]);
     secs.push(["↩️ Devoluciones por baja","devoluciones por baja",R.bajas.lista.map(m=>`${escH(m.name)} — ${_eur(datosBaja(m).total)}${m.baja.pagada?" (pagada)":" (pendiente)"}`)]);
@@ -5623,7 +5632,7 @@ function _seccionesReunion(R,rm,ry,cerrado){
     secs.push(["⚠️ Pendiente del mes anterior","pendientes del mes anterior",R.pendAnt.map(x=>`${escH(x.m.name)} — ${_eur(x.p.pendiente)} de ${MONTHS_FULL[MONTHS.indexOf(x.p.mes)].toLowerCase()}`)]);
     const llenas=secs.filter(x=>x[2].length), vacias=secs.filter(x=>!x[2].length).map(x=>x[1]);
     return (llenas.length?`<div class="doc-cols">${llenas.map(x=>`<div><h4>${x[0]}</h4>${_lista(x[2])}</div>`).join("")}</div>`:"")
-      +(vacias.length&&cerrado?`<div class="doc-nota" style="margin-top:4px">Este mes sin: ${vacias.join(" · ")}.</div>`:""); // v45.3: en la hoja de cobro solo lo que hay
+      +""; // v45.4: ni en la hoja de cobro ni en el acta se lista lo que no hay («Este mes sin…»)
   })()}`;
   return h;
 }
@@ -5700,9 +5709,12 @@ function docActaHTML(rm,ry){
   <h3>1. Resumen del mes</h3>`+_seccionesReunion(R,rm,ry,true);
   const pend=[];
   h+=`<div class="doc-grupos"><div class="doc-cabgrupos"><h3>2. Detalle por persona</h3></div>`;
+  // v45.4: como la hoja de cobro, una línea por concepto (aportación / cada cuota con «cuota N/M · ayuda de mes»)
+  const mesLA=(m,y)=>MONTHS_FULL[MONTHS.indexOf(m)].toLowerCase()+" "+y;
   R.bloques.forEach(b=>{
-    h+=`<div class="doc-grupo"><table class="doc-t doc-fija"><colgroup><col style="width:32%"><col style="width:15%"><col style="width:15%"><col style="width:38%"></colgroup><thead><tr><th colspan="4" class="doc-gtit">${escH(b.titulo)}</th></tr>
-      <tr><th>Persona</th><th class="n">Previsto</th><th class="n">Cobrado</th><th>Estado</th></tr></thead><tbody>`;
+    let gAp=0,gCu=0,gCob=0;
+    h+=`<div class="doc-grupo"><table class="doc-t doc-fija doc-cobro doc-actad"><colgroup><col style="width:19%"><col style="width:37%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:14%"></colgroup><thead><tr><th colspan="6" class="doc-gtit">${escH(b.titulo)}</th></tr>
+      <tr><th>Persona</th><th>Concepto</th><th class="n">Aporte</th><th class="n">Cuota</th><th class="n">Cobrado</th><th>Estado</th></tr></thead><tbody>`;
     b.filas.forEach(f=>{
       const total=f.items.reduce((s,i)=>s+i.importe,0), cob=f.items.filter(i=>i.pagado).reduce((s,i)=>s+i.importe,0);
       const nc=f.items.filter(i=>i.noCobrable).reduce((s,i)=>s+i.importe,0);
@@ -5710,10 +5722,27 @@ function docActaHTML(rm,ry){
       const apl=f.items.some(i=>i.aplazada);
       if(falta>0)pend.push({m:f.m,falta,items:f.items.filter(i=>!i.pagado&&!i.noCobrable)});
       const bajaTxt=f.m.baja?` · causó baja en ${MONTHS_FULL[MONTHS.indexOf(f.m.baja.month)].toLowerCase()} (no se reclama)`:"";
-      h+=`<tr class="${falta>0?"doc-pend":""}"><td class="doc-nom">${escH(f.m.name)}</td><td class="n">${_eur(total)}</td><td class="n">${_eur(cob)}</td>
-        <td>${falta>0?`⏳ Pendiente ${_eur(falta)}`:nc>0?`— No cobrado ${_eur(nc)}${bajaTxt}`:"✓ Pagado"}${apl?" · ⏸️ aplazamiento":""}${f.items.some(i=>i.ultima&&i.pagado)?" · 🏁 ayuda terminada":""}</td></tr>`;
+      const estado=(falta>0?`⏳ Pendiente ${_eur(falta)}`:nc>0?`— No cobrado ${_eur(nc)}${bajaTxt}`:"✓ Pagado")+(apl?" · ⏸️ aplazamiento":"")+(f.items.some(i=>i.ultima&&i.pagado)?" · 🏁 ayuda terminada":"");
+      const n=f.items.length; gCob+=cob;
+      f.items.forEach((i,k)=>{
+        let txt;
+        if(i.tipo==="aporte"){
+          const nom=nombresReferidosMes(f.m.id,rm,ry);
+          txt="Aportación mensual"+(i.descuento?`<div class="doc-sub">bono −${i.descuento} € por ${escH(nom.join(", "))}</div>`:"");
+          gAp+=i.importe;
+        }else{
+          const base=i.aplazada?"Cuota aplazada (solo retorno)":i.de<=1?"Cuota única":i.ultima?`🏁 <b>Última cuota</b> ${i.num}/${i.de}`:`Cuota ${i.num}/${i.de}`;
+          txt=`${base} · ayuda de ${mesLA(i.gMonth,i.gYear)}`; gCu+=i.importe;
+        }
+        if(!i.pagado)txt+=i.noCobrable?` <span class="doc-sub">· no se reclama</span>`:` <b>· pendiente</b>`;
+        h+=`<tr class="${falta>0?"doc-pend":""}${k>0?" doc-cont":""}${i.tipo==="aporte"?" doc-fila-ap":""}">`
+          +(k===0?`<td class="doc-nom" rowspan="${n}">${escH(f.m.name)}<div class="doc-sub">${f.m.type==="tercero"?"tercero":"asociado"}</div></td>`:"")
+          +`<td class="doc-cpt">${txt}</td><td class="n">${i.tipo==="aporte"?_eur(i.importe):""}</td><td class="n">${i.tipo==="cuota"?_eur(i.importe):""}</td>`
+          +(k===0?`<td class="n" rowspan="${n}"><b>${_eur(cob)}</b></td><td rowspan="${n}" style="font-size:.92em">${estado}</td>`:"")
+          +`</tr>`;
+      });
     });
-    h+=`</tbody></table></div>`;
+    h+=`<tr class="doc-subt"><td colspan="2">Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gCob)}</td><td></td></tr></tbody></table></div>`;
   });
   h+=`</div><div class="doc-final">`+(pend.length?`<h3>3. Pendientes de cobro</h3>`+_lista(pend.map(x=>`${escH(x.m.name)} — ${_eur(x.falta)} (${x.items.map(i=>escH(i.txt)).join("; ")})`)):`<h3>3. Pendientes de cobro: ninguno</h3>`);
   h+=`<div class="doc-pie">Totales: previsto ${_eur(R.totPrev)} · cobrado ${_eur(R.totCob)}${R.noCob>0?` · no cobrado por baja ${_eur(R.noCob)}`:""} · pendiente ${_eur(R.pendiente)}.</div>`;
