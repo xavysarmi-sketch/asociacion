@@ -858,7 +858,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.0"; // v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.1"; // v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1255,6 +1255,7 @@ function sanitizeData(data){
   parcheCuotasCobradas2026(data);
   parcheReferidosGabriel2026(data);
   parchePermanenciasOct2026(data);       // v45: Walter España (12) y Joaquín Matos (24) sin permanencia guardada
+  parcheAvalesOct2026(data);             // v45.1: quién recomendó a cada asociado = su aval (Maestro GE-1)
   parcheCicloGloriaOct2026(data);        // v44.21: apoyo de Gloria (oct-2026) concedido con la permanencia ya a 24       // v44.19: bono de Joaquín duplicado en octubre → Andrea Rodríguez        // v44.17: cuotas antiguas = lo que realmente se cobró (actas originales)
   return data;
 }
@@ -2035,7 +2036,7 @@ function recargoAutoMes(rm,ry){
   let t=0;
   DATA.members.forEach(m=>{
     [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
-      l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry&&p.paid) t+=recargoPorCuota(l); });
+      l.pays.forEach(p=>{ if(p.m===rm&&p.y===ry&&p.paid&&!p.compensada) t+=recargoPorCuota(l); });
     });
   });
   return Math.round(t*100)/100;
@@ -2563,6 +2564,18 @@ function parchePermanenciasOct2026(data){
   }
   data.parches.permanenciasOct2026=true;
 }
+// PARCHE PUNTUAL (una sola vez) — 03/10/2026, Ángel: quién recomendó a cada asociado que no es
+// fundador y no lo tenía anotado (es su aval, Maestro v18.3 GE-1). Solo rellena lo que FALTA.
+function parcheAvalesOct2026(data){
+  if(!data||!data.members)return;
+  if(!data.parches)data.parches={};
+  if(data.parches.avalesOct2026)return;
+  const A=[["11","Wendy Alvarado","4"],["12","Johnny Moreno","4"],["13","Ariel Olivo","4"],["14","Rodney Badillo","1"],["15","Maribel Checa","1"],
+           ["16","Jimena Moreno","6"],["17","Javier Arellano","4"],["20","Gabriel Fuentes","3"],["21","Gloria Celorio","1"]];
+  A.forEach(([id,nom,ref])=>{ const m=data.members.find(x=>x.id===id&&x.name===nom);
+    if(m&&!m.referidoPor&&data.members.some(x=>x.id===ref))m.referidoPor=ref; });
+  data.parches.avalesOct2026=true;
+}
 function parcheCicloGloriaOct2026(data){
   if(!data||!data.members)return;
   if(!data.parches)data.parches={};
@@ -2587,17 +2600,29 @@ function bajasDelMes(rm,ry){
 }
 // Resumen de las bajas que se pagan en rm/ry (total, parte con reserva, parte ya pagada).
 function resumenBajasMes(rm,ry){
-  const bm=bajasDelMes(rm,ry), suma=f=>bm.filter(f).reduce((s,m)=>s+(m.baja.total||0),0);
-  return {lista:bm,total:suma(()=>true),reserva:suma(m=>m.baja.conReserva),
-    pagadas:suma(m=>m.baja.pagada),pagadasReserva:suma(m=>m.baja.pagada&&m.baja.conReserva)};
+  const bm=bajasDelMes(rm,ry), suma=f=>bm.filter(f).reduce((s,m)=>s+(datosBaja(m).total||0),0);
+  // v45.1 (fase de crecimiento, Maestro v18.3 FO-2/FO-5): la reserva es solo un dato informativo,
+  // así que «con la reserva» ya no descuenta nada del mes: el dinero sale de la caja.
+  return {lista:bm,total:suma(()=>true),reserva:0,reservaInfo:suma(m=>m.baja.conReserva),
+    pagadas:suma(m=>m.baja.pagada),pagadasReserva:0};
+}
+// v45.1: retiradas de beneficio que se pagan en rm/ry (total y parte ya pagada)
+function retiradasMes(rm,ry){
+  const idx=_idxMes(rm,ry), lista=[];
+  DATA.members.forEach(m=>retiradasDe(m).forEach(r=>{ if(pagoRetiradaIdx(r)===idx)lista.push({m,r,imp:importeRetirada(m,r)}); }));
+  return {lista,total:_r2(lista.reduce((s,x)=>s+x.imp,0)),pagadas:_r2(lista.filter(x=>x.r.pagada).reduce((s,x)=>s+x.imp,0))};
 }
 // Acción explícita del administrador (Histórico): mes de pago, "con la reserva" y "pagada".
 function setPagoBaja(mid,campo,valor){
   const m=DATA.members.find(x=>x.id===mid); if(!m||!m.baja)return;
   const b=m.baja;
-  if(campo==="mes"){const[mm,yy]=String(valor).split("|");b.pagoMonth=mm;b.pagoYear=parseInt(yy);b.fechaPago="5 "+MONTHS_FULL[MONTHS.indexOf(mm)]+" "+yy;}
+  if(campo==="mes"){const[mm,yy]=String(valor).split("|");b.pagoMonth=mm;b.pagoYear=parseInt(yy);b.fechaPago=(b.v18?"del 5 al 10 de "+MONTHS_FULL[MONTHS.indexOf(mm)].toLowerCase():"5 "+MONTHS_FULL[MONTHS.indexOf(mm)])+" "+yy;}
   if(campo==="reserva")b.conReserva=!!valor;
-  if(campo==="pagada"){b.pagada=!!valor;b.estado=valor?"Pagado":"Pendiente";b.fechaPagada=valor?new Date().toLocaleDateString("es-ES"):null;}
+  if(campo==="pagada"){
+    if(b.v18&&valor){ const d=salidaV18(m,_idxMes(b.ultimoMes,b.ultimoAnio)); _fijarCifrasBaja(m,d);
+      const p=mesPagoBaja(b); if(d.ayuda.n>0)_compensarAyudas(m,_idxMes(p.mes,p.anio),false); }
+    if(b.v18&&!valor)_compensarAyudas(m,0,true);
+    b.pagada=!!valor;b.estado=valor?"Pagado":"Pendiente";b.fechaPagada=valor?new Date().toLocaleDateString("es-ES"):null;}
   save();render();
   toast(campo==="pagada"?(valor?"✓ Devolución marcada como pagada":"Devolución marcada como pendiente"):"Pago de la baja actualizado ✓");
 }
@@ -2867,7 +2892,7 @@ function cuotasDelMes(rm,ry){
   DATA.members.forEach(m=>{
     [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
       l.pays.forEach((p,pi)=>{
-        if(p.m===rm&&p.y===ry){
+        if(p.m===rm&&p.y===ry&&!p.compensada){ // v45.1: compensada al pagar una baja (SA-10)
           const rec=recargoPorCuota(l);
           const imp=cuotaDe(l,pi); // aplazada = solo retorno; normal = cuota exacta (l.cuotas)
           const cap=p.aplazada?0:Math.round((imp-rec)*100)/100;
@@ -4092,18 +4117,72 @@ function avisosPermanencia(rm,ry){
     if(m.ciclo===0){
       for(const fin of [idx,idx+1]){ // aniversario este mes o el siguiente
         const n=fin-ini+1; // meses de permanencia cumplidos en 'fin' (el de entrada = 1)
-        if(n>=12&&n%12===0){ out.push({m,tipo:"aniv",fin,txt:`Cumple ${n} meses de permanencia indefinida en ${t(fin)}: puede retirar su beneficio guardado (hoy ${fmtEur(memberBenefitAccum(m))} €) y seguir.`}); break; }
+        if(n>=12&&n%12===0){ out.push({m,tipo:"aniv",fin,txt:`Cumple ${n} meses de permanencia indefinida en ${t(fin)}: puede retirar su beneficio guardado (hoy ${fmtEur(beneficioGuardado(m))} €) y seguir.`}); break; }
       }
       return;
     }
     const fin=ini+m.ciclo-1; // último mes de su permanencia
     if(idx===fin-1||idx===fin){
-      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(memberBenefitAccum(m))} €) o termina (cobra el 5 de ${t(fin+1)}).`});
+      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(beneficioGuardado(m))} €) o termina (cobra entre el 5 y el 10 de ${t(fin+1)}).`});
     }else if(idx>fin){
       out.push({m,tipo:"pasada",fin,txt:`Su permanencia de ${m.ciclo} meses terminó en ${t(fin)} y no consta que la haya ampliado. Anota la decisión: amplía en ⚙️ Permanencia y aporte, o da la salida.`});
     }
   });
   return out;
+}
+// v45.1 (Maestro v18.3 · FO-4): salidas de dinero de este mes y del siguiente. «Comprometido» =
+// ya decidido (salidas, retiradas de beneficio, aportes temporales a devolver); «posible» =
+// permanencias que terminan o aniversarios de la indefinida sin decisión anotada. Solo lectura.
+function salidasPrevistas(rm,ry){
+  const idx=_idxMes(rm,ry), hasta=idx+1, out=[];
+  DATA.members.forEach(m=>{
+    if(m.baja&&!m.baja.pagada){ const p=mesPagoBaja(m.baja), pi=_idxMes(p.mes,p.anio);
+      if(pi<=hasta)out.push({m,clase:"comp",tipo:"baja",pagoIdx:pi,importe:datosBaja(m).total,txt:"Salida del fondo"}); }
+    retiradasDe(m).forEach(r=>{ if(r.pagada)return; const pi=pagoRetiradaIdx(r);
+      if(pi<=hasta)out.push({m,clase:"comp",tipo:"retirada",pagoIdx:pi,importe:importeRetirada(m,r),txt:"Retira su beneficio guardado"}); });
+    if(m.type!=="asociado"||m.baja||!m.joinMonth||m.ciclo==null)return;
+    if(m.ciclo>0){ const fin=finPermanenciaIdx(m);
+      if(fin+1>=idx-2&&fin+1<=hasta&&!retiradasDe(m).some(r=>r.finIdx===fin)){
+        const d=salidaV18(m,fin);
+        out.push({m,clase:"pos",tipo:"fin",pagoIdx:fin+1,importe:d.total,retira:Math.max(0,_r2(d.generado-d.retirado)),txt:`Termina su permanencia de ${m.ciclo} meses`}); }
+    } else {
+      const ini=_idxMes(m.joinMonth,m.joinYear);
+      for(const fin of [idx-1,idx]){ const n=fin-ini+1; if(n>=12&&n%12===0&&!retiradasDe(m).some(r=>r.finIdx===fin)){
+        const imp=Math.max(0,_r2(aportesConBeneficio(m,fin).reduce((s,a)=>s+a.ben,0)-beneficioRetirado(m)));
+        out.push({m,clase:"pos",tipo:"aniv",pagoIdx:fin+1,importe:imp,txt:`Cumple ${n} meses de indefinida: puede retirar su beneficio`}); } }
+    }
+  });
+  Object.entries(DATA.aportesPuntuales||{}).forEach(([mid,arr])=>(arr||[]).forEach(a=>{
+    if(a.devuelto)return; const pi=_idxMes(a.mesDev,a.anioDev);
+    if(pi<=hasta){ const m=DATA.members.find(x=>x.id===mid)||{name:"—",id:mid}; out.push({m,clase:"comp",tipo:"temporal",pagoIdx:pi,importe:a.total,txt:"Devolución de aporte temporal"}); }
+  }));
+  out.sort((a,b)=>a.pagoIdx-b.pagoIdx||String(a.m.name).localeCompare(String(b.m.name)));
+  const sum=c=>_r2(out.filter(x=>x.clase===c).reduce((s,x)=>s+x.importe,0));
+  return {lista:out,comprometido:sum("comp"),posible:sum("pos")};
+}
+function _salidaDetalle(x){ return x.clase==="pos"?(x.tipo==="fin"?`sin decidir: si termina, ${fmtEur(x.importe)} €; si amplía y retira, ${fmtEur(x.retira)} €`:"sin decidir"):""; }
+function salidasPrevistasDocHTML(rm,ry){
+  const S=salidasPrevistas(rm,ry); if(!S.lista.length)return "";
+  return `<h4 style="margin:8px 0 3px">💸 Salidas previstas (${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} y el mes siguiente)</h4>
+  <table class="doc-t doc-mini"><tbody>${S.lista.map(x=>`<tr><td>${escH(x.m.name)} — ${x.txt}${x.clase==="pos"?` <span class="doc-sub">(${_salidaDetalle(x)})</span>`:""}</td><td>del 5 al 10 de ${_txtIdx(x.pagoIdx)}</td><td class="n">${x.clase==="pos"?"posible ":""}${_eur(x.importe)}</td></tr>`).join("")}
+  <tr class="doc-subt"><td colspan="2">Comprometido${S.posible?` <span class="doc-sub">(posible además: ${_eur(S.posible)})</span>`:""}</td><td class="n">${_eur(S.comprometido)}</td></tr></tbody></table>
+  <div class="doc-nota">Antes de aprobar ayudas nuevas, lo que entra estos dos meses debe cubrir lo comprometido (Maestro FO-4).</div>`;
+}
+function salidasPrevistasHTML(rm,ry){
+  const S=salidasPrevistas(rm,ry); if(!S.lista.length)return "";
+  const k="salidas-prev", ab=!!DESP[k];
+  let h=`<div class="mes-card" style="border:1.5px solid #E7B9A8;background:#FFF6F2">
+    <button onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+      <span class="mes-title" style="margin:0;color:#7A2E18">💸 Salidas previstas — ${fmtEur(S.comprometido)} €${S.posible?` <span style="font-weight:600;font-size:13px;color:#9A5A44">(+ ${fmtEur(S.posible)} € posibles)</span>`:""}</span>
+      <span class="ft-drop-chevron" style="${ab?'transform:rotate(90deg)':''}">›</span>
+    </button>`;
+  if(ab){
+    h+=`<div style="margin-top:10px">`+S.lista.map(x=>`<div style="padding:9px 0;border-top:1px solid #F3D9CE;font-size:13.5px;line-height:1.45;color:#3B2A22;display:flex;justify-content:space-between;gap:10px">
+      <span><b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(x.m.id)}')">${escH(x.m.name)}</b><br>${x.txt} · del 5 al 10 de ${_txtIdx(x.pagoIdx)}${x.clase==="pos"?`<br><span style="color:#9A5A44">${_salidaDetalle(x)}</span>`:""}</span>
+      <b style="white-space:nowrap;color:${x.clase==="pos"?"#9A5A44":"#C0492C"}">${x.clase==="pos"?"¿":""}${fmtEur(x.importe)} €${x.clase==="pos"?"?":""}</b></div>`).join("")+
+      `<div style="font-size:12px;color:#7A5A4A;margin-top:8px;line-height:1.4">Antes de aprobar ayudas nuevas, lo que entra estos dos meses debe cubrir lo comprometido (Maestro FO-4). La reserva es solo un dato informativo.</div></div>`;
+  }
+  return h+`</div>`;
 }
 function avisosPermanenciaHTML(rm,ry){
   const av=avisosPermanencia(rm,ry); if(!av.length)return "";
@@ -4115,9 +4194,21 @@ function avisosPermanenciaHTML(rm,ry){
     </button>`;
   if(ab){
     h+=`<div style="margin-top:10px">`+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">
-      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#C0492C;font-weight:700">· pendiente</span>':""}<br>${a.txt}</div>`).join("")+`</div>`;
+      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#C0492C;font-weight:700">· pendiente</span>':""}<br>${a.txt}${avisoBotonesHTML(a)}</div>`).join("")+`</div>`;
   }
   return h+`</div>`;
+}
+// v45.1: decisión directa desde el aviso (ampliar, terminar o retirar el beneficio)
+function avisoBotonesHTML(a){
+  const st="flex:1;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;";
+  if(a.tipo==="aniv"){
+    const r=retiradasDe(a.m).find(x=>x.finIdx===a.fin);
+    if(r)return `<div style="margin-top:6px;font-size:12.5px;color:#1B7A3D;font-weight:700">✓ Retirada anotada: ${fmtEur(importeRetirada(a.m,r))} € · se paga del 5 al 10 de ${_txtIdx(a.fin+1)}</div>`;
+    return `<div style="display:flex;gap:6px;margin-top:7px"><button onclick="openModal('retirada',{mid:'${esc(a.m.id)}',finIdx:${a.fin}})" style="${st}border:1.5px solid #2D6A4F;background:#2D6A4F;color:#fff">💶 Retira su beneficio</button></div>`;
+  }
+  return `<div style="display:flex;gap:6px;margin-top:7px">
+    <button onclick="openModal('ciclo',{mid:'${esc(a.m.id)}'})" style="${st}border:1.5px solid #2D6A4F;background:#fff;color:#1B4332">🔁 Amplía</button>
+    <button onclick="openModal('baja',{mid:'${esc(a.m.id)}',bajaUltimoIdx:${a.fin}})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#C0492C">🏁 Termina</button></div>`;
 }
 function avisoSubidaNivelHTML(m,rm,ry){
   const s=subidaNivelReciente(m,rm,ry);
@@ -4266,6 +4357,10 @@ function _fichaHTMLbase(m,readonly=false){
       cm++; if(cm>=12){cm=0;cy++;}
     }
   }
+  // v45.1: beneficio ya retirado sin salir (PE-5, PE-7)
+  const retiradoF=isTerc?0:beneficioRetirado(m);
+  const _rPend=isTerc?[]:retiradasDe(m).filter(r=>!r.pagada);
+  const retPendF=_rPend.length?"se paga del 5 al 10 de "+_txtIdx(pagoRetiradaIdx(_rPend[0])):"";
   const mesKeyBen=ry+"-"+String(MS.indexOf(rm)+1).padStart(2,"0");
   const benMes=(!isTerc&&m.joinMonth)?beneficioMiembroMes(m,mesKeyBen):0;
 
@@ -4295,7 +4390,8 @@ function _fichaHTMLbase(m,readonly=false){
       // Bloque 2: lo que se lleva (datos económicos, sin fondo)
       h+=`<div class="ft-row"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val">${totalAportado} €</span></div>
       <div class="ft-row"><span class="ft-lbl">Beneficios acumulados</span><span class="ft-val" style="color:#2D6A4F">+ ${acumBen} €</span></div>
-      <div class="ft-row ft-total"><span class="ft-lbl">Llevas acumulado hasta ahora</span><span class="ft-val" style="color:#1B4332">${totalAportado+acumBen} €</span></div>`;
+      ${retiradoF>0?`<div class="ft-row"><span class="ft-lbl">Beneficio ya retirado${retPendF?` <span style="font-size:11.5px;color:var(--muted)">(${retPendF})</span>`:""}</span><span class="ft-val" style="color:#B08D3E">− ${fmtEur(retiradoF)} €</span></div>`:""}
+      <div class="ft-row ft-total"><span class="ft-lbl">Llevas acumulado hasta ahora</span><span class="ft-val" style="color:#1B4332">${fmtEur(_r2(totalAportado+Math.max(0,acumBen-retiradoF)))} €</span></div>`;
     } else {
       h+=`<div class="ft-row"><span class="ft-lbl">Tipo</span><span class="ft-val">Tercero avalado</span></div>
       <div class="ft-row"><span class="ft-lbl">Avalista</span><span class="ft-val">${escH(avalistaNombre(m)||"—")}</span></div>`;
@@ -4311,8 +4407,9 @@ function _fichaHTMLbase(m,readonly=false){
     h+=`<div class="ft-card">
       <div class="ft-card-title">🎁 Permanencia ${cicloTxt}</div>
       <div class="ft-hero">
-        <div class="ft-hero-lbl">Total acumulado</div>
-        <div class="ft-hero-val">${acumBen} €</div>
+        <div class="ft-hero-lbl">${retiradoF>0?"Beneficio guardado":"Total acumulado"}</div>
+        <div class="ft-hero-val">${retiradoF>0?fmtEur(Math.max(0,_r2(acumBen-retiradoF))):acumBen} €</div>
+        ${retiradoF>0?`<div style="font-size:12.5px;opacity:.85;margin-top:4px">Generado ${fmtEur(acumBen)} € · retirado ${fmtEur(retiradoF)} €${retPendF?" ("+retPendF+")":""}</div>`:""}
       </div>
     </div>`;
     // Historial mes a mes (desplegable)
@@ -4602,7 +4699,52 @@ function cicloFormHTML(){
     <label class="m-label">Aporte habitual</label>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px">${_opcionesHTML("l-ap-opt","ap",APORTE_OPCIONES,aporteActual,v=>v+" €")}</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.4">Es lo que suele poner y lo que propone la hoja de cobro. Cada mes puede poner otra cantidad (se elige en el cierre). Cada 50 € ganan su beneficio.</div>
+    <label class="m-label">Recomendado por (es su aval · Maestro GE-1)</label>
+    ${esFundador(m)?`<div style="font-size:13px;color:var(--muted);margin-bottom:16px">⭐ Fundador: no tiene aval.</div>`:`<select id="ci-aval" class="m-select" style="margin-bottom:${m.referidoPor?16:6}px"><option value="">— Sin anotar —</option>${DATA.members.filter(x=>x.type==="asociado"&&x.id!==m.id&&x.joinMonth).sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${esc(x.id)}" ${x.id===m.referidoPor?"selected":""}>${escH(x.name)}</option>`).join("")}</select>
+    ${m.referidoPor?"":`<div style="font-size:12px;color:#C0492C;margin-bottom:16px">⚠️ Falta anotar quién lo recomendó${quienRefirio(m)?` (por el bono consta ${escH(quienRefirio(m))})`:""}.</div>`}`}
+    ${retiraAlAmpliarHTML(m)}
     <button class="m-primary" onclick="saveCicloYAporte('${esc(m.id)}')">Guardar cambios</button>`;
+}
+// v45.1 (PE-5): al ampliar la permanencia al final (o después), puede retirar el beneficio guardado.
+function retiraAlAmpliarHTML(m){
+  const rp=retiradaPosible(m); if(!rp||rp.motivo!=="fin")return "";
+  const imp=Math.max(0,_r2(aportesConBeneficio(m,rp.finIdx).reduce((s,a)=>s+a.ben,0)-beneficioRetirado(m)));
+  const falta=!_aportePagadoKey(m,_keyDeIdx(rp.finIdx));
+  return `<button type="button" id="ci-retira" data-on="0" onclick="const on=this.dataset.on!=='1';this.dataset.on=on?'1':'0';this.querySelector('.ci-chk').textContent=on?'✅':'⬜';this.style.background=on?'#DDF0E3':'#F6FAF7'" style="display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:#F6FAF7;border:1.5px solid #2D6A4F;border-radius:12px;padding:12px;margin-bottom:14px;font-size:13.5px;color:#1B4332;cursor:pointer;line-height:1.45;font-family:inherit">
+    <span class="ci-chk" style="font-size:20px;line-height:1;flex-shrink:0">⬜</span>
+    <span><b>Al ampliar, retira su beneficio guardado: ${fmtEur(imp)} €</b>${falta?` <span style="font-size:12px">(+ lo que gane su aporte de ${_txtIdx(rp.finIdx)}; la cifra se fija al pagarla)</span>`:""}<br>Se paga entre el 5 y el 10 de ${_txtIdx(rp.finIdx+1)}. Sus aportes siguen dentro y siguen ganando (Maestro PE-5).</span></button>`;
+}
+function retiradaFormHTML(){
+  const m=DATA.members.find(x=>x.id===MODAL.mid); if(!m)return "";
+  const fin=MODAL.finIdx, n=fin-_idxMes(m.joinMonth,m.joinYear)+1;
+  const imp=Math.max(0,_r2(aportesConBeneficio(m,fin).reduce((s,a)=>s+a.ben,0)-beneficioRetirado(m)));
+  const falta=!_aportePagadoKey(m,_keyDeIdx(fin));
+  return `<div class="modal-title">💶 Retirar beneficio — ${escH(m.name)}</div>
+    <div style="background:#EEF7F1;border:1px solid #B7D9C3;border-radius:12px;padding:14px;font-size:13.5px;color:#1B4332;margin:6px 0 16px;line-height:1.65">
+      Permanencia indefinida: cumple <b>${n} meses</b> en ${_txtIdx(fin)}.<br>
+      Beneficio guardado hasta ese mes: <b>${fmtEur(imp)} €</b>${falta?` <span style="font-size:12px">(+ lo que gane su aporte de ${_txtIdx(fin)}, aún sin cobrar; la cifra se fija al pagarla)</span>`:""}.<br>
+      Se paga <b>entre el 5 y el 10 de ${_txtIdx(fin+1)}</b>. Sus aportes siguen dentro y siguen ganando (Maestro PE-7).
+    </div>
+    <button class="m-primary" onclick="confirmarRetirada('${esc(m.id)}',${fin})">Anotar la retirada</button>
+    <button onclick="closeModal()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">Cancelar</button>`;
+}
+function confirmarRetirada(mid,fin){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  if(retiradasDe(m).some(r=>r.finIdx===fin)){closeModal();toast("Esa retirada ya está anotada");return;}
+  nuevaRetirada(m,fin,m.ciclo===0?"aniv":"fin");
+  save(); closeModal(); toast("Retirada anotada ✓ · se paga del 5 al 10 de "+_txtIdx(fin+1));
+}
+// Acción explícita (Histórico): marcar pagada (fija el importe), pendiente o anular (solo si no se pagó).
+function setPagoRetirada(mid,rid,campo,valor){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  const r=(m.retiradas||[]).find(x=>x.id===rid); if(!r)return;
+  if(campo==="pagada"){
+    if(valor){ r.importe=importeRetirada(m,r); r.pagada=true; r.fechaPagada=new Date().toLocaleDateString("es-ES"); }
+    else { r.pagada=false; delete r.importe; r.fechaPagada=null; }
+  }
+  if(campo==="anular"&&!r.pagada){ r.anulada=true; r.fechaAnulada=new Date().toLocaleDateString("es-ES"); }
+  save(); render();
+  toast(campo==="anular"?"Retirada anulada":valor?"✓ Retirada marcada como pagada":"Retirada marcada como pendiente");
 }
 // Al cambiar el aporte habitual, los meses ya PAGADOS conservan lo que se pagó (se guarda como
 // ajuste de ese mes); solo cambia lo que se propone desde ahora.
@@ -4624,10 +4766,19 @@ function saveCicloYAporte(mid){
     if(m.ciclo===0&&c!==0){toast("⛔ No se puede bajar desde permanencia indefinida",3500);return;}
     if(c!==0&&c<m.ciclo){toast("⛔ La permanencia no se puede bajar (Maestro PE-3)",3500);return;}
   }
+  // v45.1 (PE-5): retirar el beneficio guardado solo si amplía la permanencia
+  const rEl=document.getElementById("ci-retira"); let retira=false;
+  if(rEl&&rEl.dataset.on==="1"){
+    const amplia=(m.ciclo!=null&&m.ciclo>0&&(c===0||c>m.ciclo));
+    if(!amplia){toast("⛔ Para retirar el beneficio sin salir tiene que ampliar la permanencia (Maestro PE-5)",4000);return;}
+    const rp=retiradaPosible(m); if(rp&&rp.motivo==="fin"){nuevaRetirada(m,rp.finIdx,"fin");retira=true;}
+  }
+  const avEl=document.getElementById("ci-aval"); // v45.1: quien lo recomendó = su aval (GE-1)
+  if(avEl){ if(avEl.value)m.referidoPor=avEl.value; else delete m.referidoPor; }
   fijarAportesPagados(m,ap);
   m.ciclo=c;
   m.aporte=ap;
-  closeModal();save();toast("Permanencia y aporte actualizados ✓");render();
+  closeModal();save();toast(retira?"Permanencia ampliada ✓ · retirada del beneficio anotada":"Permanencia y aporte actualizados ✓");render();
 }
 
 // ── CAMBIAR AVALISTA (solo terceros) ─────────────────────────────────────
@@ -4898,6 +5049,11 @@ function motivoBloqueoBaja(m){
     if((o.loans||[]).some(l => l.avalistaEnConcesion === m.id && activa(l))){
       return `No se puede dar de baja a ${m.name}: es avalista de una ayuda activa de ${o.name}.`;
     }
+    // (c) v45.1 (Maestro v18.3 · GE-1, SA-6): es aval del asociado que recomendó y este tiene una ayuda activa
+    if(o.type === "asociado" && !o.baja && (o.loans||[]).some(activa)){
+      const a=avalDe(o);
+      if(a && a.m && a.m.id === m.id) return `No puede salir ${m.name} mientras sea aval: ${o.name} (lo recomendó) tiene una ayuda activa (Maestro SA-6).`;
+    }
   }
   return null;
 }
@@ -4917,6 +5073,138 @@ function darDeBaja(m, mesBaja, anioBaja){
     fechaPago: d.fechaPago
   };
   return {ok:true, baja:m.baja};
+}
+// ══ v45.1 (Maestro v18.2 · PE-5, PE-7, SA-1 a SA-5, SA-10) ═══════════════════════════════
+// Retirada del beneficio guardado sin salir y salidas con las reglas v18. Estas funciones SOLO
+// calculan; los cambios de estado se hacen en acciones explícitas del administrador.
+function _keyDeIdx(i){ return Math.floor(i/12)+"-"+String(((i%12)+12)%12+1).padStart(2,"0"); }
+function _mesDeIdx(i){ return {mes:MONTHS[((i%12)+12)%12],anio:Math.floor(i/12)}; }
+function _txtIdx(i){ return MONTHS_FULL[((i%12)+12)%12].toLowerCase()+" "+Math.floor(i/12); }
+function _r2(x){ return Math.round((x||0)*100)/100; }
+function _aportePagadoKey(m,k){ const md=DATA.monthlyData&&DATA.monthlyData[k]; return !!(md&&md.aportes&&md.aportes[m.id]===true); }
+function finPermanenciaIdx(m,ciclo){ const c=(ciclo!==undefined?ciclo:(m&&m.ciclo)); return (m&&m.joinMonth&&c>0)?_idxMes(m.joinMonth,m.joinYear)+c-1:null; }
+// Aportes PAGADOS desde la entrada hasta 'hastaIdx' (incluido), en orden, con el beneficio que
+// genera cada uno (BE-3: se anota el mes siguiente; incluye el histórico BE-6 y los bloques BE-7).
+function aportesConBeneficio(m,hastaIdx){
+  const out=[]; if(!m||!m.joinMonth)return out;
+  for(let i=_idxMes(m.joinMonth,m.joinYear);i<=hastaIdx;i++){
+    const k=_keyDeIdx(i); if(!_aportePagadoKey(m,k))continue;
+    out.push({idx:i,key:k,aporte:aporteBrutoKey(m,k),ben:beneficioMiembroDesglose(m,_keyDeIdx(i+1)).total});
+  }
+  return out;
+}
+// ── Retiradas de beneficio (PE-5 al ampliar · PE-7 cada 12 meses de la indefinida) ──
+// m.retiradas = [{id, finIdx (último mes del periodo), motivo:"fin"|"aniv", pagada, importe (se fija
+// al pagarla), fechaPagada, anulada}]. Se paga el día 5 del mes siguiente a finIdx.
+function retiradasDe(m){ return (m&&Array.isArray(m.retiradas)?m.retiradas:[]).filter(r=>!r.anulada); }
+function importeRetirada(m,r){
+  if(r.pagada&&typeof r.importe==="number")return r.importe;
+  const prev=retiradasDe(m).filter(x=>x!==r&&x.finIdx<r.finIdx).reduce((s,x)=>s+importeRetirada(m,x),0);
+  const gen=aportesConBeneficio(m,r.finIdx).reduce((s,a)=>s+a.ben,0);
+  return Math.max(0,_r2(gen-prev));
+}
+function pagoRetiradaIdx(r){ return r.finIdx+1; }
+function beneficioRetirado(m){ return _r2(retiradasDe(m).reduce((s,r)=>s+importeRetirada(m,r),0)); }
+function beneficioGuardado(m){ return Math.max(0,_r2(memberBenefitAccum(m)-beneficioRetirado(m))); }
+// ¿Puede retirar ahora el beneficio de un periodo? Fin de permanencia (al ampliarla) desde el mes
+// antes del final; aniversario de la indefinida (meses 12, 24, 36…) del mes antes al siguiente.
+function retiradaPosible(m,cicloAnterior){
+  if(!m||m.type!=="asociado"||!m.joinMonth||m.baja)return null;
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), ini=_idxMes(m.joinMonth,m.joinYear);
+  const c=(cicloAnterior!==undefined?cicloAnterior:m.ciclo);
+  const ya=f=>retiradasDe(m).some(r=>r.finIdx===f);
+  if(c>0){ const fin=ini+c-1; if(idx>=fin-1&&!ya(fin))return {finIdx:fin,motivo:"fin"}; return null; }
+  if(c===0){ for(const fin of [idx-1,idx,idx+1]){ const n=fin-ini+1; if(n>=12&&n%12===0&&!ya(fin))return {finIdx:fin,motivo:"aniv"}; } }
+  return null;
+}
+function nuevaRetirada(m,finIdx,motivo){
+  if(!Array.isArray(m.retiradas))m.retiradas=[];
+  const p=_mesDeIdx(finIdx+1);
+  m.retiradas.push({id:"r"+Date.now(),finIdx,motivo,pagoMes:p.mes,pagoAnio:p.anio,pagada:false,creada:new Date().toLocaleDateString("es-ES")});
+}
+// ── Salida (SA) ──
+// SA-10: lo que le quede por devolver de sus ayudas se descuenta de lo que recibe.
+const SA10_SOLO_CAPITAL=false; // false = las cuotas que le quedan (capital + retorno) · true = solo el capital pendiente
+function ayudaPendienteDe(m){
+  let t=0,cap=0,n=0;
+  (m.loans||[]).forEach(l=>(l.pays||[]).forEach((p,pi)=>{ if(p.paid)return; n++;
+    const c=cuotaDe(l,pi), r=recargoPorCuota(l); t+=c; cap+=p.aplazada?0:Math.max(0,c-r); }));
+  return {cuotas:_r2(t),capital:_r2(cap),n,importe:_r2(SA10_SOLO_CAPITAL?cap:t)};
+}
+// v45.1 (Maestro v18.3 · GE-1): el aval de un asociado es quien lo recomendó. Los 10 fundadores
+// (agosto 2025) no tienen aval. Devuelve {fundador} | {m} | {nombre} (solo por el bono) | null.
+function esFundador(m){ return !!(m&&m.type==="asociado"&&m.joinMonth==="Ago"&&m.joinYear===2025); }
+function avalDe(m){
+  if(!m)return null; if(esFundador(m))return {fundador:true};
+  const r=m.referidoPor&&DATA.members.find(x=>x.id===m.referidoPor); if(r)return {m:r};
+  const n=quienRefirio(m); return n?{nombre:n}:null;
+}
+function avalTexto(m){ const a=avalDe(m); return !a?"sin aval anotado":a.fundador?"fundador (sin aval)":escH(a.m?a.m.name:a.nombre); }
+// SA-10 paso 4: lo que no cubren su beneficio y sus aportes lo paga su aval; si es fundador, el fondo.
+function destinoFaltaTexto(m){ const a=avalDe(m);
+  return !a?"pasa a su aval (⚠️ sin anotar: anótalo en ⚙️ Permanencia y aporte)":a.fundador?"lo asume el fondo (fundador, sin aval)":`pasa a su aval: <b>${escH(a.m?a.m.name:a.nombre)}</b>`; }
+function avisoMesesPorSaldo(saldo){ return saldo>6000?3:saldo>3000?2:1; } // SA-1
+// Salida con las reglas v18. 'ultimoIdx' = último mes en que aporta. Se paga el día 5 del mes
+// siguiente (PE-5, SA-5). Al terminar la permanencia conserva todo el beneficio; antes de tiempo
+// (o saliendo de la indefinida) solo el de los años completos = 12 aportes pagados (SA-2/3/4).
+function salidaV18(m,ultimoIdx){
+  const aps=aportesConBeneficio(m,ultimoIdx);
+  const capital=_r2(aps.reduce((s,a)=>s+a.aporte,0));
+  const generado=_r2(aps.reduce((s,a)=>s+a.ben,0));
+  const fin=finPermanenciaIdx(m);
+  const tipo=m.ciclo===0?"indefinida":(fin!=null&&ultimoIdx>=fin)?"fin":"anticipada";
+  let anios=null, conservado=generado;
+  if(tipo!=="fin"){
+    const tope=m.ciclo===12?1:m.ciclo===24?2:m.ciclo===36?3:Infinity;
+    anios=Math.min(Math.floor(aps.length/12),tope);
+    conservado=_r2(aps.slice(0,anios*12).reduce((s,a)=>s+a.ben,0));
+  }
+  const retirado=beneficioRetirado(m);
+  const aPagar=Math.max(0,_r2(conservado-retirado));
+  const perdido=Math.max(0,_r2(generado-conservado));
+  const ay=ayudaPendienteDe(m);
+  const total=_r2(capital+aPagar-ay.importe);
+  const saldo=_r2(capital+Math.max(0,generado-retirado));
+  const avisoMeses=tipo==="fin"?1:avisoMesesPorSaldo(saldo);
+  const p=_mesDeIdx(ultimoIdx+1);
+  return {tipo,ultimoIdx,nPagados:aps.length,anios,capital,generado,conservado,retirado,aPagar,perdido,ayuda:ay,total,saldo,avisoMeses,
+    pagoMes:p.mes,pagoAnio:p.anio,fechaPago:"del 5 al 10 de "+MONTHS_FULL[MONTHS.indexOf(p.mes)].toLowerCase()+" "+p.anio};
+}
+// Baja v18: mes de baja = el siguiente al último aporte (desde él ya no cuenta como activo).
+// Las cifras se guardan provisionales y se fijan al marcarla como pagada.
+function darDeBajaV18(m,ultimoIdx,avisoIdx){
+  const motivo=motivoBloqueoBaja(m); if(motivo)return {ok:false,motivo};
+  const d=salidaV18(m,ultimoIdx), b=_mesDeIdx(ultimoIdx+1), u=_mesDeIdx(ultimoIdx), a=_mesDeIdx(avisoIdx);
+  m.baja={v18:true,month:b.mes,year:b.anio,ultimoMes:u.mes,ultimoAnio:u.anio,avisoMes:a.mes,avisoAnio:a.anio,
+    pagoMonth:d.pagoMes,pagoYear:d.pagoAnio,fechaPago:d.fechaPago,pagada:false,estado:"Pendiente"};
+  _fijarCifrasBaja(m,d);
+  return {ok:true,baja:m.baja};
+}
+function _fijarCifrasBaja(m,d){
+  Object.assign(m.baja,{tipo:d.tipo,capitalDevuelto:d.capital,beneficioGenerado:d.generado,beneficioAnios:d.anios,
+    beneficioRetiradoAntes:d.retirado,beneficioConservado:d.aPagar,beneficioPerdido:d.perdido,
+    ayudaDescontada:d.ayuda.importe,ayudaCuotas:d.ayuda.n,total:d.total,saldoAviso:d.saldo,avisoMeses:d.avisoMeses});
+}
+// Cifras de una baja: las guardadas (bajas antiguas o ya pagadas) o, si es v18 y aún no se ha
+// pagado, recalculadas con los datos de hoy (p. ej. el último aporte se cobra después de anotarla).
+function datosBaja(m){
+  const b=m&&m.baja; if(!b)return null;
+  if(!b.v18||b.pagada)return b;
+  const d=salidaV18(m,_idxMes(b.ultimoMes,b.ultimoAnio));
+  return Object.assign({},b,{tipo:d.tipo,capitalDevuelto:d.capital,beneficioGenerado:d.generado,beneficioAnios:d.anios,
+    beneficioRetiradoAntes:d.retirado,beneficioConservado:d.aPagar,beneficioPerdido:d.perdido,
+    ayudaDescontada:d.ayuda.importe,ayudaCuotas:d.ayuda.n,total:d.total,saldoAviso:d.saldo,avisoMeses:d.avisoMeses});
+}
+// SA-10: al pagar la baja, sus cuotas pendientes quedan saldadas con lo que se le descuenta
+// (compensadas): no se cobran en efectivo ni aparecen en la hoja de cobro.
+function _compensarAyudas(m,pagoIdx,deshacer){
+  const todas=[...(m.loans||[]),...(m.closedLoans||[])];
+  todas.forEach(l=>(l.pays||[]).forEach(p=>{
+    if(!deshacer&&!p.paid){p.paid=true;p.compensada=true;p.compIdx=pagoIdx;}
+    if(deshacer&&p.compensada){p.paid=false;delete p.compensada;delete p.compIdx;}
+  }));
+  m.loans=todas.filter(l=>l.pays.some(p=>!p.paid));
+  m.closedLoans=todas.filter(l=>l.pays.every(p=>p.paid));
 }
 // ¿Cuenta como activo en el mes 'mesKey' ("AAAA-MM")? Activo si no tiene baja, o si la
 // baja es POSTERIOR a ese mes. Desde el mes de baja (inclusive) deja de contar.
@@ -5025,7 +5313,9 @@ function bonosReferidoMes(rm,ry,soloCobrados){
 }
 function repartoBeneficioMes(recargo,rm,ry){
   const ri=MONTHS.indexOf(rm), key=getMesKey(rm,ry);
-  const conDerecho=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&cuentaComoActivo(m,key)
+  // v45.1 (BE-3): quien sale con las reglas v18 cobra el beneficio de su último aporte el mes
+  // siguiente (el de su baja), así que ese mes aún cuenta en el reparto.
+  const conDerecho=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&(cuentaComoActivo(m,key)||!!(m.baja&&m.baja.v18&&getMesKey(m.baja.month,m.baja.year)===key))
     &&((m.joinYear<ry)||(m.joinYear===ry&&MONTHS.indexOf(m.joinMonth)<ri)));
   const obligacion=Math.round(conDerecho.reduce((s,m)=>s+beneficioMiembroMes(m,key),0)*100)/100;
   const excedente=Math.round(((recargo||0)-obligacion)*100)/100;
@@ -5174,13 +5464,14 @@ function resumenMesDoc(rm,ry){
     .map(m=>({m,nombres:nombresReferidosMes(m.id,rm,ry)}));
   const altas=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth===rm&&m.joinYear===ry);
   const bajas=resumenBajasMes(rm,ry);
+  const retiradas=[]; DATA.members.forEach(m=>retiradasDe(m).forEach(r=>{ if(pagoRetiradaIdx(r)===_idxMes(rm,ry))retiradas.push({m,r}); })); // v45.1
   const pendAnt=DATA.members.map(m=>({m,p:pendienteMesAnterior(m,rm,ry)})).filter(x=>x.p.pendiente>0);
   const recargoMes=(typeof md.recargo==="number")?md.recargo:recargoAutoMes(rm,ry); // el guardado del mes manda
   return {bloques,apPrev:r2(apPrev),apCob:r2(apCob),nAp,nApPag,cuPrev:r2(cuPrev),cuCob:r2(cuCob),nCu,nCuPag,
     recPrev:r2(recPrev),recCob:r2(recCob),totPrev:r2(apPrev+cuPrev),totCob:r2(apCob+cuCob),
     noCob:r2(noCob),noCobLista,pendiente:r2(apPrev+cuPrev-apCob-cuCob-noCob),
     bonosPrev:r2(bonosPrev),bonosCob:r2(bonosCob),apBrutoCob:r2(apBrutoCob),
-    terminan,concedidos,aplazadas,niveles,referidos,altas,bajas,pendAnt,recargoMes};
+    terminan,concedidos,aplazadas,niveles,referidos,altas,bajas,retiradas,pendAnt,recargoMes};
 }
 // Quién trajo a un asociado: campo referidoPor (id) o, si falta, el bono registrado con su nombre.
 function quienRefirio(m){
@@ -5216,14 +5507,16 @@ function cajaMensual(){
     const apoyos=R.concedidos.reduce((s,x)=>s+(x.l.capital||0),0);
     const bajas=DATA.members.filter(m=>m.baja&&m.baja.pagada&&(()=>{const p=mesPagoBaja(m.baja);return p.mes===rm&&p.anio===y;})())
       .reduce((s,m)=>s+(m.baja.total||0),0);
+    // v45.1: beneficio retirado sin salir (PE-5, PE-7) que ya se pagó este mes
+    let retir=0,nRetir=0; DATA.members.forEach(m=>retiradasDe(m).forEach(r=>{ if(r.pagada&&pagoRetiradaIdx(r)===idx){retir+=importeRetirada(m,r);nRetir++;} }));
     let cartera=0;
     loans.forEach(({l})=>{
       if(l.gYear*12+MONTHS.indexOf(l.gMonth)>idx)return;
-      let dev=0; (l.pays||[]).forEach((p,pi)=>{ if(p.paid&&!p.aplazada&&p.y*12+MONTHS.indexOf(p.m)<=idx) dev+=cuotaDe(l,pi)-recargoPorCuota(l); });
+      let dev=0; (l.pays||[]).forEach((p,pi)=>{ if(p.paid&&!p.aplazada&&(p.compensada?p.compIdx:p.y*12+MONTHS.indexOf(p.m))<=idx) dev+=cuotaDe(l,pi)-recargoPorCuota(l); }); // v45.1: compensada → cuenta el mes en que se pagó la baja
       cartera+=Math.max(0,l.capital-dev);
     });
     const r2=x=>Math.round(x*100)/100;
-    const ent=r2(R.apCob+R.cuCob+puntIn), sal=r2(apoyos+puntOut+bajas);
+    const ent=r2(R.apCob+R.cuCob+puntIn), sal=r2(apoyos+puntOut+bajas+retir);
     const ini=r2(saldo); saldo=r2(saldo+ent-sal);
     // ¿De quién es el dinero? aportaciones acumuladas (se devuelven al terminar el ciclo),
     // beneficios devengados (idem) y aportes puntuales aún no devueltos; el resto es el
@@ -5236,10 +5529,11 @@ function cajaMensual(){
       if(a.devuelto&&a.mesDev===rm&&a.anioDev===y)puntPend-=a.capital||0;
     }));
     DATA.members.forEach(m=>{ if(!m.baja)return; const b=m.baja;
-      if(b.month===rm&&b.year===y)acBen-=(b.beneficioPerdido||0);          // lo que pierde pasa al fondo
+      if(b.month===rm&&b.year===y)acBen-=(datosBaja(m).beneficioPerdido||0); // lo que pierde pasa al fondo
       if(b.pagada){const p=mesPagoBaja(b); if(p.mes===rm&&p.anio===y){acAp-=(b.capitalDevuelto||0);acBen-=(b.beneficioConservado||0);}}
     });
-    out[key]={ini,aportes:R.apCob,bonos:R.bonosCob,aportesBrutos:R.apBrutoCob,cuotas:R.cuCob,retornos:R.recCob,capDev:r2(R.cuCob-R.recCob),puntIn,nPuntIn,entradas:ent,
+    acBen-=retir; // v45.1: el beneficio retirado ya no se le debe
+    out[key]={ini,retir:r2(retir),nRetir,aportes:R.apCob,bonos:R.bonosCob,aportesBrutos:R.apBrutoCob,cuotas:R.cuCob,retornos:R.recCob,capDev:r2(R.cuCob-R.recCob),puntIn,nPuntIn,entradas:ent,
       apoyos,nApoyos:R.concedidos.length,puntOut,nPuntOut,bajas,salidas:sal,fin:saldo,cartera:r2(cartera),
       acAp:r2(acAp),acBen:r2(acBen),puntPend:r2(puntPend),reserva:r2(saldo+cartera-acAp-acBen-puntPend)};
     i++; if(i>11){i=0;y++;}
@@ -5262,6 +5556,7 @@ function cajaMesHTML(rm,ry){
     <tr><td>− Ayudas entregadas (${c.nApoyos})</td><td class="n">${_eur(c.apoyos)}</td></tr>
     ${c.puntOut?`<tr><td>− Aportes puntuales devueltos (${c.nPuntOut})</td><td class="n">${_eur(c.puntOut)}</td></tr>`:""}
     ${c.bajas?`<tr><td>− Devoluciones por baja</td><td class="n">${_eur(c.bajas)}</td></tr>`:""}
+    ${c.retir?`<tr><td>− Beneficio retirado sin salir (${c.nRetir})</td><td class="n">${_eur(c.retir)}</td></tr>`:""}
     <tr><td><b>Total salidas</b></td><td class="n"><b>${_eur(c.salidas)}</b></td></tr>
     <tr class="doc-subt"><td>Saldo al cerrar ${mesF}${c.fin<0?" (negativo)":""}</td><td class="n">${_eur(c.fin)}</td></tr>
   </tbody></table>
@@ -5273,7 +5568,7 @@ function cajaMesHTML(rm,ry){
     <tr><td>Aportaciones de los asociados <span class="doc-sub">(íntegras)</span></td><td class="n">${_eur(c.acAp)}</td></tr>
     <tr><td>Beneficios acumulados de los asociados</td><td class="n">${_eur(c.acBen)}</td></tr>
     ${c.puntPend?`<tr><td>Aportes puntuales por devolver</td><td class="n">${_eur(c.puntPend)}</td></tr>`:""}
-    <tr class="doc-subt"><td>Excedente acumulado del fondo</td><td class="n">${_eur(c.reserva)}</td></tr>
+    <tr class="doc-subt"><td>Excedente acumulado del fondo <span class="doc-sub">(dato informativo: se reinvierte en ayudas)</span></td><td class="n">${_eur(c.reserva)}</td></tr>
   </tbody></table></div>`;
 }
 function _lista(items){ return items.length?`<ul class="doc-ul">${items.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="doc-vacio">— Ninguno este mes</div>`; }
@@ -5291,7 +5586,7 @@ function _seccionesReunion(R,rm,ry,cerrado){
     <tr><td>Retornos compartidos ${cerrado?"del mes":"previstos"} (5 % de cada cuota)</td><td class="n">${_eur(cerrado?R.recargoMes:R.recPrev)}</td></tr>
     <tr><td>Beneficio para los asociados según su permanencia y aporte (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>
     ${bonos?`<tr><td>Bonos por referido ${cerrado?"del mes":"previstos"} (los asume el fondo)</td><td class="n">${_eur(bonos)}</td></tr>`:""}
-    <tr><td><b>${exc>=0?"Excedente":"Diferencia que aporta el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""}; va a la reserva, Maestro FO-2)`:""}</td><td class="n"><b>${_eur(exc)}</b></td></tr>
+    <tr><td><b>${exc>=0?"Excedente":"Diferencia que pone el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""})`:""} <span class="doc-sub">· dato informativo: se reinvierte en ayudas (Maestro FO-2)</span></td><td class="n"><b>${_eur(exc)}</b></td></tr>
   </tbody></table>
   ${(()=>{ // v44.17: solo los apartados con contenido; los vacíos en una línea (ahorra papel)
     const secs=[];
@@ -5300,7 +5595,8 @@ function _seccionesReunion(R,rm,ry,cerrado){
     if(cerrado)secs.push(["🎉 Empiezan un nuevo año de permanencia","nuevos años de permanencia",R.niveles.map(x=>`${escH(x.m.name)} — de ${x.s.antes} € a ${x.s.ahora} € (desde ${x.s.mesNombre})`)]);
     secs.push(["🎁 Bonos por referido","bonos por referido",R.referidos.map(x=>`${escH(x.m.name)} — ${x.nombres.map(escH).join(", ")}`)]);
     secs.push(["👋 Nuevos asociados","nuevos asociados",R.altas.map(m=>{const q=quienRefirio(m);return escH(m.name)+(q?` <span class="doc-sub">(referido por ${escH(q)})</span>`:"");})]);
-    secs.push(["↩️ Devoluciones por baja","devoluciones por baja",R.bajas.lista.map(m=>`${escH(m.name)} — ${_eur(m.baja.total)}${m.baja.pagada?" (pagada)":" (pendiente)"}`)]);
+    secs.push(["↩️ Devoluciones por baja","devoluciones por baja",R.bajas.lista.map(m=>`${escH(m.name)} — ${_eur(datosBaja(m).total)}${m.baja.pagada?" (pagada)":" (pendiente)"}`)]);
+    secs.push(["💶 Beneficio retirado sin salir","retiradas de beneficio",R.retiradas.map(x=>`${escH(x.m.name)} — ${_eur(importeRetirada(x.m,x.r))}${x.r.pagada?" (pagado)":" (pendiente)"}`)]);
     secs.push(["⏸️ Aplazamientos","aplazamientos",R.aplazadas.map(c=>`${escH(c.nombre)} — ayuda ${c.gMonth} ${c.gYear} (paga ${_eur(c.inst)} de retorno)`)]);
     secs.push(["⚠️ Pendiente del mes anterior","pendientes del mes anterior",R.pendAnt.map(x=>`${escH(x.m.name)} — ${_eur(x.p.pendiente)} de ${MONTHS_FULL[MONTHS.indexOf(x.p.mes)].toLowerCase()}`)]);
     const llenas=secs.filter(x=>x[2].length), vacias=secs.filter(x=>!x[2].length).map(x=>x[1]);
@@ -5313,7 +5609,7 @@ function docCobroHTML(rm,ry){
   const R=resumenMesDoc(rm,ry), mesF=MONTHS_FULL[MONTHS.indexOf(rm)];
   let h=`<div class="doc-cab"><div><div class="doc-org">NUEVOS HORIZONTES</div><div class="doc-tit">Hoja de cobro · ${mesF} ${ry}</div></div>
     <div class="doc-fecha">Reunión del ____ / ____ / ________</div></div>
-  <h3>1. Resumen para la reunión</h3>`+_seccionesReunion(R,rm,ry,false)+`
+  <h3>1. Resumen para la reunión</h3>`+_seccionesReunion(R,rm,ry,false)+salidasPrevistasDocHTML(rm,ry)+`
   <div class="doc-grupos" data-cab="1"><div class="doc-cabgrupos"><h3>2. Cobro por grupos (efectivo)</h3>
   </div>`;
   // v44.19b: una línea por concepto (aportación / cada cuota) con su detalle completo
@@ -5419,7 +5715,7 @@ function docCarpetaHTML(){
     <h3>Índice y resumen por mes</h3>
     <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Bonos</th><th class="n">Excedente</th><th class="n">Ayudas concedidas</th></tr></thead>
     <tbody>${filas}<tr class="doc-subt"><td>Total</td><td class="n">${_eur(T.prev)}</td><td class="n">${_eur(T.cob)}</td><td class="n">${_eur(T.prev-T.cob-(T.noCob||0))}</td><td class="n">${_eur(T.ret)}</td><td class="n">${_eur(T.ben)}</td><td class="n">${_eur(T.bon||0)}</td><td class="n">${_eur(T.exc)}</td><td class="n">${T.nConc} · ${_eur(T.conc)}</td></tr></tbody></table>
-    <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados por cada 50 € aportado y su año de permanencia · Bonos = bonos por referido (los asume el fondo) · Excedente = retornos − beneficio − bonos (va a la reserva) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
+    <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados por cada 50 € aportado y su año de permanencia · Bonos = bonos por referido (los asume el fondo) · Excedente = retornos − beneficio − bonos (dato informativo: en la fase de crecimiento se reinvierte en ayudas) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
     <h3>Libro de caja por mes</h3>
     <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Saldo inicial</th><th class="n">Entradas</th><th class="n">Salidas</th><th class="n">Saldo final</th><th class="n">Capital prestado</th><th class="n">Total fondo</th><th class="n">Excedente acum.</th></tr></thead>
     <tbody>${meses.map(m=>{const c=cajaMensual()[getMesKey(m.rm,m.ry)];return `<tr><td>${nom(m)}</td><td class="n">${_eur(c.ini)}</td><td class="n">${_eur(c.entradas)}</td><td class="n">${_eur(c.salidas)}</td><td class="n">${_eur(c.fin)}</td><td class="n">${_eur(c.cartera)}</td><td class="n">${_eur(c.fin+c.cartera)}</td><td class="n">${_eur(c.reserva)}</td></tr>`;}).join("")}</tbody></table>
@@ -5568,6 +5864,7 @@ function render(){
 
     h+=bannerRecargoHTML();
     h+=avisosPermanenciaHTML(rm,ry); // v45 (Maestro PE-5, PE-7)
+    h+=salidasPrevistasHTML(rm,ry); // v45.1 (Maestro FO-4)
 
     // ── CABECERA: título + selector de mes + buscador ──
     const idxMes=MONTHS.indexOf(rm);
@@ -5918,6 +6215,7 @@ function render(){
       // se calcula aquí porque Recaudación (punto 3, abajo) también lo necesita.
       const spl=salidasPuntualesSplit(rm,ry);
       const bj=resumenBajasMes(rm,ry); // v44.13: devoluciones por baja que se pagan este mes
+      const rt=retiradasMes(rm,ry);    // v45.1: beneficio retirado sin salir que se paga este mes
       const salidasYaDevueltas=spl.items.filter(it=>it.devuelto).reduce((s,it)=>s+it.total,0);
       // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
       const nAsociados=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).length;
@@ -5957,14 +6255,14 @@ function render(){
           <div class="rec-fila"><div class="rec-l1"><span class="rec-lbl">Aportaciones <span style="opacity:.6;font-size:12px">(${_aptPag}/${_asocAct.length})</span></span><span class="rec-imp">${aptCob} €</span></div></div>
           <div class="gb-row gb-total" style="margin-top:6px"><span>SUMA</span><b>${totCob} €</b></div>
           ${totPen>0?`<div class="gb-row" style="border-top:1px dashed rgba(255,255,255,.3);padding-top:6px;margin-top:2px"><span style="opacity:.9">Pendiente</span><b style="color:#FFD9A3">${totPen} €</b></div>`:`<div class="gb-row" style="padding-top:4px"><span style="opacity:.9">Todo cobrado este mes</span><b></b></div>`}
-          ${(spl.total>0||bj.total>0)?`<div class="gb-salida">
+          ${(spl.total>0||bj.total>0||rt.total>0)?`<div class="gb-salida">
             <div class="gb-salida-lbl">Salida del fondo</div>
             ${spl.total>0?`<div class="gb-salida-row"><span class="gb-salida-txt">Devolución de aporte puntual</span><span class="gb-salida-imp">−${spl.total} €</span></div>`:""}
             ${bj.total>0?`<div class="gb-salida-row"><span class="gb-salida-txt">Devolución por baja (${bj.lista.length})</span><span class="gb-salida-imp">−${bj.total} €</span></div>`:""}
-            ${bj.reserva>0?`<div class="gb-salida-row"><span class="gb-salida-txt">↳ cubierta con la reserva</span><span class="gb-salida-imp" style="color:#8CE0B0">+${bj.reserva} €</span></div>`:""}
+            ${rt.total>0?`<div class="gb-salida-row"><span class="gb-salida-txt">Beneficio retirado sin salir (${rt.lista.length})</span><span class="gb-salida-imp">−${fmtEur(rt.total)} €</span></div>`:""}
             <div class="gb-salida-sub">Ya descontada en Disponible neto real y Caja real (Resumen General)</div>
           </div>
-          <div class="gb-row gb-total" style="margin-top:10px"><span>TOTAL NETO</span><b>${totCob-spl.total-bj.total+bj.reserva} €</b></div>`:""}
+          <div class="gb-row gb-total" style="margin-top:10px"><span>TOTAL NETO</span><b>${fmtEur(_r2(totCob-spl.total-bj.total-rt.total))} €</b></div>`:""}
         </div>
       </div>`;
       // 4) Resumen General
@@ -5987,10 +6285,11 @@ function render(){
       const entradas=_apt.cobrado+_apt.pendiente+tA+tT; // v45: el aporte elegido ya va en aportesSplit
       // Disponible neto real: PREVISTO del mes (incluye lo aún pendiente de cobrar).
       // v44.13: + devoluciones por baja del mes de pago (la parte cubierta con la reserva no la soporta el mes).
-      const dispNeto=entradas-spl.total-totalAyudasNuevas-bj.total+bj.reserva;
+      // v45.1: la reserva es solo informativa (fase de crecimiento): no compensa ninguna salida.
+      const dispNeto=_r2(entradas-spl.total-totalAyudasNuevas-bj.total-rt.total);
       // Caja real: solo dinero que YA se movió — cobrado real, menos lo que ya salió
       // (ayudas nuevas se entregan al otorgarse; devoluciones puntuales y por baja solo si ya se pagaron).
-      const cajaReal=totCob-totalAyudasNuevas-salidasYaDevueltas-bj.pagadas+bj.pagadasReserva;
+      const cajaReal=_r2(totCob-totalAyudasNuevas-salidasYaDevueltas-bj.pagadas-rt.pagadas);
       h+=`<div class="resumen-final">
         <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
         <div class="rf-row"><span>Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
@@ -6001,8 +6300,8 @@ function render(){
           ?`<div class="rf-row"><span>Devolución puntual (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
           :`<div class="rf-row"><span>Devolución pendiente (${escH(it.nombre)})</span><span class="rf-val v-neg">−${it.total} €</span></div>`
         ).join("")}
-        ${bj.lista.map(x=>`<div class="rf-row"><span>Devolución por baja (${escH(x.name)})${x.baja.pagada?"":` <small style="opacity:.7">· pendiente de pagar</small>`}</span><span class="rf-val v-neg">−${x.baja.total} €</span></div>`).join("")}
-        ${bj.reserva>0?`<div class="rf-row"><span style="padding-left:12px">↳ cubierta con la reserva</span><span class="rf-val v-pos">+${bj.reserva} €</span></div>`:""}
+        ${bj.lista.map(x=>`<div class="rf-row"><span>Devolución por baja (${escH(x.name)})${x.baja.pagada?"":` <small style="opacity:.7">· pendiente de pagar</small>`}</span><span class="rf-val v-neg">−${fmtEur(datosBaja(x).total)} €</span></div>`).join("")}
+        ${rt.lista.map(x=>`<div class="rf-row"><span>Beneficio retirado (${escH(x.m.name)})${x.r.pagada?"":` <small style="opacity:.7">· pendiente de pagar</small>`}</span><span class="rf-val v-neg">−${fmtEur(x.imp)} €</span></div>`).join("")}
         ${ayudasNuevasMes.length>0?`<div class="rf-row ayn-row" onclick="AYUDAS_NUEVAS_ABIERTA=!AYUDAS_NUEVAS_ABIERTA;render()"><span>Ayudas nuevas otorgadas (${ayudasNuevasMes.length}) <span class="arrow">${AYUDAS_NUEVAS_ABIERTA?"▲":"▼"}</span></span><span class="rf-val v-neg">−${totalAyudasNuevas} €</span></div>
         ${AYUDAS_NUEVAS_ABIERTA?ayudasNuevasMes.map(a=>`<div class="rf-row ayn-sub"><span>${escH(a.nombre)}</span><span class="rf-val">${a.capital} €</span></div>`).join(""):""}`:""}
         <div class="rf-neto"><span>Disponible neto real<small>(previsto, incluye pendiente de cobrar)</small></span><b>${dispNeto} €</b></div>
@@ -6039,30 +6338,35 @@ function render(){
     }else{
       // v44.13: tarjetas (legibles en el iPhone) con la gestión del pago de cada baja
       bajas.forEach(m=>{
-        const b=m.baja, pAct=mesPagoBaja(b);
-        let optsPago="";{let i=MONTHS.indexOf(b.month)+1,y=b.year;for(let k=0;k<6;k++){if(i>11){i=0;y++;}const sel=(MONTHS[i]===pAct.mes&&y===pAct.anio)?"selected":"";optsPago+=`<option value="${MONTHS[i]}|${y}" ${sel}>${MONTHS_FULL[i]} ${y}</option>`;i++;}}
+        const b=datosBaja(m), pAct=mesPagoBaja(b);
+        let optsPago="";{let i=MONTHS.indexOf(b.month)+(b.v18?0:1),y=b.year; /* v45.1: la salida v18 se paga el mes de baja (día 5) */ for(let k=0;k<6;k++){if(i>11){i=0;y++;}const sel=(MONTHS[i]===pAct.mes&&y===pAct.anio)?"selected":"";optsPago+=`<option value="${MONTHS[i]}|${y}" ${sel}>${MONTHS_FULL[i]} ${y}</option>`;i++;}}
         h+=`<div style="border:1px solid #ece5da;border-radius:14px;padding:12px 14px;margin-bottom:12px;background:#fff">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <div><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(m.name)}</div>
               <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Baja: ${escH(MONTHS_FULL[MONTHS.indexOf(b.month)]||b.month)} ${b.year}</div></div>
             <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${b.pagada?"#E3F1E7":"#FDECE8"};color:${b.pagada?"#1B7A3D":"#C0492C"}">${b.pagada?"✓ Pagado":"Pendiente"}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:10px"><span>Capital a devolver</span><b>${b.capitalDevuelto} €</b></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Beneficio perdido (queda en el fondo)</span><span>${b.beneficioPerdido} €</span></div>
+          ${b.v18?`<div style="font-size:12.5px;color:var(--muted);margin-top:2px">${b.tipo==="fin"?"Termina su permanencia":b.tipo==="indefinida"?"Sale de la indefinida":"Sale antes de terminar"} · último aporte: ${escH(MONTHS_FULL[MONTHS.indexOf(b.ultimoMes)]||"")} ${b.ultimoAnio}</div>`:""}
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:10px"><span>Capital a devolver</span><b>${fmtEur(b.capitalDevuelto)} €</b></div>
+          ${b.v18?`<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:4px"><span>Beneficio que se le paga</span><b>${fmtEur(b.beneficioConservado)} €</b></div>
+          ${b.ayudaDescontada?`<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:4px;color:#C0492C"><span>Ayuda pendiente descontada</span><b>−${fmtEur(b.ayudaDescontada)} €</b></div>`:""}
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;margin-top:6px;padding-top:6px;border-top:1px solid #ece5da"><span>${b.total>=0?"Recibe":"Falta por cubrir (pasa a su avalista)"}</span><b>${fmtEur(Math.abs(b.total))} €</b></div>`:""}
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Beneficio perdido (queda en el fondo)</span><span>${fmtEur(b.beneficioPerdido)} €</span></div>
+          ${b.v18&&!b.pagada?`<div style="font-size:11.5px;color:var(--muted);margin-top:3px">Cifras provisionales: se fijan al marcarla como pagada.</div>`:""}
           ${b.pagada&&b.fechaPagada?`<div style="font-size:12px;color:#1B7A3D;margin-top:4px">Pagado el ${escH(b.fechaPagada)}</div>`:""}
           <div style="margin-top:12px;background:#FAF6F0;border:1px solid #ece5da;border-radius:10px;padding:10px">
-            <label class="m-label" style="margin-bottom:6px">Se paga en (día 5)</label>
+            <label class="m-label" style="margin-bottom:6px">${b.v18?"Se paga en (entre el día 5 y el 10)":"Se paga en (día 5)"}</label>
             <select class="m-select" style="font-size:14px;margin-bottom:10px" onchange="setPagoBaja('${esc(m.id)}','mes',this.value)">${optsPago}</select>
-            <button onclick="setPagoBaja('${esc(m.id)}','reserva',${b.conReserva?"false":"true"})" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid ${b.conReserva?"#9A7B1A":"#D9C9B0"};background:${b.conReserva?"#FBF3DC":"#fff"};color:${b.conReserva?"#7A5A12":"#8A7A60"};font-size:13.5px;font-weight:700;cursor:pointer;margin-bottom:8px">${b.conReserva?"🏦 Se paga con la reserva ✓":"🏦 Pagar con la reserva"}</button>
+            ${b.conReserva?`<div style="font-size:12px;color:#7A5A12;margin-bottom:8px">🏦 Se anotó «con la reserva». Hoy la reserva es solo un dato informativo: el dinero sale de la caja.</div>`:""}
             <button onclick="setPagoBaja('${esc(m.id)}','pagada',${b.pagada?"false":"true"})" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid ${b.pagada?"#D9C9B0":"#2D6A4F"};background:${b.pagada?"#fff":"#2D6A4F"};color:${b.pagada?"#8A7A60":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${b.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
           </div>
         </div>`;
       });
-      const totalDev=bajas.reduce((s,m)=>s+(m.baja.total||0),0);
-      const totalPag=bajas.filter(m=>m.baja.pagada).reduce((s,m)=>s+(m.baja.total||0),0);
+      const totalDev=_r2(bajas.reduce((s,m)=>s+(datosBaja(m).total||0),0));
+      const totalPag=_r2(bajas.filter(m=>m.baja.pagada).reduce((s,m)=>s+(m.baja.total||0),0));
       h+=`<div style="text-align:right;margin-top:4px;font-weight:800;color:#7A2418;line-height:1.5">Total a devolver: ${totalDev} €<br><span style="font-size:13px">Pagado: ${totalPag} € · Pendiente: ${totalDev-totalPag} €</span></div>`;
     }
-    h+=`<div style="font-size:11px;color:var(--muted);margin-top:12px">Sección de administración. Preparada para crecer (futuros: reingresos, cesiones de plaza, cierres de ciclo).</div></div>`;
+    h+=`</div>`+historicoRetiradasHTML()+`<div class="mes-card" style="padding-top:10px;padding-bottom:10px"><div style="font-size:11px;color:var(--muted)">Sección de administración. Preparada para crecer (futuros: reingresos, cesiones de plaza).</div></div>`;
   }
 
   // ── PESTAÑA ENVÍOS ──
@@ -6217,6 +6521,7 @@ function render(){
     if(MODAL.type==="sync_conflict")h+=syncConflictModalHTML();
     if(MODAL.type==="restaurar_backups")h+=restaurarBackupsModalHTML();
     if(MODAL.type==="baja")h+=bajaFormHTML();
+    if(MODAL.type==="retirada")h+=retiradaFormHTML();
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;
@@ -6280,7 +6585,7 @@ function cardHTML(m,isT,tappable){
   if(m.joinMonth){
     const lv=memberLevel(m);
     const months=memberMonths(m);
-    const ben=memberBenefitAccum(m);
+    const ben=beneficioGuardado(m); // v45.1: descontado lo ya retirado
     h+=`<div class="member-info" style="font-size:14px"><span>📅 Miembro desde ${MONTHS_FULL[MONTHS.indexOf(m.joinMonth)]} ${m.joinYear}</span></div>`;
     h+=`<div class="member-stat-grid">
       <div class="mstat"><div class="mstat-val">${months}</div><div class="mstat-lbl">meses</div></div>
@@ -6500,12 +6805,35 @@ function manageHTML(m,isT){
     h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`;
   }
   if(!isT){ // Dar de baja: solo asociados (los terceros salen del grupo por otro mecanismo — ver TAREA FUTURA)
-    h+=`<button class="add-loan-btn" style="background:#FDECE8;color:#C0492C;margin-top:6px" onclick="openModal('baja',{mid:'${esc(m.id)}'})">🚪 Dar de baja</button>`;
+    h+=`<button class="add-loan-btn" style="background:#FDECE8;color:#C0492C;margin-top:6px" onclick="openModal('baja',{mid:'${esc(m.id)}'})">🚪 Salida del fondo</button>`;
   }
   h+=`</div>`;
   return h;
 }
 
+// v45.1: retiradas del beneficio guardado sin salir (PE-5, PE-7) con su gestión de pago
+function historicoRetiradasHTML(){
+  const lista=[]; DATA.members.forEach(m=>(m.retiradas||[]).filter(r=>!r.anulada).forEach(r=>lista.push({m,r})));
+  lista.sort((a,b)=>b.r.finIdx-a.r.finIdx||a.m.name.localeCompare(b.m.name));
+  let h=`<div class="mes-card"><div class="mes-title" style="margin-bottom:10px">💶 Retiradas de beneficio (sin salir)</div>`;
+  if(!lista.length)return h+`<div style="text-align:center;padding:12px;color:var(--muted);font-size:13px">Aún no hay retiradas anotadas. Se anotan al ampliar la permanencia (⚙️) o en el aniversario de la indefinida (aviso del cierre).</div></div>`;
+  lista.forEach(({m,r})=>{
+    const imp=importeRetirada(m,r), k="anular-"+r.id, armado=!!DESP[k];
+    h+=`<div style="border:1px solid #ece5da;border-radius:14px;padding:12px 14px;margin-bottom:12px;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(m.name)}</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:2px">${r.motivo==="aniv"?"Aniversario de la indefinida":"Al ampliar su permanencia"} · beneficio hasta ${_txtIdx(r.finIdx)}</div></div>
+        <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${r.pagada?"#E3F1E7":"#FDECE8"};color:${r.pagada?"#1B7A3D":"#C0492C"}">${r.pagada?"✓ Pagado":"Pendiente"}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:14.5px;margin-top:10px"><span>Importe${r.pagada?"":" (provisional)"}</span><b>${fmtEur(imp)} €</b></div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:3px">Se paga del 5 al 10 de ${_txtIdx(pagoRetiradaIdx(r))}${r.pagada&&r.fechaPagada?` · pagado el ${escH(r.fechaPagada)}`:""}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="setPagoRetirada('${esc(m.id)}','${esc(r.id)}','pagada',${r.pagada?"false":"true"})" style="flex:2;padding:11px;border-radius:10px;border:1.5px solid ${r.pagada?"#D9C9B0":"#2D6A4F"};background:${r.pagada?"#fff":"#2D6A4F"};color:${r.pagada?"#8A7A60":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${r.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
+        ${r.pagada?"":`<button onclick="${armado?`setPagoRetirada('${esc(m.id)}','${esc(r.id)}','anular',true)`:`DESP['${k}']=true;render()`}" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #D9C9B0;background:${armado?"#C0492C":"#fff"};color:${armado?"#fff":"#8A7A60"};font-size:13px;font-weight:700;cursor:pointer">${armado?"¿Anular?":"Anular"}</button>`}
+      </div></div>`;
+  });
+  return h+`</div>`;
+}
 // ── Modal "Dar de baja" (dos pasos: elegir mes → confirmar cifras). Solo cablea la
 //    interfaz; toda la lógica vive en devolucionBaja/darDeBaja/motivoBloqueoBaja. ──
 function bajaFormHTML(){
@@ -6513,43 +6841,79 @@ function bajaFormHTML(){
   if(!m)return "";
   const bloqueo=motivoBloqueoBaja(m);
   if(bloqueo){ // avalista de una ayuda activa → se muestra el bloqueo, no se puede continuar
-    return `<div class="modal-title">🚪 Dar de baja — ${escH(m.name)}</div>
+    return `<div class="modal-title">🚪 Salida — ${escH(m.name)}</div>
       <div style="background:#FDF0EE;border:2px solid #C0492C;border-radius:12px;padding:14px;font-size:13px;color:#7A2418;margin:10px 0 16px;line-height:1.55">⛔ ${escH(bloqueo)}</div>
       <button class="m-primary" onclick="closeModal()">Entendido</button>`;
   }
-  if(MODAL.bajaStep!==2){ // paso 1: elegir el mes de baja
-    return `<div class="modal-title">🚪 Dar de baja — ${escH(m.name)}</div>
-      <label class="m-label">Elige el mes de baja</label>
-      ${selectorMesAnio("baja-mes","baja-anio",DATA.reportMonth,DATA.reportYear)}
-      <div style="font-size:12px;color:var(--muted);margin:2px 0 16px">Por defecto, el mes actual. Al continuar verás la devolución calculada antes de confirmar.</div>
+  const hoyIdx=_idxMes(DATA.reportMonth,DATA.reportYear);
+  if(MODAL.bajaStep!==2){ // paso 1: último mes que aporta y mes en que avisó
+    const u=_mesDeIdx(MODAL.bajaUltimoIdx!=null?MODAL.bajaUltimoIdx:hoyIdx);
+    const fin=finPermanenciaIdx(m);
+    return `<div class="modal-title">🚪 Salida — ${escH(m.name)}</div>
+      ${fin!=null?`<div style="font-size:12.5px;color:var(--muted);margin:-4px 0 10px">Su permanencia de ${m.ciclo} meses termina en ${_txtIdx(fin)}.</div>`:m.ciclo===0?`<div style="font-size:12.5px;color:var(--muted);margin:-4px 0 10px">Permanencia indefinida.</div>`:""}
+      <label class="m-label">Último mes que aporta</label>
+      ${selectorMesAnio("baja-mes","baja-anio",u.mes,u.anio)}
+      <label class="m-label">Mes en que avisó</label>
+      ${selectorMesAnio("baja-am","baja-aa",DATA.reportMonth,DATA.reportYear)}
+      <div style="font-size:12px;color:var(--muted);margin:2px 0 16px;line-height:1.4">Se le paga entre el día 5 y el 10 del mes siguiente a su último aporte. Al continuar verás las cifras antes de confirmar.</div>
       <button class="m-primary" onclick="bajaContinuar()">Continuar</button>
       <button onclick="closeModal()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">Cancelar</button>`;
   }
-  // paso 2: confirmación con las cifras reales del mes elegido
-  const mes=MODAL.bajaMes, anio=MODAL.bajaAnio;
-  const d=devolucionBaja(m,mes,anio);
-  const armed=!!MODAL.bajaArmed;
-  return `<div class="modal-title">🚪 Confirmar baja — ${escH(m.name)}</div>
-    <div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:12px;padding:14px;font-size:13.5px;color:#7A4A1E;margin:6px 0 16px;line-height:1.7">
-      Vas a dar de baja a <b>${escH(m.name)}</b> con efecto <b>${escH(mes)} ${anio}</b>.<br>
-      <b>Devolución: ${d.total} €</b> (capital ${d.capital} €${d.beneficioConservado?` + beneficios conservados ${d.beneficioConservado} €`:""}).<br>
-      Beneficio perdido (queda en el fondo): <b>${d.beneficioPerdido} €</b>.<br>
-      Fecha de pago: <b>${escH(d.fechaPago)}</b>.
-    </div>
-    <button class="m-primary" style="${armed?"background:#C0492C":""}" onclick="${armed?`confirmarBaja('${esc(m.id)}')`:"MODAL.bajaArmed=true;render()"}">${armed?"⚠️ Pulsa de nuevo para CONFIRMAR la baja":"Dar de baja"}</button>
-    <button onclick="MODAL.bajaStep=1;MODAL.bajaArmed=false;render()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">← Cambiar mes</button>`;
+  // paso 2: cifras con las reglas v18
+  const ult=MODAL.bajaUltimoIdx, aviso=MODAL.bajaAvisoIdx;
+  const d=salidaV18(m,ult), armed=!!MODAL.bajaArmed;
+  const minUlt=d.tipo==="fin"?null:aviso+d.avisoMeses-1;
+  const corto=minUlt!=null&&ult<minUlt;
+  const fila=(t,v,st)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;${st||""}"><span>${t}</span><b style="white-space:nowrap">${v}</b></div>`;
+  const tipoTxt=d.tipo==="fin"?`🏁 <b>Termina su permanencia</b> de ${m.ciclo} meses (Maestro PE-5): recupera sus aportes y todo el beneficio que no haya retirado.`
+    :d.tipo==="anticipada"?`🚪 <b>Sale antes de terminar</b> su permanencia (Maestro SA-2): recupera sus aportes y el beneficio de los años completos (12 aportes pagados cada uno).`
+    :`🚪 <b>Sale de la permanencia indefinida</b> (Maestro SA-1): recupera sus aportes y el beneficio de los años completos (12 aportes pagados cada uno).`;
+  let h=`<div class="modal-title">🚪 Confirmar salida — ${escH(m.name)}</div>
+    <div style="font-size:13.5px;line-height:1.5;color:var(--dark);margin:2px 0 10px">${tipoTxt}</div>
+    <div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:12px;padding:12px 14px;font-size:13.5px;color:#5A3A1E;margin:0 0 12px;line-height:1.45">
+      ${fila(`Aportes pagados (${d.nPagados})`,fmtEur(d.capital)+" €")}
+      ${fila("Beneficio generado",fmtEur(d.generado)+" €")}
+      ${d.tipo!=="fin"?fila(`Conserva el de ${d.anios} año${d.anios===1?"":"s"} completo${d.anios===1?"":"s"}`,fmtEur(d.conservado)+" €"):""}
+      ${d.perdido>0?fila("Pierde (año a medias, queda en el fondo)",fmtEur(d.perdido)+" €","color:#9A6A4A;font-size:12.5px"):""}
+      ${d.retirado>0?fila("Ya retirado antes","−"+fmtEur(d.retirado)+" €"):""}
+      ${fila("Beneficio que se le paga",fmtEur(d.aPagar)+" €")}
+      ${d.ayuda.n>0?fila(`Su ayuda pendiente (${d.ayuda.n} cuota${d.ayuda.n>1?"s":""}: capital + 5 %; quedan saldadas)`,"−"+fmtEur(d.ayuda.importe)+" €","color:#C0492C"):""}
+      ${d.ayuda.n>0?(()=>{const cb=Math.min(d.aPagar,d.ayuda.importe), ca=Math.min(d.capital,d.ayuda.importe-cb), falta=_r2(d.ayuda.importe-cb-ca);
+        return `<div style="font-size:12.5px;color:#7A2418;margin:2px 0 4px;line-height:1.45">Se cubre primero con su beneficio (${fmtEur(cb)} €), después con sus aportes (${fmtEur(ca)} €)${falta>0?` y faltan <b>${fmtEur(falta)} €</b>: ${destinoFaltaTexto(m)}`:""}.</div>`;})():""}
+      ${fila(d.total>=0?"Recibe":"Falta por cubrir",fmtEur(Math.abs(d.total))+" €","border-top:1px solid #F0D2B0;margin-top:4px;padding-top:6px;font-size:15px")}
+      <div style="font-size:12.5px;margin-top:4px">${d.total>=0?`Se paga <b>${escH(d.fechaPago)}</b>.`:`Su beneficio y sus aportes no cubren la ayuda: lo que falta ${destinoFaltaTexto(m)} (Maestro SA-10).`}</div>
+    </div>`;
+  if(d.tipo!=="fin")h+=`<div style="background:${corto?"#FDF0EE":"#F4F7F5"};border:1.5px solid ${corto?"#C0492C":"#C9DCCF"};border-radius:12px;padding:10px 12px;font-size:13px;color:${corto?"#7A2418":"#2E4A3A"};margin-bottom:12px;line-height:1.45">
+      Aviso según su saldo (${fmtEur(d.saldo)} €): <b>${d.avisoMeses} mes${d.avisoMeses>1?"es":""}</b> (Maestro SA-1). Avisó en ${_txtIdx(aviso)}${corto?`: su último aporte debería ser, como pronto, el de <b>${_txtIdx(minUlt)}</b>. Solo si lo aceptas como coordinador.`:" ✓"}</div>`;
+  // v45.1 (SA-10, decisión de Ángel 03/10/2026): con una ayuda pendiente la salida no es automática
+  const negociar=d.ayuda.n>0&&!MODAL.bajaNegociado;
+  if(d.ayuda.n>0)h+=`<div style="background:#FDF0EE;border:1.5px solid #C0492C;border-radius:12px;padding:12px;font-size:13px;color:#5A2418;margin-bottom:12px;line-height:1.5">
+      ⚠️ <b>Tiene una ayuda pendiente: la salida no es automática</b> (Maestro SA-10). Antes:<br>
+      1. Negociar que siga: aplazamiento, ampliar la permanencia o lo que sea mejor.<br>
+      2. Si ya cumplió sus primeros 12 meses: cubrir la ayuda con su beneficio guardado, sin salir.<br>
+      3. Si no se puede: sale y la ayuda se cancela con sus aportes y su beneficio (estas cifras).<br>
+      4. Si aun así no alcanza: lo que falte ${destinoFaltaTexto(m)}.
+      ${negociar?`<button onclick="MODAL.bajaNegociado=true;render()" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1.5px solid #C0492C;background:#fff;color:#C0492C;font-size:13.5px;font-weight:700;cursor:pointer">Ya se negoció: no puede seguir</button>`:`<div style="margin-top:6px;font-weight:700">✓ Negociado: no puede seguir.</div>`}</div>`;
+  if(ult>=hoyIdx)h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.4">Cuenta los aportes ya cobrados. Las cifras se actualizan solas con los que cobres hasta su último mes y se fijan al marcar la devolución como pagada (Histórico).</div>`;
+  if(!negociar)h+=`<button class="m-primary" style="${armed?"background:#C0492C":""}" onclick="${armed?`confirmarBaja('${esc(m.id)}')`:"MODAL.bajaArmed=true;render()"}">${armed?"⚠️ Pulsa de nuevo para CONFIRMAR la salida":corto?"Confirmar con aviso más corto":"Anotar la salida"}</button>
+`;
+  h+=`<button onclick="MODAL.bajaStep=1;MODAL.bajaArmed=false;render()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">← Cambiar meses</button>`;
+  return h;
 }
 function bajaContinuar(){
-  const mes=document.getElementById("baja-mes").value;
-  const anio=parseInt(document.getElementById("baja-anio").value);
-  MODAL.bajaMes=mes; MODAL.bajaAnio=anio; MODAL.bajaStep=2; MODAL.bajaArmed=false; render();
+  const ult=_idxMes(document.getElementById("baja-mes").value,parseInt(document.getElementById("baja-anio").value));
+  const av=_idxMes(document.getElementById("baja-am").value,parseInt(document.getElementById("baja-aa").value));
+  const m=DATA.members.find(x=>x.id===MODAL.mid);
+  if(m&&m.joinMonth&&ult<_idxMes(m.joinMonth,m.joinYear)){toast("⛔ El último mes no puede ser anterior a su entrada",3500);return;}
+  if(ult<av-1){toast("⛔ El último mes no puede ser anterior al aviso",3500);return;}
+  MODAL.bajaUltimoIdx=ult; MODAL.bajaAvisoIdx=av; MODAL.bajaStep=2; MODAL.bajaArmed=false; render();
 }
 function confirmarBaja(mid){
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
-  const r=darDeBaja(m,MODAL.bajaMes,MODAL.bajaAnio);
-  if(!r.ok){ closeModal(); toast(r.motivo||"No se pudo dar de baja"); return; }
-  save(); closeModal(); toast(m.name+" dado de baja ✓");
+  const r=darDeBajaV18(m,MODAL.bajaUltimoIdx,MODAL.bajaAvisoIdx);
+  if(!r.ok){ closeModal(); toast(r.motivo||"No se pudo anotar la salida"); return; }
+  save(); closeModal(); toast(m.name+": salida anotada ✓ · se paga "+m.baja.fechaPago);
 }
 
 function previewFormHTML(){
