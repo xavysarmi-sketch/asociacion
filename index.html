@@ -863,7 +863,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.4"; // v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.5"; // v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -5751,6 +5751,33 @@ function docActaHTML(rm,ry){
 }
 // v44.17: CARPETA DE CONTROL — todas las actas de cierre desde agosto de 2025 hasta el mes
 // anterior al del Cierre (el mes en curso aún no está cerrado), con un índice resumen.
+// v45.5 (solo para el administrador): lo que queda para la asociación en un mes = retornos
+// del mes − beneficio de los asociados − bonos por referido. Cada mes por separado, sin acumular.
+function quedaAsociacionMes(rm,ry){
+  // El mes de reporte (aún sin cerrar) usa los retornos PREVISTOS, como la hoja de cobro; los cerrados, los cobrados.
+  const enCurso=_idxMes(rm,ry)>=_idxMes(DATA.reportMonth,DATA.reportYear);
+  const R=resumenMesDoc(rm,ry), ret=enCurso?R.recPrev:R.recargoMes, rep=repartoBeneficioMes(ret,rm,ry), bonos=bonosReferidoMes(rm,ry);
+  return {enCurso,retornos:ret,beneficio:rep.obligacion,bonos,queda:Math.round((ret-rep.obligacion-bonos)*100)/100};
+}
+function quedaAsociacionHTML(rm,ry){
+  const q=quedaAsociacionMes(rm,ry), mesF=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
+  const ab=!!DESP["queda-asoc-meses"], r2=x=>fmtEur(Math.round(x*100)/100);
+  let h=`<div class="rf-divider"></div>
+    <div class="rf-sec">Para la asociación · ${mesF} <small style="opacity:.7">(solo para ti${q.enCurso?" · previsto":""})</small></div>
+    <div class="rf-row"><span>Retornos ${q.enCurso?"previstos":"cobrados"} del mes</span><span class="rf-val">${r2(q.retornos)} €</span></div>
+    <div class="rf-row"><span>− Beneficio de los asociados</span><span class="rf-val">${r2(q.beneficio)} €</span></div>
+    ${q.bonos?`<div class="rf-row"><span>− Bonos por referido</span><span class="rf-val">${r2(q.bonos)} €</span></div>`:""}
+    <div class="rf-total"><span>${q.queda>=0?"QUEDA PARA LA ASOCIACIÓN":"FALTA (lo pone el fondo)"}</span><span>${r2(Math.abs(q.queda))} €</span></div>
+    <div class="rf-row" style="cursor:pointer" onclick="DESP['queda-asoc-meses']=!DESP['queda-asoc-meses'];render()"><span>Ver otros meses</span><span class="rf-val">${ab?"▲":"▼"}</span></div>`;
+  if(ab){
+    const meses=[]; let y=2025,i=7; const fin=_idxMes(rm,ry);
+    while(y*12+i<=fin){ meses.push({rm:MONTHS[i],ry:y}); i++; if(i>11){i=0;y++;} }
+    meses.reverse().forEach(m=>{ const x=quedaAsociacionMes(m.rm,m.ry);
+      h+=`<div class="rf-row"><span>${MONTHS_FULL[MONTHS.indexOf(m.rm)]} ${m.ry}${x.enCurso?" <small style=\"opacity:.7\">(previsto)</small>":""}</span><span class="rf-val" style="${x.queda<0?"color:#FFB4A3":""}">${x.queda<0?"−":""}${r2(Math.abs(x.queda))} €</span></div>`; });
+    h+=`<div style="font-size:11px;opacity:.7;margin-top:4px;line-height:1.35">Cada mes por separado: retornos − beneficio − bonos. No se acumula de un mes a otro. Hasta noviembre 2025 el beneficio era todo el retorno repartido, por eso esos meses dan 0. El mes en curso es previsto (como en la hoja de cobro); al cerrarlo cuenta lo cobrado.</div>`;
+  }
+  return h;
+}
 function mesesCarpeta(){
   const out=[]; let y=2025, i=7; // Ago 2025
   const fin=DATA.reportYear*12+MONTHS.indexOf(DATA.reportMonth); // excluye el mes en curso
@@ -6382,6 +6409,7 @@ function render(){
         <div class="rf-row"><span>Pendiente total internas</span><span class="rf-val rf-pend">${totIntPend} €</span></div>
         <div class="rf-row"><span>Pendiente total terceros</span><span class="rf-val rf-pend">${totTercPend} €</span></div>
         <div class="rf-total"><span>CARTERA TOTAL</span><span>${totIntPend+totTercPend} €</span></div>
+        ${quedaAsociacionHTML(rm,ry)}
       </div></div>`;
     }
   }
