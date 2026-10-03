@@ -609,6 +609,7 @@ body.doc-abierto #appVersionTag{display:none}
 /* Pestañas del detalle del asociado */
 .ft-tabs{display:flex;gap:4px;margin:14px 0 12px;background:#EFEAE0;border-radius:14px;padding:4px}
 .ft-tab{flex:1 1 0;min-width:0;padding:9px 4px;border:none;background:transparent;border-radius:10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s;text-align:center}
+.ft-tabs.t5 .ft-tab{flex:1 1 auto;padding:9px 3px;font-size:11.5px} /* v45.2: 5 pestañas (Aval) */
 .ft-tab.active{background:#1B4332;color:#fff;box-shadow:0 2px 8px rgba(27,67,50,.25)}
 .ft-card{background:#fff;border:1px solid var(--border,#E5DECF);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(27,67,50,.05)}
 .ft-card-soft{background:#F7F4EE}
@@ -858,7 +859,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.1"; // v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.2"; // v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4236,6 +4237,22 @@ function avisoSubidaNivelHTML(m,rm,ry){
   return h;
 }
 
+// v45.2 (Maestro v18.4 · GE-1, SA-6, SA-10): en la ficha (y en el enlace del asociado) se ve quién
+// es su aval y de quién es aval él. Sin importes: solo si esa persona tiene una ayuda en curso.
+function avalFichaHTML(m){
+  if(!m||m.type!=="asociado"||!m.joinMonth)return "";
+  const vp=vistaPersonal(); let h="";
+  const a=avalDe(m);
+  if(a&&!a.fundador)h+=`<div class="ft-row"><span class="ft-lbl">${vp?"Tu aval":"Aval"}</span><span class="ft-val">${escH(a.m?a.m.name:a.nombre)}</span></div>`;
+  const activa=o=>(o.loans||[]).some(l=>(l.pays||[]).some(p=>!p.paid));
+  const avalados=DATA.members.filter(o=>o.type==="asociado"&&!o.baja&&o.id!==m.id&&((avalDe(o)||{}).m===m))
+    .sort((x,y)=>x.name.localeCompare(y.name));
+  if(avalados.length){
+    h+=`<div class="ft-row" style="border-bottom:none"><span class="ft-lbl"><b>${vp?"Eres aval de":"Es aval de"}</b></span><span class="ft-val">${avalados.length}</span></div>`;
+    avalados.forEach(o=>{ h+=`<div class="ft-row"><span class="ft-lbl">${escH(o.name)}</span><span class="ft-val" style="font-size:12.5px;color:#B06A1E">${activa(o)?"ayuda en curso":""}</span></div>`; });
+  }
+  return h;
+}
 function fichaHTML(m,readonly=false){ return readonly?_fichaHTMLpersonal(m,true):_fichaHTMLbase(m,false); }
 const _fichaHTMLpersonal=_enVistaPersonal((m,ro)=>_fichaHTMLbase(m,ro));
 function _fichaHTMLbase(m,readonly=false){
@@ -4367,10 +4384,10 @@ function _fichaHTMLbase(m,readonly=false){
   // Barra de pestañas (terceros no tienen Beneficios ni Aportes)
   const tabs=isTerc
     ? [["ayudas","Ayudas"],["resumen","Resumen"]]
-    : [["aportes","Aportes"],["ayudas","Ayudas"],["beneficios","Beneficios"],["resumen","Resumen"]];
+    : [["aportes","Aportes"],["ayudas","Ayudas"],["beneficios","Beneficios"],["resumen","Resumen"]].concat(avalFichaHTML(m)?[["aval","Aval"]]:[]); // v45.2
   // Si la pestaña activa no aplica a este miembro, ir a la primera disponible
   if(!tabs.some(t=>t[0]===FICHA_TAB))FICHA_TAB=tabs[0][0];
-  h+=`<div class="ft-tabs">`;
+  h+=`<div class="ft-tabs${tabs.length>=5?" t5":""}">`;
   tabs.forEach(([id,lbl])=>{
     h+=`<button class="ft-tab ${FICHA_TAB===id?"active":""}" onclick="FICHA_TAB='${id}';render()">${lbl}</button>`;
   });
@@ -4399,6 +4416,11 @@ function _fichaHTMLbase(m,readonly=false){
       h+=`<div class="ft-row"><span class="ft-lbl">Ayudas</span><span class="ft-val">${activasN} activo${activasN!==1?"s":""} · ${cerradasN} cerrado${cerradasN!==1?"s":""}</span></div>`;
     }
     h+=`</div>`;
+  }
+
+  /* ── PESTAÑA AVAL (v45.2 · Maestro GE-1) ── */
+  if(FICHA_TAB==="aval"&&!isTerc){
+    h+=`<div class="ft-card"><div class="ft-card-title">🤝 Aval</div>${avalFichaHTML(m)}</div>`;
   }
 
   /* ── PESTAÑA BENEFICIOS ── */
