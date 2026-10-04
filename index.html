@@ -866,7 +866,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.8"; // v45.8: Maestro v18.5 · AY-1: la última cuota de una ayuda, como máximo en el último mes de la permanencia (registro y auditoría 13) · v45.7: v45.7: simuladores — aviso entre la cantidad y la barra, última cuota como máximo en el último mes de permanencia, beneficio por cada 50 € en cada permanencia · v45.6: simuladores de ayuda y de beneficio en la ficha (de momento solo en la app del administrador) · v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.9"; // v45.9: en los enlaces, un aporte habitual mayor de 50 € sin pagar se ve con su importe (Christian 100 €) · simulador de beneficio — «Tu situación hoy» en desplegable; ejemplos generales por permanencia (50–200 €) y ejemplo de aporte variable · v45.8: v45.8: Maestro v18.5 · AY-1: la última cuota de una ayuda, como máximo en el último mes de la permanencia (registro y auditoría 13) · v45.7: v45.7: simuladores — aviso entre la cantidad y la barra, última cuota como máximo en el último mes de permanencia, beneficio por cada 50 € en cada permanencia · v45.6: simuladores de ayuda y de beneficio en la ficha (de momento solo en la app del administrador) · v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -2353,7 +2353,12 @@ function aportePagadoMes(m,rm,ry){ const md=DATA.monthlyData&&DATA.monthlyData[g
 // simplemente como «Aporte 50 €» (el aporte base, Maestro AP-1). Si paga más, Ángel lo cambia en
 // el cierre y ya se ve lo pagado. La Guía para asociados explica que puede poner hasta 200 €.
 function aporteMostradoMes(m,rm,ry){
-  if(vistaPersonal()&&m.type==="asociado"&&!aportePagadoMes(m,rm,ry))return {importe:APORTE_MINIMO,abierto:false,base:true};
+  // v45.9 (decisión de Ángel 04/10/2026): quien tiene anotado un aporte habitual mayor de 50 € (AP-4,
+  // hoy Christian Ramírez con 100 €) lo ve tal cual, para que su enlace y el del grupo cuadren con el cierre.
+  if(vistaPersonal()&&m.type==="asociado"&&!aportePagadoMes(m,rm,ry)){
+    if(aporteBaseDe(m)>APORTE_MINIMO)return {importe:aporteBrutoMes(m,rm,ry),abierto:false};
+    return {importe:APORTE_MINIMO,abierto:false,base:true};
+  }
   return {importe:aporteBrutoMes(m,rm,ry),abierto:false};
 }
 // Línea del aporte del mes (vista personal y administrador)
@@ -6935,7 +6940,7 @@ let SIM=null; // {mid, tab:"ayuda"|"ben", ciclo, cap, n, ap}
 const SIM_MAX_AYUDA=1000; // decisión de Ángel 03/10/2026: por la demanda, el simulador llega hasta 1.000 € (más adelante 2.000 y 3.000)
 function abrirSimulador(mid,tab){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
-  SIM={mid,tab:tab||"ayuda",ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,_simMaxCuotas(m))),ap:aporteBaseDe(m)};
+  SIM={mid,tab:tab||"ayuda",ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,_simMaxCuotas(m))),ap:50};
   openModal('sim',{mid});
 }
 const _permTxt=c=>c===0?"Indefinida":c+" meses";
@@ -7043,39 +7048,63 @@ function _simProyeccion(m,ciclo,ap){
     totalAp:_r2(yaAp+nAp),totalBen:_r2(yaBen+nBen-ret),recibe:_r2(yaAp+nAp+yaBen+nBen-ret)};
 }
 function simBenResHTML(m){
+  // v45.9: «Tu situación hoy» (datos de la persona) en un desplegable; debajo, ejemplos generales por permanencia y un ejemplo de aporte variable
   if(!m.joinMonth)return "";
-  const rep=_idxMes(DATA.reportMonth,DATA.reportYear), ini=_idxMes(m.joinMonth,m.joinYear);
-  const anio=Math.floor((rep-ini)/12)+1, mesPerm=rep-ini+1, fin=finPermanenciaIdx(m);
-  const tHoy=tarifaNivelMes(m,_keyDeIdx(rep+1)), apHoy=aporteBrutoKey(m,_keyDeIdx(rep));
+  const rep=_idxMes(DATA.reportMonth,DATA.reportYear), fin=finPermanenciaIdx(m);
+  const tHoy=tarifaNivelMes(m,_keyDeIdx(rep+1)), pagadoHoy=_aportePagadoKey(m,_keyDeIdx(rep)), apHoy=aporteBrutoKey(m,_keyDeIdx(rep));
   const aportes=totalAportadoMiembro(m), guardado=beneficioGuardado(m);
-  // 1) Tu situación hoy (lo mismo que su ficha)
-  let h=`<div style="font-size:15px;font-weight:800;color:var(--dark);margin-bottom:6px">📍 Tu situación hoy</div>`
-    +_simCaja(`<div style="font-size:12.5px;opacity:.85;margin-bottom:4px">Permanencia ${m.ciclo===0?"indefinida":`de ${m.ciclo} meses`}${fin!=null?` · termina en ${_txtIdx(fin)}`:""}</div>`,
+  const pend=pagadoHoy?_r2((apHoy/50)*tHoy):0;   // beneficio del aporte de este mes: se guarda el mes que viene (BE-3)
+  const yaTienes=_r2(aportes+guardado+pend);
+  const mesTxt=MONTHS_FULL[((rep%12)+12)%12].toLowerCase(), sigTxt=MONTHS_FULL[(((rep+1)%12)+12)%12].toLowerCase();
+  // 1) Tu situación hoy (desplegable)
+  const abierto=!!DESP["sim-hoy"];
+  let h=`<button onclick="DESP['sim-hoy']=!DESP['sim-hoy'];render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;margin:0 0 ${abierto?0:16}px;padding:12px 14px;border-radius:${abierto?"12px 12px 0 0":"12px"};border:1.5px solid #2D6A4F;background:#EEF7F1;color:#1B4332">
+      <span style="font-size:22px">📍</span><span style="flex:1;font-size:14.5px;font-weight:800">Tu situación hoy <span style="font-weight:600;font-size:12.5px;opacity:.8">Toca aquí para verla</span></span>
+      <span style="font-size:18px;transform:rotate(${abierto?90:0}deg)">›</span></button>`;
+  if(abierto)h+=`<div style="margin-bottom:16px">`+_simCaja(`<div style="font-size:12.5px;opacity:.85;margin-bottom:4px">Permanencia ${m.ciclo===0?"indefinida":`de ${m.ciclo} meses`}${fin!=null?` · termina en ${_txtIdx(fin)}`:""}</div>`,
        _simFila("Tus aportes",fmtEur(aportes)+" €")
       +_simFila("Tu beneficio guardado",fmtEur(guardado)+" €")
-      +_simFila("Llevas acumulado",fmtEur(_r2(aportes+guardado))+" €",true)
-      +`<div style="font-size:12.5px;opacity:.85;margin-top:4px">Ahora, cada 50 € que aportas ganan <b>${tHoy} €</b>${apHoy?` (con ${apHoy} € este mes, ${fmtEur((apHoy/50)*tHoy)} €)`:""}.</div>`);
-  // 2) Opciones según permanencia
-  const opts=_simPermOpciones(m);
-  h+=`<div style="font-size:15px;font-weight:800;color:var(--dark);margin:18px 0 8px">🌱 ¿Y si te quedas más tiempo?</div>
-    <label class="m-label">Si pones al mes</label>
-    <div style="display:flex;gap:6px;margin-bottom:12px">${APORTE_OPCIONES.map(v=>`<button onclick="SIM.ap=${v};render()" style="flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid ${SIM.ap===v?"#1B4332":"#E3DDD2"};background:${SIM.ap===v?"#1B4332":"#fff"};color:${SIM.ap===v?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${v} €</button>`).join("")}</div>`;
-  const base=_simProyeccion(m,opts[0],SIM.ap);
-  opts.forEach((c,k)=>{
-    const q=_simProyeccion(m,c,SIM.ap), extra=_r2(q.totalBen-base.totalBen), actual=c===m.ciclo;
-    h+=`<div style="border:1.5px solid ${actual?"#2D6A4F":"#E3DDD2"};border-radius:14px;padding:12px 14px;margin-bottom:10px;background:${actual?"#F4F9F6":"#fff"}">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-        <span style="font-size:15px;font-weight:800;color:#1B4332">${_permTxt(c)} <span style="font-size:12.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap">${c===12?"10 €":c===24?"10 € → 12 €":"10 → 12 → 15 €"}</span>${actual?' <span style="font-size:12px;font-weight:700;color:var(--muted)">· la tuya</span>':""}</span>
-        ${k>0&&extra>0?`<span style="font-size:13px;font-weight:800;color:#B06A1E;white-space:nowrap">+${fmtEur(extra)} € más</span>`:""}
+      +(pend?_simFila(`Beneficio de ${mesTxt} (se guarda en ${sigTxt})`,"+"+fmtEur(pend)+" €"):"")
+      +_simFila("Llevas acumulado",fmtEur(yaTienes)+" €",true)
+      +`<div style="font-size:12.5px;opacity:.85;margin-top:4px">Ahora, cada 50 € que aportas ganan <b>${tHoy} €</b>${pagadoHoy&&apHoy?` (con ${apHoy} € este mes, ${fmtEur(pend)} €)`:""}.</div>`)+`</div>`;
+  // 2) Ejemplos generales (no son los datos de la persona: esos están en «Tu situación hoy»)
+  //    Tarifas BE-2: 10 € el 1.er año, 12 € el 2.º (24, 36, indefinida), 15 € desde el 3.º (36, indefinida).
+  const tarifas=c=>c===12?[10]:c===24?[10,12]:c===36?[10,12,15]:[10,12,15,15]; // indefinida: ejemplo con 4 años
+  const ab2=!!DESP["sim-var"];
+  h+=`<div style="font-size:15px;font-weight:800;color:var(--dark);margin:0 0 8px">🌱 ¿Y si te quedas más tiempo?</div>
+    <button onclick="DESP['sim-var']=!DESP['sim-var'];render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;margin:0 0 ${ab2?0:12}px;padding:11px 14px;border-radius:${ab2?"12px 12px 0 0":"12px"};border:1.5px solid #C9A227;background:#FFF8E1;color:#5C4A00">
+      <span style="font-size:20px">🔀</span><span style="flex:1;font-size:14px;font-weight:800">¿Tengo que poner siempre lo mismo? <span style="font-weight:600;font-size:12.5px;opacity:.8">Toca aquí</span></span>
+      <span style="font-size:18px;transform:rotate(${ab2?90:0}deg)">›</span></button>`;
+  if(ab2){
+    const ej=[50,100,50,50,200,50,100,50,150,50,50,100], tot=ej.reduce((a,b)=>a+b,0), ben=ej.reduce((a,b)=>a+(b/50)*10,0);
+    h+=`<div style="border:1.5px solid #C9A227;border-top:none;border-radius:0 0 12px 12px;padding:10px 14px 12px;margin-bottom:12px;font-size:13.5px;color:#3B3B3B;line-height:1.5;background:#fff">
+      <b>No.</b> Lo mínimo es <b>50 €</b> y cada mes eliges: 50, 100, 150 o 200 €. Cada 50 € que pones ese mes gana su parte.
+      <div style="margin:8px 0 4px;font-weight:800;color:#1B4332">Ejemplo de un año (cada 50 € gana 10 €):</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #E3DDD2;border-radius:10px;overflow:hidden;font-size:13px">
+        <div style="background:#1B4332;color:#fff;padding:5px 8px;font-weight:700">Mes</div><div style="background:#1B4332;color:#fff;padding:5px 8px;font-weight:700;text-align:right">Pones</div><div style="background:#1B4332;color:#fff;padding:5px 8px;font-weight:700;text-align:right">Ganas</div>
+        ${ej.map((v,k)=>{const bg=k%2?"background:#F7F4EE;":"";return `<div style="${bg}padding:4px 8px">${k+1}</div><div style="${bg}padding:4px 8px;text-align:right">${v} €</div><div style="${bg}padding:4px 8px;text-align:right;color:#2D6A4F;font-weight:700">+${(v/50)*10} €</div>`;}).join("")}
+        <div style="background:#EEF7F1;padding:6px 8px;font-weight:800">Total</div><div style="background:#EEF7F1;padding:6px 8px;text-align:right;font-weight:800">${fmtEur(tot)} €</div><div style="background:#EEF7F1;padding:6px 8px;text-align:right;font-weight:800;color:#2D6A4F">+${fmtEur(ben)} €</div>
       </div>
-      <div style="font-size:12.5px;color:#1B4332;margin:4px 0 2px">Cada 50 € que aportas ganan al mes ${c===12?"<b>10 €</b>":c===24?"<b>10 €</b> el 1.er año y <b>12 €</b> el 2.º":c===36?"<b>10 €</b> el 1.er año, <b>12 €</b> el 2.º y <b>15 €</b> el 3.º":"<b>10 €</b> el 1.er año, <b>12 €</b> el 2.º y <b>15 €</b> desde el 3.º"}.</div>
-      <div style="font-size:12px;color:var(--muted);margin:0 0 6px">${c===0?`Sin fecha de fin · cálculo hasta ${_txtIdx(q.fin)}`:`Hasta ${_txtIdx(q.fin)}`}</div>
-      <div style="display:flex;justify-content:space-between;font-size:13.5px;padding:2px 0"><span>Tus aportes</span><b>${fmtEur(q.totalAp)} €</b></div>
-      <div style="display:flex;justify-content:space-between;font-size:13.5px;padding:2px 0"><span>Tu beneficio</span><b style="color:#2D6A4F">${fmtEur(q.totalBen)} €</b></div>
-      <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:4px 0 0;border-top:1px solid #EFEAE0;margin-top:4px"><span>${c===0?"Tendrías":"Recibes al terminar"}</span><b>${fmtEur(q.recibe)} €</b></div>
+      <div style="margin-top:8px">Al terminar recibes <b>${fmtEur(tot+ben)} €</b>: tus ${fmtEur(tot)} € y ${fmtEur(ben)} € de beneficio.</div></div>`;
+  }
+  h+=`<label class="m-label">Ejemplo: si pones cada mes</label>
+    <div style="display:flex;gap:6px;margin-bottom:12px">${APORTE_OPCIONES.map(v=>`<button onclick="SIM.ap=${v};render()" style="flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid ${SIM.ap===v?"#1B4332":"#E3DDD2"};background:${SIM.ap===v?"#1B4332":"#fff"};color:${SIM.ap===v?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${v} €</button>`).join("")}</div>`;
+  const fila=(l,v,o={})=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:${o.big?15.5:13.5}px;padding:${o.big?"6px 0 0":"2px 0"};${o.top?"border-top:1px solid #E3DDD2;margin-top:6px;":""}"><span style="${o.big?"font-weight:800;color:#1B4332":"color:#4A4A4A"}">${l}</span><b style="white-space:nowrap;${o.color?`color:${o.color}`:""};font-size:${o.big?19:14}px">${v}</b></div>`;
+  const ejemplo=c=>{ const t=tarifas(c), meses=t.length*12, pon=SIM.ap*meses, gana=t.reduce((a,x)=>a+12*(SIM.ap/50)*x,0); return {meses,pon,gana,recibe:pon+gana}; };
+  const base=ejemplo(12);
+  PERM_OPCIONES.forEach(c=>{
+    const r=ejemplo(c), extra=r.gana-base.gana;
+    h+=`<div style="border:1.5px solid #E3DDD2;border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#fff">
+      <div style="font-size:15px;font-weight:800;color:#1B4332">${_permTxt(c)} <span style="font-size:12.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap">${c===12?"10 €":c===24?"10 € → 12 €":"10 → 12 → 15 €"}</span></div>
+      <div style="font-size:12.5px;color:#1B4332;margin:4px 0 8px">Cada 50 € que aportas ganan al mes ${c===12?"<b>10 €</b>":c===24?"<b>10 €</b> el 1.er año y <b>12 €</b> el 2.º":c===36?"<b>10 €</b> el 1.er año, <b>12 €</b> el 2.º y <b>15 €</b> el 3.º":"<b>10 €</b> el 1.er año, <b>12 €</b> el 2.º y <b>15 €</b> desde el 3.º"}.</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:2px">${c===0?`Sin fecha de fin. Ejemplo con 4 años (${r.meses} meses):`:`Si pones ${SIM.ap} € cada mes durante ${r.meses} meses:`}</div>
+      ${fila(`Pones ${SIM.ap} € × ${r.meses} meses`,fmtEur(r.pon)+" €")}
+      ${fila("Ganas de beneficio","+"+fmtEur(r.gana)+" €",{color:"#2D6A4F"})}
+      ${fila(c===0?"A los 4 años tendrías":"Al terminar recibes",fmtEur(r.recibe)+" €",{big:true,top:true})}
+      ${extra>0?`<div style="margin-top:6px;font-size:13px;font-weight:800;color:#B06A1E">👉 Ganas ${fmtEur(extra)} € más de beneficio que con 12 meses</div>`:""}
     </div>`;
   });
-  if(opts.length>1)h+=`<div style="font-size:12px;color:var(--muted);line-height:1.4">«Más» es el beneficio extra frente a ${_permTxt(opts[0]).toLowerCase()}. Puedes ampliar tu permanencia cuando quieras; nunca se puede bajar.</div>`;
+  h+=`<div style="font-size:12px;color:var(--muted);line-height:1.4">Puedes ampliar tu permanencia cuando quieras; nunca se puede bajar.</div>`;
   return h;
 }
 // ── Modal "Dar de baja" (dos pasos: elegir mes → confirmar cifras). Solo cablea la
