@@ -866,7 +866,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.14"; // v45.14: Gestión → «📝 Solicitudes de ayuda» — solicitudes numeradas (otorgar abre la ayuda ya rellena, alta si es nueva, se apunta en la cuenta del grupo si la entrega su principal) y dinero disponible del mes · cuenta del grupo — se oculta al estar liquidada (etiqueta «✅ Liquidado» junto al nombre) y queda en una línea si no tiene apuntes · v45.13: v45.13: cierre grupal — «Cuenta con …» por grupo y mes (entregas a cuenta, ayudas que paga el responsable del grupo y simulación de ayudas; solo control del administrador) · v45.12: v45.12: «Tu permanencia actual es de N meses» en «Tu situación hoy» · v45.11: v45.11: «Tu situación hoy» dice cuándo se decide (Maestro v18.6 · PE-5); «Elige tu aporte mensual» · v45.10: v45.10: simulador de beneficio — «¿Tengo que poner siempre lo mismo?» al final de los cuadros; cuadros con el beneficio año por año y «Con permanencia de…»; «pones» → «aportas»; desplegable «¿Puedo cobrar mi beneficio sin irme?»; simulador de ayuda sin el cuadro ✅ · v45.9: v45.9: en los enlaces, un aporte habitual mayor de 50 € sin pagar se ve con su importe (Christian 100 €) · simulador de beneficio — «Tu situación hoy» en desplegable; ejemplos generales por permanencia (50–200 €) y ejemplo de aporte variable · v45.8: v45.8: Maestro v18.5 · AY-1: la última cuota de una ayuda, como máximo en el último mes de la permanencia (registro y auditoría 13) · v45.7: v45.7: simuladores — aviso entre la cantidad y la barra, última cuota como máximo en el último mes de permanencia, beneficio por cada 50 € en cada permanencia · v45.6: simuladores de ayuda y de beneficio en la ficha (de momento solo en la app del administrador) · v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.15"; // v45.15: «💬 Enviar cuenta» por WhatsApp en la cuenta del grupo; solicitudes con aval y grupo (se proponen solos; al otorgar entra en el grupo y el principal entrega por defecto) · v45.14: v45.14: Gestión → «📝 Solicitudes de ayuda» — solicitudes numeradas (otorgar abre la ayuda ya rellena, alta si es nueva, se apunta en la cuenta del grupo si la entrega su principal) y dinero disponible del mes · cuenta del grupo — se oculta al estar liquidada (etiqueta «✅ Liquidado» junto al nombre) y queda en una línea si no tiene apuntes · v45.13: v45.13: cierre grupal — «Cuenta con …» por grupo y mes (entregas a cuenta, ayudas que paga el responsable del grupo y simulación de ayudas; solo control del administrador) · v45.12: v45.12: «Tu permanencia actual es de N meses» en «Tu situación hoy» · v45.11: v45.11: «Tu situación hoy» dice cuándo se decide (Maestro v18.6 · PE-5); «Elige tu aporte mensual» · v45.10: v45.10: simulador de beneficio — «¿Tengo que poner siempre lo mismo?» al final de los cuadros; cuadros con el beneficio año por año y «Con permanencia de…»; «pones» → «aportas»; desplegable «¿Puedo cobrar mi beneficio sin irme?»; simulador de ayuda sin el cuadro ✅ · v45.9: v45.9: en los enlaces, un aporte habitual mayor de 50 € sin pagar se ve con su importe (Christian 100 €) · simulador de beneficio — «Tu situación hoy» en desplegable; ejemplos generales por permanencia (50–200 €) y ejemplo de aporte variable · v45.8: v45.8: Maestro v18.5 · AY-1: la última cuota de una ayuda, como máximo en el último mes de la permanencia (registro y auditoría 13) · v45.7: v45.7: simuladores — aviso entre la cantidad y la barra, última cuota como máximo en el último mes de permanencia, beneficio por cada 50 € en cada permanencia · v45.6: simuladores de ayuda y de beneficio en la ficha (de momento solo en la app del administrador) · v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -2856,8 +2856,18 @@ function solGuardar(){
   const m=mid?DATA.members.find(x=>x.id===mid):null;
   if(!m&&!nom){toast("Elige a la persona o escribe su nombre");return;}
   if(!(cap>0)){toast("Escribe la cantidad que pide");return;}
-  _sols().push({id:"S"+Date.now()+Math.random().toString(36).slice(2,6),mid:m?m.id:null,nombre:m?m.name:nom,capital:_r2(cap),cuotas:n,fecha:_hoyDMA(),estado:"pendiente"});
+  const avalId=(document.getElementById("so-aval")||{}).value||null, grupoGid=(document.getElementById("so-grupo")||{}).value||null;
+  _sols().push({id:"S"+Date.now()+Math.random().toString(36).slice(2,6),mid:m?m.id:null,nombre:m?m.name:nom,capital:_r2(cap),cuotas:n,fecha:_hoyDMA(),estado:"pendiente",avalId,grupoGid});
   SOL_FORM=false; save(); render(); toast("Solicitud apuntada ✓");
+}
+// v45.15: grupo de una persona (principal o miembro) y propuesta automática de aval/grupo
+function _grupoDe(mid){ const g=gruposCierre().find(x=>x.principalId===mid||(x.miembros||[]).includes(mid)); return g?g.id:""; }
+function soAvalCambio(){ const a=(document.getElementById("so-aval")||{}).value||"", g=document.getElementById("so-grupo"); if(g&&a){ const gid=_grupoDe(a); if(gid)g.value=gid; } }
+function soMidCambio(){
+  const mid=(document.getElementById("so-mid")||{}).value||"", w=document.getElementById("so-nom-wrap"); if(w)w.style.display=mid?"none":"block";
+  const m=mid&&DATA.members.find(x=>x.id===mid); if(!m)return;
+  const av=m.type==="tercero"?m.ref:m.referidoPor, a=document.getElementById("so-aval"), g=document.getElementById("so-grupo");
+  if(a&&av)a.value=av; if(g){ const gid=_grupoDe(mid)||(av?_grupoDe(av):""); if(gid)g.value=gid; }
 }
 function solPreview(){
   const cap=parseFloat(String((document.getElementById("so-cap")||{}).value||"").replace(",","."))||0, n=parseInt((document.getElementById("so-n")||{}).value||"5");
@@ -2870,7 +2880,7 @@ function solOtorgar(id){
   const so=_sols().find(x=>x.id===id); if(!so)return;
   const m=so.mid&&DATA.members.find(x=>x.id===so.mid);
   if(m){openModal('cierreloan',{sol:id});setTimeout(updateCierreLoanPreview,30);}
-  else openModal('member',{preset:"asociado",sol:id,solNombre:so.nombre});
+  else { openModal('member',{preset:"asociado",sol:id,solNombre:so.nombre,solAval:so.avalId||null}); if(so.avalId)setTimeout(altaReferidoCambio,30); }
 }
 function _solTrasAlta(solId,m){ const so=_sols().find(x=>x.id===solId); if(!so||!m)return; so.mid=m.id; so.nombre=m.name; save(); setTimeout(()=>{openModal('cierreloan',{sol:solId});setTimeout(updateCierreLoanPreview,30);},150); }
 function solEstado(id,estado){ const so=_sols().find(x=>x.id===id); if(!so)return; so.estado=estado; if(estado==="pendiente"){delete so.lid;delete so.mesOtorgada;} delete DESP["solno-"+id]; save(); render(); }
@@ -2926,6 +2936,8 @@ function ayudasTabHTML(){
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">${escH(so.nombre)}</b><b style="font-size:15.5px;color:#B06A1E;white-space:nowrap">${fmtEur(so.capital)} €</b></div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${m?(m.type==="tercero"?"Tercero":"Asociado"):"Nuevo"} · ${escH(so.fecha||"")} · ${so.cuotas} ${so.cuotas===1?"cuota":"cuotas"} de ${fmtEur(cuotas[0])} €</div>
+        ${(()=>{ const av=so.avalId&&DATA.members.find(x=>x.id===so.avalId), gg=so.grupoGid&&gruposCierre().find(x=>x.id===so.grupoGid), gp=gg&&DATA.members.find(x=>x.id===gg.principalId);
+          return (av||gp)?`<div style="font-size:12px;color:#1B4332;margin-top:2px">${av?`🛡️ Aval: ${escH(av.name.split(" ")[0])}`:""}${av&&gp?" · ":""}${gp?`👥 Grupo de ${escH(gp.name.split(" ")[0])}`:""}</div>`:""; })()}
         <div style="display:flex;gap:6px;margin-top:8px">
           <button onclick="solOtorgar('${so.id}')" style="flex:2;padding:9px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13px;font-weight:800;cursor:pointer">✅ Otorgar</button>
           <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:9px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#C0492C"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button>
@@ -2936,11 +2948,15 @@ function ayudasTabHTML(){
     h+=`<div style="border:1.5px solid #2D6A4F;border-radius:12px;padding:12px;margin-top:10px;background:#F4F9F6">
       <div style="font-size:15px;font-weight:800;color:#1B4332;margin-bottom:6px">Nueva solicitud</div>
       <label class="m-label">¿Quién la pide?</label>
-      <select id="so-mid" class="m-select" style="font-size:15px" onchange="document.getElementById('so-nom-wrap').style.display=this.value?'none':'block'"><option value="">— Elegir —</option>
+      <select id="so-mid" class="m-select" style="font-size:15px" onchange="soMidCambio()"><option value="">— Elegir —</option>
         <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup>
         <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup></select>
       <div id="so-nom-wrap"><div style="font-size:12px;color:var(--muted);margin:2px 0 6px">o, si aún no está en la app:</div>
       <input id="so-nom" type="text" class="m-input" placeholder="Nombre y apellidos" style="font-size:16px"></div>
+      <label class="m-label">¿Quién la avala?</label>
+      <select id="so-aval" class="m-select" style="font-size:15px" onchange="soAvalCambio()"><option value="">— Sin aval / fundador —</option>${asoc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>
+      <label class="m-label">¿En qué grupo va?</label>
+      <select id="so-grupo" class="m-select" style="font-size:15px"><option value="">— Sin grupo —</option>${gruposCierre().map(g=>{const p=DATA.members.find(m=>m.id===g.principalId);return p?`<option value="${esc(g.id)}">Grupo de ${escH(p.name)}</option>`:"";}).join("")}</select>
       <label class="m-label">¿Cuánto pide? (€)</label>
       <input id="so-cap" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 500" style="font-size:16px" oninput="solPreview()">
       <label class="m-label">¿En cuántas cuotas?</label>
@@ -2989,6 +3005,24 @@ function cgSimEnviar(gid){
   if(d.ayudas)t+=`\nAyudas que ya has dado: −${e(d.ayudas)}`;
   d.sim.forEach((x,i)=>{ t+=`\n${_cgSimEtq(x,i,d.sim.length,false)}: −${e(x.v)}`; });
   t+= d.resto>=0?`\n\n👉 *Te quedaría por entregar: ${e(d.resto)}*`:`\n\n⚠️ *Te faltarían ${e(-d.resto)} para dar estas ayudas*`;
+  t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
+  else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+}
+// v45.15: enviar el estado real de la cuenta del grupo por WhatsApp
+function cgEnviarCuenta(gid){
+  const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
+  const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), movs=_cgMovs(_keyDeIdx(idx),gid), falta=_cgFalta(g,idx);
+  const nom=p.name.split(" ")[0], mes=MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase(), e=v=>fmtEur(v)+" €";
+  const mesDe=k=>MONTHS_FULL[+k.slice(5)-1].toLowerCase();
+  let t=`Hola ${nom} 👋\nTus cuentas de ${mes}:\n\nTotal del grupo: ${e(_cgTotal(g,idx))}`;
+  movs.forEach(x=>{
+    if(x.tipo==="arrastre")t+=`\nPendiente de ${mesDe(x.de)}: +${e(x.importe)}`;
+    else if(x.tipo==="entrega")t+=`\nMe entregaste${x.fecha?" el "+x.fecha:""}: −${e(x.importe)}`;
+    else if(x.tipo==="ayuda")t+=`\nAyuda que diste a ${x.nombre||""}: −${e(x.importe)}`;
+  });
+  t+= falta>0?`\n\n👉 *Te falta por entregar: ${e(falta)}*`:falta<0?`\n\n👉 *Me has entregado ${e(-falta)} de más*`:`\n\n✅ *Todo entregado. ¡Gracias!*`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
   else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
@@ -3103,6 +3137,7 @@ function cuentaGrupoHTML(g,principal){
     h+=`<div style="display:flex;gap:6px;margin-top:10px">
         <button onclick="cgAbrir('${g.id}','entrega')" style="flex:1;padding:10px 4px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13px;font-weight:800;cursor:pointer">＋ Entrega</button>
         <button onclick="cgAbrir('${g.id}','ayuda')" style="flex:1;padding:10px 4px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:13px;font-weight:800;cursor:pointer">＋ Ayuda que paga ${nom}</button></div>
+      <button onclick="cgEnviarCuenta('${g.id}')" style="width:100%;margin-top:6px;padding:10px;border-radius:9px;border:none;background:#25D366;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">💬 Enviar cuenta a ${nom}</button>
       <button onclick="cgAbrir('${g.id}','sim')" style="width:100%;margin-top:6px;padding:9px;border-radius:9px;border:1.5px dashed #B06A1E;background:#FFF8EE;color:#8A4F12;font-size:13px;font-weight:800;cursor:pointer">🧮 Simular ayudas</button>`;
   }
   // v45.13: simulación de ayudas, escrita para enviársela al responsable del grupo (no se guarda)
@@ -7535,14 +7570,14 @@ ${MODAL.sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;borde
 <button class="m-opt ${pr==="asociado"?"active":""}" data-type="asociado" onclick="this.classList.add('active');this.nextElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='none';document.getElementById('m-refdo-wrap').style.display='block'">👥 Asociado</button>
 <button class="m-opt ${pr==="tercero"?"active":""}" data-type="tercero" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='block';document.getElementById('m-refdo-wrap').style.display='none'">🤝 Tercero</button>
 </div>
-<div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select></div>
+<div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select></div>
 <div id="m-refdo-wrap" style="display:${pr==="tercero"?"none":"block"};margin-bottom:12px">
 <label class="m-label">Permanencia (obligatoria)</label>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,null,permEtiqueta)}</div>
 <label class="m-label">Aporte habitual</label>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">${_opcionesHTML("l-ap-opt","ap",APORTE_OPCIONES,50,v=>v+" €")}</div>
 <label class="m-label">🎁 ¿Quién lo trajo? (referido por)</label>
-<select id="m-refdo" class="m-select" onchange="altaReferidoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>
+<select id="m-refdo" class="m-select" onchange="altaReferidoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select>
 <div id="m-bono-wrap" style="display:none;margin-top:10px;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:12px;padding:10px 12px">
 <label class="m-label" style="color:#7A5A12">Mes en que se aplica el bono de 10 €</label>
 <select id="m-bono-mes" class="m-select"></select>
@@ -7574,7 +7609,7 @@ ${sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;border-radi
 <select id="cl-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateCierreLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===(sol?sol.cuotas:3)?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
 <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Otorgada en <b>${rm} ${ry}</b> · 1ª cuota en <b>${MONTHS[ni]} ${ny}</b></div>
 ${grs.length?`<label class="m-label">¿Quién entrega el dinero?</label>
-<select id="cl-entrega" class="m-select" style="margin-bottom:12px;font-size:15px"><option value="">Yo</option>${grs.map(({g,p})=>`<option value="${esc(g.id)}">${escH(p.name.split(" ")[0])} (del cobro de su grupo)</option>`).join("")}</select>`:""}
+<select id="cl-entrega" class="m-select" style="margin-bottom:12px;font-size:15px"><option value="">Yo</option>${grs.map(({g,p})=>`<option value="${esc(g.id)}"${sol&&sol.grupoGid===g.id?" selected":""}>${escH(p.name.split(" ")[0])} (del cobro de su grupo)</option>`).join("")}</select>`:""}
 <div id="cl-preview"></div>
 <button class="m-primary" onclick="addCierreLoanSubmit()">Registrar ayuda</button>`;
 }
@@ -7623,6 +7658,8 @@ function addCierreLoanSubmit(){
   const gidEnt=(document.getElementById("cl-entrega")||{}).value||"";
   if(gidEnt){ _cgW(getMesKey(rm,ry),gidEnt).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"ayuda",importe:_r2(cap),fecha:_cgHoy(),mid,lid,nombre:m.name}); }
   if(MODAL&&MODAL.sol){ const so=(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol);
+    if(so&&so.grupoGid&&!_grupoDe(mid)){ const gg=gruposCierre().find(x=>x.id===so.grupoGid); if(gg&&gg.principalId!==mid){ if(!gg.miembros)gg.miembros=[]; gg.miembros.push(mid); } } // v45.15
+    if(so&&so.avalId&&m.type==="tercero"&&!m.ref)m.ref=so.avalId; // v45.15
     if(so){ so.estado="otorgada"; so.mid=mid; so.lid=lid; so.mesOtorgada=getMesKey(rm,ry); so.capitalOtorgado=cap; so.cuotasOtorgadas=nn; so.entregaGid=gidEnt||null; so.fechaOtorgada=_cgHoy(); } }
   save();closeModal();render();toast("Ayuda registrada ✓");
 }
