@@ -866,7 +866,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.15"; // v45.15: «💬 Enviar cuenta» por WhatsApp en la cuenta del grupo; solicitudes con aval y grupo (se proponen solos; al otorgar entra en el grupo y el principal entrega por defecto) · v45.14: v45.14: Gestión → «📝 Solicitudes de ayuda» — solicitudes numeradas (otorgar abre la ayuda ya rellena, alta si es nueva, se apunta en la cuenta del grupo si la entrega su principal) y dinero disponible del mes · cuenta del grupo — se oculta al estar liquidada (etiqueta «✅ Liquidado» junto al nombre) y queda en una línea si no tiene apuntes · v45.13: v45.13: cierre grupal — «Cuenta con …» por grupo y mes (entregas a cuenta, ayudas que paga el responsable del grupo y simulación de ayudas; solo control del administrador) · v45.12: v45.12: «Tu permanencia actual es de N meses» en «Tu situación hoy» · v45.11: v45.11: «Tu situación hoy» dice cuándo se decide (Maestro v18.6 · PE-5); «Elige tu aporte mensual» · v45.10: v45.10: simulador de beneficio — «¿Tengo que poner siempre lo mismo?» al final de los cuadros; cuadros con el beneficio año por año y «Con permanencia de…»; «pones» → «aportas»; desplegable «¿Puedo cobrar mi beneficio sin irme?»; simulador de ayuda sin el cuadro ✅ · v45.9: v45.9: en los enlaces, un aporte habitual mayor de 50 € sin pagar se ve con su importe (Christian 100 €) · simulador de beneficio — «Tu situación hoy» en desplegable; ejemplos generales por permanencia (50–200 €) y ejemplo de aporte variable · v45.8: v45.8: Maestro v18.5 · AY-1: la última cuota de una ayuda, como máximo en el último mes de la permanencia (registro y auditoría 13) · v45.7: v45.7: simuladores — aviso entre la cantidad y la barra, última cuota como máximo en el último mes de permanencia, beneficio por cada 50 € en cada permanencia · v45.6: simuladores de ayuda y de beneficio en la ficha (de momento solo en la app del administrador) · v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
+const APP_VERSION="v45.16"; // v45.16: Gestión — «📝 Solicitudes» arriba; «Ayudas Internas» y «Ayudas Externas» juntas en «👥 Personas y ayudas» (Todos / Asociados / Terceros); en cada tarjeta y en la ficha «+ Nueva solicitud» (ya rellena) en vez de «+ Añadir ayuda»/«＋ Nueva ayuda»; en Cierre «📝 Solicitudes de ayuda» en vez de «Registrar ayuda aprobada» · v45.15: v45.15: «💬 Enviar cuenta» por WhatsApp en la cuenta del grupo; solicitudes con aval y grupo (se proponen solos; al otorgar entra en el grupo y el principal entrega por defecto) · v45.14: v45.14: Gestión → «📝 Solicitudes de ayuda» — solicitudes numeradas (otorgar abre la ayuda ya rellena, alta si es nueva, se apunta en la cuenta del grupo si la entrega su principal) y dinero disponible del mes · cuenta del grupo — se oculta al estar liquidada (etiqueta «✅ Liquidado» junto al nombre) y queda en una línea si no tiene apuntes · v45.13: v45.13: cierre grupal — «Cuenta con …» por grupo y mes (entregas a cuenta, ayudas que paga el responsable del grupo y simulación de ayudas; solo control del administrador) · v45.12: v45.12: «Tu permanencia actual es de N meses» en «Tu situación hoy» · v45.11: v45.11: «Tu situación hoy» dice cuándo se decide (Maestro v18.6 · PE-5); «Elige tu aporte mensual» · v45.10: v45.10: simulador de beneficio — «¿Tengo que poner siempre lo mismo?» al final de los cuadros; cuadros con el beneficio año por año y «Con permanencia de…»; «pones» → «aportas»; desplegable «¿Puedo cobrar mi beneficio sin irme?»; simulador de ayuda sin el cuadro ✅ · v45.9: v45.9: en los enlaces, un aporte habitual mayor de 50 € sin pagar se ve con su importe (Christian 100 €) · simulador de beneficio — «Tu situación hoy» en desplegable; ejemplos generales por permanencia (50–200 €) y ejemplo de aporte variable · v45.8: v45.8: Maestro v18.5 · AY-1: la última cuota de una ayuda, como máximo en el último mes de la permanencia (registro y auditoría 13) · v45.7: v45.7: simuladores — aviso entre la cantidad y la barra, última cuota como máximo en el último mes de permanencia, beneficio por cada 50 € en cada permanencia · v45.6: simuladores de ayuda y de beneficio en la ficha (de momento solo en la app del administrador) · v45.5: en el Resumen General (solo administrador) lo que queda para la asociación cada mes: retornos − beneficio − bonos, mes a mes sin acumular · v45.4: acta de cierre con una línea por concepto en el detalle por persona (aportación, cuota N/M · ayuda de mes), resumen de quién empieza un nuevo año, sin «Ayudas que terminan» ni «Este mes sin…» · v45.3: hoja de cobro sin columna «Recibido» ni «Este mes sin…», con espacio para nuevos asociados y ayudas nuevas · v45.2: pestaña «Aval» en la ficha y en el enlace del asociado (su aval y de quién es aval, sin importes) · v45.1: Maestro v18.2/v18.3 — retirada del beneficio guardado sin salir (al ampliar la permanencia o en cada aniversario de la indefinida), salida con las reglas v18 (beneficio de los años completos por aportes pagados, menos lo ya retirado y la ayuda pendiente; aviso según saldo; pago el 5 del mes siguiente al último aporte), salidas previstas en el cierre y en la hoja de cobro, reserva y excedente solo informativos (fase de crecimiento) · v45.0: Maestro v18.2 — aporte de 50 a 200 € elegido cada mes en el cierre (y en el cierre grupal) con aporte habitual en la ficha; beneficio por cada 50 € aportado desde los aportes de nov-2026; ayudas según permanencia (12 meses → 100–500 € y 5 cuotas; nunca más allá del final de la permanencia), también en «Ayuda aprobada en la reunión»; permanencia obligatoria en el alta; avisos de fin de permanencia y aniversarios de la indefinida; Walter España (12) y Joaquín Matos (24); «ayuda», «retorno» y «permanencia» en los textos · v44.21:  al dar de alta o editar un apoyo se bloquea lo que no permite el Maestro (§11.1: topes y plazo largo sin permanencia 24/36/indefinida) · v44.20: v44.20: hoja de cobro con una línea por concepto, casillas grandes y sin lo ya registrado en la app; nombres de los referidos en el cierre grupal · v44.19: bono por referido sin duplicados; los bonos los asume el fondo (excedente, caja) y la baja devuelve los aportes extra (Maestro §9.1 y §15.2); hoja de cobro con columnas Aporte/Cuotas/Total · v44.18: barra de documentos accesible en iPhone, vista móvil de la hoja de cobro, aviso si no abre la impresión · v44.17: "Última cuota", aviso de subida de nivel, referidos desplegables, condición histórica de 54 apoyos // versión visible de la app (una sola fuente de verdad)
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1417,6 +1417,7 @@ let ASOC_SEARCH=""; // texto del buscador de Asociados
 let PREVIEW_ID=null; // id del asociado en previsualización del admin (vista "como lo ve el asociado")
 let MG_SEARCH=""; // texto del buscador de la pestaña Gestión
 let MG_INT_OPEN=false, MG_EXT_OPEN=false; // desplegables de Gestión (arrancan cerrados)
+let MG_PER_FIL="todos"; // v45.16: filtro de «👥 Personas y ayudas» (todos | asoc | terc)
 let AUDIT_OPEN=false; // desplegable de la tarjeta "🔍 Auditoría interna" (arranca cerrado)
 // Filtra las tarjetas de Gestión mostrando/ocultando por nombre, SIN re-render
 // (así el input conserva el foco y el teclado no se cierra en cada letra).
@@ -2883,6 +2884,15 @@ function solOtorgar(id){
   else { openModal('member',{preset:"asociado",sol:id,solNombre:so.nombre,solAval:so.avalId||null}); if(so.avalId)setTimeout(altaReferidoCambio,30); }
 }
 function _solTrasAlta(solId,m){ const so=_sols().find(x=>x.id===solId); if(!so||!m)return; so.mid=m.id; so.nombre=m.name; save(); setTimeout(()=>{openModal('cierreloan',{sol:solId});setTimeout(updateCierreLoanPreview,30);},150); }
+// v45.16: «+ Nueva solicitud» desde la tarjeta de la persona: abre Solicitudes con la persona, su aval y su grupo ya puestos
+function solDesdeGestion(mid){
+  TAB="manage"; FICHA_ID=null; DESP["mg-sol"]=true; SOL_FORM=true; render();
+  setTimeout(()=>{ const s=document.getElementById("so-mid"); if(!s)return; s.value=mid; soMidCambio();
+    const c=document.getElementById("so-cap"); const h=document.getElementById("mg-sol-head");
+    if(h)h.scrollIntoView({behavior:"smooth",block:"start"}); if(c)setTimeout(()=>c.focus(),350); },40);
+}
+// v45.16: desde Cierre se va a Solicitudes (una sola puerta para las ayudas nuevas)
+function irSolicitudes(){ TAB="manage"; FICHA_ID=null; DESP["mg-sol"]=true; render(); setTimeout(()=>{ const h=document.getElementById("mg-sol-head"); if(h)h.scrollIntoView({behavior:"smooth",block:"start"}); },40); }
 function solEstado(id,estado){ const so=_sols().find(x=>x.id===id); if(!so)return; so.estado=estado; if(estado==="pendiente"){delete so.lid;delete so.mesOtorgada;} delete DESP["solno-"+id]; save(); render(); }
 function solBorrar(id){ DATA.solicitudes=_sols().filter(x=>x.id!==id); delete DESP["solbor-"+id]; save(); render(); }
 // Dinero del mes para ayudas: lo cobrado (marcado en el cierre, o entregado por el principal de un grupo)
@@ -4926,7 +4936,7 @@ function _fichaHTMLbase(m,readonly=false){
     h+=`<div class="ficha-section" style="margin-top:4px">
       <div class="ficha-sec-title">⚙️ Gestión</div>
       <div class="mgmt-grid">
-        <button class="mgmt-btn primary" onclick="openModal('loan',{mid:'${esc(m.id)}'})">＋ Nueva ayuda</button>
+        <button class="mgmt-btn primary" onclick="solDesdeGestion('${esc(m.id)}')">＋ Nueva solicitud</button>
         ${isTerc?"":`<button class="mgmt-btn warn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">💶 Aporte de un mes</button>`}
         <button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>
         ${isTerc?"":`<button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
@@ -6441,7 +6451,8 @@ function render(){
           <span>Total cobrado este mes <span style="font-weight:400;color:var(--muted);font-size:12px">(${cuotas.length} ${cuotas.length===1?"cuota":"cuotas"})</span></span><span>${fmtEur(totalCuotasCobr)} €</span>
         </div>`;
       }
-      h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:14px" onclick="openModal('cierreloan',{})">＋ Registrar ayuda aprobada</button>`;
+      { const nP=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente").length; // v45.16: las ayudas nuevas se otorgan en Solicitudes
+        h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:14px" onclick="irSolicitudes()">📝 Solicitudes de ayuda${nP?` (${nP} pendiente${nP>1?"s":""})`:""}</button>`; }
       h+=`</div>`;
     }
     h+=`</div>`;
@@ -6887,28 +6898,31 @@ function render(){
     h+=`<div style="margin:8px 0 4px"><input id="mgSearch" type="text" placeholder="🔍 Buscar asociado o tercero por nombre…" value="${escH(MG_SEARCH||"")}" oninput="filtrarGestion(this.value)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box"></div>`;
     if(MG_SEARCH)setTimeout(()=>filtrarGestion(MG_SEARCH),0);
 
-    // 🏠 Ayudas Internas (desplegable, arranca cerrado)
-    h+=`<div class="mg-acc-head" onclick="MG_INT_OPEN=!MG_INT_OPEN;render()">
-      <span>🏠 Ayudas Internas <span class="mg-acc-num">${asocAll.length}</span></span>
-      <span class="mg-acc-fl">${MG_INT_OPEN?"▲ ocultar":"▼ mostrar"}</span></div>`;
-    if(MG_INT_OPEN){
-      h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir asociado</button>`;
-      asocAll.forEach(m=>{h+=manageHTML(m);});
-    }
-    // 🤝 Ayudas Externas (desplegable, arranca cerrado)
-    h+=`<div class="mg-acc-head terc" onclick="MG_EXT_OPEN=!MG_EXT_OPEN;render()">
-      <span>🤝 Ayudas Externas <span class="mg-acc-num">${tercAll.length}</span></span>
-      <span class="mg-acc-fl">${MG_EXT_OPEN?"▲ ocultar":"▼ mostrar"}</span></div>`;
-    if(MG_EXT_OPEN){
-      h+=`<button class="add-btn terc" onclick="openModal('member',{preset:'tercero'})">+ Añadir tercero (con aval)</button>`;
-      tercAll.forEach(m=>{h+=manageHTML(m,true);});
-    }
-    // 📝 v45.14: Solicitudes de ayuda y dinero disponible (desplegable, arranca cerrado)
+    // 📝 v45.14: Solicitudes de ayuda y dinero disponible (desplegable, arranca cerrado) — v45.16: arriba del todo
     { const nP=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente").length, ab=!!DESP["mg-sol"];
-      h+=`<div class="mg-acc-head" onclick="DESP['mg-sol']=!DESP['mg-sol'];render()">
+      h+=`<div class="mg-acc-head" id="mg-sol-head" onclick="DESP['mg-sol']=!DESP['mg-sol'];render()">
       <span>📝 Solicitudes <span class="mg-acc-num">${nP}</span></span>
       <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
       if(ab)h+=`<div style="margin:8px 0 14px">${ayudasTabHTML()}</div>`; }
+    // 👥 v45.16: Personas y ayudas — antes «Ayudas Internas» y «Ayudas Externas» (decisión de Ángel 09/10/2026)
+    { const ab=!!DESP["mg-per"], fil=MG_PER_FIL;
+      h+=`<div class="mg-acc-head" onclick="DESP['mg-per']=!DESP['mg-per'];render()">
+      <span>👥 Personas y ayudas <span class="mg-acc-num">${asocAll.length+tercAll.length}</span></span>
+      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      if(ab){
+        const chip=(k,t)=>`<button onclick="MG_PER_FIL='${k}';render()" style="flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid ${fil===k?"#1B4332":"#E3DDD2"};background:${fil===k?"#1B4332":"#fff"};color:${fil===k?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${t}</button>`;
+        h+=`<div style="display:flex;gap:6px;margin:8px 0 12px">${chip("todos","Todos ("+(asocAll.length+tercAll.length)+")")}${chip("asoc","🏠 Asociados ("+asocAll.length+")")}${chip("terc","🤝 Terceros ("+tercAll.length+")")}</div>`;
+        if(fil!=="terc"){
+          h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir asociado</button>`;
+          asocAll.forEach(m=>{h+=manageHTML(m);});
+        }
+        if(fil!=="asoc"){
+          if(fil==="todos"&&tercAll.length)h+=`<div class="send-section-label" style="margin-top:14px">🤝 Terceros</div>`;
+          h+=`<button class="add-btn terc" onclick="openModal('member',{preset:'tercero'})">+ Añadir tercero (con aval)</button>`;
+          tercAll.forEach(m=>{h+=manageHTML(m,true);});
+        }
+      }
+    }
 
     // 🔍 Auditoría interna (dinero/reglas) — antes del auto-chequeo técnico
     h+=auditoriaInternaHTML();
@@ -7232,7 +7246,7 @@ function manageHTML(m,isT){
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delLoan('${esc(m.id)}','${esc(l.id)}')">${armed?"¿Seguro?":"✕"}</button>
     </div></div>`;
   });
-  h+=`<button class="add-loan-btn" onclick="openModal('loan',{mid:'${esc(m.id)}'})">+ Añadir ayuda</button>`;
+  h+=`<button class="add-loan-btn" onclick="solDesdeGestion('${esc(m.id)}')">+ Nueva solicitud</button>`; // v45.16: las ayudas nuevas entran por Solicitudes
   if((m.history||[]).length>0){
     h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`;
   }
