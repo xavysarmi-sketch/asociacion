@@ -723,6 +723,7 @@ body.nh-development-mode{padding-top:42px}
 <script src="./dev-fixture.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
 <script>
 const NH_PROD_FIREBASE_PROJECT_ID="nuevos-horizontes-6d924";
 const NH_PRODUCTION_ORIGINS=new Set(["https://xavysarmi-sketch.github.io"]);
@@ -810,6 +811,8 @@ function initFirebase(){
       window.NH_FIREBASE_MODE="production";
     }
     const DOC_REF=db.collection("nh").doc("data");
+    // v45.27: sesión del administrador (solo producción; los enlaces de asociados no la usan)
+    try{ window._fbAuth=(entorno.modo==="produccion"&&typeof firebase.auth==="function")?firebase.auth():null; }catch(e){ window._fbAuth=null; }
 
     window._fbSave=async function(data){
       try{
@@ -874,7 +877,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.26"; // v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
+const APP_VERSION="v45.27"; // v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -1558,6 +1561,75 @@ function historyModalHTML(){
   return h;
 }
 
+
+// ══ v45.27 · SESIÓN DEL ADMINISTRADOR ═══════════════════════════════════════════════════════
+// La app del administrador (sin ?socio= ni ?grupo…) solo se abre con la cuenta de Firebase del
+// administrador. Los enlaces de los asociados no piden nada. La sesión se recuerda en el
+// dispositivo: se entra una vez y no se vuelve a pedir hasta «Cerrar sesión».
+let SESION_OK=false, _SESION_ESCUCHA=false;
+function _esperarFirebase(){ return new Promise(res=>{ if(window._fbReady)return res(); const t=setTimeout(res,9000); window.addEventListener("firebase-ready",()=>{clearTimeout(t);res();},{once:true}); }); }
+async function pedirSesionAdmin(){
+  pintarLogin("cargando");
+  await _esperarFirebase();
+  const auth=window._fbAuth;
+  if(!auth){ pintarLogin("sin-conexion"); return; }
+  if(_SESION_ESCUCHA)return; _SESION_ESCUCHA=true;
+  auth.onAuthStateChanged(u=>{
+    if(u){ if(!SESION_OK){ SESION_OK=true; load(); } }
+    else{ const habia=SESION_OK; SESION_OK=false; if(habia){ location.reload(); return; } pintarLogin(); }
+  });
+}
+function pintarLogin(estado,msg){
+  const app=document.getElementById("app"); if(!app)return;
+  const caja=c=>`<div style="max-width:380px;margin:0 auto;padding:40px 22px">
+      <div style="text-align:center;margin-bottom:22px"><div class="h-title" style="color:#1B4332;font-size:21px">NUEVOS HORIZONTES</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">Acceso del administrador</div></div>${c}</div>`;
+  if(estado==="cargando"){ app.innerHTML=caja(`<div style="text-align:center;color:var(--muted);font-size:14px">Comprobando tu acceso…</div>`); return; }
+  if(estado==="sin-conexion"){ app.innerHTML=caja(`<div style="text-align:center;color:#8A4F12;background:#FFF4E5;border:1px solid #E0A040;border-radius:12px;padding:14px;font-size:14px;line-height:1.45">No se puede comprobar tu acceso sin conexión. Conéctate y vuelve a abrir la app.<br><button class="m-primary" style="margin-top:12px" onclick="location.reload()">Reintentar</button></div>`); return; }
+  const ultimo=(()=>{try{return localStorage.getItem("nh-admin-email")||"";}catch{return "";}})();
+  app.innerHTML=caja(`<form onsubmit="event.preventDefault();entrarAdmin()" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px">
+      <label class="m-label">Correo</label>
+      <input id="lg-mail" class="m-input" type="email" autocomplete="username" inputmode="email" value="${escH(ultimo)}" style="font-size:16px">
+      <label class="m-label">Contraseña</label>
+      <input id="lg-pass" class="m-input" type="password" autocomplete="current-password" style="font-size:16px">
+      ${msg?`<div style="margin:4px 0 10px;color:#C0492C;font-size:13px;font-weight:700;line-height:1.4">${escH(msg)}</div>`:""}
+      <button class="m-primary" type="submit" id="lg-btn">Entrar</button>
+      <button type="button" onclick="recordarClave()" style="width:100%;margin-top:10px;background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer">He olvidado la contraseña</button>
+    </form>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.4">Los asociados no necesitan entrar aquí: usan su enlace.</div>`);
+}
+function _msgLogin(code){
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(code||""))return "Correo o contraseña incorrectos.";
+  if(/too-many-requests/.test(code||""))return "Demasiados intentos. Espera unos minutos y vuelve a probar.";
+  if(/network/.test(code||""))return "Sin conexión. Comprueba internet y vuelve a probar.";
+  if(/invalid-email/.test(code||""))return "Ese correo no es válido.";
+  return "No se ha podido entrar ("+(code||"error")+").";
+}
+async function entrarAdmin(){
+  const e=(document.getElementById("lg-mail")?.value||"").trim(), c=document.getElementById("lg-pass")?.value||"";
+  if(!e||!c){ pintarLogin(null,"Escribe tu correo y tu contraseña."); return; }
+  const b=document.getElementById("lg-btn"); if(b){b.disabled=true;b.textContent="Entrando…";}
+  try{ try{localStorage.setItem("nh-admin-email",e);}catch{} await window._fbAuth.signInWithEmailAndPassword(e,c); }
+  catch(err){ pintarLogin(null,_msgLogin(err&&err.code)); }
+}
+async function recordarClave(){
+  const e=(document.getElementById("lg-mail")?.value||"").trim();
+  if(!e){ pintarLogin(null,"Escribe tu correo y vuelve a pulsar «He olvidado la contraseña»."); return; }
+  try{ await window._fbAuth.sendPasswordResetEmail(e); pintarLogin(null,"Te hemos enviado un correo para cambiar la contraseña."); }
+  catch(err){ pintarLogin(null,_msgLogin(err&&err.code)); }
+}
+async function cerrarSesion(){
+  const k="cerrar-sesion"; if(!DESP[k]){ DESP[k]=true; render(); setTimeout(()=>{ if(DESP[k]){ delete DESP[k]; render(); } },4000); return; }
+  delete DESP[k]; try{ await window._fbAuth.signOut(); }catch(e){} location.reload();
+}
+function sesionHTML(){
+  if(NH_ES_DESARROLLO||!window._fbAuth||!window._fbAuth.currentUser)return "";
+  const arm=!!DESP["cerrar-sesion"];
+  return `<div style="background:#fff;border-radius:16px;padding:14px 16px;margin-top:14px;border:1px solid var(--border);display:flex;align-items:center;gap:10px">
+    <div style="flex:1;min-width:0;font-size:13px;color:var(--muted)">🔐 Sesión iniciada como <b style="color:var(--dark)">${escH(window._fbAuth.currentUser.email||"")}</b></div>
+    <button onclick="cerrarSesion()" style="padding:8px 12px;border-radius:10px;border:1.5px solid #C0492C;background:${arm?"#C0492C":"#fff"};color:${arm?"#fff":"#C0492C"};font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">${arm?"¿Seguro?":"Cerrar sesión"}</button></div>`;
+}
+
 let SYNC_STATUS="init";
 
 function load(){
@@ -1582,6 +1654,9 @@ function load(){
     tryLoad();
     return;
   }
+
+  // v45.27: el administrador entra con su cuenta (solo en producción; en desarrollo no hay sesión)
+  if(!NH_ES_DESARROLLO&&!SESION_OK){ pedirSesionAdmin(); return; }
 
   // Modo administrador: localStorage primero (inmediato), Firebase después (en background)
   try{
@@ -1710,6 +1785,8 @@ function diagLeerLS(){
   toast("Teléfono: "+c+" ayudas · Memoria: "+mem+" ayudas");
 }
 async function subirAhoraNube(){
+  if(_datosVacios()){ toast(_AVISO_SIN_DATOS,6000); return; }
+  if(!NH_ES_DESARROLLO&&!SESION_OK){ toast("Inicia sesión para subir datos"); return; }
   DATA.updatedAt=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
   if(!window._fbReady){toast("Conectando con la nube, espera un momento e inténtalo de nuevo");return;}
@@ -1729,6 +1806,7 @@ function _datosVacios(){ return !DATA||!Array.isArray(DATA.members)||DATA.member
 const _AVISO_SIN_DATOS="⛔ No se han podido cargar los datos. No se guardará nada: cierra la app y vuelve a abrirla con conexión.";
 async function save(){
   if(_datosVacios()){ toast(_AVISO_SIN_DATOS,6000); return; }
+  if(!NH_ES_DESARROLLO&&!READONLY_ID&&!ES_MODO_GRUPO&&!SESION_OK)return; // v45.27: sin sesión no se guarda nada
   DATA.updatedAt=Date.now(); // marca de tiempo: para que gane siempre la versión más reciente
   invalidateAuditCache(); // los datos cambiaron: la próxima lectura del chip/tarjeta recalcula
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
@@ -6903,6 +6981,7 @@ function render(){
       <button class="backup-btn backup-import" onclick="importData()">📂 Importar backup</button>
       <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
     </div>`;
+    h+=sesionHTML(); // v45.27
 
   }
 
