@@ -877,7 +877,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.27"; // v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
+const APP_VERSION="v45.28"; // v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -3868,6 +3868,180 @@ function gastoBorrar(id){
   delete DESP[k]; DATA.gastos=(DATA.gastos||[]).filter(g=>g.id!==id); _CAJA_CACHE=null; save(); render(); toast("Gasto borrado");
 }
 
+// ══ v45.28 · PERMANENCIAS (Maestro PE-2, PE-5, PE-7, BE-3, SA-5) ═══════════════════════════
+// Solo lectura. Para cada asociado activo: mes de su último aporte (hoja de calendario), mes en que
+// se le paga (el siguiente: ahí se anota su último beneficio, mes vencido) y el total previsto.
+let PERM_FIL="todas"; // todas | prox (próximos 3 meses) | indef
+// Total previsto hasta 'fin' (incluido): aportes pagados + los que le quedan desde el mes de reporte
+// (con su aporte actual), y el beneficio de cada uno (se anota el mes siguiente). Menos lo ya retirado.
+// Los meses pasados sin pagar no cuentan. Es una previsión: el importe exacto sale al pagar.
+function totalPrevistoPerm(m,fin){
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear); let cap=0,ben=0;
+  for(let i=_idxMes(m.joinMonth,m.joinYear);i<=fin;i++){
+    const k=_keyDeIdx(i), nk=_keyDeIdx(i+1), a=aporteBrutoKey(m,k);
+    if(_aportePagadoKey(m,k)){ cap+=a; ben+=beneficioMiembroDesglose(m,nk).total; }
+    else if(i>=idx){ const h=BENEFICIO_MES[nk], base=h!==undefined?h:tarifaNivelMes(m,nk);
+      const bl=k>=V18_APORTES_DESDE?Math.max(0,Math.min(4,Math.floor(a/50))):(a>=100?2:1);
+      cap+=a; ben+=_r2(base*bl); }
+  }
+  const ret=beneficioRetirado(m);
+  return {capital:_r2(cap),beneficio:_r2(ben),total:_r2(cap+ben-ret),soloBeneficio:Math.max(0,_r2(ben-ret))};
+}
+function permanenciasLista(){
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), out=[];
+  DATA.members.forEach(m=>{
+    if(m.type!=="asociado"||!activoEnReporte(m))return;
+    if(!m.joinMonth||m.ciclo==null){ out.push({m,tipo:"sin",orden:1e9}); return; }
+    const ini=_idxMes(m.joinMonth,m.joinYear);
+    if(m.ciclo===0){
+      const k=Math.max(0,Math.ceil((idx-(ini+11))/12)), aniv=ini+11+12*k;
+      const ret=retiradasDe(m).find(r=>r.finIdx===aniv);
+      out.push({m,tipo:"indef",ini,fin:aniv,n:aniv-ini+1,ret,prox:aniv-idx<=2,orden:5e8+aniv,
+        importe:ret?importeRetirada(m,ret):totalPrevistoPerm(m,aniv).soloBeneficio});
+      return;
+    }
+    const fin=ini+m.ciclo-1;
+    const estado=idx>fin?"pasada":fin-idx<=1?"decide":fin-idx===2?"pronto":"normal";
+    out.push({m,tipo:"fija",ini,fin,estado,prox:fin-idx<=2,orden:fin,importe:totalPrevistoPerm(m,fin).total});
+  });
+  out.sort((a,b)=>a.orden-b.orden||String(a.m.name).localeCompare(String(b.m.name)));
+  return out;
+}
+function permanenciasGestionHTML(){
+  const L=permanenciasLista(), idx=_idxMes(DATA.reportMonth,DATA.reportYear);
+  const nProx=L.filter(x=>x.prox).length, nIndef=L.filter(x=>x.tipo==="indef").length, ab=!!DESP["mg-perm"];
+  let h=`<div class="mg-acc-head" id="mg-perm-head" onclick="DESP['mg-perm']=!DESP['mg-perm'];render()">
+      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num" style="background:#B07D14">${nProx} en 3 meses</span>`:""}</span>
+      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+  if(!ab)return h;
+  const fil=PERM_FIL;
+  const chip=(k,t)=>`<button onclick="PERM_FIL='${k}';render()" style="flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid ${fil===k?"#1B4332":"#E3DDD2"};background:${fil===k?"#1B4332":"#fff"};color:${fil===k?"#fff":"#3B3B3B"};font-size:13px;font-weight:700;cursor:pointer">${t}</button>`;
+  const vis=L.filter(x=>fil==="todas"?true:fil==="prox"?x.prox:x.tipo==="indef");
+  const est={pasada:["Terminó · sin decisión","#FDECE8","#C0492C"],decide:["Toca decidir","#FFF1CC","#7A5300"],pronto:["En 3 meses","#FFF8E6","#8A6A1E"]};
+  const pill=(t,bg,c)=>`<span style="flex-shrink:0;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:${bg};color:${c}">${t}</span>`;
+  const fila=x=>{
+    const m=x.m, abrir=`data-nombre="${escH((m.name||"").toLowerCase())}" onclick="openFicha('${esc(m.id)}')"`;
+    if(x.tipo==="sin")return `<div class="mg-card" ${abrir} style="cursor:pointer;padding:11px 14px;margin-bottom:8px">
+      <div style="font-weight:700;font-size:15px;color:var(--dark)">${escH(m.name)}</div>
+      <div style="font-size:12.5px;color:#C0492C;font-weight:700;margin-top:3px">⛔ Sin permanencia guardada: anótala en su ficha (⚙️ Permanencia y aporte)</div></div>`;
+    const e=x.tipo==="fija"?est[x.estado]:(x.prox?[x.fin<=idx?"Aniversario":"Aniversario pronto","#E8F3EC","#1B4332"]:null);
+    const M3=MONTHS_FULL[((x.fin%12)+12)%12].slice(0,3).toUpperCase(), Y=Math.floor(x.fin/12);
+    const pago=x.tipo==="indef"?(x.ret?"Retirada · se paga en ":"Si retira, se paga en "):"Se le paga en ";
+    const base=x.tipo==="indef"?`Indefinida · entró en ${_txtIdx(x.ini)}`:`${m.ciclo} meses · entró en ${_txtIdx(x.ini)}`;
+    return `<div class="mg-card" ${abrir} style="cursor:pointer;padding:10px 12px;margin-bottom:8px;display:flex;gap:12px;align-items:center">
+      <div style="flex-shrink:0;width:62px;border-radius:10px;overflow:hidden;border:1.5px solid #8CC5A0;text-align:center;background:#fff">
+        <div style="background:#1B4332;color:#fff;font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 0">${x.tipo==="indef"?"CUMPLE":"ÚLTIMO"}</div>
+        <div style="font-size:19px;font-weight:900;color:#1B4332;line-height:1.1;padding-top:4px">${M3}</div><div style="font-size:12px;font-weight:700;color:#1B4332;padding-bottom:4px">${Y}</div></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-weight:700;font-size:15px;color:var(--dark);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(m.name)}</div>${e?pill(e[0],e[1],e[2]):""}</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px"><span style="font-size:14px;font-weight:800;color:#7A5300">${pago}${_txtIdx(x.fin+1)}</span><span style="font-size:16px;font-weight:900;color:var(--dark);white-space:nowrap">${fmtEur(x.importe)} €</span></div>
+        <div style="font-size:12px;line-height:1.45;color:var(--muted);margin-top:1px">${base}</div></div></div>`;
+  };
+  h+=`<div style="margin:8px 0 14px">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.45">La hoja de calendario es el mes de su último aporte. Se le paga el mes siguiente, cuando se anota su último beneficio. El importe es el total previsto (aportes + beneficios) si paga los aportes que le quedan; si tiene una ayuda pendiente, se descuenta al pagar. En las indefinidas, el importe es el beneficio que puede retirar. Toca a una persona para abrir su ficha.</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">${chip("todas","Todas ("+L.length+")")}${chip("prox","Próximos 3 meses ("+nProx+")")}${chip("indef","Indefinidas ("+nIndef+")")}</div>`;
+  if(!vis.length)h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">${fil==="prox"?"✓ Ninguna permanencia termina en los próximos 3 meses":"No hay asociados en este grupo"}</div>`;
+  const gk=y=>y.tipo==="sin"?"sin":y.tipo==="indef"?"i"+y.fin:"f"+y.fin;
+  let grupo=null;
+  vis.forEach(x=>{
+    const g=gk(x);
+    if(g!==grupo){ grupo=g;
+      const del=vis.filter(y=>gk(y)===g), n=del.length, tot=_r2(del.reduce((s,y)=>s+(y.importe||0),0));
+      const t=g==="sin"?"Sin permanencia guardada":x.tipo==="indef"?`Indefinida · cumple ${x.n} meses en ${_txtIdx(x.fin)}`:`Último aporte en ${_txtIdx(x.fin)} · se paga en ${_txtIdx(x.fin+1)}`;
+      h+=`<div class="send-section-label" style="margin:12px 0 6px;display:flex;justify-content:space-between;gap:8px"><span>${t} <span style="color:var(--muted);font-weight:600">· ${n}</span></span>${g!=="sin"&&n>1?`<span style="white-space:nowrap;color:var(--dark)">Total ${fmtEur(tot)} €</span>`:""}</div>`; }
+    h+=fila(x);
+  });
+  return h+`</div>`;
+}
+function irPermanencias(){ TAB="manage"; FICHA_ID=null; DESP["mg-perm"]=true; PERM_FIL="todas"; render(); setTimeout(()=>{ const e=document.getElementById("mg-perm-head"); if(e)e.scrollIntoView({behavior:"smooth",block:"start"}); },40); }
+
+// ══ v45.28 · ENVIAR LA SIMULACIÓN DE UNA AYUDA POR WHATSAPP (imagen + texto corto) ═══════════
+// Solo en la app del administrador. Si hace falta ampliar la permanencia, la imagen lo explica:
+// «Tu permanencia hoy» frente a «La que necesitas». No guarda nada.
+const _miles=v=>String(v).replace(/\B(?=(\d{3})+(?!\d))/g,".");
+const _eurM=v=>{ const [e,d]=fmtEur(v).split(","); return _miles(e)+(d?","+d:""); }; // 1.000 € (con punto de miles)
+function _limAyudaTxt(c){ return c===12?"hasta 500 € · 5 cuotas":"hasta "+_miles(SIM_MAX_AYUDA)+" € · 12 cuotas"; }
+function _permCorta(c){ return c===0?"Indefinida":c+" meses"; }
+function simMensajeDatos(m){
+  const cap=SIM.cap, n=SIM.n, cur=(m.ciclo!=null?m.ciclo:12), need=_simPermNecesaria(m,cap,n);
+  const rep=_idxMes(DATA.reportMonth,DATA.reportYear), ini=rep+1, jIdx=m.joinMonth?_idxMes(m.joinMonth,m.joinYear):null;
+  const {cuotas}=ayudaCuotas(cap,n,DATA.rate);
+  const finDe=c=>(c===0||jIdx==null)?null:jIdx+c-1;
+  const extras=[];
+  if(need!=null&&need!==cur){
+    if(cur===12)extras.push(`Ayudas de hasta ${_miles(SIM_MAX_AYUDA)} € en hasta 12 cuotas`);
+    if(jIdx!=null){ const mN=Object.assign({},m,{ciclo:need}), hasta=jIdx+(need===0?37:need);
+      [[12,10],[15,12]].forEach(([lv,antes])=>{ for(let i=Math.max(rep+1,jIdx+1);i<=hasta;i++){ const k=_keyDeIdx(i);
+        if(tarifaNivelMes(mN,k)===lv&&tarifaNivelMes(m,k)<lv){ extras.push(`Tu beneficio sube: desde ${_txtIdx(i-1)}, cada 50 € que aportas gana <b>${lv} €</b> en vez de ${antes} €`); break; } } }); }
+  }
+  return {cap,n,cur,need,rep,ini,cuotas,finCur:finDe(cur),finNeed:need==null?null:finDe(need),extras};
+}
+function _simTarjetaHTML(m,d){
+  const nom=escH(m.name.split(" ")[0]), amplia=d.need!=null&&d.need!==d.cur;
+  const ult=d.ini+d.n-1; // v45.28: una sola cifra de cuota (la mayor) para no confundir
+  const cuotaTxt=d.n===1?`<b>1 cuota de ${_eurM(d.cuotas[0])} €</b> (${_txtIdx(d.ini)})`
+    :`<b>${d.n} cuotas de ${_eurM(Math.max(...d.cuotas))} €</b> (${_txtIdx(d.ini)} – ${_txtIdx(ult)})`;
+  const fin=amplia?d.finNeed:d.finCur, perm=(amplia?d.need:d.cur);
+  const st="font-size:13px;line-height:1.5;margin:3px 0;color:#1f2a24";
+  const box=(hoy)=>{ const c=hoy?d.cur:d.need, f=hoy?d.finCur:d.finNeed;
+    return `<div style="flex:1;border-radius:10px;padding:9px 6px;text-align:center;${hoy?"background:#F4F2EE;color:#6b6f6c;border:1.5px dashed #C9C4BA":"background:#1B4332;color:#fff;box-shadow:0 2px 6px rgba(27,67,50,.35)"}">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;${hoy?"":"color:#BFE3CC"}">${hoy?"Tu permanencia hoy":"La que necesitas"}</div>
+      <div style="font-size:16px;font-weight:800;margin:3px 0">${_permCorta(c)}</div>
+      <div style="font-size:11px">${_limAyudaTxt(c)}</div>
+      ${f!=null?`<div style="font-size:10.5px;opacity:.85">termina en ${_txtIdx(f)}</div>`:""}
+      <div style="display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-top:6px;${hoy?"background:#FBE3DC;color:#B04A2C":"background:#2D8A5A;color:#fff"}">${hoy?"✗ "+_eurM(d.cap)+" € no caben":"✓ tus "+_eurM(d.cap)+" € caben"}</div></div>`; };
+  return `<div style="width:380px;background:#fff;border-radius:14px;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+    <div style="background:#1B4332;color:#fff;padding:13px 15px"><div style="font-size:18px;font-weight:800">${amplia?`Tu ayuda de ${_eurM(d.cap)} € se puede aprobar ✅`:`Tu ayuda de ${_eurM(d.cap)} €`}</div>
+      <div style="font-size:12px;opacity:.85;margin-top:2px">${amplia?`Solo falta un paso: ampliar tu permanencia ${d.cur!==0?"de "+d.cur+" ":""}a ${d.need===0?"indefinida":d.need+" meses"}`:`${nom}, así quedaría`}</div></div>
+    ${amplia?`<div style="padding:11px 13px;border-bottom:1px solid #EEE9DF"><div style="font-size:12.5px;font-weight:800;color:#1B4332;margin-bottom:8px">Lo que puedes pedir con tu permanencia actual</div>
+      <div style="display:flex;align-items:stretch;gap:4px">${box(true)}<div style="display:flex;align-items:center;font-size:20px;font-weight:900;color:#2D8A5A">→</div>${box(false)}</div></div>`:""}
+    <div style="padding:11px 13px;border-bottom:${d.extras.length?"1px solid #EEE9DF":"none"}"><div style="font-size:12.5px;font-weight:800;color:#1B4332;margin-bottom:6px">Así quedaría tu ayuda</div>
+      <div style="${st}">💶 Recibes: <b>${_eurM(d.cap)} €</b> en ${_txtIdx(d.rep)}</div>
+      <div style="${st}">📅 Devuelves: ${cuotaTxt}</div>
+      <div style="${st}">⏳ ${perm===0?"Tu permanencia es <b>indefinida</b>":`Tu permanencia termina en <b>${_txtIdx(fin)}</b>`}</div></div>
+    ${d.extras.length?`<div style="padding:11px 13px;background:#FFFBEF"><div style="font-size:12.5px;font-weight:800;color:#7A5300;margin-bottom:6px">Y además, con ${d.need===0?"permanencia indefinida":d.need+" meses"}</div>
+      ${d.extras.map(x=>`<div style="${st}">⭐ ${x}</div>`).join("")}</div>`:""}
+  </div>`;
+}
+function _simTextoWA(m,d){
+  const nom=m.name.split(" ")[0], amplia=d.need!=null&&d.need!==d.cur;
+  return `Hola ${nom} 👋\nTe envío cómo quedaría tu ayuda de *${_eurM(d.cap)} €*.`+
+    (amplia?` Si te parece bien, respóndeme «Sí, amplío a ${d.need===0?"indefinida":d.need+" meses"}» y lo dejamos listo.`:"")+`\nNuevos Horizontes`;
+}
+async function simEnviarWA(){
+  const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)); if(!m||!SIM)return;
+  const d=simMensajeDatos(m); if(d.need==null){ toast("⛔ Esta ayuda no cabe con ninguna permanencia",3500); return; }
+  const txt=_simTextoWA(m,d);
+  const loaded=await loadPDFLibs();
+  const abrirTexto=()=>{ const t=_telWA(m.phone||""); window.open("https://wa.me/"+(t||"")+"?text="+encodeURIComponent(txt),"_blank"); };
+  if(!loaded||typeof html2canvas==="undefined"){ toast("No se pudo crear la imagen: se envía solo el texto",3500); abrirTexto(); return; }
+  const wrap=document.createElement("div"); wrap.style.cssText="position:fixed;left:-9999px;top:0;width:380px;background:#ECE5DD;padding:0";
+  wrap.innerHTML=_simTarjetaHTML(m,d); document.body.appendChild(wrap);
+  try{ if(typeof iconizar==="function")iconizar(wrap); }catch(e){}
+  _icFix(wrap); toast("📸 Preparando la imagen...",3000);
+  try{
+    const canvas=await html2canvas(wrap.firstElementChild,{backgroundColor:"#ffffff",scale:2.5,useCORS:true,logging:false,width:380,windowWidth:400});
+    if(document.body.contains(wrap))document.body.removeChild(wrap);
+    canvas.toBlob(async blob=>{
+      if(!blob){ abrirTexto(); return; }
+      const file=new File([blob],`Ayuda_${m.name.split(" ")[0]}.png`,{type:"image/png"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],text:txt}); toast("Enviado ✓"); }
+        catch(e){ if(e.name!=="AbortError"){ abrirTexto(); } }
+      } else { const url=URL.createObjectURL(blob),a=document.createElement("a"); a.href=url; a.download=file.name; a.click(); URL.revokeObjectURL(url);
+        toast("📸 Imagen descargada: adjúntala en el chat que se abre",4500); abrirTexto(); }
+    },"image/png");
+  }catch(e){ if(document.body.contains(wrap))document.body.removeChild(wrap); console.error(e); abrirTexto(); }
+}
+// Desde una ayuda bloqueada por la permanencia: abre el simulador con su importe y sus cuotas
+function avisarDesdeAyuda(mid,cap,nn){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  const g=id=>(document.getElementById(id)||{}).value;
+  const volver={sol:MODAL&&MODAL.sol||null,restore:{mid:g("cl-mid"),cap:g("cl-cap"),n:g("cl-n"),ent:g("cl-entrega")}};
+  SIM={mid,tab:"ayuda",ciclo:(m.ciclo!=null?m.ciclo:12),cap,n:nn,ap:50};
+  openModal('sim',{mid,volver});
+}
+
 // ══ v45.22 · TELÉFONOS ══════════════════════════════════════════════════════════════════
 // Solo guardan el número (no envían nada). Se guarda al salir de la casilla, sin repintar la pantalla.
 let TEL_SOLO_SIN=false;
@@ -3984,6 +4158,25 @@ function _avisoApoyoHTML(v){
   if(v.aviso)return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#FFF8F0;border:1px solid #F5D5B0;color:#7A4A1E;font-size:13px;line-height:1.45">⚠️ ${v.aviso}</div>`;
   return "";
 }
+// v45.28: si una ayuda nueva no cabe por la permanencia, botón para ampliarla sin salir de la ayuda.
+// Abre la MISMA ventana «⚙️ Permanencia y aporte» y, al guardar, vuelve a la ayuda con los datos puestos.
+function permNecesariaApoyo(m,cap,nn,ini){
+  if(!m||m.type!=="asociado"||m.ciclo==null||m.ciclo===0)return null;
+  for(const c of [24,36,0]){ if(c!==0&&c<=m.ciclo)continue; if(!validarApoyo(m,cap,nn,"asociado",c,ini).bloqueo)return c; }
+  return null;
+}
+function botonAmpliarAyudaHTML(m,cap,nn,ini){
+  const c=permNecesariaApoyo(m,cap,nn,ini); if(c==null)return "";
+  return `<button onclick="ampliarDesdeAyuda('${esc(m.id)}',${c})" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #2D6A4F;background:#2D6A4F;color:#fff;font-size:14px;font-weight:800;cursor:pointer">🔁 Ampliar su permanencia a ${c===0?"indefinida":c+" meses"}</button>
+    ${cap<=SIM_MAX_AYUDA&&nn<=12?`<button onclick="avisarDesdeAyuda('${esc(m.id)}',${cap},${nn})" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1.5px solid #25D366;background:#fff;color:#128C4A;font-size:13.5px;font-weight:800;cursor:pointer">📲 Avisar por WhatsApp</button>`:""}
+    <div style="font-size:12px;color:var(--muted);margin:4px 0 10px;line-height:1.4">«Ampliar» abre la ventana de su permanencia; «Avisar» abre el simulador con esta ayuda para enviársela. En los dos casos vuelves aquí con la ayuda tal como está.</div>`;
+}
+function ampliarDesdeAyuda(mid,c){
+  const g=id=>(document.getElementById(id)||{}).value;
+  const volver={sol:MODAL&&MODAL.sol||null,restore:{mid:g("cl-mid"),cap:g("cl-cap"),n:g("cl-n"),ent:g("cl-entrega")}};
+  openModal('ciclo',{mid,preCiclo:c,volver});
+}
+function volverAAyuda(v){ openModal('cierreloan',{sol:v.sol,restore:v.restore}); setTimeout(updateCierreLoanPreview,30); }
 function addLoanSubmit(){
   const cap=parseInt(document.getElementById("l-cap").value)||0;if(cap<=0)return;
   const nn=parseInt(document.getElementById("l-n")?.value||"3");
@@ -4531,7 +4724,7 @@ function avisosPermanencia(rm,ry){
     }
     const fin=ini+m.ciclo-1; // último mes de su permanencia
     if(idx===fin-1||idx===fin){
-      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(beneficioGuardado(m))} €) o termina (cobra entre el 5 y el 10 de ${t(fin+1)}).`});
+      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(beneficioGuardado(m))} €) o termina (cobra en ${t(fin+1)}).`});
     }else if(idx>fin){
       out.push({m,tipo:"pasada",fin,txt:`Su permanencia de ${m.ciclo} meses terminó en ${t(fin)} y no consta que la haya ampliado. Anota la decisión: amplía en ⚙️ Permanencia y aporte, o da la salida.`});
     }
@@ -4601,7 +4794,7 @@ function avisosPermanenciaHTML(rm,ry){
     </button>`;
   if(ab){
     h+=`<div style="margin-top:10px">`+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">
-      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#C0492C;font-weight:700">· pendiente</span>':""}<br>${a.txt}${avisoBotonesHTML(a)}</div>`).join("")+`</div>`;
+      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#C0492C;font-weight:700">· pendiente</span>':""}<br>${a.txt}${avisoBotonesHTML(a)}</div>`).join("")+`<div style="text-align:right;margin-top:8px"><button onclick="irPermanencias()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px 0">Ver todas las permanencias →</button></div></div>`;
   }
   return h+`</div>`;
 }
@@ -4610,7 +4803,7 @@ function avisoBotonesHTML(a){
   const st="flex:1;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;";
   if(a.tipo==="aniv"){
     const r=retiradasDe(a.m).find(x=>x.finIdx===a.fin);
-    if(r)return `<div style="margin-top:6px;font-size:12.5px;color:#1B7A3D;font-weight:700">✓ Retirada anotada: ${fmtEur(importeRetirada(a.m,r))} € · se paga del 5 al 10 de ${_txtIdx(a.fin+1)}</div>`;
+    if(r)return `<div style="margin-top:6px;font-size:12.5px;color:#1B7A3D;font-weight:700">✓ Retirada anotada: ${fmtEur(importeRetirada(a.m,r))} € · se paga en ${_txtIdx(a.fin+1)}</div>`;
     return `<div style="display:flex;gap:6px;margin-top:7px"><button onclick="openModal('retirada',{mid:'${esc(a.m.id)}',finIdx:${a.fin}})" style="${st}border:1.5px solid #2D6A4F;background:#2D6A4F;color:#fff">💶 Retira su beneficio</button></div>`;
   }
   return `<div style="display:flex;gap:6px;margin-top:7px">
@@ -5134,11 +5327,12 @@ function cicloFormHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
   if(!m)return "";
   const cicloActual=(m.ciclo!=null?m.ciclo:null); // 0 = indefinida (valor válido); null = falta (error PE-1)
-  const aporteActual=aporteBaseDe(m);
+  const aporteActual=aporteBaseDe(m), V=MODAL.volver||null, pre=(MODAL.preCiclo!=null?MODAL.preCiclo:cicloActual);
   return `<div class="modal-title">⚙️ Permanencia y aporte — ${escH(m.name)}</div>
+    ${V?`<div style="background:#EEF7F1;border:1.5px solid #8CC5A0;border-radius:12px;padding:10px 12px;font-size:13px;color:#1B4332;margin-bottom:10px;line-height:1.45">🤝 Para la ayuda de <b>${fmtEur(parseFloat(V.restore.cap)||0)} € en ${parseInt(V.restore.n)} cuotas</b> necesita al menos <b>${MODAL.preCiclo===0?"permanencia indefinida":MODAL.preCiclo+" meses"}</b> (ya está marcado). Al guardar vuelves a la ayuda.</div>`:""}
     <label class="m-label">Permanencia</label>
     ${cicloActual==null?`<div style="background:#FDF0EE;border:1.5px solid #C0492C;border-radius:12px;padding:10px 12px;font-size:13px;color:#7A2418;margin-bottom:8px">⛔ No tiene permanencia guardada. Elige la que acordó al entrar.</div>`:""}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,cicloActual,permEtiqueta)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,pre,permEtiqueta)}</div>
     <div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:12px;padding:12px;font-size:13px;color:#7A4A1E;margin-bottom:16px">
       ⚠️ La permanencia solo se puede subir, nunca bajar (Maestro PE-3). Con 24 meses o más puede pedir ayudas mayores y más largas.
     </div>
@@ -5149,7 +5343,8 @@ function cicloFormHTML(){
     ${esFundador(m)?`<div style="font-size:13px;color:var(--muted);margin-bottom:16px">⭐ Fundador: no tiene aval.</div>`:`<select id="ci-aval" class="m-select" style="margin-bottom:${m.referidoPor?16:6}px"><option value="">— Sin anotar —</option>${DATA.members.filter(x=>x.type==="asociado"&&x.id!==m.id&&x.joinMonth).sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${esc(x.id)}" ${x.id===m.referidoPor?"selected":""}>${escH(x.name)}</option>`).join("")}</select>
     ${m.referidoPor?"":`<div style="font-size:12px;color:#C0492C;margin-bottom:16px">⚠️ Falta anotar quién lo recomendó${quienRefirio(m)?` (por el bono consta ${escH(quienRefirio(m))})`:""}.</div>`}`}
     ${retiraAlAmpliarHTML(m)}
-    <button class="m-primary" onclick="saveCicloYAporte('${esc(m.id)}')">Guardar cambios</button>`;
+    <button class="m-primary" onclick="saveCicloYAporte('${esc(m.id)}')">Guardar cambios</button>
+    ${V?`<button onclick="volverAAyuda(MODAL.volver)" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer">← Volver a la ayuda sin cambiar nada</button>`:""}`;
 }
 // v45.1 (PE-5): al ampliar la permanencia al final (o después), puede retirar el beneficio guardado.
 function retiraAlAmpliarHTML(m){
@@ -5221,10 +5416,12 @@ function saveCicloYAporte(mid){
   }
   const avEl=document.getElementById("ci-aval"); // v45.1: quien lo recomendó = su aval (GE-1)
   if(avEl){ if(avEl.value)m.referidoPor=avEl.value; else delete m.referidoPor; }
+  const volver=MODAL&&MODAL.volver; // v45.28: venía de una ayuda bloqueada por la permanencia
   fijarAportesPagados(m,ap);
   m.ciclo=c;
   m.aporte=ap;
-  closeModal();save();toast(retira?"Permanencia ampliada ✓ · retirada del beneficio anotada":"Permanencia y aporte actualizados ✓");render();
+  closeModal();save();toast(retira?"Permanencia ampliada ✓ · retirada del beneficio anotada":volver?"Permanencia actualizada ✓ · sigue con la ayuda":"Permanencia y aporte actualizados ✓");render();
+  if(volver)volverAAyuda(volver);
 }
 
 // ── CAMBIAR AVALISTA (solo terceros) ─────────────────────────────────────
@@ -6962,6 +7159,8 @@ function render(){
       }
     }
 
+    // ⏳ v45.28: fechas de fin de permanencia de los asociados (solo lectura)
+    h+=permanenciasGestionHTML();
     // 📞 v45.22: teléfonos de todos (para tenerlos guardados, sin enviar nada)
     h+=telefonosGestionHTML(asocAll,tercAll);
     // 🧾 v45.23: gastos administrativos (Maestro v18.9 · FO-6)
@@ -7385,7 +7584,11 @@ function simuladorHTML(){
       <input type="range" min="1" max="12" step="1" value="${SIM.n}" oninput="SIM.n=+this.value;simPintar()" class="sim-range">
       <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:6px"><span>1 mes</span><span>12 meses</span></div>`;
   }
+  const _adm=!READONLY_ID&&!ES_MODO_GRUPO&&!VISTA_ASOC; // v45.28: enviar por WhatsApp solo desde la app del administrador
   return h+`<div id="sim-res">${SIM.tab==="ayuda"?simAyudaResHTML(m):simBenResHTML(m)}</div>
+    ${_adm&&SIM.tab==="ayuda"?`<button onclick="simEnviarWA()" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:15px;font-weight:800;cursor:pointer">💬 Enviar por WhatsApp</button>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.4">Se envía una imagen con esta ayuda (y, si hace falta, la permanencia que necesita) y un mensaje corto.</div>`:""}
+    ${_adm&&MODAL.volver?`<button onclick="volverAAyuda(MODAL.volver)" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer">← Volver a la ayuda</button>`:""}
     <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.4">Es solo una simulación: no cambia nada de tu ficha.</div>`;
 }
 // ¿Qué permanencia hace falta para esta ayuda? (AY-1 y AY-6). Devuelve la primera que vale, desde la actual.
@@ -7664,21 +7867,23 @@ function cierreLoanFormHTML(){
   const asoc=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
   const terc=DATA.members.filter(m=>m.type==="tercero").sort((a,b)=>a.name.localeCompare(b.name));
   const sol=MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null; // v45.14
+  const R=MODAL.restore||null; // v45.28: vuelve de ampliar la permanencia con los datos que tenía
+  const selMid=R?R.mid:(sol?sol.mid:null), valCap=R?R.cap:(sol?sol.capital:""), valN=R?parseInt(R.n):(sol?sol.cuotas:3), valEnt=R?R.ent:(sol?sol.grupoGid:"");
   const grs=gruposCierre().map(g=>({g,p:DATA.members.find(m=>m.id===g.principalId)})).filter(x=>x.p);
   return`<div class="modal-title">🤝 Ayuda aprobada${sol?"":" en la reunión"}</div>
 ${sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;border-radius:9px;padding:7px 10px;margin-bottom:10px">📝 Rellenado con la solicitud de <b>${escH(sol.nombre)}</b></div>`:""}
 <label class="m-label">¿A quién?</label>
 <select id="cl-mid" class="m-select" style="margin-bottom:12px;font-size:15px" onchange="updateCierreLoanPreview()">
-  <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}"${sol&&sol.mid===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</optgroup>
-  <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}"${sol&&sol.mid===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</optgroup>
+  <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}"${selMid===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</optgroup>
+  <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}"${selMid===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</optgroup>
 </select>
 <label class="m-label">Capital (€)</label>
-<input id="cl-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateCierreLoanPreview()"${sol?` value="${sol.capital}"`:""}>
+<input id="cl-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateCierreLoanPreview()"${valCap!==""&&valCap!=null?` value="${escH(String(valCap))}"`:""}>
 <label class="m-label">Nº cuotas</label>
-<select id="cl-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateCierreLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===(sol?sol.cuotas:3)?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+<select id="cl-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateCierreLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===valN?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
 <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Otorgada en <b>${rm} ${ry}</b> · 1ª cuota en <b>${MONTHS[ni]} ${ny}</b></div>
 ${grs.length?`<label class="m-label">¿Quién entrega el dinero?</label>
-<select id="cl-entrega" class="m-select" style="margin-bottom:12px;font-size:15px"><option value="">Yo</option>${grs.map(({g,p})=>`<option value="${esc(g.id)}"${sol&&sol.grupoGid===g.id?" selected":""}>${escH(p.name.split(" ")[0])} (del cobro de su grupo)</option>`).join("")}</select>`:""}
+<select id="cl-entrega" class="m-select" style="margin-bottom:12px;font-size:15px"><option value="">Yo</option>${grs.map(({g,p})=>`<option value="${esc(g.id)}"${valEnt&&valEnt===g.id?" selected":""}>${escH(p.name.split(" ")[0])} (del cobro de su grupo)</option>`).join("")}</select>`:""}
 <div id="cl-preview"></div>
 <button class="m-primary" onclick="addCierreLoanSubmit()">Registrar ayuda</button>`;
 }
@@ -7693,7 +7898,8 @@ function updateCierreLoanPreview(){
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
   const mC=DATA.members.find(x=>x.id===document.getElementById("cl-mid")?.value), cC=_condicionActual(mC);
   const ni=(MONTHS.indexOf(DATA.reportMonth)+1)%12, ny=MONTHS.indexOf(DATA.reportMonth)===11?DATA.reportYear+1:DATA.reportYear;
-  el.innerHTML=_avisoApoyoHTML(validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny}))+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+  const vC=validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny});
+  el.innerHTML=_avisoApoyoHTML(vC)+(vC.bloqueo?botonAmpliarAyudaHTML(mC,cap,nn,{m:MONTHS[ni],y:ny}):"")+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + retorno (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm)">${cuotaTxt}</b></div>
   </div>`;
@@ -7708,7 +7914,7 @@ function addCierreLoanSubmit(){
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
   { const c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny}); // v45: mismas reglas que en la ficha
-    if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
+    if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v)+botonAmpliarAyudaHTML(m,cap,nn,{m:MONTHS[ni],y:ny}); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
   const rate=DATA.rate;
   const{total,cuotas}=ayudaCuotas(cap,nn,rate);
   const inst=cuotas[0]; // referencia visual (importe de la 1ª cuota); el cálculo real usa l.cuotas
