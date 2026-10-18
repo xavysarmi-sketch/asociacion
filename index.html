@@ -877,7 +877,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.28"; // v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
+const APP_VERSION="v45.29"; // v45.29: Permanencias: sin la frase de cada mes (ya está en el calendario); el total del mes va debajo de las fichas · v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -3934,7 +3934,7 @@ function permanenciasGestionHTML(){
         <div style="font-size:19px;font-weight:900;color:#1B4332;line-height:1.1;padding-top:4px">${M3}</div><div style="font-size:12px;font-weight:700;color:#1B4332;padding-bottom:4px">${Y}</div></div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-weight:700;font-size:15px;color:var(--dark);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(m.name)}</div>${e?pill(e[0],e[1],e[2]):""}</div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px"><span style="font-size:14px;font-weight:800;color:#7A5300">${pago}${_txtIdx(x.fin+1)}</span><span style="font-size:16px;font-weight:900;color:var(--dark);white-space:nowrap">${fmtEur(x.importe)} €</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px"><span style="font-size:14px;font-weight:800;color:#7A5300">${pago}${_txtIdx(x.fin+1)}</span><span style="font-size:16px;font-weight:900;color:var(--dark);white-space:nowrap">${_eurM(x.importe)} €</span></div>
         <div style="font-size:12px;line-height:1.45;color:var(--muted);margin-top:1px">${base}</div></div></div>`;
   };
   h+=`<div style="margin:8px 0 14px">
@@ -3942,14 +3942,14 @@ function permanenciasGestionHTML(){
     <div style="display:flex;gap:6px;margin-bottom:12px">${chip("todas","Todas ("+L.length+")")}${chip("prox","Próximos 3 meses ("+nProx+")")}${chip("indef","Indefinidas ("+nIndef+")")}</div>`;
   if(!vis.length)h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">${fil==="prox"?"✓ Ninguna permanencia termina en los próximos 3 meses":"No hay asociados en este grupo"}</div>`;
   const gk=y=>y.tipo==="sin"?"sin":y.tipo==="indef"?"i"+y.fin:"f"+y.fin;
-  let grupo=null;
-  vis.forEach(x=>{
-    const g=gk(x);
-    if(g!==grupo){ grupo=g;
-      const del=vis.filter(y=>gk(y)===g), n=del.length, tot=_r2(del.reduce((s,y)=>s+(y.importe||0),0));
-      const t=g==="sin"?"Sin permanencia guardada":x.tipo==="indef"?`Indefinida · cumple ${x.n} meses en ${_txtIdx(x.fin)}`:`Último aporte en ${_txtIdx(x.fin)} · se paga en ${_txtIdx(x.fin+1)}`;
-      h+=`<div class="send-section-label" style="margin:12px 0 6px;display:flex;justify-content:space-between;gap:8px"><span>${t} <span style="color:var(--muted);font-weight:600">· ${n}</span></span>${g!=="sin"&&n>1?`<span style="white-space:nowrap;color:var(--dark)">Total ${fmtEur(tot)} €</span>`:""}</div>`; }
-    h+=fila(x);
+  // v45.28b: sin cabecera por mes (ya lo dice la hoja de calendario); el total va debajo de las fichas del mismo mes
+  const grupos=[]; vis.forEach(x=>{ const g=gk(x), u=grupos[grupos.length-1]; if(u&&u.g===g)u.l.push(x); else grupos.push({g,l:[x]}); });
+  grupos.forEach(({g,l},gi)=>{
+    if(g==="sin")h+=`<div class="send-section-label" style="margin:12px 0 6px">Sin permanencia guardada <span style="color:var(--muted);font-weight:600">· ${l.length}</span></div>`;
+    l.forEach(x=>{ h+=fila(x); });
+    if(g!=="sin"&&l.length>1){ const tot=_r2(l.reduce((s,y)=>s+(y.importe||0),0));
+      h+=`<div style="display:flex;justify-content:flex-end;margin:-2px 0 4px"><span style="background:#F2EFE8;border-radius:20px;padding:5px 12px;font-size:13.5px;color:var(--dark)">Total <b style="font-size:15px">${_eurM(tot)} €</b></span></div>`; }
+    if(gi<grupos.length-1)h+=`<div style="height:10px"></div>`;
   });
   return h+`</div>`;
 }
