@@ -877,7 +877,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.29"; // v45.29: Permanencias: sin la frase de cada mes (ya está en el calendario); el total del mes va debajo de las fichas · v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
+const APP_VERSION="v45.30"; // v45.30: cuenta del grupo: si todo está marcado como cobrado en el Cierre, queda a 0 («resto entregado») · v45.29: Permanencias: sin la frase de cada mes (ya está en el calendario); el total del mes va debajo de las fichas · v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -2918,7 +2918,7 @@ function _cgDatosSim(g){
   const idx=_cgSimIdx(g.id), movs=_cgMovs(_keyDeIdx(idx),g.id), sim=CG_SIM[g.id]||[]; // v45.17: mes elegido
   const sum=t=>_r2(movs.filter(x=>x.tipo===t).reduce((a,x)=>a+x.importe,0));
   const falta=_sinCrearMes(idx,()=>_cgFalta(g,idx)), simTot=_r2(sim.reduce((a,b)=>a+b.v,0));
-  return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:sum("entrega"),ayudas:sum("ayuda"),sim,simTot,resto:_r2(falta-simTot)};
+  return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:_r2(sum("entrega")+_sinCrearMes(idx,()=>_cgResto(g,idx))),ayudas:sum("ayuda"),sim,simTot,resto:_r2(falta-simTot)};
 }
 function cgSimEnviar(gid){
   const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
@@ -2947,6 +2947,7 @@ function cgEnviarCuenta(gid){
     else if(x.tipo==="entrega")t+=`\nMe entregaste${x.fecha?" el "+x.fecha:""}: −${e(x.importe)}`;
     else if(x.tipo==="ayuda")t+=`\nAyuda que diste a ${x.nombre||""}: −${e(x.importe)}`;
   });
+  { const r=_cgResto(g,idx); if(r>0)t+=`\nResto entregado: −${e(r)}`; } // v45.30
   t+= falta>0?`\n\n👉 *Te falta por entregar: ${e(falta)}*`:falta<0?`\n\n👉 *Me has entregado ${e(-falta)} de más*`:`\n\n✅ *Todo entregado. ¡Gracias!*`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
@@ -2957,11 +2958,19 @@ function _cgMovs(key,gid){ const c=DATA.cuentasGrupo&&DATA.cuentasGrupo[key]&&DA
 function _cgW(key,gid){ if(!DATA.cuentasGrupo)DATA.cuentasGrupo={}; if(!DATA.cuentasGrupo[key])DATA.cuentasGrupo[key]={}; if(!DATA.cuentasGrupo[key][gid])DATA.cuentasGrupo[key][gid]={movs:[]}; return DATA.cuentasGrupo[key][gid]; }
 function _cgTotal(g,idx){ const {mes,anio}=_mesDeIdx(idx); return _r2(itemsDeGrupo(g,mes,anio).reduce((s,it)=>s+it.importe,0)); }
 // Lo que falta por entregar en el mes idx: total + arrastre − entregas − ayudas − pasado al mes siguiente
-function _cgFalta(g,idx){
+function _cgFaltaApuntes(g,idx){ // solo con lo apuntado en la cuenta
   const movs=_cgMovs(_keyDeIdx(idx),g.id); let f=_cgTotal(g,idx);
   movs.forEach(x=>{ f+= x.tipo==="arrastre"? x.importe : -x.importe; });
   return _r2(f);
 }
+// v45.30: la cuenta es un borrador; manda el Cierre. Si todo lo del grupo está marcado como cobrado,
+// lo que no se apuntó cuenta como entregado («resto entregado») y la cuenta queda a 0.
+function _cgResto(g,idx){
+  const {mes,anio}=_mesDeIdx(idx), items=itemsDeGrupo(g,mes,anio);
+  if(!items.length||!items.every(it=>it.yaPagado))return 0;
+  return Math.max(0,_cgFaltaApuntes(g,idx));
+}
+function _cgFalta(g,idx){ return _r2(_cgFaltaApuntes(g,idx)-_cgResto(g,idx)); }
 function _cgHoy(){ const d=new Date(); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0"); }
 function cgAbrir(gid,tipo){ CG_FORM={gid,tipo}; render(); }
 function cgGuardar(gid){
@@ -3008,11 +3017,6 @@ function _cgCerrada(g){
   return items.length>0&&items.every(it=>it.yaPagado);
 }
 // v45.26: en el Cierre está todo cobrado pero la cuenta del responsable no llega → lo que falta por apuntar
-function _cgDescuadre(g){
-  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), items=itemsDeGrupo(g);
-  if(!_cgMovs(_keyDeIdx(idx),g.id).length||!items.length||!items.every(it=>it.yaPagado))return 0;
-  const f=_cgFalta(g,idx); return f>0?f:0;
-}
 function cuentaGrupoHTML(g,principal){
   { // v45.14: liquidada → solo un enlace pequeño; sin apuntes → una línea que se abre al tocarla
     const idx0=_idxMes(DATA.reportMonth,DATA.reportYear), mes0=MONTHS_FULL[((idx0%12)+12)%12].toLowerCase(), nom0=escH(principal.name.split(" ")[0]);
@@ -3042,12 +3046,15 @@ function cuentaGrupoHTML(g,principal){
       <span style="flex:1;min-width:0">${txt}</span><b style="white-space:nowrap">${signo}${fmtEur(x.importe)} €</b>
       ${x.tipo==="pasado"?"":`<button onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#C0492C"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Borrar?":"✕"}</button>`}</div>`;
   });
-  { const ya=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda").reduce((a,x)=>a+x.importe,0)); // v45.14
+  const resto=_cgResto(g,idx); // v45.30
+  if(resto>0)h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#E8F3EC;border:1px solid #B7D9C3;border-radius:9px;padding:7px 9px;margin-top:6px;font-size:13.5px">
+      <span style="flex:1;min-width:0">✅ Resto entregado <span style="font-size:12px;color:var(--muted)">(todo marcado como cobrado en el Cierre)</span></span><b style="white-space:nowrap">−${fmtEur(resto)} €</b></div>`;
+  { const ya=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda").reduce((a,x)=>a+x.importe,0)+resto); // v45.14 · v45.30: + resto
     if(ya>0)h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:14px;color:#2D6A4F"><span>Ya te ha entregado</span><b>${fmtEur(ya)} €</b></div>`; }
   h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px solid #2D6A4F;margin-top:10px;padding-top:8px">
       <b style="color:#1B4332;font-size:15px">${falta>0?"Falta por entregarte":falta<0?"Te ha dado de más":"✅ Liquidado"}</b>
       ${falta!==0?`<b style="font-size:20px;color:${falta>0?"#B06A1E":"#C0492C"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div>`;
-  if(_cgDescuadre(g))h+=`<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#FFF4E5;border:1px solid #E0A040;color:#8A4F12;font-size:12.5px;line-height:1.45">⚠️ En el Cierre está todo marcado como cobrado, pero aquí solo constan entregas por ${fmtEur(_r2(_cgTotal(g,_idxMes(DATA.reportMonth,DATA.reportYear))-_cgDescuadre(g)))} €. Si ya te dio los ${fmtEur(_cgDescuadre(g))} € que faltan, apunta esa entrega; si no, desmarca en el Cierre lo que aún no has recibido.</div>`;
+  // v45.30: sin aviso de descuadre: lo marcado como cobrado en el Cierre cuenta como entregado
   if(CG_FORM&&CG_FORM.gid===g.id){
     if(CG_FORM.tipo==="sim"){
       h+=`<label class="m-label" style="margin-top:10px">¿De cuánto sería la ayuda?</label>
@@ -6868,7 +6875,7 @@ function render(){
         h+=`<div style="border:1.5px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;background:#fff">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <button onclick="DESP['${gKey}']=!DESP['${gKey}'];render()" style="flex:1;background:none;border:none;text-align:left;cursor:pointer;padding:0">
-              <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}${_cgCerrada(g)?' <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap;vertical-align:middle">✅ Liquidado</span>':_cgDescuadre(g)?` <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#FFF4E5;color:#8A4F12;border:1px solid #E0A040;white-space:nowrap;vertical-align:middle">⚠️ Faltan ${fmtEur(_cgDescuadre(g))} € en su cuenta</span>`:""}</div>
+              <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}${_cgCerrada(g)?' <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap;vertical-align:middle">✅ Liquidado</span>':""}</div>
               <div style="font-size:12px;color:var(--muted)">${items.length} concepto(s) · pendiente ${fmtEur(totalPend)} €</div>
             </button>
             <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="DESP['${gKey}']=!DESP['${gKey}'];render()">›</span>
