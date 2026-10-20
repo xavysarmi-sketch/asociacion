@@ -877,7 +877,7 @@ const KEY=NH_ES_DESARROLLO?"nh-app-v9-dev":"nh-app-v9";
 const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; // máx 3
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v45.31"; // v45.31: salida: resumen para el asociado (por WhatsApp y en su enlace hasta que se le pague) · v45.30: cuenta del grupo: si todo está marcado como cobrado en el Cierre, queda a 0 («resto entregado») · v45.29: Permanencias: sin la frase de cada mes (ya está en el calendario); el total del mes va debajo de las fichas · v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
+const APP_VERSION="v45.32"; // v45.32: salida pendiente de pago: el asociado sigue viendo su ficha, con un aviso de su salida y el detalle · v45.31: salida: resumen para el asociado (por WhatsApp y en su enlace hasta que se le pague) · v45.30: cuenta del grupo: si todo está marcado como cobrado en el Cierre, queda a 0 («resto entregado») · v45.29: Permanencias: sin la frase de cada mes (ya está en el calendario); el total del mes va debajo de las fichas · v45.28: Gestión › ⏳ Permanencias (mes del último aporte, cuándo se le paga y total previsto) · si una ayuda no cabe por la permanencia, botón para ampliarla sin salir de la ayuda · simulador de ayuda: enviar por WhatsApp (imagen + texto) · v45.27: v45.27: la app del administrador pide iniciar sesión (correo y contraseña de Firebase); los enlaces de los asociados no cambian · v45.26: sin datos personales en el archivo público (lista de personas, parches puntuales y nombres en comentarios) · nunca se guarda en la nube si los datos no se cargaron · grupo: «Liquidado» solo si la cuenta del responsable también cuadra · lista: «Cuotas de <mes>» · el historial de versiones está en git y en REGISTRO_VERSIONES
 // Mientras hay un conflicto de sincronización pendiente de decidir (modal en pantalla),
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
@@ -4061,7 +4061,7 @@ function salidaResumenDatos(m){
     ini:m.joinMonth?_idxMes(m.joinMonth,m.joinYear):null, ben:_r2(b.beneficioConservado||0), aportes:_r2(b.capitalDevuelto||0),
     ayuda:_r2(b.ayudaDescontada||0), total:_r2(b.total||0), perdido:_r2(b.beneficioPerdido||0), generado:_r2(b.beneficioGenerado||0)};
 }
-function salidaResumenHTML(m,ancho){
+function salidaResumenHTML(m,ancho,sinNombre){
   const d=salidaResumenDatos(m); if(!d)return "";
   const b=d.b, nom=escH(m.name.split(" ")[0]), e=v=>_eurM(Math.abs(v))+" €";
   const sec="padding:12px 14px;border-bottom:1px solid #EEE9DF", tit="font-size:13px;font-weight:800;color:#1B4332;margin-bottom:7px";
@@ -4081,7 +4081,7 @@ function salidaResumenHTML(m,ancho){
       :`Te quedaba${b.ayudaCuotas===1?" 1 cuota":"n "+b.ayudaCuotas+" cuotas"} de tu ayuda (${e(d.ayuda)}). Lo que tienes en el fondo no llega para pagarla entera: faltan <b>${e(d.total)}</b>.`):"";
   return `<div style="${ancho?"width:"+ancho+"px;":""}background:#fff;border-radius:14px;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2a24;border:1px solid #E3DED3">
     <div style="background:#1B4332;color:#fff;padding:14px 15px"><div style="font-size:18px;font-weight:800">🚪 Resumen de tu salida</div>
-      <div style="font-size:12.5px;opacity:.85;margin-top:2px">${escH(m.name)} · Nuevos Horizontes</div></div>
+      ${sinNombre?"":`<div style="font-size:12.5px;opacity:.85;margin-top:2px">${escH(m.name)} · Nuevos Horizontes</div>`}</div>
     <div style="${sec}"><div style="${tit}">Tu permanencia</div>
       ${d.ini!=null?fila("📅","Entraste en",_txtIdx(d.ini)):""}
       ${fila("⏳","Permanencia",perm+(b.tipo==="fin"?" · completada ✓":""))}
@@ -4100,6 +4100,18 @@ function salidaResumenHTML(m,ancho){
   </div>`;
 }
 
+// v45.32: aviso en su ficha (enlace personal) mientras la salida está pendiente de pago
+function salidaAvisoFichaHTML(m){
+  const d=salidaResumenDatos(m); if(!d)return "";
+  const k="salida-det-"+m.id, ab=!!DESP[k];
+  return `<div style="margin:12px 0 4px;border:1.5px solid #E0A040;background:#FFF8EC;border-radius:14px;padding:12px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="font-size:16px;font-weight:800;color:#7A4A10">🚪 Salida</div>
+      <button onclick="DESP['${k}']=!DESP['${k}'];render()" style="padding:8px 12px;border-radius:9px;border:1.5px solid #B06A1E;background:#fff;color:#8A4F12;font-size:13px;font-weight:800;cursor:pointer">${ab?"Ocultar el detalle ▲":"Ver el detalle ▼"}</button></div>
+    ${ab?`<div style="margin-top:10px">${salidaResumenHTML(m,0,true)}</div>`:""}
+    ${ab?"":`<div style="font-size:13.5px;color:#4A3A20;line-height:1.5;margin-top:6px">${d.total>0?`Recibes <b>${_eurM(d.total)} €</b>, que se te pagan entre el <b>5 y el 10 de ${d.pagoTxt}</b>.`:`Tu salida está anotada.`}</div>`}
+  </div>`;
+}
 function _salidaTextoWA(m){
   const d=salidaResumenDatos(m); if(!d)return "";
   const nom=m.name.split(" ")[0];
@@ -4115,7 +4127,7 @@ function salidaOkModalHTML(){
   const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)); if(!m)return "";
   const nom=escH(m.name.split(" ")[0]);
   return `<div class="modal-title">✅ Salida anotada — ${escH(m.name)}</div>
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.45">Esto es lo que verá ${nom}: se lo puedes enviar ahora y también lo verá en su enlace hasta que marques la salida como pagada.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.45">Esto es lo que verá ${nom}: se lo puedes enviar ahora. En su enlace sigue viendo su ficha, con un aviso de su salida arriba, hasta que marques la salida como pagada.</div>
     ${salidaResumenHTML(m)}
     <button onclick="salidaEnviarWA('${esc(m.id)}')" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:15px;font-weight:800;cursor:pointer">💬 Enviar resumen a ${nom}</button>
     <button onclick="closeModal()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">Cerrar</button>`;
@@ -8142,13 +8154,9 @@ function renderReadonly(rid){
   // Enlace personal de un asociado dado de baja: la ficha ya no está disponible.
   // Solo afecta a quien tiene objeto 'baja'; los enlaces de asociados ACTIVOS (sin baja)
   // siguen funcionando exactamente igual (esta rama no se ejecuta para ellos).
-  if(m.baja&&m.baja.v18&&!m.baja.pagada&&salidaResumenDatos(m)){ // v45.31: hasta que se le pague, ve el resumen de su salida
-    document.getElementById("app").innerHTML=`<div class="header" style="background:linear-gradient(135deg,#1B4332,#2D6A4F);padding:18px 20px 14px;border-radius:0 0 24px 24px;text-align:center">
-      <div class="h-title">NUEVOS HORIZONTES</div><div class="h-sub">Tu salida del fondo</div></div>
-      <div style="padding:16px;max-width:480px;margin:0 auto">${salidaResumenHTML(m)}</div>`;
-    return;
-  }
-  if(m.baja){
+  // v45.32: con la salida anotada y sin pagar sigue viendo su ficha normal, con un aviso de su salida arriba
+  const salidaPend=!!(m.baja&&m.baja.v18&&!m.baja.pagada&&salidaResumenDatos(m));
+  if(m.baja&&!salidaPend){
     document.getElementById("app").innerHTML=`<div style="text-align:center;padding:60px 20px">
       <div style="font-size:48px;margin-bottom:16px">🚪</div>
       <div style="font-size:18px;font-weight:700;color:var(--dark)">Esta ficha ya no está disponible.</div>
@@ -8161,6 +8169,7 @@ function renderReadonly(rid){
     <div class="h-sub">Tu ficha personal</div>
   </div>`;
   h+=`<div class="content">`;
+  if(salidaPend)h+=salidaAvisoFichaHTML(m); // v45.32
   h+=fichaHTML(m,true);
   const updRO=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleDateString("es-ES"):"—";
   h+=`<div style="text-align:center;font-size:11px;color:var(--muted);padding:14px 0 22px;opacity:.8">
