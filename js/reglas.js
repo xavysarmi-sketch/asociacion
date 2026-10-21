@@ -112,7 +112,7 @@ function memberTotalAportes(m){
 // m.aporte = APORTE HABITUAL (lo que suele poner; la hoja de cobro lo propone).
 // DATA.extras[id][mes].monto = AJUSTE de ese mes respecto al habitual (puede ser negativo:
 // habitual 100 que un mes pone 50 → −50). Aporte del mes = habitual + ajuste.
-const APORTE_OPCIONES=[50,100,150,200];
+const APORTE_OPCIONES=REGLAS.APORTE_OPCIONES; // v45.38: la regla vive en js/maestro.js
 function aporteBaseDe(m){ return (m&&m.aporte)||DATA.monthlyFee; }
 function ajusteAporteKey(m,key){ const e=DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][key]; return (e&&e.monto)||0; }
 function aporteBrutoKey(m,key){ return Math.max(0,aporteBaseDe(m)+ajusteAporteKey(m,key)); }
@@ -425,25 +425,26 @@ function auditarNH(){
     // Doc Maestro §11.1: asociados 100–1.000€ libre; 1.000–3.000€ con aprobación previa
     // del coordinador (aviso, no error); por encima de 3.000€ no se concede ninguna ayuda.
     // Terceros: tope fijo de 500€ (no está sujeto a esta escala).
+    const R=REGLAS; // v45.38: límites del Maestro desde js/maestro.js
     if(esTerc){
-      if(l.capital>500){
-        errores.push(`Capital excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo de 500€`);
+      if(l.capital>R.AYUDA_MAX_CORTA){
+        errores.push(`Capital excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo de ${R.AYUDA_MAX_CORTA}€`);
       }
     }else{
-      if(l.capital>3000){
-        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo absoluto de 3.000€ (Maestro AY-5)`);
-      }else if(l.capital>1000){
-        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ está entre 1.000€ y 3.000€ (Maestro AY-5)`);
+      if(l.capital>R.AYUDA_MAX){
+        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo absoluto de ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
+      }else if(l.capital>R.AYUDA_MAX_SIN_APROBACION){
+        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ está entre ${_miles(R.AYUDA_MAX_SIN_APROBACION)}€ y ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
       }
     }
-    if(esTerc&&plazoBase>5){
-      errores.push(`Plazo excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses (máximo 5 para terceros)`);
+    if(esTerc&&plazoBase>R.CUOTAS_MAX_CORTA){
+      errores.push(`Plazo excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} con plazo base ${plazoBase} meses (máximo ${R.CUOTAS_MAX_CORTA} para terceros)`);
     }
     if(!esTerc&&_idxMes(l.gMonth,l.gYear)>=AY_V18_DESDE){
       const cicloC=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
-      if(cicloC===12&&l.capital>500)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ con permanencia de 12 meses (máximo 500 €, Maestro AY-1)`);
+      if(cicloC===12&&l.capital>R.AYUDA_MAX_CORTA)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ con permanencia de 12 meses (máximo ${R.AYUDA_MAX_CORTA} €, Maestro AY-1)`);
     }
-    if(!esTerc&&plazoBase>5){
+    if(!esTerc&&plazoBase>R.CUOTAS_MAX_CORTA){
       const ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
       const cicloOk=(ciclo===24||ciclo===36||ciclo===0);
       if(!cicloOk){
@@ -526,8 +527,8 @@ function gruposCierre(){ if(!DATA.gruposCierre)DATA.gruposCierre=[]; return DATA
 // que las sumas coincidan siempre. Devuelve {nReferidos, descuento}.
 function descuentoReferidoMes(mid,rm,ry){
   const refData=(DATA.referidos&&DATA.referidos[mid]&&DATA.referidos[mid][getMesKey(rm,ry)])||null;
-  const nReferidos=refData?Math.min(refData.n,3):0;
-  return {nReferidos, descuento:nReferidos*10};
+  const nReferidos=refData?Math.min(refData.n,REGLAS.REFERIDOS_MAX_MES):0; // v45.38: BO desde js/maestro.js
+  return {nReferidos, descuento:nReferidos*REGLAS.BONO_REFERIDO};
 }
 // v44.17: nombres de las personas referidas que generan el descuento de ese mes.
 function nombresReferidosMes(mid,rm,ry){
@@ -909,19 +910,20 @@ function validarApoyo(m,cap,nn,tipo,ciclo,ini,concedida){
   const nom=escH(m?m.name.split(" ")[0]:"Esta persona");
   const v17=concedida&&_idxMes(concedida.m,concedida.y)<AY_V18_DESDE;
   const dondePerm="Gestión → ⚙️ Permanencia y aporte";
-  if(cap<100)return {bloqueo:`El mínimo de una ayuda es 100 € (Maestro AY-1).`};
+  const R=REGLAS; // v45.38: límites del Maestro desde js/maestro.js
+  if(cap<R.AYUDA_MIN)return {bloqueo:`El mínimo de una ayuda es ${R.AYUDA_MIN} € (Maestro AY-1).`};
   if(tipo==="tercero"||tipo==="libre"){
-    if(cap>500)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} puede recibir como máximo 500 € (Maestro AY-1).`};
-    if(nn>5)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} devuelve la ayuda en 5 cuotas como máximo (Maestro AY-1).`};
+    if(cap>R.AYUDA_MAX_CORTA)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} puede recibir como máximo ${R.AYUDA_MAX_CORTA} € (Maestro AY-1).`};
+    if(nn>R.CUOTAS_MAX_CORTA)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} devuelve la ayuda en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (Maestro AY-1).`};
     return {};
   }
   if(ciclo==null)return {bloqueo:`${nom} no tiene permanencia guardada. Guárdala primero en ${dondePerm} (Maestro PE-1).`};
-  if(cap>3000)return {bloqueo:`El máximo de una ayuda es 3.000 € (Maestro AY-5).`};
-  if(nn>12)return {bloqueo:`Una ayuda se devuelve en 12 cuotas como máximo (Maestro AY-1).`};
-  if(ciclo===12&&(nn>5||(!v17&&cap>500))){
+  if(cap>R.AYUDA_MAX)return {bloqueo:`El máximo de una ayuda es ${_miles(R.AYUDA_MAX)} € (Maestro AY-5).`};
+  if(nn>R.CUOTAS_MAX)return {bloqueo:`Una ayuda se devuelve en ${R.CUOTAS_MAX} cuotas como máximo (Maestro AY-1).`};
+  if(ciclo===12&&(nn>R.CUOTAS_MAX_CORTA||(!v17&&cap>R.AYUDA_MAX_CORTA))){
     return {bloqueo:v17
-      ?`Con permanencia de 12 meses, la ayuda se devuelve en 5 cuotas como máximo (regla del v17).`
-      :`Con permanencia de 12 meses, ${nom} puede recibir de 100 a 500 € y devolverlos en 5 cuotas como máximo (Maestro AY-1). Para más importe o más plazo, sube primero su permanencia a 24, 36 meses o indefinida en ${dondePerm}.`};
+      ?`Con permanencia de 12 meses, la ayuda se devuelve en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (regla del v17).`
+      :`Con permanencia de 12 meses, ${nom} puede recibir de ${R.AYUDA_MIN} a ${R.AYUDA_MAX_CORTA} € y devolverlos en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (Maestro AY-1). Para más importe o más plazo, sube primero su permanencia a 24, 36 meses o indefinida en ${dondePerm}.`};
   }
   // No puede pasar del final de su permanencia (Maestro AY-1 y AY-6; misma regla que la auditoría, control 13)
   if(!v17&&ciclo!==0&&ini&&m&&m.joinMonth){
@@ -931,7 +933,7 @@ function validarApoyo(m,cap,nn,tipo,ciclo,ini,concedida){
       return {bloqueo:`La última cuota sería en ${t(ult)}, pero la permanencia de ${nom} (${ciclo} meses) termina en ${t(fin)} y la última cuota tiene que pagarse como mucho ese mes (Maestro AY-1). Usa menos cuotas o sube primero su permanencia en ${dondePerm}.`};
     }
   }
-  if(cap>1000)return {aviso:`Entre 1.000 € y 3.000 € necesita la aprobación previa del coordinador (Maestro AY-5).`};
+  if(cap>R.AYUDA_MAX_SIN_APROBACION)return {aviso:`Entre ${_miles(R.AYUDA_MAX_SIN_APROBACION)} € y ${_miles(R.AYUDA_MAX)} € necesita la aprobación previa del coordinador (Maestro AY-5).`};
   return {};
 }
 function _condicionActual(m){ return {tipo:m?m.type:"asociado", ciclo:m&&m.ciclo!=null?m.ciclo:null}; } // v45: sin permanencia guardada → se bloquea (PE-1)
@@ -1163,8 +1165,8 @@ function memberLevel(m){
 }
 function levelBenefit(m){
   const lv=memberLevel(m);
-  const base=lv===1?10:lv===2?12:15;
-  return base*Math.min(4,Math.floor(aporteBaseDe(m)/50)); // v45: por cada 50 € del aporte habitual
+  const R=REGLAS, base=lv===1?R.BENEFICIO_ANIO1:lv===2?R.BENEFICIO_ANIO2:R.BENEFICIO_ANIO3; // v45.38: js/maestro.js
+  return base*Math.min(R.BLOQUES_MAX,Math.floor(aporteBaseDe(m)/R.BLOQUE_APORTE)); // v45: por cada 50 € del aporte habitual
 }
 
 // Beneficio real pagado por mes (fuente: Reparto_Mensual del Excel).
@@ -1194,10 +1196,10 @@ function tarifaNivelMes(m, mesKey){
   const elapsed = idxK - idxJoin - mesesPausaAntes(m, y*12+mm-1); // meses vencidos (mes de ingreso = 0) · v45.33: sin los de pausa
   if(elapsed < 1) return 0;                              // aún no genera beneficio
   const ciclo = (m.ciclo != null ? m.ciclo : 12);       // 0 = indefinido
-  if(elapsed <= 12) return 10;                           // Nivel 1
-  if(elapsed <= 24 && ciclo !== 12) return 12;           // Nivel 2 (ciclo != 12)
-  if(elapsed >= 25 && (ciclo === 36 || ciclo === 0)) return 15; // Nivel 3 (ciclo 36 o indefinido)
-  return 10;                                             // ciclo 12 tras el mes 12, etc. → Nivel 1
+  if(elapsed <= 12) return REGLAS.BENEFICIO_ANIO1;       // Nivel 1 · v45.38: importes desde js/maestro.js (BE-2)
+  if(elapsed <= 24 && ciclo !== 12) return REGLAS.BENEFICIO_ANIO2; // Nivel 2 (ciclo != 12)
+  if(elapsed >= 25 && (ciclo === 36 || ciclo === 0)) return REGLAS.BENEFICIO_ANIO3; // Nivel 3 (ciclo 36 o indefinido)
+  return REGLAS.BENEFICIO_ANIO1;                         // ciclo 12 tras el mes 12, etc. → Nivel 1
 }
 function beneficioRealMes(mesKey){
   // Solo meses históricos (tabla). Para meses futuros devuelve undefined y el importe
@@ -1229,7 +1231,7 @@ function bloquesBeneficio(m,keyAporte,aportado){
   if(keyAporte>=V18_APORTES_DESDE){
     const md=DATA.monthlyData&&DATA.monthlyData[keyAporte];
     const pagado=!!(md&&md.aportes&&md.aportes[m.id]===true);
-    return pagado?Math.max(0,Math.min(4,Math.floor(aportado/50))):0;
+    return pagado?Math.max(0,Math.min(REGLAS.BLOQUES_MAX,Math.floor(aportado/REGLAS.BLOQUE_APORTE))):0; // v45.38: BE-1 desde js/maestro.js
   }
   return aportado>=100?2:1;
 }
@@ -1378,7 +1380,7 @@ function pausaPosible(m,desde){
   const ini=_idxMes(m.joinMonth,m.joinYear), rep=_idxMes(DATA.reportMonth,DATA.reportYear);
   if(desde<rep)return {ok:false,motivo:"La pausa no puede empezar en un mes ya pasado."};
   if(desde<=ini)return {ok:false,motivo:"La pausa no puede empezar en su primer mes."};
-  if(m.ciclo===0){ if(pausasDe(m).some(p=>p.desde>desde-12))return {ok:false,motivo:"Con permanencia indefinida, solo una pausa cada 12 meses (Maestro PE-8)."}; }
+  if(m.ciclo===0){ if(pausasDe(m).some(p=>p.desde>desde-REGLAS.PAUSA_INDEFINIDA_CADA))return {ok:false,motivo:"Con permanencia indefinida, solo una pausa cada 12 meses (Maestro PE-8)."}; }
   else { if(pausasDe(m).length)return {ok:false,motivo:"Ya tuvo una pausa en esta permanencia: solo una por permanencia (Maestro PE-8)."};
     const fin=finPermanenciaIdx(m); if(desde>fin)return {ok:false,motivo:"Su permanencia termina antes: no hay meses para la pausa."}; }
   if(_aportePagadoKey(m,_keyDeIdx(desde)))return {ok:false,motivo:`Ya pagó el aporte de ${_txtIdx(desde)}: la pausa tiene que empezar un mes sin aporte pagado.`};
@@ -1449,7 +1451,7 @@ function avalTexto(m){ const a=avalDe(m); return !a?"sin aval anotado":a.fundado
 // SA-10 paso 4: lo que no cubren su beneficio y sus aportes lo paga su aval; si es fundador, el fondo.
 function destinoFaltaTexto(m){ const a=avalDe(m);
   return !a?"pasa a su aval (⚠️ sin anotar: anótalo en ⚙️ Permanencia y aporte)":a.fundador?"lo asume el fondo (fundador, sin aval)":`pasa a su aval: <b>${escH(a.m?a.m.name:a.nombre)}</b>`; }
-function avisoMesesPorSaldo(saldo){ return saldo>6000?3:saldo>3000?2:1; } // SA-1
+function avisoMesesPorSaldo(saldo){ return saldo>REGLAS.AVISO_SALDO_3_MESES?3:saldo>REGLAS.AVISO_SALDO_2_MESES?2:1; } // SA-1 · v45.38: js/maestro.js
 // Salida con las reglas v18. 'ultimoIdx' = último mes en que aporta. Se paga el día 5 del mes
 // siguiente (PE-5, SA-5). Al terminar la permanencia conserva todo el beneficio; antes de tiempo
 // (o saliendo de la indefinida) solo el de los años completos = 12 aportes pagados (SA-2/3/4).

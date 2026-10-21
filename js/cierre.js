@@ -40,7 +40,7 @@ function referidosDesplegableHTML(mid,rm,ry,clave){
 }
 function vistaPersonal(){ return _VP>0; }
 function _enVistaPersonal(fn){ return function(){ _VP++; try{ return fn.apply(this,arguments); } finally{ _VP--; } }; }
-const APORTE_MINIMO=50;
+const APORTE_MINIMO=REGLAS.APORTE_MINIMO; // v45.38: la regla vive en js/maestro.js
 function _nBaseG(members,rm,ry){ return members.filter(m=>m.type==="asociado"&&activoEnReporte(m)&&!enPausaMes(m,rm,ry)&&aporteMostradoMes(m,rm,ry).base).length; }
 function _nAbiertosG(members,rm,ry){ return members.filter(m=>m.type==="asociado"&&activoEnReporte(m)&&!enPausaMes(m,rm,ry)&&aporteMostradoMes(m,rm,ry).abierto).length; }
 // Línea del aporte del mes (vista personal y administrador)

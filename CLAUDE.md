@@ -11,6 +11,10 @@ lenguaje sencillo antes de aplicarlos.
   · index.html — solo el esqueleto HTML y la lista de archivos, en orden;
   · css/nh.css — todos los estilos;
   · js/firebase.js — entorno y conexión (se ejecuta al cargarse);
+  · js/maestro.js — LAS REGLAS DEL FONDO EN UN SOLO SITIO (desde v45.38): límites de ayudas,
+    beneficios por bloque, avisos de salida, referidos, pausa… cada número con su código del
+    Maestro. Si el Maestro cambia una regla, se cambia ahí y en ningún otro sitio (y en la tabla
+    REGLAS de NH Oficial\nh_auditoria.py, que debe coincidir);
   · js/utilidades.js, datos.js, reglas.js, iconos.js, general.js, cierre.js, grupos.js, documentos.js,
     personas.js, ayudas.js, gestion.js, enlaces.js — SOLO declaraciones (funciones y constantes fijas),
     agrupadas por tema; no ejecutan nada al cargarse;

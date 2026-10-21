@@ -298,7 +298,7 @@ function salidaOpcionesModalHTML(){
 function pausaFormHTML(){
   const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)); if(!m)return "";
   const rep=_idxMes(DATA.reportMonth,DATA.reportYear);
-  if(MODAL.pDesde==null)MODAL.pDesde=rep+1; if(MODAL.pMeses==null)MODAL.pMeses=3;
+  if(MODAL.pDesde==null)MODAL.pDesde=rep+1; if(MODAL.pMeses==null)MODAL.pMeses=Math.max(...REGLAS.PAUSA_MESES); // v45.38: PE-8 desde js/maestro.js
   const desde=MODAL.pDesde, meses=MODAL.pMeses, pp=pausaPosible(m,desde), ay=ayudaPendienteDe(m);
   const finAhora=finPermanenciaIdx(m), finNuevo=finAhora!=null?finAhora+meses:null, armed=!!MODAL.pArmed;
   const chip=(v,on,fn)=>`<button onclick="${fn}" style="flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid ${on?"#1B4332":"#E3DDD2"};background:${on?"#1B4332":"#fff"};color:${on?"#fff":"#3B3B3B"};font-size:14px;font-weight:700;cursor:pointer">${v}</button>`;
@@ -308,7 +308,7 @@ function pausaFormHTML(){
     <label class="m-label">Empieza en</label>
     <div style="display:flex;gap:6px;margin-bottom:10px">${[rep,rep+1].map(i=>chip(_txtIdx(i),desde===i,`MODAL.pDesde=${i};MODAL.pArmed=false;render()`)).join("")}</div>
     <label class="m-label">Meses de pausa</label>
-    <div style="display:flex;gap:6px;margin-bottom:12px">${[1,2,3].map(n=>chip(n+(n===1?" mes":" meses"),meses===n,`MODAL.pMeses=${n};MODAL.pArmed=false;render()`)).join("")}</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">${REGLAS.PAUSA_MESES.map(n=>chip(n+(n===1?" mes":" meses"),meses===n,`MODAL.pMeses=${n};MODAL.pArmed=false;render()`)).join("")}</div>
     ${pp.ok?`<div style="background:#F4F9F6;border:1px solid #C9DCCF;border-radius:12px;padding:10px 12px;margin-bottom:12px">
       ${fila("Sin aportar",meses===1?_txtIdx(desde):`${_txtIdx(desde)} – ${_txtIdx(desde+meses-1)}`)}
       ${ay.n>0?fila("Su ayuda",`${_eurM(ay.cuotas)} € en ${_txtIdx(desde)}`):""}
@@ -1276,7 +1276,7 @@ ${selectorMesAnio("pu-mes","pu-anio")}
 }
 function puntualCalc(){
   const cap=parseInt(document.getElementById("pu-monto")?.value)||0;
-  const ret=Math.round(cap*0.05);
+  const ret=Math.round(cap*REGLAS.RETORNO_PUNTUAL);
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set("pu-cap",cap+" €"); set("pu-ret",ret+" €"); set("pu-tot",(cap+ret)+" €");
 }
@@ -1286,7 +1286,7 @@ function savePuntual(mid){
   const anio=parseInt(document.getElementById("pu-anio")?.value)||DATA.reportYear;
   const plazo=parseInt(document.querySelector(".pu-pl-opt.active")?.dataset.pl||"1");
   if(cap<500||cap>3000){alert("El capital debe estar entre 500 y 3000 €");return;}
-  const ret=Math.round(cap*0.05);
+  const ret=Math.round(cap*REGLAS.RETORNO_PUNTUAL);
   // Mes de devolución = mes siguiente al de entrega
   let di=MONTHS.indexOf(mes)+1, dy=anio;
   if(di>11){di-=12;dy++;}
