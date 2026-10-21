@@ -2,7 +2,9 @@
 const fs=require("fs");
 const vm=require("vm");
 
-const html=fs.readFileSync("index.html","utf8");
+// v45.36: la app está repartida en js/*.js; se busca el bloque en index.html y en esos archivos
+const indexHtml=fs.readFileSync("index.html","utf8");
+const html=indexHtml+"\n"+[...indexHtml.matchAll(/<script src="(js\/[^"?]+)/g)].map(m=>fs.readFileSync(m[1],"utf8")).join("\n");
 const begin="// BEGIN NH_TERCEROS_REF_MIGRATION";
 const end="// END NH_TERCEROS_REF_MIGRATION";
 const start=html.indexOf(begin);
@@ -78,7 +80,7 @@ ok(fromV9.aplicada===true&&legacyV9._version===11,"v9 no avanzó de forma segura
 ok(JSON.stringify(legacyV9)===JSON.stringify(expected),"v9 y v10 produjeron resultados distintos");
 
 ok(/const DATA_VERSION=11;/.test(html),"DATA_VERSION no es 11");
-ok(/const APP_VERSION="v44\.5";/.test(html),"APP_VERSION se mezcló con DATA_VERSION");
+ok(/const APP_VERSION="v\d+\.\d+";/.test(html),"APP_VERSION se mezcló con DATA_VERSION"); // v45.36: antes exigía "v44.5" y fallaba en cualquier versión posterior
 ok(!html.includes("const AVALISTA_ID_POR_NOMBRE"),"sigue presente la tabla fija de avalistas");
 
 console.log("PASS 7 casos ficticios de migración dinámica v10→v11");

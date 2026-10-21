@@ -6,7 +6,19 @@ conocimientos técnicos básicos. Idioma de trabajo: SIEMPRE español. Explicar 
 lenguaje sencillo antes de aplicarlos.
 
 ## La app
-- Un solo archivo: index.html (HTML/JS vanilla, sin frameworks). PWA usada en iPhone/Safari.
+- HTML/JS vanilla, sin frameworks. PWA usada en iPhone/Safari. Desde v45.36 la app está REPARTIDA
+  en archivos (antes era un solo index.html de unas 9.000 líneas):
+  · index.html — solo el esqueleto HTML y la lista de archivos, en orden;
+  · css/nh.css — todos los estilos;
+  · js/firebase.js — entorno y conexión (se ejecuta al cargarse);
+  · js/utilidades.js, datos.js, reglas.js, iconos.js, general.js, cierre.js, grupos.js, documentos.js,
+    personas.js, ayudas.js, gestion.js, enlaces.js — SOLO declaraciones (funciones y constantes fijas),
+    agrupadas por tema; no ejecutan nada al cargarse;
+  · js/arranque.js — las variables de estado y el arranque, en el mismo orden de siempre;
+  · js/aviso-version.js — aviso de nueva versión.
+  Son scripts clásicos (no módulos): todo comparte el ámbito global, igual que antes. El ORDEN de
+  los <script> en index.html importa: no cambiarlo. Código que se ejecute al cargarse va solo en
+  arranque.js (o firebase.js / aviso-version.js), nunca en los archivos de declaraciones.
 - Firebase (Firestore) + localStorage. Publicada en GitHub Pages (repo público).
 - Estructura de datos: objeto DATA con members[], cada miembro con loans[] y closedLoans[],
   cada loan con pays[] {m, año, paid}.
@@ -19,7 +31,7 @@ lenguaje sencillo antes de aplicarlos.
    SIEMPRE desactualizado. Nunca tocar datos de miembros/importes sin un JSON exportado
    desde la app (Gestión → Exportar datos). Si falta, pedirlo y no inventar números.
 2. La línea `const URL_PARAMS = new URLSearchParams(window.location.search)` debe conservarse
-   inmediatamente después de la llave de cierre de sanitizeData(). Si se borra, la app queda
+   inmediatamente después de la llave de cierre de sanitizeData() (las dos en js/datos.js). Si se borra, la app queda
    en pantalla en blanco.
 3. sanitizeData() debe preservar los miembros creados en la app (flag origen:"app" o id que
    empieza por "m") además de los de INITIAL. Fue la causa raíz del bug "apoyos que no se
@@ -59,14 +71,23 @@ lenguaje sencillo antes de aplicarlos.
    antiguo.
 
 ## Validación obligatoria antes de dar un cambio por terminado
+- PRUEBAS ANTES DE PUBLICAR (obligatorias desde v45.36): `NH Oficial\pruebas_app\verificar_app.js`
+  compara la versión nueva con la publicada usando una copia real de los datos (json\auto_*.json,
+  que nunca entra en el repo): reglas críticas, sintaxis, ?v= de cada archivo = APP_VERSION,
+  arranque sin errores, auditoría, auto-chequeo, enlaces, y 345 pantallas y cálculos (cada
+  pestaña, cada ficha, cada enlace de asociado y de grupo, papeles del mes). Si no da PASA, NO se
+  publica. Las diferencias con la versión publicada se enseñan a Ángel: solo se publica con
+  --permitir-diferencias si son exactamente las del cambio pedido. Ver pruebas_app\LEEME.md.
 - `node --check` sobre el JS extraído (sintaxis).
 - Si el cambio toca la inicialización o sanitizeData: además, simulación de ejecución con
   DOM simulado (mock) para confirmar que la app arranca.
 - Verificar visualmente que las reglas críticas 2, 3 y 4 siguen intactas.
 
 ## Versionado y deploy
-- El número de versión vive SOLO en la constante APP_VERSION. Al versionar, cambiar
-  únicamente APP_VERSION, nunca escribir el número a mano en appVersionTag.
+- El número de versión vive en la constante APP_VERSION (js/datos.js). Al versionar, cambiar
+  APP_VERSION y el ?v= de TODOS los archivos de index.html (css y js) al mismo número: así el
+  iPhone descarga los archivos nuevos y nunca mezcla viejos con nuevos. verificar_app.js lo
+  comprueba. Nunca escribir el número a mano en appVersionTag.
 - La versión visible (elemento id="appVersionTag", abajo a la derecha) la rellena el JS
   a partir de APP_VERSION; el div no lleva texto fijo. Incrementar APP_VERSION en cada
   cambio (formato v43.XX).
@@ -76,8 +97,8 @@ lenguaje sencillo antes de aplicarlos.
 - REGLA DE CIERRE OBLIGATORIA (ejecutar siempre al terminar cualquier tarea, no opcional):
   tras aplicar el cambio, validar `node --check` y confirmar la versión en APP_VERSION, y
   como ÚLTIMO paso, sin que Ángel lo pida:
-  1. Copiar el index.html final a la carpeta-puente
-     `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\`, sobrescribiendo el que haya.
+  1. Copiar la app final (index.html, css\ y js\) a la carpeta-puente
+     `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\`, sobrescribiendo lo que haya.
   2. Si la tarea tocó también el Excel (NH_Contabilidad_Maestra.xlsx), el Documento Maestro
      (NH_Documento_Maestro_vNN.docx) o se usó un backup JSON para verificar, copiar igualmente
      esa versión actualizada a la misma carpeta.

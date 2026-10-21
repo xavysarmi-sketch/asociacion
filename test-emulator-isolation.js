@@ -2,8 +2,10 @@
 const fs=require("fs");
 const vm=require("vm");
 const html=fs.readFileSync("index.html","utf8");
+// v45.36: la app está repartida en js/*.js; se leen también esos archivos (además del código en línea)
 const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
-  .filter(m=>!/src\s*=/.test(m[0].slice(0,m[0].indexOf(">")+1))).map(m=>m[1]);
+  .filter(m=>!/src\s*=/.test(m[0].slice(0,m[0].indexOf(">")+1))).map(m=>m[1])
+  .concat([...html.matchAll(/<script src="(js\/[^"?]+)/g)].map(m=>fs.readFileSync(m[1],"utf8")));
 const block=scripts.find(s=>s.includes("NH_PROD_FIREBASE_PROJECT_ID"));
 if(!block)throw new Error("Bloque Firebase no encontrado");
 const fixtureCode=fs.readFileSync("dev-fixture.js","utf8");
