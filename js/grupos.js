@@ -232,9 +232,10 @@ function marcarItemGrupo(tipo,mid,lid,pi){
     const md=getMesData(DATA.reportMonth,DATA.reportYear);
     if(!md.aportes)md.aportes={};
     md.aportes[mid]=!md.aportes[mid];
+    anotarFechaAporte(md,mid); // v45.37
   } else {
     const m=DATA.members.find(x=>x.id===mid);
-    if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===lid)l.pays[pi].paid=!l.pays[pi].paid;});
+    if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);}}); // v45.37: + fecha
     recolocarAyudas();
   }
   recalcMesRecargo();save();render();
@@ -248,9 +249,10 @@ function marcarTodoGrupo(gid){
       const md=getMesData(DATA.reportMonth,DATA.reportYear);
       if(!md.aportes)md.aportes={};
       md.aportes[it.mid]=true;
+      anotarFechaAporte(md,it.mid); // v45.37
     } else {
       const m=DATA.members.find(x=>x.id===it.mid);
-      if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===it.lid)l.pays[it.pi].paid=true;});
+      if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===it.lid){l.pays[it.pi].paid=true;anotarFechaCuota(l.pays[it.pi]);}}); // v45.37: + fecha
     }
   });
   recolocarAyudas();recalcMesRecargo();save();render();

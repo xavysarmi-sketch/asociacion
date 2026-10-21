@@ -2,6 +2,15 @@
 // Cierre del mes: aportes, cuotas, retorno y cuentas del mes
 // Parte de la app (versión en APP_VERSION, js/utilidades… se cargan en el orden de index.html).
 // Solo declaraciones: no ejecuta nada al cargarse (el arranque está en js/arranque.js).
+// v45.37: FECHA DE CADA COBRO. Al marcar un aporte o una cuota como cobrado se anota el día
+// (aportes: monthlyData[mes].aportesFecha[id]; cuotas: pays[i].fecha). Al desmarcar se quita.
+// Lo cobrado antes de la v45.37 no tiene fecha (no se inventa). No cambia ninguna cuenta.
+function anotarFechaAporte(md,mid){
+  if(!md)return;
+  if(md.aportes&&md.aportes[mid]===true){ if(!md.aportesFecha)md.aportesFecha={}; md.aportesFecha[mid]=_fechaHoyISO(); }
+  else if(md.aportesFecha){ delete md.aportesFecha[mid]; }
+}
+function anotarFechaCuota(p){ if(!p)return; if(p.paid)p.fecha=_fechaHoyISO(); else delete p.fecha; }
 // Elegir el aporte de un mes (cierre, cierre grupal o ficha). Solo 50/100/150/200 (AP-2, AP-3).
 function setAporteMes(mid,monto,key){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
@@ -78,7 +87,7 @@ function togglePay(mid,lid,pi){
     if(m.id===mid){
       // Buscar en loans activos Y en closedLoans
       const allLoans=[...(m.loans||[]),...(m.closedLoans||[])];
-      allLoans.forEach(l=>{if(l.id===lid)l.pays[pi].paid=!l.pays[pi].paid;});
+      allLoans.forEach(l=>{if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);}}); // v45.37: + fecha
       // Separar: loans con alguna cuota pendiente → activos; todos pagados → cerrados
       const activos=allLoans.filter(l=>l.pays.some(p=>!p.paid));
       const cerrados=allLoans.filter(l=>l.pays.every(p=>p.paid));
@@ -136,25 +145,26 @@ function toggleAporte(memberId,mes,anio){
   const mm=mes||DATA.reportMonth, yy=anio||DATA.reportYear;
   const md=getMesData(mm,yy);
   md.aportes[memberId]=!md.aportes[memberId];
+  anotarFechaAporte(md,memberId); // v45.37
   // Recalcular recargo desde cuotas cobradas marcadas
   recalcMesRecargo();
   save();render();
 }
 function marcarTodosAportes(){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
-  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)&&!enPausaMes(m,DATA.reportMonth,DATA.reportYear)).forEach(m=>{md.aportes[m.id]=true;});
+  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)&&!enPausaMes(m,DATA.reportMonth,DATA.reportYear)).forEach(m=>{const ya=md.aportes[m.id]===true;md.aportes[m.id]=true;if(!ya)anotarFechaAporte(md,m.id);}); // v45.37: fecha solo a los que se cobran ahora
   save();render();toast("Todos marcados como pagados ✓");
 }
 function desmarcarTodosAportes(){
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
-  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).forEach(m=>{md.aportes[m.id]=false;});
+  DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).forEach(m=>{md.aportes[m.id]=false;anotarFechaAporte(md,m.id);}); // v45.37: se quita la fecha
   save();render();toast("Todos desmarcados");
 }
 function toggleCuotaCierre(mid,lid,pi){
   DATA.members.forEach(m=>{
     if(m.id===mid){
       [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
-        if(l.id===lid)l.pays[pi].paid=!l.pays[pi].paid;
+        if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);} // v45.37: + fecha
       });
       // Reordenar: si todas pagadas → closedLoans; si alguna pendiente → loans
       const todas=[...(m.loans||[]),...(m.closedLoans||[])];

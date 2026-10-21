@@ -2,6 +2,8 @@
 // Utilidades: formato de importes, fechas, meses y textos
 // Parte de la app (versión en APP_VERSION, js/utilidades… se cargan en el orden de index.html).
 // Solo declaraciones: no ejecuta nada al cargarse (el arranque está en js/arranque.js).
+// v45.37: fecha de hoy como "AAAA-MM-DD" (para anotar el día de cada cobro)
+function _fechaHoyISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
 function esc(str){return String(str).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
 function escH(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}

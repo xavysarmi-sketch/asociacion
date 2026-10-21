@@ -520,12 +520,12 @@ function saveEditLoan(){
   const sm=document.getElementById("el-sm").value,sy=parseInt(document.getElementById("el-sy").value);
   // Preservar estado 'paid' Y 'aplazada' por mes-año al reconstruir
   const prev={};
-  l.pays.forEach(p=>{prev[p.m+"-"+p.y]={paid:!!p.paid,aplazada:!!p.aplazada};});
+  l.pays.forEach(p=>{prev[p.m+"-"+p.y]={paid:!!p.paid,aplazada:!!p.aplazada,fecha:p.fecha};}); // v45.37: también la fecha del cobro
   const pays=[];let mi=MONTHS.indexOf(sm),yr=sy;
   for(let i=0;i<nn;i++){
     const k=MONTHS[mi]+"-"+yr;
     const st=prev[k]||{};
-    pays.push({m:MONTHS[mi],y:yr,paid:!!st.paid,...(st.aplazada?{aplazada:true}:{})});
+    pays.push({m:MONTHS[mi],y:yr,paid:!!st.paid,...(st.aplazada?{aplazada:true}:{}),...(st.paid&&st.fecha?{fecha:st.fecha}:{})});
     mi++;if(mi>=12){mi=0;yr++;}
   }
   l.capital=cap;l.gMonth=gm;l.gYear=gy;l.pays=pays;
