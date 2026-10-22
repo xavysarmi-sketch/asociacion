@@ -20,7 +20,7 @@ const ES_MODO_GRUPO = !!(GRUPO_IDS || GRUPO_PPAL);
 const GRUPO_YO=URL_PARAMS.get("yo")?decodeURIComponent(URL_PARAMS.get("yo")):null;
 let GRUPO_VISTA="elegir"; // pestaña activa en el enlace grupal: "elegir" | "grupo" | "mi"
 
-let DATA,TAB="asociados",BUSY=false,MODAL=null,FICHA_ID=null,DESP={};
+let DATA,TAB="inicio",BUSY=false,MODAL=null,FICHA_ID=null,DESP={};
 let FICHA_TAB="resumen"; // pestaña activa dentro del detalle del asociado
 let CODE_CHECKS={ran:false,running:false,online:true,ok1:null,ok2:null,ok3:null,ok4:null,ts:null}; // resultados del auto-chequeo de código
 let UPDATE_CONFIRMED=false; // true en cuanto se confirma que se está viendo la versión publicada

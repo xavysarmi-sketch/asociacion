@@ -16,7 +16,8 @@ lenguaje sencillo antes de aplicarlos.
     Maestro. Si el Maestro cambia una regla, se cambia ahí y en ningún otro sitio (y en la tabla
     REGLAS de NH Oficial\nh_auditoria.py, que debe coincidir);
   · js/utilidades.js, datos.js, reglas.js, iconos.js, general.js, cierre.js, grupos.js, documentos.js,
-    personas.js, ayudas.js, gestion.js, enlaces.js — SOLO declaraciones (funciones y constantes fijas),
+    personas.js, ayudas.js, gestion.js, enlaces.js, inicio.js (barra de abajo, Inicio, Ayudas, «Ayuda
+    registrada», Texto grande) — SOLO declaraciones (funciones y constantes fijas),
     agrupadas por tema; no ejecutan nada al cargarse;
   · js/arranque.js — las variables de estado y el arranque, en el mismo orden de siempre;
   · js/aviso-version.js — aviso de nueva versión.
@@ -27,7 +28,10 @@ lenguaje sencillo antes de aplicarlos.
 - Estructura de datos: objeto DATA con members[], cada miembro con loans[] y closedLoans[],
   cada loan con pays[] {m, año, paid}.
 - Colores de marca: verde #1B4332 / #2D6A4F, naranja #E07A3A, crema #F5F0EB.
-- Pestañas: Reporte · Cierre · Asociados · Envíos · Gestión.
+- Pestañas (desde v45.39, barra de abajo): Inicio · Cobros (TAB "mes") · Personas (TAB "asociados") ·
+  Ayudas · Más (TAB "manage"; el Histórico se abre desde Más). La letra más grande y el nuevo orden
+  son solo para la app del administrador (clase body.nh-admin); enlaces de asociados, «Así lo ve» y
+  papeles del mes se ven como siempre.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

@@ -674,7 +674,7 @@ function _fichaHTMLbase(m,readonly=false){
   const isOpen=(k)=>!!(DESP[mid+"-"+k]);
   const tog=(k)=>`DESP['${mid}-${k}']=!DESP['${mid}-${k}'];render()`;
 
-  let h=readonly?"":`<div style="display:flex;gap:8px;align-items:center"><button class="btn-back" style="flex:1" onclick="closeFicha()">← Volver a Asociados</button><button class="btn-back" style="flex:0 0 auto;color:#3D4080" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver como lo ve</button></div>`;
+  let h=readonly?"":`<div style="display:flex;gap:8px;align-items:center"><button class="btn-back" style="flex:1" onclick="closeFicha()">← Personas</button><button class="btn-back" style="flex:0 0 auto;width:auto;color:#3D4080" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver como lo ve</button></div>`;
 
   /* ────────────────────────────────────────────────
      1. TARJETA DE IDENTIDAD
@@ -881,7 +881,7 @@ function _fichaHTMLbase(m,readonly=false){
           if(readonly){
             c+=`<div class="cuota cuota-${st}${esUltimaCuota(loan,pi)?" cuota-ultima":""}" style="cursor:default"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${fmtEur(cuotaDe(loan,pi))} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></div>`;
           } else {
-            c+=`<button class="cuota cuota-${st}${esUltimaCuota(loan,pi)?" cuota-ultima":""}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${fmtEur(cuotaDe(loan,pi))} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div></button>`;
+            c+=`<button class="cuota cuota-${st}${esUltimaCuota(loan,pi)?" cuota-ultima":""}" onclick="togglePay('${esc(m.id)}','${esc(loan.id)}',${pi});render()"><div class="cuota-month">${p.m}</div><div class="cuota-val" style="white-space:nowrap">${fmtEur(cuotaDe(loan,pi))} €</div><div class="cuota-status">${p.aplazada&&!p.paid?"⏸ APLAZ.":p.paid?"PAGADO":isActive?"POR PAGAR":"—"}</div>${p.paid&&p.fecha?`<div class="cuota-fecha">${_fechaCorta(p.fecha)}</div>`:""}</button>`; // v45.39: día del cobro
           }
         });
         c+=`</div>`;
@@ -966,14 +966,14 @@ function _fichaHTMLbase(m,readonly=false){
         const k=cy+"-"+String(cm+1).padStart(2,"0");
         const md2=(DATA.monthlyData&&DATA.monthlyData[k])||{};
         const pagado=!!(md2.aportes&&md2.aportes[m.id]);
-        filas.push({mes:MS[cm],anio:cy,pagado,importe:aporteBrutoKey(m,k),key:k});
+        filas.push({mes:MS[cm],anio:cy,pagado,importe:aporteBrutoKey(m,k),key:k,fecha:(md2.aportesFecha&&md2.aportesFecha[m.id])||null}); // v45.39: día del cobro
         cm++; if(cm>=12){cm=0;cy++;}
       }
       if(filas.length>0){
         let contH="";
         const nPag=filas.filter(f=>f.pagado).length;
         filas.slice().reverse().forEach(f=>{
-          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#C0492C'}">${f.pagado?f.importe+" € ✅":vistaPersonal()?"Pendiente ⏳":"Pendiente ⏳ ("+f.importe+" €)"}</span></div>`;
+          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#C0492C'}">${f.pagado?f.importe+" € ✅"+(f.fecha&&!vistaPersonal()?` <span class="ft-fecha">· ${_fechaCorta(f.fecha)}</span>`:""):vistaPersonal()?"Pendiente ⏳":"Pendiente ⏳ ("+f.importe+" €)"}</span></div>`;
         });
         h+=dropFicha(mid,"apthist","📅 Historial de aportes mensuales",nPag+" de "+filas.length+" pagados",contH,isOpen("apthist"));
       }
@@ -988,21 +988,36 @@ function _fichaHTMLbase(m,readonly=false){
     h+=`<div class="ficha-section" style="margin-top:4px">
       <div class="ficha-sec-title">⚙️ Gestión</div>
       ${pausaGestionHTML(m)}
+      <!-- v45.39: acciones agrupadas por tema; salida y eliminar, aparte («Zona delicada») -->
+      <div class="acc-grupo-tit">Cobros y aportes</div>
+      <div class="mgmt-grid">
+        ${isTerc?"":`<button class="mgmt-btn warn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">💶 Aporte de un mes</button>`}
+        <button class="mgmt-btn" style="background:#1B4332;color:#fff" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte temporal</button>
+      </div>
+      <div class="acc-grupo-tit">Ayudas</div>
       <div class="mgmt-grid">
         <button class="mgmt-btn primary" onclick="solDesdeGestion('${esc(m.id)}')">＋ Nueva solicitud</button>
-        ${isTerc?"":`<button class="mgmt-btn warn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">💶 Aporte de un mes</button>`}
-        <button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>
-        ${isTerc?"":`<button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
         ${isTerc?"":`<button class="mgmt-btn" style="background:#2D6A4F;color:#fff" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 Simuladores</button>`}
+        ${(m.history||[]).length?`<button class="mgmt-btn secondary" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`:""}
+      </div>
+      <div class="acc-grupo-tit">Permanencia y referidos</div>
+      <div class="mgmt-grid">
+        ${isTerc?"":`<button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
+        <button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>
+        ${isTerc?`<button class="mgmt-btn" style="background:var(--terc);color:#fff" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
+      </div>
+      <div class="acc-grupo-tit">Mensajes y enlace</div>
+      <div class="mgmt-grid">
         <button class="mgmt-btn" style="background:#25D366;color:#fff" onclick="abrirBienvenida('${esc(m.id)}')">📲 Bienvenida</button>
         <button class="mgmt-btn secondary" onclick="openModal('telefono',{mid:'${esc(m.id)}'})">📞 ${m.phone?escH(m.phone):"Teléfono"}</button>
         <button class="mgmt-btn" style="background:#3D4080;color:#fff" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver como lo ve</button>
         <button class="mgmt-btn secondary" onclick="copyLink('${esc(m.id)}')">🔗 Copiar su enlace</button>
-        ${(m.history||[]).length?`<button class="mgmt-btn secondary" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`:""}
-        ${isTerc?"":`<button class="mgmt-btn" style="background:#FDECE8;color:#C0492C" onclick="openSalida('${esc(m.id)}')">🚪 Salida del fondo</button>`}
+      </div>
+      <div class="zona-delicada"><div class="acc-grupo-tit" style="color:#B5422E;margin-top:0">⚠️ Zona delicada</div>
+      <div class="mgmt-grid">
+        ${isTerc?"":`<button class="mgmt-btn" style="background:#FDECE8;color:#C0492C" onclick="openSalida('${esc(m.id)}')">🚪 Salida o pausa</button>`}
         <button class="mgmt-btn" style="background:${_delMemberArmed===m.id?"#C0492C":"#fff"};color:${_delMemberArmed===m.id?"#fff":"#C0492C"};border:1.5px solid #C0492C" onclick="eliminarDesdeFicha('${esc(m.id)}')">${_delMemberArmed===m.id?"¿Seguro? Toca otra vez":"🗑️ Eliminar ficha"}</button>
-        <button class="mgmt-btn" style="background:#1B4332;color:#fff" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte temporal</button>
-        ${isTerc?`<button class="mgmt-btn" style="background:var(--terc);color:#fff" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
+      </div></div>
       </div>
     </div>`;
   } else {
@@ -1503,7 +1518,7 @@ function addCierreLoanSubmit(){
     if(so&&so.grupoGid&&!_grupoDe(mid)){ const gg=gruposCierre().find(x=>x.id===so.grupoGid); if(gg&&gg.principalId!==mid){ if(!gg.miembros)gg.miembros=[]; gg.miembros.push(mid); } } // v45.15
     if(so&&so.avalId&&m.type==="tercero"&&!m.ref)m.ref=so.avalId; // v45.15
     if(so){ so.estado="otorgada"; so.mid=mid; so.lid=lid; so.mesOtorgada=getMesKey(rm,ry); so.capitalOtorgado=cap; so.cuotasOtorgadas=nn; so.entregaGid=gidEnt||null; so.fechaOtorgada=_cgHoy(); } }
-  save();closeModal();render();toast("Ayuda registrada ✓");
+  save();MODAL=null;openModal('ayuda_ok',{mid,lid});toast("Ayuda registrada ✓"); // v45.39: resumen y WhatsApp en el mismo paso
 }
 function loanFormHTML(){
   // Predefinir: mes otorgada = mes en curso (rm/ry); 1ª cuota = mes siguiente (regla del fondo)

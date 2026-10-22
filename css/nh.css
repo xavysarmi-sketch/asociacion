@@ -677,3 +677,179 @@ body.nh-development-mode{padding-top:42px}
 .tab .ic{width:18px;height:18px}
 .desg-card .ult-chip,.tot-final .ult-chip{background:rgba(233,196,106,.14);border:1px solid rgba(233,196,106,.55);color:#F1D58A}
 .ic-badge{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#fff;border:1.5px solid #E3C766;display:flex;align-items:center;justify-content:center;color:#A07C14;font-size:20px}
+
+/* ══ v45.39 · NUEVO ORDEN Y LEGIBILIDAD — solo en la app del administrador (body.nh-admin).
+   Los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre. ══ */
+body.nh-admin{--muted:#5F5A55}
+body.nh-admin .tabs{display:none}
+body.nh-admin .header{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;border-radius:0 0 20px 20px}
+body.nh-admin .h-title{font-size:20px;margin-bottom:8px}
+body.nh-admin .content{padding:12px 16px calc(110px + env(safe-area-inset-bottom))}
+body.nh-admin .app-version{bottom:calc(80px + env(safe-area-inset-bottom))}
+body.nh-admin .app-version-ok{display:none!important}
+body.nh-admin .update-banner{bottom:calc(68px + env(safe-area-inset-bottom))}
+.nav-inf{display:none}
+body.nh-admin .nav-inf{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:90;max-width:500px;margin:0 auto;background:#fff;border-top:1px solid var(--border);padding:6px 6px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:7px 0;min-height:52px;border-radius:12px;font-size:12.5px;font-weight:700;color:#6B6660;cursor:pointer}
+.nav-btn .ic{width:24px;height:24px}
+.nav-btn.on{color:#1B4332;background:#E3F1E7}
+.ini-estado{border-radius:18px;padding:16px;color:#fff;margin:2px 0 14px;box-shadow:0 3px 12px rgba(27,67,50,.18)}
+.ini-est-mes{font-size:14px;font-weight:700;opacity:.85;text-transform:capitalize}
+.ini-est-tit{font-size:21px;font-weight:800;margin:2px 0 10px}
+.ini-fila{display:flex;justify-content:space-between;align-items:center;width:100%;background:rgba(255,255,255,.13);border:none;border-radius:12px;color:#fff;font-size:16px;padding:12px 14px;margin-top:7px;text-align:left;cursor:pointer;min-height:46px}
+.ini-fila b{white-space:nowrap}
+.ini-aviso{display:block;width:100%;text-align:left;background:#F7F3EE;border:none;border-radius:12px;padding:13px 12px;font-size:15.5px;color:var(--dark);margin-top:8px;cursor:pointer;line-height:1.35}
+.ini-sin{font-size:14px;color:var(--muted);margin-top:8px;line-height:1.4}
+.ini-rapidos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
+.ini-rapido{background:#fff;border:1.5px solid #CFE3D6;border-radius:14px;padding:14px 8px;font-size:15.5px;font-weight:800;color:#1B4332;display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;cursor:pointer}
+.ay-fila{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #F1EBE4;font-size:15.5px}
+.ay-total{border-bottom:none;font-weight:800;color:#1B4332}
+.m-sec{width:100%;padding:13px;border-radius:12px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:15px;font-weight:700;cursor:pointer}
+.ini-fila-claro{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:none;border:none;padding:6px 0;font-size:16px;text-align:left;color:var(--dark);cursor:pointer}
+.interruptor{width:48px;height:28px;border-radius:20px;background:#D9D3CB;position:relative;flex:none;transition:background .2s}
+.interruptor i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.interruptor.on{background:#2D6A4F}.interruptor.on i{left:23px}
+.acc-grupo-tit{font-size:13px;font-weight:800;color:#6B6660;text-transform:uppercase;letter-spacing:.3px;margin:14px 2px 7px}
+.zona-delicada{border:1.5px solid #F2C9C0;background:#FFF7F5;border-radius:14px;padding:12px;margin-top:16px}
+.cuota-fecha{font-size:11.5px;font-weight:700;opacity:.8;margin-top:2px}
+.ft-fecha{font-size:13px;color:var(--muted);font-weight:600}
+body.nh-admin .mgmt-btn{min-height:48px}
+body.nh-admin .rep-filtros{flex-wrap:wrap}
+/* Texto grande (Más → Pantalla): agranda toda la pantalla del administrador en este teléfono */
+body.nh-admin.nh-grande #app{zoom:1.12}
+/* Letra más grande: los textos pequeños suben 1,5–2 px (mínimo 12 px) */
+body.nh-admin .h-sub{font-size:13.5px}
+body.nh-admin .tab{font-size:14.5px}
+body.nh-admin .grand-label{font-size:13.5px}
+body.nh-admin .rep-filtro{font-size:14.5px}
+body.nh-admin .gb-salida-lbl{font-size:13.5px}
+body.nh-admin .gb-salida-txt{font-size:14.5px}
+body.nh-admin .gb-salida-sub{font-size:12.5px}
+body.nh-admin .toggle-asoc .ta-num{font-size:14.5px}
+body.nh-admin .toggle-asoc .ta-flecha{font-size:14.5px}
+body.nh-admin .mg-acc-num{font-size:14.5px}
+body.nh-admin .mg-acc-fl{font-size:14.5px}
+body.nh-admin .card-ref{font-size:14.5px}
+body.nh-admin .loan-lbl{font-size:14.5px}
+body.nh-admin .loan-pend-lbl{font-size:13.5px}
+body.nh-admin .cuota-month{font-size:13.5px}
+body.nh-admin .cuota-status{font-size:13px}
+body.nh-admin .doc-aviso-imp{font-size:13.5px}
+body.nh-admin .doc-a4{font-size:13.5px}
+body.nh-admin .doc-org{font-size:13px}
+body.nh-admin .doc-fecha{font-size:13px}
+body.nh-admin .doc-a4 h3{font-size:15px}
+body.nh-admin .doc-a4 h4{font-size:13.5px}
+body.nh-admin .doc-kpi .k{font-size:12px}
+body.nh-admin .doc-kpi .s{font-size:12px}
+body.nh-admin .doc-t th{font-size:12.5px}
+body.nh-admin .doc-gtit{font-size:13.5px}
+body.nh-admin .doc-compacta h3{font-size:13px}
+body.nh-admin .doc-compacta .doc-kpi .v{font-size:13.5px}
+body.nh-admin .doc-sub{font-size:12px}
+body.nh-admin .doc-mini td{font-size:13px}
+body.nh-admin .doc-nota{font-size:12.5px}
+body.nh-admin .doc-arq td{font-size:13.5px}
+body.nh-admin .doc-medir h3{font-size:14px}
+body.nh-admin .doc-medir .doc-kpi .v{font-size:15px}
+body.nh-admin .doc-medir .doc-mini td{font-size:12px}
+body.nh-admin .ult-chip{font-size:13px}
+body.nh-admin .note{font-size:14.5px}
+body.nh-admin .btn-pdf-note{font-size:13.5px}
+body.nh-admin .del-btn.armed{font-size:13.5px}
+body.nh-admin .add-loan-btn{font-size:14.5px}
+body.nh-admin .mes-kpi-lbl{font-size:13px}
+body.nh-admin .aporte-meta{font-size:13px}
+body.nh-admin .mstat-lbl{font-size:12px}
+body.nh-admin .nivel-badge{font-size:13.5px}
+body.nh-admin .cuota-num{font-size:13px}
+body.nh-admin .m-label{font-size:14.5px}
+body.nh-admin .send-header-left .send-sub{font-size:13.5px}
+body.nh-admin .send-ctrl-btn{font-size:14.5px}
+body.nh-admin .send-filter-btn{font-size:13.5px}
+body.nh-admin .send-card-meta{font-size:13.5px}
+body.nh-admin .send-amt-label{font-size:12px}
+body.nh-admin .send-amt-none{font-size:12px}
+body.nh-admin .send-amt-future{font-size:13px}
+body.nh-admin .copy-btn{font-size:14.5px}
+body.nh-admin .preview-btn{font-size:14.5px}
+body.nh-admin .send-section-label{font-size:13px}
+body.nh-admin .send-batch-info{font-size:13.5px}
+body.nh-admin .preview-text{font-size:14.5px}
+body.nh-admin .empty-sub{font-size:14.5px}
+body.nh-admin .rf-row{font-size:14.5px}
+body.nh-admin .rf-sec{font-size:13px}
+body.nh-admin .rf-neto small{font-size:12px}
+body.nh-admin .rf-falta{font-size:13px}
+body.nh-admin .ayn-row .arrow{font-size:12px}
+body.nh-admin .ayn-sub{font-size:13.5px}
+body.nh-admin .img-btn{font-size:14.5px}
+body.nh-admin .link-btn{font-size:14.5px}
+body.nh-admin .link-modal-url{font-size:14.5px}
+body.nh-admin .cfg-sub{font-size:13.5px}
+body.nh-admin .hist-badge{font-size:13.5px}
+body.nh-admin .member-info{font-size:13.5px}
+body.nh-admin .app-version{font-size:12px}
+body.nh-admin .update-banner-text small{font-size:13px}
+body.nh-admin .asoc-list-meta{font-size:13.5px}
+body.nh-admin .asoc-badge{font-size:13px}
+body.nh-admin .ficha-sub{font-size:13.5px}
+body.nh-admin .ficha-stat-lbl{font-size:12px}
+body.nh-admin .ficha-row-lbl{font-size:14.5px}
+body.nh-admin .desglose-title{font-size:14.5px}
+body.nh-admin .desglose-line-lbl{font-size:14.5px}
+body.nh-admin .cuota-hist-row{font-size:14.5px}
+body.nh-admin /* Historial beneficios mes a mes */
+.ben-row{font-size:14.5px}
+body.nh-admin .mgmt-btn{font-size:14.5px}
+body.nh-admin .desp-hint{font-size:13px}
+body.nh-admin .ficha-id-sub{font-size:13.5px}
+body.nh-admin .pill{font-size:13.5px}
+body.nh-admin .fkpi-l{font-size:12px}
+body.nh-admin .ben-sub-title{font-size:14.5px}
+body.nh-admin .ben-nota-btn{font-size:13.5px}
+body.nh-admin .ben-nota-box{font-size:14.5px}
+body.nh-admin .rt-lbl{font-size:14.5px}
+body.nh-admin .fpill{font-size:13.5px}
+body.nh-admin .desg-titulo{font-size:13px}
+body.nh-admin .desg-lbl{font-size:14.5px}
+body.nh-admin .tot-final-lbl{font-size:14.5px}
+body.nh-admin .acord-sub{font-size:13.5px}
+body.nh-admin .sub-titulo{font-size:13.5px}
+body.nh-admin .sub-val{font-size:14.5px}
+body.nh-admin .sub-fila{font-size:14.5px}
+body.nh-admin .nota-cuerpo{font-size:14.5px}
+body.nh-admin .ft-tab{font-size:13.5px}
+body.nh-admin .ft-tabs.t5 .ft-tab{font-size:13px}
+body.nh-admin .ft-hero-lbl{font-size:13.5px}
+body.nh-admin .ft-drop-hint{font-size:13px}
+body.nh-admin .ap-toggle-btn{font-size:13.5px}
+body.nh-admin .res-lbl{font-size:14.5px}
+body.nh-admin .res-total-lbl{font-size:14.5px}
+body.nh-admin .ayuda-meta{font-size:13px}
+body.nh-admin .ayuda-progreso{font-size:13px}
+body.nh-admin .ayuda-rest{font-size:14.5px}
+body.nh-admin .cuota-row{font-size:14.5px}
+body.nh-admin .cuota-estado{font-size:13px}
+body.nh-admin /* Seguridad de entorno: aviso persistente cuando producción está bloqueada. */
+.dev-mode-banner{font-size:14.5px}
+body.nh-admin #app [style*="font-size:10px"]{font-size:12px!important}
+body.nh-admin #app [style*="font-size:10.5px"]{font-size:12.5px!important}
+body.nh-admin #app [style*="font-size:11px"]{font-size:13px!important}
+body.nh-admin #app [style*="font-size:11.5px"]{font-size:13px!important}
+body.nh-admin #app [style*="font-size:12px"]{font-size:13.5px!important}
+body.nh-admin #app [style*="font-size:12.5px"]{font-size:14px!important}
+body.nh-admin #app [style*="font-size:13px"]{font-size:14.5px!important}
+body.nh-admin #app [style*="font-size:13.5px"]{font-size:15px!important}
+
+/* v45.39 · ajustes de la vista del administrador tras revisar las capturas */
+body.nh-admin .mg-acc-head{gap:10px}
+body.nh-admin .mg-acc-head>span:first-child{flex:1;min-width:0}
+body.nh-admin .mg-acc-num{white-space:nowrap;display:inline-block}
+body.nh-admin .mg-acc-fl{white-space:nowrap;font-size:0}
+body.nh-admin .mg-acc-fl::first-letter{font-size:16px}
+body.nh-admin .rep-filtros{gap:8px;margin:4px 0 14px}
+body.nh-admin .rep-filtro{flex:0 0 auto;flex-direction:row;padding:9px 13px;border-radius:22px;font-size:14.5px;gap:6px}
+body.nh-admin .filtro-num{font-size:13.5px;padding:1px 7px;min-width:0}
+body.nh-admin .app-version{display:none!important}
+.h-version{opacity:.75}

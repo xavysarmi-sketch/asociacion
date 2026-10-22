@@ -63,25 +63,25 @@ function solOtorgar(id){
 function _solTrasAlta(solId,m){ const so=_sols().find(x=>x.id===solId); if(!so||!m)return; so.mid=m.id; so.nombre=m.name; save(); setTimeout(()=>{openModal('cierreloan',{sol:solId});setTimeout(updateCierreLoanPreview,30);},150); }
 // v45.16: «+ Nueva solicitud» desde la tarjeta de la persona: abre Solicitudes con la persona, su aval y su grupo ya puestos
 function solDesdeGestion(mid){
-  TAB="manage"; FICHA_ID=null; DESP["mg-sol"]=true; SOL_FORM=true; render();
+  TAB="ayudas"; FICHA_ID=null; SOL_FORM=true; render(); // v45.39
   setTimeout(()=>{ const s=document.getElementById("so-mid"); if(!s)return; s.value=mid; soMidCambio();
-    const c=document.getElementById("so-cap"); const h=document.getElementById("mg-sol-head");
+    const c=document.getElementById("so-cap"); const h=document.getElementById("so-mid");
     if(h)h.scrollIntoView({behavior:"smooth",block:"start"}); if(c)setTimeout(()=>c.focus(),350); },40);
 }
 function solDesdeSim(gid,i){
   const x=(CG_SIM[gid]||[])[i]; if(!x)return;
   const mes=_keyDeIdx(_cgSimIdx(gid)), m=x.nombre?DATA.members.find(mm=>_normNom(mm.name)===_normNom(x.nombre)):null;
-  SOL_PREFILL={simGid:gid,simRef:x}; TAB="manage"; FICHA_ID=null; DESP["mg-sol"]=true; SOL_FORM=true; render();
+  SOL_PREFILL={simGid:gid,simRef:x}; TAB="ayudas"; FICHA_ID=null; SOL_FORM=true; render(); // v45.39
   setTimeout(()=>{ const sm=document.getElementById("so-mid"); if(!sm)return;
     if(m){ sm.value=m.id; soMidCambio(); } else { const n=document.getElementById("so-nom"); if(n)n.value=x.nombre||""; }
     const gr=document.getElementById("so-grupo"); if(gr)gr.value=gid;
     const c=document.getElementById("so-cap"); if(c)c.value=x.v; solPreview();
     const ms=document.getElementById("so-mes"); if(ms)ms.value=mes;
-    const h=document.getElementById("mg-sol-head"); if(h)h.scrollIntoView({behavior:"smooth",block:"start"});
+    const h=document.getElementById("so-mid"); if(h)h.scrollIntoView({behavior:"smooth",block:"start"});
     const f=document.getElementById(x.nombre?"so-n":"so-nom"); if(f)setTimeout(()=>f.focus(),350); },40);
 }
 // v45.16: desde Cierre se va a Solicitudes (una sola puerta para las ayudas nuevas)
-function irSolicitudes(){ TAB="manage"; FICHA_ID=null; DESP["mg-sol"]=true; render(); setTimeout(()=>{ const h=document.getElementById("mg-sol-head"); if(h)h.scrollIntoView({behavior:"smooth",block:"start"}); },40); }
+function irSolicitudes(){ TAB="ayudas"; FICHA_ID=null; render(); window.scrollTo(0,0); } // v45.39: Solicitudes en la pestaña «Ayudas»
 function solEstado(id,estado){ const so=_sols().find(x=>x.id===id); if(!so)return; so.estado=estado; if(estado==="pendiente"){delete so.lid;delete so.mesOtorgada;} delete DESP["solno-"+id]; save(); render(); }
 function solBorrar(id){ DATA.solicitudes=_sols().filter(x=>x.id!==id); delete DESP["solbor-"+id]; save(); render(); }
 // v45.23: «💰 Dinero del mes» — la MISMA cuenta en Asociados y en Solicitudes. Fase de crecimiento:

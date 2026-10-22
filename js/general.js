@@ -230,6 +230,10 @@ function filtrarEnVivo(texto, scopeSelector){
 }
 
 function render(){
+  // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
+  // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)
+  document.body.classList.toggle("nh-admin",!READONLY_ID&&!VISTA_ASOC&&!ES_MODO_GRUPO&&!DOC_IMP);
+  document.body.classList.toggle("nh-grande",!READONLY_ID&&!VISTA_ASOC&&!ES_MODO_GRUPO&&!DOC_IMP&&textoGrandeActivo());
   if(READONLY_ID){renderReadonly();return;}
   if(VISTA_ASOC){if(DATA.members.some(x=>x.id===VISTA_ASOC.mid)){renderVistaAsoc();return;}VISTA_ASOC=null;}
   if(ES_MODO_GRUPO){renderGrupo();return;}
@@ -244,25 +248,24 @@ function render(){
 
   let h=`<div class="header">
     <div class="h-title">NUEVOS HORIZONTES</div>
-    <div class="h-sub">Construyendo un nuevo sistema</div>
     <div class="h-date-row">
-      <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:600">📋 Reporte</span>
+      <span style="color:rgba(255,255,255,.75);font-size:13px;font-weight:600">📅 Mes de trabajo</span>
       <select class="h-date-sel" onchange="setReportMonth(this.value)" title="Cambiar mes">${mOpts}</select>
       <span style="color:rgba(255,255,255,.5);font-weight:700">·</span>
       <select class="h-date-sel" onchange="setReportYear(this.value)" title="Cambiar año">${yOpts}</select>
     </div>
     ${(()=>{ const o=mesOperativoHoy(); return (o.mes===rm&&o.anio===ry)?"":`<div style="margin:8px auto 0;max-width:340px;padding:6px 10px;border-radius:10px;background:rgba(233,196,106,.14);border:1px solid rgba(233,196,106,.5);color:#F1D58A;font-size:12px;font-weight:700;line-height:1.35">👁️ Estás mirando ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}. Los asociados siguen viendo ${MONTHS_FULL[MONTHS.indexOf(o.mes)].toLowerCase()} ${o.anio}.</div>`; })()}
-    <div class="sync-indicator" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.6)">${syncHTML()}</div>
-    ${chipAuditoriaHTML()}
-  </div>`;
+    <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.6)"><span class="sync-indicator">${syncHTML()}</span> <span class="h-version">· ${APP_VERSION}</span></div><!-- v45.39: la versión va en la cabecera (abajo está la barra) -->
+  </div>`; // v45.39: la auditoría se ve en Inicio («Cómo va el mes»)
 
   if(TAB==="send")TAB="asociados"; // v45.22: la pestaña Envíos se quitó (los enlaces se actualizan solos; enlace y bienvenida están en la ficha)
-  h+=`<div class="tabs">
-    <button class="tab ${TAB==="asociados"?"active":""}" onclick="TAB='asociados';FICHA_ID=null;render()">👤 Asociados</button>
-    <button class="tab ${TAB==="mes"?"active":""}" onclick="TAB='mes';render()">📊 Cierre</button>
-    <button class="tab ${TAB==="historico"?"active":""}" onclick="TAB='historico';render()">📜 Histórico</button>
-    <button class="tab ${TAB==="manage"?"active":""}" onclick="irGestion()">⚙️ Gestión</button>
-  </div><div class="content">`;
+  // v45.39: las pestañas de arriba pasan a la barra de abajo (navInferiorHTML, js/inicio.js)
+  h+=`<div class="content">`;
+
+  // ── INICIO (v45.39) ──
+  if(TAB==="inicio")h+=inicioHTML();
+  // ── AYUDAS (v45.39): dinero disponible, solicitudes y cartera ──
+  if(TAB==="ayudas")h+=ayudasPantallaHTML();
 
   // ── PESTAÑA MES ──
   if(TAB==="mes"){
@@ -288,14 +291,13 @@ function render(){
     const aptPagados=asocMes.filter(m=>!!(md.aportes&&md.aportes[m.id])).length;
 
     h+=bannerRecargoHTML();
-    h+=avisosPermanenciaHTML(rm,ry); // v45 (Maestro PE-5, PE-7)
-    h+=salidasPrevistasHTML(rm,ry); // v45.1 (Maestro FO-4)
+    // v45.39: los avisos de permanencias y las salidas previstas están en Inicio
 
     // ── CABECERA: título + selector de mes + buscador ──
     const idxMes=MONTHS.indexOf(rm);
     h+=`<div class="mes-card">
-      <div class="mes-title" style="margin-bottom:4px">📊 Cierre de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Para ver otro mes, cámbialo arriba (📋 Reporte).</div>
+      <div class="mes-title" style="margin-bottom:4px">💶 Cobros de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Para ver otro mes, cámbialo arriba (📅 Mes de trabajo).</div>
       <input id="cierre-search" type="text" placeholder="Buscar miembro..." oninput="filtrarEnVivo(this.value,'#cierre-listas')"
         style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box">
       <div style="display:flex;gap:8px;margin-top:10px">
@@ -635,61 +637,40 @@ function render(){
       // 2) Botón para desplegar/plegar la lista de asociados (arranca plegada)
       const nAsociados=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).length;
       const nAyudasActivas=ordered.filter(m=>(m.loans||[]).some(l=>(l.pays||[]).some(p=>!p.paid))).length; // v45.23: personas, no ayudas
-      h+=`<button class="toggle-asoc" onclick="LISTA_ABIERTA=!LISTA_ABIERTA;render()">
-        <span>👥 Ver asociados <span class="ta-num">${nAsociados}</span>${ordered.length>nAsociados?` <span style="font-size:12px;font-weight:600;opacity:.75">+ ${ordered.length-nAsociados} terceros</span>`:""}</span>
-        <span class="ta-flecha">${LISTA_ABIERTA?"▲ ocultar":"▼ desplegar"}</span>
-      </button>`;
-      // v45.25: «+ Añadir asociado / tercero» solo en Gestión → Personas y ayudas (estaban repetidos aquí)
-      if(LISTA_ABIERTA){
+      // v45.39: Personas — la lista se ve siempre, con buscador arriba y filtros
+      const nTerc=ordered.length-nAsociados;
+      {
+        h+=`<div class="mes-title" style="margin:6px 2px 10px">👥 Personas <span style="font-weight:600;color:var(--muted)">· ${nAsociados} asociados${nTerc>0?` + ${nTerc} terceros`:""}</span></div>`;
+        // Buscador de miembros
+        h+=`<input id="asoc-search" type="text" placeholder="Buscar por nombre…" oninput="filtrarEnVivo(this.value,'#asoc-listas')"
+          style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;box-sizing:border-box;margin-bottom:10px">`;
         // Botones de filtro
         h+=`<div class="rep-filtros">
-          <button class="rep-filtro ${REPORT_FILTER==="todos"?"on":""}" onclick="REPORT_FILTER='todos';render()">Listado completo<span class="filtro-num">${ordered.length}</span></button>
-          <button class="rep-filtro ${REPORT_FILTER==="activas"?"on":""}" onclick="REPORT_FILTER='activas';render()">Con ayudas activas<span class="filtro-num">${nAyudasActivas}</span></button>
+          <button class="rep-filtro ${REPORT_FILTER==="todos"?"on":""}" onclick="REPORT_FILTER='todos';render()">Todos<span class="filtro-num">${ordered.length}</span></button>
+          <button class="rep-filtro ${REPORT_FILTER==="asoc"?"on":""}" onclick="REPORT_FILTER='asoc';render()">Asociados<span class="filtro-num">${nAsociados}</span></button>
+          ${nTerc>0?`<button class="rep-filtro ${REPORT_FILTER==="terc"?"on":""}" onclick="REPORT_FILTER='terc';render()">Terceros<span class="filtro-num">${nTerc}</span></button>`:""}
+          <button class="rep-filtro ${REPORT_FILTER==="activas"?"on":""}" onclick="REPORT_FILTER='activas';render()">Con ayuda<span class="filtro-num">${nAyudasActivas}</span></button>
         </div>`;
-        // Buscador de miembros
-        h+=`<input id="asoc-search" type="text" placeholder="Buscar miembro..." oninput="filtrarEnVivo(this.value,'#asoc-listas')"
-          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box;margin-bottom:14px">`;
         // Fichas estilo reporte (tocables → abren la ficha completa)
         let lista=ordered;
         if(REPORT_FILTER==="activas"){
           const tieneActiva=m=>m.loans.some(l=>l.pays.some(p=>!p.paid));
           lista=ordered.filter(tieneActiva);
         }
+        if(REPORT_FILTER==="asoc")lista=ordered.filter(m=>m.type==="asociado");
+        if(REPORT_FILTER==="terc")lista=ordered.filter(m=>m.type==="tercero");
         h+=`<div id="asoc-listas">`;
         lista.forEach(m=>{h+=`<div data-nombre="${escH(m.name)}">`+cardHTML(m,m.type==="tercero",true)+`</div>`;});
         if(lista.length===0){
           h+=`<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0">No hay miembros con ayudas activas este mes.</p>`;
         }
         h+=`</div>`;
-        h+=`<div class="note">Recuerda: el aporte mensual de <b>${fee},00 €</b> es adicional a las cuotas de devolución.</div>`;
+        h+=`<div class="ini-rapidos" style="margin-top:14px">
+          <button class="ini-rapido" onclick="openModal('member',{preset:'asociado'})">👤 Alta de asociado</button>
+          <button class="ini-rapido" onclick="openModal('member',{preset:'tercero'})">🤝 Alta de tercero</button></div>`;
       }
-      // 3) v45.23: «💰 Dinero del mes» — la misma cuenta que en Gestión → Solicitudes
-      const dM=dineroAyudasMes();
-      h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:8px">💰 Dinero del mes · ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}</div>
-        ${dineroMesCuerpoHTML(dM)}${origenCobradoHTML(dM)}
-        <div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.4">Lo que entra cada mes se usa en las ayudas del mes: no se arrastra nada al mes siguiente.</div></div>`;
-      // 4) Resumen General (sin repetir el dinero del mes)
-      const totIntPend=DATA.members.filter(m=>m.type==="asociado").reduce((s,m)=>s+pendAll(m),0);
-      const totTercPend=DATA.members.filter(m=>m.type==="tercero").reduce((s,m)=>s+pendAll(m),0);
-      const asocActivos=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m));
-      h+=`<div class="resumen-final">
-        <div class="rf-title">📊 Resumen General — ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}</div>
-        <div class="rf-row"><span>Asociados activos</span><span class="rf-val">${asocActivos.length}</span></div>
-        <div class="rf-divider"></div>
-        <div class="rf-sec">Cobrado y pendiente del mes</div>
-        <div class="rf-row"><span>Cuotas de asociados</span><span class="rf-val">${fmtEur(intSplit.cob)} €</span></div>
-        ${intSplit.pen>0?`<div class="rf-row"><span>Cuotas de asociados pendientes</span><span class="rf-val rf-pend">${fmtEur(intSplit.pen)} €</span></div>`:""}
-        <div class="rf-row"><span>Cuotas de terceros</span><span class="rf-val">${fmtEur(extSplit.cob)} €</span></div>
-        ${extSplit.pen>0?`<div class="rf-row"><span>Cuotas de terceros pendientes</span><span class="rf-val rf-pend">${fmtEur(extSplit.pen)} €</span></div>`:""}
-        <div class="rf-row"><span>Aportes <span style="opacity:.6;font-size:12px">(${_aptPag}/${_asocAct.length})</span></span><span class="rf-val">${fmtEur(aptCob)} €</span></div>
-        ${aptSplit.pendiente>0?`<div class="rf-row"><span>Aportes pendientes</span><span class="rf-val rf-pend">${fmtEur(aptSplit.pendiente)} €</span></div>`:""}
-        <div class="rf-divider"></div>
-        <div class="rf-sec">Cartera pendiente</div>
-        <div class="rf-row"><span>Pendiente de asociados</span><span class="rf-val rf-pend">${fmtEur(totIntPend)} €</span></div>
-        <div class="rf-row"><span>Pendiente de terceros</span><span class="rf-val rf-pend">${fmtEur(totTercPend)} €</span></div>
-        <div class="rf-total"><span>CARTERA TOTAL</span><span>${fmtEur(totIntPend+totTercPend)} €</span></div>
-        <div style="font-size:11.5px;opacity:.75;margin-top:8px">«Para la asociación» (retornos − beneficio − bonos) está en Cierre → 💰 Las cuentas del mes.</div>
-      </div></div>`;
+      // v45.39: «Dinero del mes» está en Inicio y en Ayudas; la cartera pendiente, en Ayudas
+      h+=`</div>`;
     }
   }
 
@@ -700,6 +681,7 @@ function render(){
       const ka=a.baja.year*12+MONTHS.indexOf(a.baja.month), kb=b.baja.year*12+MONTHS.indexOf(b.baja.month);
       return kb-ka || a.name.localeCompare(b.name);
     });
+    h+=`<button class="btn-back" style="margin:6px 0 10px" onclick="irGestion();window.scrollTo(0,0)">← Más</button>`; // v45.39: el Histórico está dentro de «Más»
     h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:10px">📜 Histórico — Bajas de asociados</div>`;
     if(bajas.length===0){
       h+=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Aún no hay bajas registradas.</div>`;
@@ -746,12 +728,10 @@ function render(){
     h+=`<div style="margin:8px 0 4px"><input id="mgSearch" type="text" placeholder="Buscar asociado o tercero por nombre…" value="${escH(MG_SEARCH||"")}" oninput="filtrarGestion(this.value)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box"></div>`;
     if(MG_SEARCH)setTimeout(()=>filtrarGestion(MG_SEARCH),0);
 
-    // 📝 v45.14: Solicitudes de ayuda y dinero disponible (desplegable, arranca cerrado) — v45.16: arriba del todo
-    { const nP=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente").length, ab=!!DESP["mg-sol"];
-      h+=`<div class="mg-acc-head" id="mg-sol-head" onclick="DESP['mg-sol']=!DESP['mg-sol'];render()">
-      <span>📝 Solicitudes <span class="mg-acc-num">${nP}</span></span>
-      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
-      if(ab)h+=`<div style="margin:8px 0 14px">${ayudasTabHTML()}</div>`; }
+    // v45.39: las Solicitudes están en la pestaña «Ayudas». Aquí, lo de consultar y los ajustes.
+    h+=`<div class="mg-acc-head" onclick="TAB='historico';render();window.scrollTo(0,0)">
+      <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>
+      <span class="mg-acc-fl">›</span></div>`;
     // 👥 v45.16: Personas y ayudas — antes «Ayudas Internas» y «Ayudas Externas» (decisión de Ángel 09/10/2026)
     { const ab=!!DESP["mg-per"], fil=MG_PER_FIL;
       h+=`<div class="mg-acc-head" onclick="DESP['mg-per']=!DESP['mg-per'];render()">
@@ -794,11 +774,13 @@ function render(){
       <button class="backup-btn backup-import" onclick="importData()">📂 Importar backup</button>
       <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
     </div>`;
+    h+=pantallaAjustesHTML(); // v45.39: Texto grande
     h+=sesionHTML(); // v45.27
 
   }
 
   h+=`</div>`;
+  h+=navInferiorHTML(); // v45.39: barra de abajo
 
   if(MODAL){
     const dismissable=MODAL.type!=="wa_queue"&&MODAL.type!=="sync_conflict";
@@ -830,6 +812,7 @@ function render(){
     if(MODAL.type==="importar")h+=importarModalHTML(); // v45.21
     if(MODAL.type==="bienvenida")h+=bienvenidaModalHTML(); // v45.21
     if(MODAL.type==="telefono")h+=telefonoModalHTML(); // v45.22
+    if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;
