@@ -125,7 +125,7 @@ function mText(member){
   if(avalNomTxt)t+=`   Referido por: ${avalNomTxt}\n`;
   t+=`\n`;
   member.loans.forEach(loan=>{
-    t+=`📌 *Ayuda otorgada ${loan.gMonth} ${loan.gYear}*\n   Capital: ${loan.capital} € · Total: ${fmtEur(loan.total)} €\n   Pendiente: ${fmtEur(pendLoan(loan))} €\n\n`;
+    t+=`📌 *Ayuda otorgada ${loan.gMonth} ${loan.gYear}*\n   Capital: ${fmtEur(loan.capital)} € · Total: ${fmtEur(loan.total)} €\n   Pendiente: ${fmtEur(pendLoan(loan))} €\n\n`;
     loan.pays.forEach((p,pi)=>{
       const cur=p.m===rm&&p.y===ry;
       const imp=fmtEur(cuotaDe(loan,pi));

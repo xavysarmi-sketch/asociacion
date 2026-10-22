@@ -537,9 +537,9 @@ function render(){
               ${cand.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}${m.type==="tercero"?" (tercero)":""}</option>`).join("")}
             </select>`;
           h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:1.5px solid var(--border);margin-top:4px;padding-top:10px">
-            <span>Pendiente de cobrar</span><span>${totalPend} €</span>
+            <span>Pendiente de cobrar</span><span>${fmtEur(totalPend)} €</span>
           </div>
-          ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Ya cobrado</span><span>${totalPagado} €</span></div>`:""}`;
+          ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Ya cobrado</span><span>${fmtEur(totalPagado)} €</span></div>`:""}`;
           if(totalPend>0){
             h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px" onclick="marcarTodoGrupo('${g.id}')">✅ Marcar todo pagado</button>`;
           }
@@ -558,18 +558,18 @@ function render(){
           if(_nAportes>0){
             h+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
               <span style="font-size:13px;color:var(--dark)">Aportes <span style="color:var(--muted)">· ${_nAportes} ${_nAportes===1?"asociado":"asociados"}</span></span>
-              <span style="font-size:14px;font-weight:700;color:var(--dark)">${_totAportes} €</span>
+              <span style="font-size:14px;font-weight:700;color:var(--dark)">${fmtEur(_totAportes)} €</span>
             </div>`;
           }
           if(_nCuotas>0){
             h+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
               <span style="font-size:13px;color:var(--dark)">Cuotas de ayudas <span style="color:var(--muted)">· ${_nCuotas} ${_nCuotas===1?"cuota":"cuotas"}</span></span>
-              <span style="font-size:14px;font-weight:700;color:var(--dark)">${_totCuotas} €</span>
+              <span style="font-size:14px;font-weight:700;color:var(--dark)">${fmtEur(_totCuotas)} €</span>
             </div>`;
           }
           h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding-top:9px;margin-top:2px">
               <span style="font-size:13px;font-weight:800;color:var(--dark)">Total de todo</span>
-              <span style="font-size:20px;font-weight:900;color:var(--brand,#1B4332)">${_totTodo} €</span>
+              <span style="font-size:20px;font-weight:900;color:var(--brand,#1B4332)">${fmtEur(_totTodo)} €</span>
             </div>
           </div>`;
           h+=cuentaGrupoHTML(g,principal); // v45.13
@@ -714,7 +714,7 @@ function render(){
       });
       const totalDev=_r2(bajas.reduce((s,m)=>s+(datosBaja(m).total||0),0));
       const totalPag=_r2(bajas.filter(m=>m.baja.pagada).reduce((s,m)=>s+(m.baja.total||0),0));
-      h+=`<div style="text-align:right;margin-top:4px;font-weight:800;color:#7A2418;line-height:1.5">Total a devolver: ${totalDev} €<br><span style="font-size:13px">Pagado: ${totalPag} € · Pendiente: ${totalDev-totalPag} €</span></div>`;
+      h+=`<div style="text-align:right;margin-top:4px;font-weight:800;color:#7A2418;line-height:1.5">Total a devolver: ${fmtEur(totalDev)} €<br><span style="font-size:13px">Pagado: ${fmtEur(totalPag)} € · Pendiente: ${fmtEur(totalDev-totalPag)} €</span></div>`;
     }
     h+=`</div>`+historicoRetiradasHTML()+`<div class="mes-card" style="padding-top:10px;padding-bottom:10px"><div style="font-size:11px;color:var(--muted)">Sección de administración. Preparada para crecer (futuros: reingresos, cesiones de plaza).</div></div>`;
   }
@@ -833,10 +833,10 @@ function sendCardHTML(m,rm,ry,dimmed){
       </div>
       <div class="send-amt-wrap">
         ${dMes>0
-          ?`<div class="send-amt-this">${dMes} €</div><div class="send-amt-label">este mes</div>`
+          ?`<div class="send-amt-this">${fmtEur(dMes)} €</div><div class="send-amt-label">este mes</div>`
           :`<div class="send-amt-none">sin cuota<br>en ${rm}</div>`
         }
-        ${dTot>dMes?`<div class="send-amt-future">Pend. total: ${dTot} €</div>`:""}
+        ${dTot>dMes?`<div class="send-amt-future">Pend. total: ${fmtEur(dTot)} €</div>`:""}
       </div>
       <div class="send-card-check">${isSel?"✓":""}</div>
     </div>
@@ -891,7 +891,7 @@ function cardHTML(m,isT,tappable){
   m.loans.forEach((loan,li)=>{
     const activeIdx=activePayIndex(loan,rm,ry);
     h+=`<div class="loan"${li>0?' style="border-top:1px dashed #E8E0D8"':""}>`;
-    h+=`<div class="loan-row"><div><div class="loan-lbl">Ayuda ${loan.gMonth} ${loan.gYear}</div><div class="loan-amt">${loan.capital},00 €</div></div></div>`;
+    h+=`<div class="loan-row"><div><div class="loan-lbl">Ayuda ${loan.gMonth} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)},00 €</div></div></div>`;
     h+=`<div class="timeline">`;
     loan.pays.forEach((p,pi)=>{
       const isActive=(pi===activeIdx);
@@ -1101,7 +1101,7 @@ function manageHTML(m,isT){
       ?`${l.n} cuotas de ${fmtEur(_cu[0])} € · total ${fmtEur(l.total)} €`
       :`${l.n} cuotas · total ${fmtEur(l.total)} € (${fmtEur(Math.max(..._cu))} € y ${fmtEur(Math.min(..._cu))} €)`;
     h+=`<div class="mg-loan"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
-      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${l.capital} €</div><div style="font-size:12px;color:#999">${_txt}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#555">${l.gMonth} ${l.gYear} · ${fmtEur(l.capital)} €</div><div style="font-size:12px;color:#999">${_txt}</div></div>
       <button class="edit-btn" style="padding:6px 10px;font-size:12px" onclick="openModal('editloan',{mid:'${esc(m.id)}',lid:'${esc(l.id)}'})">✏️</button>
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delLoan('${esc(m.id)}','${esc(l.id)}')">${armed?"¿Seguro?":"✕"}</button>
     </div></div>`;

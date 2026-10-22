@@ -295,7 +295,7 @@ function auditarNH(){
       if(h.lid){
         const l=todas.find(x=>x.id===h.lid);
         if(l&&l.capital!==h.capital){
-          errores.push(`Historial: ${m.name} — ${h.gMonth} ${h.gYear} capital ${h.capital}€ ≠ ayuda vinculada (${l.capital}€)`);
+          errores.push(`Historial: ${m.name} — ${h.gMonth} ${h.gYear} capital ${fmtEur(h.capital)}€ ≠ ayuda vinculada (${fmtEur(l.capital)}€)`);
         }
       }else{
         const hayMismoPeriodo=todas.some(l=>l.gMonth===h.gMonth&&l.gYear===h.gYear);
@@ -312,13 +312,13 @@ function auditarNH(){
     const totalEsperado=ayudaTotal(l.capital,n,l.rate);
     // v44.17: importeHistorico = apoyo de antes de la regla de redondeo (se cobró el importe exacto de entonces)
     if(!l.importeHistorico&&Math.abs((l.total!=null?l.total:0)-totalEsperado)>0.005){
-      errores.push(`Total: ${m.name} — ayuda ${l.gMonth} ${l.gYear} tiene total ${l.total}€, calculado ${totalEsperado}€`);
+      errores.push(`Total: ${m.name} — ayuda ${l.gMonth} ${l.gYear} tiene total ${fmtEur(l.total)}€, calculado ${fmtEur(totalEsperado)}€`);
     }
     if(Array.isArray(l.cuotas)){
       const sumaCuotas=Math.round(l.cuotas.reduce((s,c)=>s+c,0)*100)/100;
       const totalRef=l.total!=null?l.total:totalEsperado;
       if(Math.abs(sumaCuotas-totalRef)>0.005){
-        errores.push(`Cuotas: ${m.name} — ayuda ${l.gMonth} ${l.gYear} suma de cuotas ${sumaCuotas}€ ≠ total ${totalRef}€`);
+        errores.push(`Cuotas: ${m.name} — ayuda ${l.gMonth} ${l.gYear} suma de cuotas ${fmtEur(sumaCuotas)}€ ≠ total ${fmtEur(totalRef)}€`);
       }
     }
   });
@@ -354,7 +354,7 @@ function auditarNH(){
     const calculado=recargoAutoMes(rm,ry);
     const guardado=md.recargo;
     if(Math.abs(guardado-calculado)>0.005){
-      errores.push(`Retorno ${rm} ${ry}: guardado ${guardado}€, calculado ${calculado}€ (diferencia ${Math.round((calculado-guardado)*100)/100}€)`);
+      errores.push(`Retorno ${rm} ${ry}: guardado ${fmtEur(guardado)}€, calculado ${fmtEur(calculado)}€ (diferencia ${Math.round((calculado-guardado)*100)/100}€)`);
     }
   });
   if(mesesRecargoAusente.length>0){
@@ -428,13 +428,13 @@ function auditarNH(){
     const R=REGLAS; // v45.38: límites del Maestro desde js/maestro.js
     if(esTerc){
       if(l.capital>R.AYUDA_MAX_CORTA){
-        errores.push(`Capital excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo de ${R.AYUDA_MAX_CORTA}€`);
+        errores.push(`Capital excedido: ${m.name} (tercero) — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ supera el máximo de ${R.AYUDA_MAX_CORTA}€`);
       }
     }else{
       if(l.capital>R.AYUDA_MAX){
-        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ supera el máximo absoluto de ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
+        errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ supera el máximo absoluto de ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
       }else if(l.capital>R.AYUDA_MAX_SIN_APROBACION){
-        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ está entre ${_miles(R.AYUDA_MAX_SIN_APROBACION)}€ y ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
+        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ está entre ${_miles(R.AYUDA_MAX_SIN_APROBACION)}€ y ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
       }
     }
     if(esTerc&&plazoBase>R.CUOTAS_MAX_CORTA){
@@ -442,7 +442,7 @@ function auditarNH(){
     }
     if(!esTerc&&_idxMes(l.gMonth,l.gYear)>=AY_V18_DESDE){
       const cicloC=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
-      if(cicloC===12&&l.capital>R.AYUDA_MAX_CORTA)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${l.capital}€ con permanencia de 12 meses (máximo ${R.AYUDA_MAX_CORTA} €, Maestro AY-1)`);
+      if(cicloC===12&&l.capital>R.AYUDA_MAX_CORTA)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ con permanencia de 12 meses (máximo ${R.AYUDA_MAX_CORTA} €, Maestro AY-1)`);
     }
     if(!esTerc&&plazoBase>R.CUOTAS_MAX_CORTA){
       const ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;

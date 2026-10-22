@@ -381,14 +381,14 @@ function histLoanFormHTML(){
   let filas=hist.map((x,i)=>{
     const armed=(_delHistArmed===(m.id+"|"+i));
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
-      <div><div style="font-weight:600;font-size:14px;color:var(--dark)">${escH(x.gMonth||"?")} ${x.gYear||""}</div><div style="font-size:12px;color:var(--muted)">${x.capital||0} € de capital${x.lid?"":' · <span style="color:#C0492C">sin vincular</span>'}</div></div>
+      <div><div style="font-weight:600;font-size:14px;color:var(--dark)">${escH(x.gMonth||"?")} ${x.gYear||""}</div><div style="font-size:12px;color:var(--muted)">${fmtEur(x.capital||0)} € de capital${x.lid?"":' · <span style="color:#C0492C">sin vincular</span>'}</div></div>
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delHistEntry('${esc(m.id)}',${i})">${armed?"¿Seguro?":"✕"}</button>
     </div>`;
   }).join("");
   if(hist.length===0)filas=`<p style="color:var(--muted);font-size:13px">Sin entradas en el historial.</p>`;
   return `<div class="modal-title">📋 Historial de ayudas — ${escH(m.name)}</div>
   <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Cada entrada es una ayuda registrada. Elimina las que sobren (por ejemplo, registros de prueba). Esto solo corrige el historial acumulado; no afecta a las ayudas activas.</p>
-  <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:12px"><span style="font-weight:700;color:var(--dark)">Total historial</span><span style="font-weight:700;color:var(--warm)">${total} €</span></div>
+  <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:12px"><span style="font-weight:700;color:var(--dark)">Total historial</span><span style="font-weight:700;color:var(--warm)">${fmtEur(total)} €</span></div>
   ${filas}
   <button class="m-primary" onclick="closeModal()" style="margin-top:6px">Cerrar</button>`;
 }

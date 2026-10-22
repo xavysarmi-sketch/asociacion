@@ -296,7 +296,7 @@ function _renderGrupoBase(ov){ // v45.21: ov = {ppal, ids, yo} solo desde «👁
     <div class="h-sub">Reporte · ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
     <div style="color:#fff;font-size:15px;font-weight:700;margin-top:2px">Hola, ${escH(titular.name)} 👋</div>
     <div style="margin-top:10px;background:rgba(255,255,255,.15);border-radius:12px;padding:8px 16px;display:inline-block">
-      <span style="color:#fff;font-size:13px;font-weight:600">${members.length} fichas · Total grupal: <b style="font-size:18px">${totalGrupo} €</b>${_nAbiertosG(members,rm,ry)>0?" + aportes":""}</span>
+      <span style="color:#fff;font-size:13px;font-weight:600">${members.length} fichas · Total grupal: <b style="font-size:18px">${fmtEur(totalGrupo)} €</b>${_nAbiertosG(members,rm,ry)>0?" + aportes":""}</span>
     </div>
   </div>`;
 
@@ -358,12 +358,12 @@ function _renderGrupoBase(ov){ // v45.21: ov = {ppal, ids, yo} solo desde «👁
 
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resumen total — ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
-    ${totalAportes>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total aportes mensuales</span><span style="font-size:14px;font-weight:700;color:#fff">${totalAportes} €</span></div>`:""}
+    ${totalAportes>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total aportes mensuales</span><span style="font-size:14px;font-weight:700;color:#fff">${fmtEur(totalAportes)} €</span></div>`:""}
     ${_nBaseG(members,rm,ry)>0?`<div style="font-size:12px;color:rgba(255,255,255,.7);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)">Aportes contados con 50 € · cada uno puede aportar 50, 100, 150 o 200 €</div>`:""}
-    ${totalCuotas2>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total cuotas de ayudas</span><span style="font-size:14px;font-weight:700;color:#fff">${totalCuotas2} €</span></div>`:""}
+    ${totalCuotas2>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span style="font-size:13px;color:rgba(255,255,255,.8)">Total cuotas de ayudas</span><span style="font-size:14px;font-weight:700;color:#fff">${fmtEur(totalCuotas2)} €</span></div>`:""}
     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:2px">
       <span style="font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px">Total entre todos</span>
-      <span style="font-size:36px;font-weight:900;color:#fff">${totalGrupo} €${_nAbiertosG(members,rm,ry)>0?`<span style="display:block;text-align:right;font-size:15px;font-weight:800;color:#F1D58A;margin-top:2px">+ los aportes</span>`:""}</span>
+      <span style="font-size:36px;font-weight:900;color:#fff">${fmtEur(totalGrupo)} €${_nAbiertosG(members,rm,ry)>0?`<span style="display:block;text-align:right;font-size:15px;font-weight:800;color:#F1D58A;margin-top:2px">+ los aportes</span>`:""}</span>
     </div>
     <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">${members.length} fichas incluidas</div>
   </div>`;

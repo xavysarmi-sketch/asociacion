@@ -32,7 +32,7 @@ function historyModalHTML(){
       h+=`</div>`;
       h+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);display:flex;justify-content:space-between;align-items:center">`;
       h+=`<div><div style="font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px">Total de aportes acumulados</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${cuotasPagadas} ${cuotasPagadas===1?"mes pagado":"meses pagados"}</div></div>`;
-      h+=`<div style="font-size:22px;font-weight:800">${totalAp} €</div>`;
+      h+=`<div style="font-size:22px;font-weight:800">${fmtEur(totalAp)} €</div>`;
       h+=`</div>`;
     }
   }
@@ -53,14 +53,14 @@ function historyModalHTML(){
     hist.forEach((a,i)=>{
       h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px${i<hist.length-1?";border-bottom:1px solid var(--border)":""}">`;
       h+=`<div><div style="font-size:15px;font-weight:700;color:var(--dark)">${MONTHS_FULL[MONTHS.indexOf(a.gMonth)]} ${a.gYear}</div></div>`;
-      h+=`<div style="font-size:18px;font-weight:800;color:var(--accent)">${a.capital} €</div>`;
+      h+=`<div style="font-size:18px;font-weight:800;color:var(--accent)">${fmtEur(a.capital)} €</div>`;
       h+=`</div>`;
     });
     h+=`</div>`;
     // Total al final
     h+=`<div style="background:var(--bg);border:2px dashed var(--accent);border-radius:12px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">`;
     h+=`<div style="font-size:14px;font-weight:700;color:var(--dark)">💰 Total recibido</div>`;
-    h+=`<div style="font-size:22px;font-weight:900;color:var(--dark)">${total} €</div>`;
+    h+=`<div style="font-size:22px;font-weight:900;color:var(--dark)">${fmtEur(total)} €</div>`;
     h+=`</div>`;
   }
   return h;
@@ -494,7 +494,7 @@ function _fichaResumenHTMLbase(m){
   allLoans.forEach((loan,li)=>{
     const activeIdx=activePayIndex(loan,rm,ry);
     h+=`<div class="loan"${li>0?' style="border-top:1px dashed #E8E0D8"':""}>`;
-    h+=`<div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${loan.capital},00 €</div></div></div>`;
+    h+=`<div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)},00 €</div></div></div>`;
     h+=`<div class="timeline">`;
     loan.pays.forEach((p,pi)=>{
       const isActive=(pi===activeIdx);
@@ -804,7 +804,7 @@ function _fichaHTMLbase(m,readonly=false){
         <div class="ft-row" style="border-bottom:none"><span class="ft-lbl">${vistaPersonal()?"Aporte mínimo al mes":"Aporte habitual"}</span><span class="ft-val">${vistaPersonal()?APORTE_MINIMO:aporteBase} €</span></div>
       </div>`;
       // Bloque 2: lo que se lleva (datos económicos, sin fondo)
-      h+=`<div class="ft-row"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val">${totalAportado} €</span></div>
+      h+=`<div class="ft-row"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val">${fmtEur(totalAportado)} €</span></div>
       <div class="ft-row"><span class="ft-lbl">Beneficios acumulados</span><span class="ft-val" style="color:#2D6A4F">+ ${fmtEur(acumBen)} €</span></div>
       ${retiradoF>0?`<div class="ft-row"><span class="ft-lbl">Beneficio ya retirado${retPendF?` <span style="font-size:11.5px;color:var(--muted)">(${retPendF})</span>`:""}</span><span class="ft-val" style="color:#B08D3E">− ${fmtEur(retiradoF)} €</span></div>`:""}
       <div class="ft-row ft-total"><span class="ft-lbl">Llevas acumulado hasta ahora</span><span class="ft-val" style="color:#1B4332">${fmtEur(_r2(totalAportado+Math.max(0,acumBen-retiradoF)))} €</span></div>`;
@@ -871,7 +871,7 @@ function _fichaHTMLbase(m,readonly=false){
         const activeIdx=activePayIndex(loan,rm,ry);
         const pagadas=loan.pays.filter(p=>p.paid).length;
         let c=`<div class="ft-card ${esCerrada?"ayuda-pagada":""}">
-          <div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${loan.capital},00 €</div></div>
+          <div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)},00 €</div></div>
             <div style="text-align:right"><div class="ayuda-progreso">${pagadas} / ${loan.n} pagadas</div><div class="ayuda-rest">${esCerrada?"✅ Cerrada":(loan.n-pagadas)+" por pagar"}</div></div>
           </div>
           <div class="timeline">`;
@@ -909,7 +909,7 @@ function _fichaHTMLbase(m,readonly=false){
 
       // Total
       h+=`<div class="ft-card ft-card-soft">
-        <div class="ft-row ft-total"><span class="ft-lbl">Total de ayudas recibidas</span><span class="ft-val" style="color:#C75B0E">${totalAyudasRec} €</span></div>
+        <div class="ft-row ft-total"><span class="ft-lbl">Total de ayudas recibidas</span><span class="ft-val" style="color:#C75B0E">${fmtEur(totalAyudasRec)} €</span></div>
       </div>`;
     }
   }
@@ -921,7 +921,7 @@ function _fichaHTMLbase(m,readonly=false){
     h+=`<div class="ft-card">
       <div class="ft-card-title">💰 Tus aportes</div>
       <div class="ft-row"><span class="ft-lbl">Meses pagados</span><span class="ft-val">${cuotasPagadas}</span></div>`; // v45.23: ingreso, permanencia y aporte están en «Resumen»
-    h+=`<div class="ft-row ft-total"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val" style="color:#2D6A4F">${totalAportado} €</span></div>
+    h+=`<div class="ft-row ft-total"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val" style="color:#2D6A4F">${fmtEur(totalAportado)} €</span></div>
     </div>`;
 
     // Detalle de aportes extra (con su mes)
@@ -945,7 +945,7 @@ function _fichaHTMLbase(m,readonly=false){
         <div class="ft-card-title">🏦 Aportaciones puntuales al fondo</div>`;
       puntuales.forEach((ap,api)=>{
         h+=`<div class="ft-row" style="align-items:flex-start">
-          <span class="ft-lbl">${ap.capital} € · ${escH(ap.mes)} ${ap.anio} · plazo ${ap.plazo}m<br><span style="font-size:11px;color:var(--muted)">Recupera ${ap.total} € (capital +5%) en ${escH(ap.mesDev)} ${ap.anioDev}</span></span>
+          <span class="ft-lbl">${fmtEur(ap.capital)} € · ${escH(ap.mes)} ${ap.anio} · plazo ${ap.plazo}m<br><span style="font-size:11px;color:var(--muted)">Recupera ${fmtEur(ap.total)} € (capital +5%) en ${escH(ap.mesDev)} ${ap.anioDev}</span></span>
           <span style="text-align:right;white-space:nowrap">
             <span class="ft-val" style="color:${ap.devuelto?'#2D6A4F':'#B08D3E'};display:block">${ap.devuelto?"Devuelto ✅":"Activo ⏳"}</span>
             ${readonly?"":`<button class="ap-toggle-btn" onclick="togglePuntualDevuelto('${esc(m.id)}',${api});render()">${ap.devuelto?"Marcar activo":"Marcar devuelto"}</button>`}

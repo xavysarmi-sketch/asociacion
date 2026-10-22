@@ -13,7 +13,10 @@ function escH(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;")
 // que se vuelva a parsear — ahí siempre punto (parseFloat/parseInt no entienden la coma).
 function fmtEur(x){
   const r=Math.round(x*100)/100;
-  return Number.isInteger(r)?String(r):r.toFixed(2).replace(".",",");
+  const s=Number.isInteger(r)?String(r):r.toFixed(2).replace(".",",");
+  // v45.40: punto de miles en todos los importes (5.499 €, 1.449,58 €), en pantalla, papeles y mensajes
+  const [e,d]=s.split(",");
+  return e.replace(/\B(?=(\d{3})+(?!\d))/g,".")+(d!==undefined?","+d:"");
 }
 
 // Índice absoluto de mes (para comparar "Ago 2025" con "Jul 2027" con una sola resta).
