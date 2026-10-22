@@ -131,8 +131,10 @@ function cuentaGrupoHTML(g,principal){
   const total=_cgTotal(g,idx), falta=_cgFalta(g,idx), nom=escH(principal.name.split(" ")[0]);
   const mesTxt=MONTHS_FULL[((idx%12)+12)%12].toLowerCase(), prevTxt=MONTHS_FULL[(((idx-1)%12)+12)%12].toLowerCase();
   const fila=(l,v,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:14px"><span>${l}</span><b style="${c||""}">${v}</b></div>`;
+  const cerrada=_cgCerrada(g); // v45.41: cuenta cerrada (no falta nada): se dice arriba y no se ofrecen apuntes nuevos
   let h=`<div style="border:1.5px solid #2D6A4F;border-radius:12px;padding:12px 14px;margin-top:12px;background:#F4F9F6">
-    <div style="font-size:15px;font-weight:800;color:#1B4332;margin-bottom:6px">💶 Cuenta con ${nom} · ${mesTxt}</div>`;
+    <div style="font-size:15px;font-weight:800;color:#1B4332;margin-bottom:6px">💶 Cuenta con ${nom} · ${mesTxt}</div>
+    ${cerrada?`<div style="background:#1B4332;color:#fff;border-radius:10px;padding:9px 11px;margin-bottom:8px;font-size:14.5px;font-weight:800">✅ Cuenta cerrada: ${nom} te ha entregado todo (${fmtEur(total)} €)</div>`:""}`;
   // Aviso: quedó algo pendiente el mes anterior (solo si allí hubo apuntes)
   const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgFalta(g,idx-1):0;
   if(pf>0)h+=`<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:9px;padding:8px 10px;font-size:13px;color:#6B4210;margin-bottom:8px">⚠️ En ${prevTxt} quedaron pendientes <b>${fmtEur(pf)} €</b>.
@@ -147,7 +149,7 @@ function cuentaGrupoHTML(g,principal){
   });
   const resto=_cgResto(g,idx); // v45.30
   if(resto>0)h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#E8F3EC;border:1px solid #B7D9C3;border-radius:9px;padding:7px 9px;margin-top:6px;font-size:13.5px">
-      <span style="flex:1;min-width:0">✅ Resto entregado <span style="font-size:12px;color:var(--muted)">(todo marcado como cobrado en el Cierre)</span></span><b style="white-space:nowrap">−${fmtEur(resto)} €</b></div>`;
+      <span style="flex:1;min-width:0">✅ Entregado sin apuntar <span style="font-size:12px;color:var(--muted)">(en Cobros está todo marcado como cobrado, así que se da por entregado)</span></span><b style="white-space:nowrap">−${fmtEur(resto)} €</b></div>`; // v45.41: antes «Resto entregado»
   { const ya=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda").reduce((a,x)=>a+x.importe,0)+resto); // v45.14 · v45.30: + resto
     if(ya>0)h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:14px;color:#2D6A4F"><span>Ya te ha entregado</span><b>${fmtEur(ya)} €</b></div>`; }
   h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px solid #2D6A4F;margin-top:10px;padding-top:8px">
@@ -176,10 +178,10 @@ function cuentaGrupoHTML(g,principal){
         <button onclick="CG_FORM=null;render()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#8A7A60;font-size:13.5px;font-weight:700;cursor:pointer">Cancelar</button>
         <button onclick="${CG_FORM.tipo==="sim"?`cgSimAdd('${g.id}')`:`cgGuardar('${g.id}')`}" style="flex:2;padding:10px;border-radius:9px;border:none;background:${CG_FORM.tipo==="sim"?"#B06A1E":"#1B4332"};color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">${CG_FORM.tipo==="sim"?"Simular":"Guardar"}</button></div>`;
   } else {
-    h+=`<div style="display:flex;gap:6px;margin-top:10px">
+    if(!cerrada)h+=`<div style="display:flex;gap:6px;margin-top:10px">
         <button onclick="cgAbrir('${g.id}','entrega')" style="flex:1;padding:10px 4px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13px;font-weight:800;cursor:pointer">＋ Entrega</button>
-        <button onclick="cgAbrir('${g.id}','ayuda')" style="flex:1;padding:10px 4px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:13px;font-weight:800;cursor:pointer">＋ Ayuda que paga ${nom}</button></div>
-      <button onclick="cgEnviarCuenta('${g.id}')" style="width:100%;margin-top:6px;padding:10px;border-radius:9px;border:none;background:#25D366;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">💬 Enviar cuenta a ${nom}</button>
+        <button onclick="cgAbrir('${g.id}','ayuda')" style="flex:1;padding:10px 4px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:13px;font-weight:800;cursor:pointer">＋ Ayuda que paga ${nom}</button></div>`;
+    h+=`<button onclick="cgEnviarCuenta('${g.id}')" style="width:100%;margin-top:6px;padding:10px;border-radius:9px;border:none;background:#25D366;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">💬 Enviar cuenta a ${nom}</button>
       <button onclick="cgAbrir('${g.id}','sim')" style="width:100%;margin-top:6px;padding:9px;border-radius:9px;border:1.5px dashed #B06A1E;background:#FFF8EE;color:#8A4F12;font-size:13px;font-weight:800;cursor:pointer">🧮 Simular ayudas</button>`;
   }
   // v45.13: simulación de ayudas, escrita para enviársela al responsable del grupo (no se guarda)
