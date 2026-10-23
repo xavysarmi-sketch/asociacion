@@ -2,17 +2,6 @@
 // Pantalla principal: render, pestañas, tarjetas, modales, compartir, auto-chequeo y Gestión
 // Parte de la app (versión en APP_VERSION, js/utilidades… se cargan en el orden de index.html).
 // Solo declaraciones: no ejecuta nada al cargarse (el arranque está en js/arranque.js).
-// Filtra las tarjetas de Gestión mostrando/ocultando por nombre, SIN re-render
-// (así el input conserva el foco y el teclado no se cierra en cada letra).
-function filtrarGestion(q){
-  MG_SEARCH=q||"";
-  const t=(q||"").trim().toLowerCase();
-  document.querySelectorAll('.mg-card[data-nombre]').forEach(card=>{
-    const nom=card.getAttribute('data-nombre')||"";
-    card.style.display = (!t || nom.indexOf(t)>=0) ? "" : "none";
-  });
-}
-
 function toast(msg,dur=2500){const t=document.getElementById("toast");t.textContent=msg;t.classList.remove("hidden");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add("hidden"),dur);}
 async function copyText(text,btnId){
   let ok=false;
@@ -254,7 +243,6 @@ function render(){
       <span style="color:rgba(255,255,255,.5);font-weight:700">·</span>
       <select class="h-date-sel" onchange="setReportYear(this.value)" title="Cambiar año">${yOpts}</select>
     </div>
-    ${(()=>{ const o=mesOperativoHoy(); return (o.mes===rm&&o.anio===ry)?"":`<div style="margin:8px auto 0;max-width:340px;padding:6px 10px;border-radius:10px;background:rgba(233,196,106,.14);border:1px solid rgba(233,196,106,.5);color:#F1D58A;font-size:12px;font-weight:700;line-height:1.35">👁️ Estás mirando ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}. Los asociados siguen viendo ${MONTHS_FULL[MONTHS.indexOf(o.mes)].toLowerCase()} ${o.anio}.</div>`; })()}
     <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.6)"><span class="sync-indicator">${syncHTML()}</span> <span class="h-version">· ${APP_VERSION}</span></div><!-- v45.39: la versión va en la cabecera (abajo está la barra) -->
   </div>`; // v45.39: la auditoría se ve en Inicio («Cómo va el mes»)
 
@@ -293,28 +281,37 @@ function render(){
     h+=bannerRecargoHTML();
     // v45.39: los avisos de permanencias y las salidas previstas están en Inicio
 
-    // ── CABECERA: título + selector de mes + buscador ──
+    // Modo enfoque: si hay un bloque abierto, solo se ve ese
+    // v45.42: un grupo abierto (desde su tarjeta) se ve solo, a pantalla completa
+    const _grDet=gruposCierre().find(g=>!!DESP["grupo-"+g.id])||null;
+    const apAbierto=!_grDet&&!!DESP["cierre-aportes"];
+    const cuAbierto=!_grDet&&!!DESP["cierre-cuotas"];
+    const grAbierto=!!_grDet;
+    const hayAbierto=apAbierto||cuAbierto||grAbierto;
+
+    // ── CABECERA: título + cuánto se lleva cobrado + buscador ── (v45.42: los papeles del mes van abajo)
     const idxMes=MONTHS.indexOf(rm);
-    h+=`<div class="mes-card">
+    if(!grAbierto){
+      const _dm=dineroAyudasMes(), _cobM=_r2(_dm.previsto-_dm.porCobrar), _pctM=_dm.previsto>0?Math.round(_cobM/_dm.previsto*100):100;
+      h+=`<div class="mes-card">
       <div class="mes-title" style="margin-bottom:4px">💶 Cobros de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Para ver otro mes, cámbialo arriba (📅 Mes de trabajo).</div>
-      <input id="cierre-search" type="text" placeholder="Buscar miembro..." oninput="filtrarEnVivo(this.value,'#cierre-listas')"
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Para ver otro mes, cámbialo arriba (📅 Mes de trabajo).</div>
+      ${_dm.previsto>0?`<div class="cgt-cifras" style="font-size:15px">Cobrado <b>${fmtEur(_cobM)} €</b> de ${fmtEur(_dm.previsto)} €${_dm.porCobrar>0?` · faltan <b style="color:var(--warm)">${fmtEur(_dm.porCobrar)} €</b>`:" · ✅ todo"}</div>
+      <div class="reserva-bar-bg" style="margin:6px 0 12px"><div class="reserva-bar-fill" style="width:${_pctM}%"></div></div>`:""}
+      <input id="cierre-search" type="text" placeholder="Buscar persona…" oninput="filtrarEnVivo(this.value,'#cierre-listas')"
         style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box">
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="abrirDocImp('cobro')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">🧾 Hoja de cobro</button>
-        <button onclick="abrirDocImp('acta')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📄 Acta de cierre</button>
-      </div>
-      <button onclick="abrirDocImp('carpeta')" style="width:100%;margin-top:8px;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📚 Carpeta de actas (desde agosto 2025)</button>
     </div>`;
+    }
 
     // Contenedor de listas filtrables en vivo
     h+=`<div id="cierre-listas">`;
-
-    // Modo enfoque: si hay un bloque abierto, solo se ve ese
-    const apAbierto=!!DESP["cierre-aportes"];
-    const cuAbierto=!!DESP["cierre-cuotas"];
-    const grAbierto=!!DESP["cierre-grupal"];
-    const hayAbierto=apAbierto||cuAbierto||grAbierto;
+    // v45.42: primero los grupos (casi todo se cobra a través de ellos); debajo, «Por persona»
+    if(!hayAbierto){
+      h+=cobrosGruposHTML();
+      const _dmR=dineroAyudasMes().resto;
+      h+=`<div class="mes-title" style="margin:18px 2px 8px">👤 Por persona</div>`;
+      if(_dmR.total>0)h+=`<div class="ini-sin" style="margin:-4px 2px 8px">Sin grupo: ${fmtEur(_dmR.cobrado)} € cobrados de ${fmtEur(_dmR.total)} €. Se marcan aquí abajo.</div>`;
+    }
 
     // KPIs (se muestran AL FINAL)
     const _bonM=bonosReferidoMes(rm,ry), _excN=Math.round((_rep.excedente-_bonM)*100)/100; // v44.19
@@ -440,35 +437,14 @@ function render(){
     h+=`</div>`;
     } // fin modo enfoque cuotas
 
-    // ── BLOQUE: CIERRE GRUPAL (varios grupos plegables) ──
+    // ── BLOQUE: CIERRE GRUPAL ── v45.42: aquí solo se ve el grupo abierto desde su tarjeta
     const grupos=gruposCierre();
-    if(!hayAbierto||grAbierto){
-    h+=`<div class="mes-card" style="padding-bottom:${grAbierto?'18px':'8px'}">
-      <button onclick="DESP['cierre-grupal']=!DESP['cierre-grupal'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
-        <span class="mes-title" style="margin:0">👥 Cierre grupal${grupos.length>0?` — ${grupos.length}`:""}</span>
-        <span class="ft-drop-chevron" style="${grAbierto?'transform:rotate(90deg)':''}">›</span>
-      </button>`;
     if(grAbierto){
-      h+=`<div style="margin-top:14px">`;
-      // ¿Hay un grupo abierto? Si lo hay, se aísla: se ocultan los demás y el selector de nuevo grupo
-      const grupoAbierto=grupos.find(g=>!!DESP["grupo-"+g.id])||null;
-      if(grupoAbierto){
-        h+=`<button onclick="DESP['grupo-${grupoAbierto.id}']=false;render()" style="display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--dark);font-size:14px;font-weight:700;cursor:pointer;padding:0;margin-bottom:14px">← Ver todos los grupos</button>`;
-      } else {
-        h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Crea un grupo por cada persona que entrega cuotas de varias. Añade tú a quien quieras y marca lo que ha pagado.</div>`;
-        // Crear nuevo grupo — solo asociados que NO estén ya en ningún grupo
-        const enGrupo=new Set();
-        grupos.forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
-        const dispPrincipal=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
-        h+=`<label class="m-label">＋ Nuevo grupo (principal)</label>
-          <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="if(this.value)crearGrupo(this.value);this.value=''">
-            <option value="">— Elegir principal —</option>
-            ${dispPrincipal.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}
-          </select>`;
-        if(grupos.length===0){
-          h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:8px 0 4px">Aún no hay grupos creados.</div>`;
-        }
-      }
+    h+=`<button class="btn-back" style="margin:6px 0 10px;width:auto" onclick="DESP['grupo-${_grDet.id}']=false;CG_FORM=null;render();window.scrollTo(0,0)">← Todos los grupos</button>`;
+    h+=`<div class="mes-card" style="padding-bottom:18px">`;
+    {
+      h+=`<div>`;
+      const grupoAbierto=_grDet; // v45.42: crear grupo está debajo de las tarjetas (crearGrupoHTML)
       // Cada grupo, plegable (si hay uno abierto, solo se muestra ese)
       grupos.forEach(g=>{
         if(grupoAbierto&&g.id!==grupoAbierto.id)return;
@@ -484,11 +460,12 @@ function render(){
           <div style="display:flex;align-items:center;justify-content:space-between">
             <button onclick="DESP['${gKey}']=!DESP['${gKey}'];render()" style="flex:1;background:none;border:none;text-align:left;cursor:pointer;padding:0">
               <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}${_cgCerrada(g)?' <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap;vertical-align:middle">✅ Liquidado</span>':""}</div>
-              <div style="font-size:12px;color:var(--muted)">${items.length} concepto(s) · pendiente ${fmtEur(totalPend)} €</div>
+              <div style="font-size:12px;color:var(--muted)">${(()=>{const d=_cgTarjetaDatos(g,cuotasDelMes(rm,ry),getMesKey(rm,ry));return `${items.length} ${items.length===1?"cobro":"cobros"} · ${d.falta>0?"faltan "+fmtEur(d.falta)+" €":"nada pendiente"}`;})()}</div><!-- v45.42: la misma cuenta que su tarjeta -->
             </button>
             <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="DESP['${gKey}']=!DESP['${gKey}'];render()">›</span>
           </div>`;
         if(gOpen){
+          h+=cuentaGrupoHTML(g,principal); // v45.13 · v45.42: la cuenta con el responsable va arriba (es lo que más se mira)
           h+=`<div style="margin-top:10px">`;
           // Agrupar items por persona (mid), preservando orden de aparición
           const orden=[];
@@ -537,9 +514,9 @@ function render(){
               ${cand.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}${m.type==="tercero"?" (tercero)":""}</option>`).join("")}
             </select>`;
           h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:1.5px solid var(--border);margin-top:4px;padding-top:10px">
-            <span>Pendiente de cobrar</span><span>${fmtEur(totalPend)} €</span>
+            <span>Sin marcar en la lista</span><span>${fmtEur(totalPend)} €</span>
           </div>
-          ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Ya cobrado</span><span>${fmtEur(totalPagado)} €</span></div>`:""}`;
+          ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Marcado como cobrado</span><span>${fmtEur(totalPagado)} €</span></div>`:""}`;
           if(totalPend>0){
             h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px" onclick="marcarTodoGrupo('${g.id}')">✅ Marcar todo pagado</button>`;
           }
@@ -572,7 +549,6 @@ function render(){
               <span style="font-size:20px;font-weight:900;color:var(--brand,#1B4332)">${fmtEur(_totTodo)} €</span>
             </div>
           </div>`;
-          h+=cuentaGrupoHTML(g,principal); // v45.13
           // ── Eliminar grupo (confirmación de dos toques) ──
           const delKey="del-"+g.id;
           if(DESP[delKey]){
@@ -594,8 +570,17 @@ function render(){
     } // fin modo enfoque grupal
 
     h+=`</div>`; // cierra #cierre-listas
-    // KPIs al final (solo si no hay ningún bloque abierto)
-    if(!hayAbierto)h+=kpiHTML;
+    // KPIs al final (solo si no hay ningún bloque abierto) · v45.42: + crear grupo y papeles del mes
+    if(!hayAbierto){
+      h+=crearGrupoHTML();
+      h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:10px">📄 Papeles del mes</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="abrirDocImp('cobro')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">🧾 Hoja de cobro</button>
+        <button onclick="abrirDocImp('acta')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📄 Acta de cierre</button>
+      </div>
+      <button onclick="abrirDocImp('carpeta')" style="width:100%;margin-top:8px;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📚 Carpeta de actas (desde agosto 2025)</button></div>`;
+      h+=kpiHTML;
+    }
   }
 
 
@@ -660,7 +645,7 @@ function render(){
         if(REPORT_FILTER==="asoc")lista=ordered.filter(m=>m.type==="asociado");
         if(REPORT_FILTER==="terc")lista=ordered.filter(m=>m.type==="tercero");
         h+=`<div id="asoc-listas">`;
-        lista.forEach(m=>{h+=`<div data-nombre="${escH(m.name)}">`+cardHTML(m,m.type==="tercero",true)+`</div>`;});
+        h+=listaPersonasHTML(lista); // v45.42: una línea por persona, por grupos (antes, la tarjeta grande de cada una)
         if(lista.length===0){
           h+=`<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0">No hay miembros con ayudas activas este mes.</p>`;
         }
@@ -725,34 +710,12 @@ function render(){
     const asocAll=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)); // baja: fuera de Gestión (solo en Histórico)
     const tercAll=DATA.members.filter(m=>m.type==="tercero");
 
-    h+=`<div style="margin:8px 0 4px"><input id="mgSearch" type="text" placeholder="Buscar asociado o tercero por nombre…" value="${escH(MG_SEARCH||"")}" oninput="filtrarGestion(this.value)" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box"></div>`;
-    if(MG_SEARCH)setTimeout(()=>filtrarGestion(MG_SEARCH),0);
-
+    // v45.42: sin buscador ni «👥 Personas y ayudas» aquí: las personas (con su buscador) están en «Personas»
+    // y editar o eliminar sus ayudas, en la ficha de cada una.
     // v45.39: las Solicitudes están en la pestaña «Ayudas». Aquí, lo de consultar y los ajustes.
     h+=`<div class="mg-acc-head" onclick="TAB='historico';render();window.scrollTo(0,0)">
       <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>
       <span class="mg-acc-fl">›</span></div>`;
-    // 👥 v45.16: Personas y ayudas — antes «Ayudas Internas» y «Ayudas Externas» (decisión de Ángel 09/10/2026)
-    { const ab=!!DESP["mg-per"], fil=MG_PER_FIL;
-      h+=`<div class="mg-acc-head" onclick="DESP['mg-per']=!DESP['mg-per'];render()">
-      <span>👥 Personas y ayudas <span class="mg-acc-num">${asocAll.length+tercAll.length}</span></span>
-      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
-      if(ab){
-        const chip=(k,t)=>`<button onclick="MG_PER_FIL='${k}';render()" style="flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid ${fil===k?"#1B4332":"#E3DDD2"};background:${fil===k?"#1B4332":"#fff"};color:${fil===k?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${t}</button>`;
-        h+=`<div style="display:flex;gap:6px;margin:8px 0 12px">${chip("todos","Todos ("+(asocAll.length+tercAll.length)+")")}${chip("asoc","🏠 Asociados ("+asocAll.length+")")}${chip("terc","🤝 Terceros ("+tercAll.length+")")}</div>
-        <div style="font-size:12.5px;color:var(--muted);margin:-4px 0 10px;line-height:1.4">Toca a una persona para abrir su ficha. Ahí están editar o eliminar sus ayudas, el historial, la salida del fondo y eliminar la ficha.</div>`; // v45.23
-        if(fil!=="terc"){
-          h+=`<button class="add-btn" onclick="openModal('member',{preset:'asociado'})">+ Añadir asociado</button>`;
-          asocAll.forEach(m=>{h+=personaIndiceHTML(m);}); // v45.23: índice (antes manageHTML con botones repetidos)
-        }
-        if(fil!=="asoc"){
-          if(fil==="todos"&&tercAll.length)h+=`<div class="send-section-label" style="margin-top:14px">🤝 Terceros</div>`;
-          h+=`<button class="add-btn terc" onclick="openModal('member',{preset:'tercero'})">+ Añadir tercero (con aval)</button>`;
-          tercAll.forEach(m=>{h+=personaIndiceHTML(m,true);});
-        }
-      }
-    }
-
     // ⏳ v45.28: fechas de fin de permanencia de los asociados (solo lectura)
     h+=permanenciasGestionHTML();
     // 📞 v45.22: teléfonos de todos (para tenerlos guardados, sin enviar nada)
@@ -1079,13 +1042,6 @@ function configHTML(){
     </div>
     <button style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;margin-top:12px" onclick="saveCfg()">💾 Guardar configuración</button>
   </div>`;
-}
-function personaIndiceHTML(m,isT){ // v45.23
-  const act=(m.loans||[]).filter(l=>l.pays.some(p=>!p.paid)), pend=_r2(act.reduce((s,l)=>s+l.pays.reduce((a,p,i)=>a+(p.paid?0:cuotaDe(l,i)),0),0));
-  return `<div class="mg-card" data-nombre="${escH((m.name||"").toLowerCase())}" onclick="openFicha('${esc(m.id)}')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px">
-    <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px;color:${isT?"var(--terc)":"var(--dark)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(m.name)}</div>
-    <div style="font-size:12px;color:var(--muted)">${isT?"Tercero":"Asociado"} · ${act.length?`${act.length} ${act.length===1?"ayuda activa":"ayudas activas"} · pendiente ${fmtEur(pend)} €`:"sin ayudas activas"}</div></div>
-    <span style="color:var(--muted);font-size:20px">›</span></div>`;
 }
 function manageHTML(m,isT){
   const memArmed=(_delMemberArmed===m.id);

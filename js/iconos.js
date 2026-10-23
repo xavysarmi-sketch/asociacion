@@ -76,7 +76,7 @@ function iconizar(root){
   const L=[]; while(w.nextNode())L.push(w.currentNode);
   L.forEach(n=>{
     const t=n.nodeValue.replace(_IC_QUITAR,"");
-    if(n.parentNode.nodeName==="OPTION"){ n.nodeValue=t.replace(_IC_RE,"").replace(/^\s+/,""); return; }
+    if(n.parentNode.nodeName==="OPTION"){ const v=t.replace(_IC_RE,"").replace(/^\s+/,""); if(v!==n.nodeValue)n.nodeValue=v; return; } // v45.42: solo si cambia (si no, un emoji sin icono en un desplegable bloqueaba la app)
     _IC_RE.lastIndex=0;
     if(!_IC_RE.test(t)){ if(t!==n.nodeValue)n.nodeValue=t; return; }
     _IC_RE.lastIndex=0;

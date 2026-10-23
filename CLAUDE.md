@@ -32,6 +32,10 @@ lenguaje sencillo antes de aplicarlos.
   Ayudas · Más (TAB "manage"; el Histórico se abre desde Más). La letra más grande y el nuevo orden
   son solo para la app del administrador (clase body.nh-admin); enlaces de asociados, «Así lo ve» y
   papeles del mes se ven como siempre.
+- Desde v45.42: Cobros empieza por una tarjeta por grupo (cobrosGruposHTML, js/grupos.js; mismas cifras
+  que dineroAyudasMes) y debajo «Por persona»; un grupo se abre solo (abrirGrupoCobros) con la cuenta del
+  responsable arriba. Personas es una lista compacta por grupos (listaPersonasHTML, js/personas.js). En el
+  alta hay que elegir grupo (o «Sin grupo»). En los <option> no usar emojis sin icono (ver iconizar).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

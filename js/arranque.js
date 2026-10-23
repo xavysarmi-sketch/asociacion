@@ -32,9 +32,7 @@ let ASOC_SEARCH=""; // texto del buscador de Asociados
 // Grupos de cierre: se guardan en DATA.gruposCierre = [{id, principalId, miembros:[mid,...]}]
 // Los items (aporte/cuotas) se calculan en vivo según el mes seleccionado.
 let VISTA_ASOC=null; // v45.21: «👁️ Ver como lo ve» — {tipo:"socio"|"grupo", mid, ppal, ids, yo, volver}
-let MG_SEARCH=""; // texto del buscador de la pestaña Gestión
 let MG_INT_OPEN=false, MG_EXT_OPEN=false; // desplegables de Gestión (arrancan cerrados)
-let MG_PER_FIL="todos"; // v45.16: filtro de «👥 Personas y ayudas» (todos | asoc | terc)
 let AUDIT_OPEN=false; // desplegable de la tarjeta "🔍 Auditoría interna" (arranca cerrado)
 let SEND_SELECTED=new Set(),SEND_FILTER="all",SEND_SEARCH="";
 let WA_QUEUE=[],WA_IDX=0;

@@ -207,6 +207,73 @@ function cuentaGrupoHTML(g,principal){
   if(_cgCerrada(g)&&DESP["cgver-"+g.id])h+=`<div style="text-align:center;margin-top:8px"><button onclick="DESP['cgver-${g.id}']=false;render()" style="background:none;border:none;color:#2D6A4F;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer">Ocultar</button></div>`;
   return h+`</div>`;
 }
+// ══ v45.42 · COBROS POR GRUPOS ══════════════════════════════════════════════════════════════
+// Casi todo se cobra a través de los responsables de grupo: Cobros empieza con una tarjeta por grupo.
+// «Cobrado» es la misma cuenta que en Inicio › Dinero del mes (dineroAyudasMes): lo marcado como
+// cobrado o lo apuntado como entregado, lo que sea mayor. Solo calcula y pinta (el render no escribe).
+function abrirGrupoCobros(gid){
+  Object.keys(DESP).forEach(k=>{ if(k.indexOf("grupo-")===0)DESP[k]=false; });
+  DESP["grupo-"+gid]=true; CG_FORM=null; render(); window.scrollTo(0,0);
+}
+// «✓ Todo cobrado»: dos toques (sin confirm), como eliminar
+function cgTodoToque(gid){
+  const k="cgtodo-"+gid;
+  if(!DESP[k]){ DESP[k]=true; render(); setTimeout(()=>{ if(DESP[k]){DESP[k]=false;render();} },4000); return; }
+  DESP[k]=false; marcarTodoGrupo(gid);
+}
+function _cgTarjetaDatos(g,pre,key){
+  const items=itemsDeGrupo(g,undefined,undefined,pre);
+  const total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
+  const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda").reduce((a,x)=>a+x.importe,0));
+  const cobrado=Math.min(total,Math.max(pagado,ent));
+  return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g)};
+}
+function cobrosGruposHTML(){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
+  const grs=gruposCierre().map(g=>({g,p:DATA.members.find(m=>m.id===g.principalId)})).filter(x=>x.p);
+  if(!grs.length)return `<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">👥 Grupos</div><div class="ini-sin">Aún no hay grupos. Créalo abajo con «＋ Crear grupo».</div></div>`;
+  const datos=grs.map(x=>Object.assign(x,{d:_cgTarjetaDatos(x.g,pre,key)}));
+  const nOk=datos.filter(x=>x.d.cerrada).length;
+  let h=`<div class="mes-title" style="margin:14px 2px 8px">👥 Grupos <span style="font-weight:600;color:var(--muted)">· ${nOk} de ${datos.length} liquidados</span></div>`;
+  datos.forEach(({g,p,d})=>{
+    const nom=escH(p.name.split(" ")[0]), ids=[g.principalId,...(g.miembros||[])];
+    const nombres=ids.map(id=>(DATA.members.find(m=>m.id===id)||{}).name||"").join(" | ");
+    const pct=d.total>0?Math.round(d.cobrado/d.total*100):100;
+    const chip=!d.items.length?`<span class="cgt-chip">Nada este mes</span>`
+      :d.cerrada?`<span class="cgt-chip ok">✅ Liquidado</span>`
+      :d.falta>0?`<span class="cgt-chip pend">Faltan ${fmtEur(d.falta)} €</span>`
+      :`<span class="cgt-chip rev">Revisar ›</span>`;
+    const armado=!!DESP["cgtodo-"+g.id], formEnt=CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="entrega";
+    h+=`<div class="cgt" data-nombre="${escH(nombres)}">
+      <button class="cgt-cab" onclick="abrirGrupoCobros('${g.id}')">
+        <span class="cgt-nom">${escH(p.name)}<span class="cgt-sub">${ids.length} ${ids.length===1?"persona":"personas"} · ${d.items.length} ${d.items.length===1?"cobro":"cobros"}</span></span>${chip}</button>`;
+    if(d.items.length)h+=`<div class="reserva-bar-bg" style="margin:8px 0 4px"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
+      <div class="cgt-cifras">Cobrado <b>${fmtEur(d.cobrado)} €</b> de ${fmtEur(d.total)} €</div>`;
+    if(formEnt){
+      h+=`<label class="m-label" style="margin-top:10px">¿Cuánto te ha entregado ${nom}?</label>
+        <input id="cg-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: ${d.falta>0?fmtEur(d.falta):"500"}" style="font-size:16px">
+        <div class="cgt-btns"><button class="cgt-b sec" onclick="CG_FORM=null;render()">Cancelar</button><button class="cgt-b pri" style="flex:2" onclick="cgGuardar('${g.id}')">Guardar entrega</button></div>`;
+    } else if(d.items.length){
+      h+=`<div class="cgt-btns">
+        ${!d.cerrada?`<button class="cgt-b sec" onclick="cgAbrir('${g.id}','entrega')">＋ Entrega</button>`:""}
+        ${d.sinMarcar>0?`<button class="cgt-b ${armado?"arm":"pri"}" onclick="cgTodoToque('${g.id}')">${armado?"¿Todo cobrado? Toca otra vez":"✓ Todo cobrado"}</button>`:""}
+        <button class="cgt-b sec" onclick="abrirGrupoCobros('${g.id}')">Abrir ›</button></div>`;
+    }
+    h+=`</div>`;
+  });
+  return h;
+}
+// Crear grupo (antes estaba arriba del Cierre grupal): ahora un botón pequeño debajo de las tarjetas
+function crearGrupoHTML(){
+  const enGrupo=new Set(); gruposCierre().forEach(g=>{enGrupo.add(g.principalId);(g.miembros||[]).forEach(x=>enGrupo.add(x));});
+  const disp=DATA.members.filter(m=>m.type==="asociado"&&!enGrupo.has(m.id)&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!DESP["cg-crear"])return `<button class="cgt-crear" onclick="DESP['cg-crear']=true;render()">＋ Crear grupo</button>`;
+  return `<div class="mes-card"><label class="m-label">＋ Nuevo grupo: ¿quién es el responsable?</label>
+    ${disp.length?`<select class="m-select" style="font-size:15px" onchange="if(this.value){DESP['cg-crear']=false;crearGrupo(this.value);}">
+      <option value="">— Elegir responsable —</option>${disp.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>`
+      :`<div class="ini-sin">Todos los asociados ya están en un grupo.</div>`}
+    <button class="cgt-b sec" style="width:100%;margin-top:8px" onclick="DESP['cg-crear']=false;render()">Cancelar</button></div>`;
+}
 function crearGrupo(principalId){
   if(!principalId)return;
   gruposCierre().push({id:"G"+Date.now(),principalId,miembros:[]});

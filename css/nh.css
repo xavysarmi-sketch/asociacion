@@ -856,3 +856,33 @@ body.nh-admin .rep-filtro{flex:0 0 auto;flex-direction:row;padding:9px 13px;bord
 body.nh-admin .filtro-num{font-size:13.5px;padding:1px 7px;min-width:0}
 body.nh-admin .app-version{display:none!important}
 .h-version{opacity:.75}
+/* v45.42 · Cobros por grupos (tarjeta de cada grupo) */
+.cgt{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.cgt-cab{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:none;border:none;padding:0;text-align:left;cursor:pointer;color:var(--dark);font-family:inherit}
+.cgt-nom{display:flex;flex-direction:column;min-width:0;font-size:17px;font-weight:800;line-height:1.25}
+.cgt-sub{font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+.cgt-chip{flex-shrink:0;font-size:13.5px;font-weight:800;padding:5px 11px;border-radius:20px;background:#F1ECE3;color:#5F5A55;white-space:nowrap}
+.cgt-chip.ok{background:#E3F1E7;color:#1B7A3D}
+.cgt-chip.pend{background:#FFF1E0;color:#94500F}
+.cgt-chip.rev{background:#FDECE8;color:#A93C25}
+.cgt-cifras{font-size:14px;color:var(--muted)}
+.cgt-cifras b{color:var(--dark)}
+.cgt-btns{display:flex;gap:6px;margin-top:10px}
+.cgt-b{flex:1;min-height:44px;padding:10px 6px;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-family:inherit}
+.cgt-b.pri{background:#1B4332;color:#fff}
+.cgt-b.arm{background:#C75B0E;border-color:#C75B0E;color:#fff}
+.cgt-crear{display:block;width:100%;margin:2px 0 14px;padding:12px;border-radius:12px;border:1.5px dashed #C9BFAF;background:transparent;color:#5F5A55;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
+/* v45.42 · Personas: una línea por persona, por grupos */
+.pl-sec{margin-bottom:14px}
+.pl-tit{font-size:13px;font-weight:800;color:#5F5A55;text-transform:uppercase;letter-spacing:.4px;margin:4px 4px 6px}
+.pl-tit span{font-weight:700;text-transform:none;letter-spacing:0}
+.pl-fila{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:6px;text-align:left;cursor:pointer;font-family:inherit;color:var(--dark);min-height:56px}
+.pl-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.pl-nom{font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-fila.terc .pl-nom{color:var(--terc)}
+.pl-meta{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-tag{font-size:11.5px;font-weight:800;color:#1B4332;background:#E3F1E7;border-radius:10px;padding:1px 7px;vertical-align:middle}
+.pl-est{flex-shrink:0;font-size:13.5px;font-weight:800;color:#8A847C;white-space:nowrap}
+.pl-est.ok{color:#1B7A3D}
+.pl-est.pend{color:#94500F;background:#FFF1E0;border-radius:14px;padding:3px 9px}
+.pl-fl{color:#A49D93;font-size:20px;flex-shrink:0}

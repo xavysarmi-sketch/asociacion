@@ -89,8 +89,40 @@ function delMember(mid){
   save();toast("Eliminado ✓"+extra,extra?6000:undefined);render();
 }
 
+// v45.42 · GRUPO EN EL ALTA: hay que elegir (un grupo, uno nuevo o «Sin grupo»), para que nadie quede
+// suelto en Cobros. Se propone el grupo de quien lo avala o lo trajo (o el de su solicitud).
+function _altaGrupoSugerido(tipo,refId){
+  const so=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null;
+  if(so&&so.grupoGid&&gruposCierre().some(g=>g.id===so.grupoGid))return so.grupoGid;
+  return refId?_grupoDe(refId):"";
+}
+function altaGrupoOpcionesHTML(tipo,sel){
+  const grs=gruposCierre().map(g=>({g,p:DATA.members.find(m=>m.id===g.principalId)})).filter(x=>x.p).sort((a,b)=>a.p.name.localeCompare(b.p.name));
+  return `<option value="">— Elegir grupo —</option>${grs.map(({g,p})=>`<option value="${esc(g.id)}"${sel===g.id?" selected":""}>Grupo de ${escH(p.name)}</option>`).join("")}`
+    +(tipo==="asociado"?`<option value="__nuevo"${sel==="__nuevo"?" selected":""}>＋ Grupo nuevo (será el responsable)</option>`:"")
+    +`<option value="__ninguno"${sel==="__ninguno"?" selected":""}>Sin grupo (me paga a mí)</option>`;
+}
+function altaGrupoCambio(){
+  const el=document.getElementById("m-grupo"); if(!el)return;
+  const tipo=document.querySelector(".m-opt.active[data-type]")?.dataset.type||"asociado";
+  const refId=(document.getElementById(tipo==="tercero"?"m-ref":"m-refdo")||{}).value||"";
+  const mano=el.dataset.mano==="1", sug=_altaGrupoSugerido(tipo,refId);
+  let sel=mano?el.value:sug; if(tipo!=="asociado"&&sel==="__nuevo")sel="";
+  el.innerHTML=altaGrupoOpcionesHTML(tipo,sel);
+  const hint=document.getElementById("m-grupo-hint");
+  if(hint)hint.textContent=(!mano&&sel&&sel===sug)?(tipo==="tercero"?"Propuesto: el grupo de su avalista. Puedes cambiarlo.":"Propuesto: el grupo de quien lo trajo. Puedes cambiarlo."):"";
+}
+function _altaAplicarGrupo(m,gSel){
+  if(!m||!gSel||gSel==="__ninguno"||_grupoDe(m.id))return "";
+  if(gSel==="__nuevo"){ if(m.type!=="asociado")return ""; gruposCierre().push({id:"G"+Date.now(),principalId:m.id,miembros:[]}); return " · grupo nuevo"; }
+  const g=gruposCierre().find(x=>x.id===gSel); if(!g||g.principalId===m.id)return "";
+  if(!g.miembros)g.miembros=[]; g.miembros.push(m.id);
+  const p=DATA.members.find(x=>x.id===g.principalId); return ` · en el grupo de ${p?p.name.split(" ")[0]:""}`;
+}
 function addMemberSubmit(convertir){
   const name=document.getElementById("m-name").value.trim();if(!name)return;
+  const gSel=(document.getElementById("m-grupo")||{}).value||""; // v45.42
+  if(!gSel){toast("⛔ Elige su grupo (o «Sin grupo»)",3500);const gEl=document.getElementById("m-grupo");if(gEl)gEl.scrollIntoView({block:"center"});return;}
   const telAlta=_telLimpio(document.getElementById("m-phone")?.value); // v45.21: opcional
   const type=document.querySelector(".m-opt.active[data-type]")?.dataset.type||"asociado";
   // v45 (PE-1): un asociado no se da de alta sin permanencia
@@ -119,8 +151,9 @@ function addMemberSubmit(convertir){
         const conv=DATA.members.find(x=>x.type==="asociado"&&_normNombre(x.name)===key);
         if(conv){conv.ciclo=cicloAlta;conv.aporte=aporteAlta;if(telAlta&&!conv.phone)conv.phone=telAlta;}
         const k=refdoId?aplicarReferidoAlta(conv,refdoId,bonoMes):null;
+        const gTxt=_altaAplicarGrupo(conv,gSel); // v45.42 (si ya estaba en un grupo, se queda en el suyo)
         const solC=MODAL&&MODAL.sol;
-        closeModal();save();toast("✓ Tercero convertido a asociado"+msgBono(k));
+        closeModal();save();toast("✓ Tercero convertido a asociado"+gTxt+msgBono(k));
         if(solC&&conv)_solTrasAlta(solC,conv); else if(conv)abrirBienvenida(conv.id,true);
         return;
       }
@@ -131,8 +164,9 @@ function addMemberSubmit(convertir){
   if(type==="asociado"){nuevo.ciclo=cicloAlta;nuevo.aporte=aporteAlta;} // v45 (PE-1, AP-4)
   DATA.members.push(nuevo);
   const k=refdoId?aplicarReferidoAlta(nuevo,refdoId,bonoMes):null;
+  const gTxt=_altaAplicarGrupo(nuevo,gSel); // v45.42
   const solN=MODAL&&MODAL.sol; // v45.14
-  closeModal();save();toast("Miembro añadido ✓"+msgBono(k));
+  closeModal();save();toast("Miembro añadido ✓"+gTxt+msgBono(k));
   if(solN)_solTrasAlta(solN,nuevo); else abrirBienvenida(nuevo.id,true); // v45.21
 }
 // v45.21: aviso en el alta cuando ya hay un TERCERO con ese nombre (mismo criterio que la auditoría)
@@ -437,7 +471,10 @@ function bienvenidaModalHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid); if(!m)return "";
   const txt=_textoBienvenida(m);
   return `<div class="modal-title">📲 Bienvenida para ${escH(m.name.split(" ")[0])}</div>
-${MODAL.trasAlta?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;border-radius:9px;padding:7px 10px;margin-bottom:10px">✓ ${m.type==="tercero"?"Tercero":"Asociado"} dado de alta. Envíale ahora su bienvenida con su enlace.</div>`:""}
+${MODAL.trasAlta?(()=>{ const gid=_grupoDe(m.id), g=gid&&gruposCierre().find(x=>x.id===gid), gp=g&&DATA.members.find(x=>x.id===g.principalId); // v45.42: resumen del alta
+  const perm=m.type==="asociado"?(m.ciclo===0?"indefinida":m.ciclo?m.ciclo+" meses":""):"";
+  const datos=[gp?(gp.id===m.id?"responsable de su grupo":"grupo de "+escH(gp.name.split(" ")[0])):"sin grupo", m.type==="asociado"?"aporte "+(m.aporte||50)+" €":"", perm?"permanencia "+perm:"", m.type==="tercero"&&avalistaNombre(m)?"aval "+escH(avalistaNombre(m).split(" ")[0]):""].filter(Boolean).join(" · ");
+  return `<div style="font-size:13px;color:#1B4332;background:#EEF7F1;border-radius:9px;padding:9px 11px;margin-bottom:10px;line-height:1.45"><b>✅ ${m.type==="tercero"?"Tercero":"Asociado"} dado de alta</b><br>${datos}<br>Envíale ahora su bienvenida con su enlace.</div>`; })():""}
 <label class="m-label">Teléfono (WhatsApp) · opcional</label>
 <input id="bv-tel" class="m-input" type="tel" inputmode="tel" placeholder="Ej.: 612 345 678" value="${escH(m.phone||"")}">
 <label class="m-label">Mensaje (puedes cambiarlo)</label>
@@ -461,6 +498,40 @@ function enviarBienvenida(){
 
 
 
+// v45.42 · LISTA COMPACTA DE PERSONAS: una línea por persona, ordenadas por grupo (el responsable
+// primero), con lo que le queda por pagar este mes. La ficha completa se abre al tocar.
+function listaPersonasHTML(lista){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, pre=cuotasDelMes(rm,ry), usados=new Set(), secs=[];
+  const alfa=(a,b)=>a.name.localeCompare(b.name);
+  gruposCierre().forEach(g=>{
+    const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+    const ids=[g.principalId,...(g.miembros||[])];
+    const ms=lista.filter(m=>ids.includes(m.id)&&!usados.has(m.id));
+    ms.forEach(m=>usados.add(m.id));
+    ms.sort((a,b)=>a.id===g.principalId?-1:b.id===g.principalId?1:alfa(a,b));
+    if(ms.length)secs.push({tit:`Grupo de ${p.name.split(" ")[0]}`,ms,ppal:g.principalId});
+  });
+  const sin=lista.filter(m=>!usados.has(m.id)).sort(alfa);
+  if(sin.length)secs.push({tit:"Sin grupo",ms:sin,ppal:null});
+  let h="";
+  secs.forEach(s=>{
+    h+=`<div class="pl-sec" data-nombre="${escH(s.ms.map(m=>m.name).join(" | "))}"><div class="pl-tit">${escH(s.tit)} <span>· ${s.ms.length}</span></div>`;
+    s.ms.forEach(m=>{
+      const isT=m.type==="tercero", its=itemsDeMiembro(m.id,rm,ry,pre);
+      const tot=_r2(its.reduce((a,it)=>a+it.importe,0)), pend=_r2(its.filter(it=>!it.yaPagado).reduce((a,it)=>a+it.importe,0));
+      const nAy=(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length;
+      const pausa=!isT&&enPausaMes(m,rm,ry), aval=isT?avalistaNombre(m):"";
+      const fund=(!isT&&m.joinMonth==="Ago"&&m.joinYear===2025);
+      const est=!its.length?`<span class="pl-est">—</span>`:pend>0?`<span class="pl-est pend">Falta ${fmtEur(pend)} €</span>`:`<span class="pl-est ok">✓ Al día</span>`;
+      const meta=(isT?"Tercero":"Asociado")+(aval?` · aval ${escH(aval.split(" ")[0])}`:"")+(nAy?` · 🤝 ${nAy} ${nAy===1?"ayuda":"ayudas"}`:"")+(pausa?" · ⏸ en pausa":"")+(tot>0&&pend>0&&pend<tot?` · pagado ${fmtEur(_r2(tot-pend))} €`:"");
+      h+=`<button class="pl-fila${isT?" terc":""}" data-nombre="${escH(m.name)}" onclick="openFicha('${esc(m.id)}')">
+        <span class="pl-txt"><span class="pl-nom">${escH(m.name)}${fund?" ⭐":""}${m.id===s.ppal?` <span class="pl-tag">responsable</span>`:""}</span><span class="pl-meta">${meta}</span></span>
+        ${est}<span class="pl-fl">›</span></button>`;
+    });
+    h+=`</div>`;
+  });
+  return h;
+}
 // ── FICHA COMPLETA ASOCIADO ─────────────────────────────────────────────────
 function openFicha(mid){FICHA_ID=mid;FICHA_TAB="resumen";TAB="asociados";render();} // v45.23: se abre en «Resumen»
 function closeFicha(){FICHA_ID=null;render();}
@@ -1421,23 +1492,26 @@ ${MODAL.sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;borde
 <div id="m-conv">${_altaConvHTML(MODAL.solNombre||"",pr)}</div>
 <input id="m-phone" class="m-input" type="tel" inputmode="tel" placeholder="Teléfono (WhatsApp) · opcional">
 <div style="display:flex;gap:8px;margin-bottom:12px">
-<button class="m-opt ${pr==="asociado"?"active":""}" data-type="asociado" onclick="this.classList.add('active');this.nextElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='none';document.getElementById('m-refdo-wrap').style.display='block';altaNombreCambio()">👥 Asociado</button>
-<button class="m-opt ${pr==="tercero"?"active":""}" data-type="tercero" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='block';document.getElementById('m-refdo-wrap').style.display='none';altaNombreCambio()">🤝 Tercero</button>
+<button class="m-opt ${pr==="asociado"?"active":""}" data-type="asociado" onclick="this.classList.add('active');this.nextElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='none';document.getElementById('m-refdo-wrap').style.display='block';altaNombreCambio();altaGrupoCambio()">👥 Asociado</button>
+<button class="m-opt ${pr==="tercero"?"active":""}" data-type="tercero" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active');document.getElementById('m-ref-wrap').style.display='block';document.getElementById('m-refdo-wrap').style.display='none';altaNombreCambio();altaGrupoCambio()">🤝 Tercero</button>
 </div>
-<div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select></div>
+<div id="m-ref-wrap" style="display:${pr==="tercero"?"block":"none"}"><select id="m-ref" class="m-select" onchange="altaGrupoCambio()"><option value="">Avalista (asociado)…</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select></div>
 <div id="m-refdo-wrap" style="display:${pr==="tercero"?"none":"block"};margin-bottom:12px">
 <label class="m-label">Permanencia (obligatoria)</label>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,null,permEtiqueta)}</div>
 <label class="m-label">Aporte habitual</label>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">${_opcionesHTML("l-ap-opt","ap",APORTE_OPCIONES,50,v=>v+" €")}</div>
 <label class="m-label">🎁 ¿Quién lo trajo? (referido por)</label>
-<select id="m-refdo" class="m-select" onchange="altaReferidoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select>
+<select id="m-refdo" class="m-select" onchange="altaReferidoCambio();altaGrupoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select>
 <div id="m-bono-wrap" style="display:none;margin-top:10px;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:12px;padding:10px 12px">
 <label class="m-label" style="color:#7A5A12">Mes en que se aplica el bono de 10 €</label>
 <select id="m-bono-mes" class="m-select"></select>
 <div id="m-bono-hint" style="font-size:12px;color:#7A5A12;margin-top:6px;line-height:1.4"></div>
 </div>
 </div>
+<label class="m-label">👥 Grupo · ¿a quién le entrega lo de cada mes? (obligatorio)</label>
+<select id="m-grupo" class="m-select" style="margin-bottom:4px" onchange="this.dataset.mano='1';altaGrupoCambio()">${(()=>{const s=_altaGrupoSugerido(pr,MODAL.solAval||"");return altaGrupoOpcionesHTML(pr,s);})()}</select>
+<div id="m-grupo-hint" style="font-size:12px;color:var(--muted);margin-bottom:14px;min-height:4px">${_altaGrupoSugerido(pr,MODAL.solAval||"")?"Propuesto. Puedes cambiarlo.":""}</div>
 <button class="m-primary" onclick="addMemberSubmit()">Añadir</button>`;
 }
 

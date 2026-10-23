@@ -752,7 +752,7 @@ function pendienteMesAnteriorHTML(m,rm,ry){
 }
 
 // Items (aporte + cuotas) de un miembro en el mes seleccionado
-function itemsDeMiembro(mid,rm,ry){
+function itemsDeMiembro(mid,rm,ry,cuotasPre){ // v45.42: cuotasPre = cuotasDelMes(rm,ry) ya calculado (listas largas)
   rm=rm||DATA.reportMonth; ry=ry||DATA.reportYear; // v45.13: mes opcional (cuenta del grupo del mes anterior)
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return [];
@@ -768,15 +768,15 @@ function itemsDeMiembro(mid,rm,ry){
       +`<div style="font-size:12px;color:#8A6D1E;margin-top:2px">🎁 ${nomRef.map(escH).join(", ")}</div>`:"Aporte mensual";
     items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto,importe:neto,yaPagado:pagado});
   }
-  cuotasDelMes(rm,ry).filter(c=>c.mid===mid).forEach(c=>{
+  (cuotasPre||cuotasDelMes(rm,ry)).filter(c=>c.mid===mid).forEach(c=>{
     items.push({tipo:"cuota",mid:c.mid,lid:c.lid,pi:c.pi,nombre:c.nombre,concepto:etiquetaCuota(c.numCuota,c.totalCuotas),importe:c.inst,recargo:c.recargo,yaPagado:c.paid,aplazada:c.aplazada});
   });
   return items;
 }
-function itemsDeGrupo(g,rm,ry){
+function itemsDeGrupo(g,rm,ry,cuotasPre){ // v45.42: cuotasPre opcional (ver itemsDeMiembro)
   const ids=[g.principalId,...(g.miembros||[])];
   let items=[];
-  ids.forEach(id=>{ items=items.concat(itemsDeMiembro(id,rm,ry)); });
+  ids.forEach(id=>{ items=items.concat(itemsDeMiembro(id,rm,ry,cuotasPre)); });
   return items;
 }
 // Dinero previsto de la asociación en un mes siguiente: aportes + cuotas que tocan ese mes − salidas comprometidas de ese mes (sin sobrante del mes anterior)
