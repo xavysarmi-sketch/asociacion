@@ -344,7 +344,7 @@ function render(){
       // Botones de acción rápida
       h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
         <button onclick="marcarTodosAportes()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✅ Marcar todos pagados</button>
-        <button onclick="desmarcarTodosAportes()" style="flex:1;padding:11px;border:1.5px solid #D9C9B0;border-radius:10px;background:#fff;color:#8A7A60;font-size:13px;font-weight:700;cursor:pointer">Desmarcar</button>
+        <button onclick="desmarcarToque()" style="flex:1;padding:11px;border:1.5px solid ${DESP['ap-desm']?"#C0492C":"#D9C9B0"};border-radius:10px;background:${DESP['ap-desm']?"#C0492C":"#fff"};color:${DESP['ap-desm']?"#fff":"#8A7A60"};font-size:13px;font-weight:700;cursor:pointer">${DESP['ap-desm']?"¿Desmarcar todo? Toca otra vez":"Desmarcar todo"}</button><!-- v45.43: dos toques -->
       </div>
       <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">Luego desmarca abajo a quien no haya pagado</div>`;
       // Orden FIJO por ingreso
@@ -479,10 +479,10 @@ function render(){
             const subtotal=Math.round(lista.reduce((s,x)=>s+x.importe,0)*100)/100;
             h+=`<div style="border-bottom:1px solid var(--border);padding:10px 0 8px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:10px;color:var(--muted);font-weight:600">(principal)</span>':''}</div>
+                <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:12px;color:var(--muted);font-weight:700">(responsable)</span>':''}</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="font-size:13px;color:var(--muted)">${fmtEur(subtotal)} €</span>
-                  ${!esPrincipal?`<button onclick="quitarMiembroGrupo('${g.id}','${esc(pid)}')" style="background:none;border:none;color:#C0492C;font-size:17px;cursor:pointer;padding:0 2px">✕</button>`:""}
+                  ${!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""}<!-- v45.43: dos toques y más grande -->
                 </div>
               </div>`;
             lista.forEach(it=>{
@@ -518,7 +518,7 @@ function render(){
           </div>
           ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Marcado como cobrado</span><span>${fmtEur(totalPagado)} €</span></div>`:""}`;
           if(totalPend>0){
-            h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px" onclick="marcarTodoGrupo('${g.id}')">✅ Marcar todo pagado</button>`;
+            h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px${DESP['cgtodo-'+g.id]?";background:#C75B0E":""}" onclick="cgTodoToque('${g.id}')">${DESP['cgtodo-'+g.id]?"¿Marcar todo pagado? Toca otra vez":"✅ Marcar todo pagado"}</button>`; // v45.43: dos toques, como en la tarjeta
           }
           // Enlace estable del grupo (se auto-actualiza; no hay que reenviarlo al editar el grupo)
           h+=`<button style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#25D366;color:#fff;font-size:14px;font-weight:700;cursor:pointer" onclick="compartirGrupoCierre('${g.id}')">💬 Compartir enlace del grupo</button>`;
@@ -776,6 +776,7 @@ function render(){
     if(MODAL.type==="bienvenida")h+=bienvenidaModalHTML(); // v45.21
     if(MODAL.type==="telefono")h+=telefonoModalHTML(); // v45.22
     if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
+    if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;
@@ -1033,11 +1034,12 @@ function configHTML(){
   return `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
     <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:12px">⚙️ Configuración</div>
     <div class="cfg-row">
-      <div><div class="cfg-label">Aporte adicional por cuota</div><div class="cfg-sub">% sobre el capital × nº cuotas (regla del fondo)</div></div>
-      <input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %
+      <div><div class="cfg-label">Retorno compartido por cuota</div><div class="cfg-sub">% sobre el capital en cada cuota. Es una regla del Documento Maestro: cámbialo solo si cambia el Maestro. Afecta a las ayudas nuevas.</div></div>
+      ${DESP["cfg-rate"]?`<input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %`:`<span style="white-space:nowrap;font-weight:800;font-size:16px">${DATA.rate} %</span>`}
     </div>
+    ${DESP["cfg-rate"]?"":`<button onclick="DESP['cfg-rate']=true;render()" style="background:none;border:none;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer;padding:0 0 8px">🔒 Cambiar el retorno</button>`}<!-- v45.43: protegido -->
     <div class="cfg-row">
-      <div><div class="cfg-label">Día de aviso del próximo aporte</div><div class="cfg-sub">Desde este día se muestra "Próximo: … de [mes]" en las fichas al día</div></div>
+      <div><div class="cfg-label">Día en que se pasa al mes siguiente</div><div class="cfg-sub">Desde este día la app y los enlaces de los asociados muestran ya el mes siguiente (aportes y cuotas). Normalmente el 25.</div></div>
       <input id="cfg-diaaviso" class="cfg-input" type="number" value="${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}" min="1" max="28">
     </div>
     <button style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;margin-top:12px" onclick="saveCfg()">💾 Guardar configuración</button>

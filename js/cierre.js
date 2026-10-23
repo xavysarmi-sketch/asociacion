@@ -150,15 +150,28 @@ function toggleAporte(memberId,mes,anio){
   recalcMesRecargo();
   save();render();
 }
+// v45.43: los cambios de muchos cobros a la vez se pueden deshacer (mismo «Deshacer» que las cuotas)
+function _avisoDeshacer(msg){
+  const t=document.getElementById("toast"); if(!t)return;
+  t.innerHTML=`${escH(msg)} &nbsp;<span onclick="undoPay()" style="text-decoration:underline;cursor:pointer;font-weight:800">↩ Deshacer</span>`;
+  t.classList.remove("hidden"); clearTimeout(t._t); clearTimeout(UNDO_TIMER);
+  UNDO_TIMER=setTimeout(()=>{t.classList.add("hidden");UNDO_SNAPSHOT=null;},8000);
+}
+function desmarcarToque(){ // v45.43: «Desmarcar todo» con dos toques
+  if(!DESP["ap-desm"]){ DESP["ap-desm"]=true; render(); setTimeout(()=>{ if(DESP["ap-desm"]){DESP["ap-desm"]=false;render();} },4000); return; }
+  DESP["ap-desm"]=false; desmarcarTodosAportes();
+}
 function marcarTodosAportes(){
+  UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.43
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
   DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)&&!enPausaMes(m,DATA.reportMonth,DATA.reportYear)).forEach(m=>{const ya=md.aportes[m.id]===true;md.aportes[m.id]=true;if(!ya)anotarFechaAporte(md,m.id);}); // v45.37: fecha solo a los que se cobran ahora
-  save();render();toast("Todos marcados como pagados ✓");
+  save();render();_avisoDeshacer("Todos marcados como pagados ✓");
 }
 function desmarcarTodosAportes(){
+  UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.43
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
   DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).forEach(m=>{md.aportes[m.id]=false;anotarFechaAporte(md,m.id);}); // v45.37: se quita la fecha
-  save();render();toast("Todos desmarcados");
+  save();render();_avisoDeshacer("Todos desmarcados");
 }
 function toggleCuotaCierre(mid,lid,pi){
   DATA.members.forEach(m=>{

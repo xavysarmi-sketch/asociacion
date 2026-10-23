@@ -1071,10 +1071,10 @@ function _fichaHTMLbase(m,readonly=false){
         ${isTerc?"":`<button class="mgmt-btn" style="background:#2D6A4F;color:#fff" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 Simuladores</button>`}
         ${(m.history||[]).length?`<button class="mgmt-btn secondary" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`:""}
       </div>
-      <div class="acc-grupo-tit">Permanencia y referidos</div>
+      <div class="acc-grupo-tit">${isTerc?"Aval":"Permanencia y referidos"}</div>
       <div class="mgmt-grid">
         ${isTerc?"":`<button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
-        <button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>
+        ${isTerc?"":`<button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>`}<!-- v45.43: el bono por referido es solo de asociados -->
         ${isTerc?`<button class="mgmt-btn" style="background:var(--terc);color:#fff" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
       </div>
       <div class="acc-grupo-tit">Mensajes y enlace</div>

@@ -66,7 +66,7 @@ function permanenciasGestionHTML(){
     const base=(x.tipo==="indef"?`Indefinida · entró en ${_txtIdx(x.ini)}`:`${m.ciclo} meses · entró en ${_txtIdx(x.ini)}`)+(mesesPausaTotal(m)?` · ⏸ pausa de ${mesesPausaTotal(m)} ${mesesPausaTotal(m)===1?"mes":"meses"}`:""); // v45.33
     return `<div class="mg-card" ${abrir} style="cursor:pointer;padding:10px 12px;margin-bottom:8px;display:flex;gap:12px;align-items:center">
       <div style="flex-shrink:0;width:62px;border-radius:10px;overflow:hidden;border:1.5px solid #8CC5A0;text-align:center;background:#fff">
-        <div style="background:#1B4332;color:#fff;font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 0">${x.tipo==="indef"?"CUMPLE":"ÚLTIMO"}</div>
+        <div style="background:#1B4332;color:#fff;font-size:11px;font-weight:800;letter-spacing:.05em;padding:3px 0">${x.tipo==="indef"?"CUMPLE":"ÚLTIMO"}</div>
         <div style="font-size:19px;font-weight:900;color:#1B4332;line-height:1.1;padding-top:4px">${M3}</div><div style="font-size:12px;font-weight:700;color:#1B4332;padding-bottom:4px">${Y}</div></div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-weight:700;font-size:15px;color:var(--dark);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(m.name)}</div>${e?pill(e[0],e[1],e[2]):""}</div>

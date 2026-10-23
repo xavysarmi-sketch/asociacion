@@ -49,8 +49,42 @@ function cgEnviarCuenta(gid){
   { const r=_cgResto(g,idx); if(r>0)t+=`\nResto entregado: −${e(r)}`; } // v45.30
   t+= falta>0?`\n\n👉 *Te falta por entregar: ${e(falta)}*`:falta<0?`\n\n👉 *Me has entregado ${e(-falta)} de más*`:`\n\n✅ *Todo entregado. ¡Gracias!*`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  const tel=_telWA(p.phone); if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; } // v45.43: con su teléfono, se abre directamente su chat
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
   else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+}
+// ══ v45.43 · ENVIAR LAS CUENTAS A LOS RESPONSABLES, UNA TRAS OTRA ══════════════════════════════
+// Un botón en Cobros abre esta ventana: WhatsApp se abre con la cuenta del primero; al volver a la
+// app sale «Siguiente: …». La app no envía nada sola: Ángel toca «Enviar» en WhatsApp cada vez.
+function _cgColaLista(todos){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
+  return gruposCierre().map(g=>({g,p:DATA.members.find(m=>m.id===g.principalId)})).filter(x=>x.p)
+    .map(x=>Object.assign(x,{d:_cgTarjetaDatos(x.g,pre,key)}))
+    .filter(x=>x.d.items.length&&(todos||(!x.d.cerrada&&x.d.falta>0)));
+}
+function abrirColaCuentas(){ const deben=_cgColaLista(false).length; openModal('cg_cola',{todos:deben===0,hechos:[]}); }
+function cgColaEnviar(gid){
+  cgEnviarCuenta(gid); // primero WhatsApp (en el iPhone tiene que ir dentro del mismo toque)
+  if(MODAL&&MODAL.type==="cg_cola"&&!MODAL.hechos.includes(gid)){ MODAL.hechos.push(gid); render(); }
+}
+function cgColaModalHTML(){
+  const todos=!!MODAL.todos, lista=_cgColaLista(todos), nDeben=_cgColaLista(false).length, nTodos=_cgColaLista(true).length;
+  const mes=MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase(), sig=lista.find(x=>!MODAL.hechos.includes(x.g.id));
+  const pos=sig?lista.indexOf(sig)+1:0;
+  const chip=(v,t)=>`<button onclick="MODAL.todos=${v};render()" class="cgt-b ${todos===v?"pri":""}" style="min-height:40px">${t}</button>`;
+  let h=`<div class="modal-title">💬 Cuentas de ${mes} a los responsables</div>
+    <div class="cgt-btns" style="margin:0 0 10px">${chip(false,`Los que deben (${nDeben})`)}${chip(true,`Todos (${nTodos})`)}</div>`;
+  if(!lista.length)return h+`<div class="ini-sin" style="margin:6px 0 14px">Nadie te debe nada este mes. Si quieres mandar la cuenta igualmente, elige «Todos».</div><button class="m-sec" onclick="closeModal()">Cerrar</button>`;
+  h+=`<div style="font-size:13.5px;color:var(--muted);margin-bottom:10px;line-height:1.4">Se abre WhatsApp con su cuenta ya escrita. Envíala y vuelve aquí: te saldrá el siguiente.</div>`;
+  lista.forEach(({g,p,d})=>{ const ok=MODAL.hechos.includes(g.id);
+    h+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(p.name)}</div>
+      <div style="font-size:13px;color:var(--muted)">${d.cerrada?"✅ Liquidado":d.falta>0?"Faltan "+fmtEur(d.falta)+" €":"Revisar"}</div></div>
+      ${ok?`<span style="font-size:13.5px;font-weight:800;color:#1B7A3D;white-space:nowrap">✓ Enviada</span>`:""}
+      <button class="cgt-b ${ok?"":"sec"}" style="flex:0 0 auto;min-width:84px" onclick="cgColaEnviar('${g.id}')">${ok?"Otra vez":"Enviar"}</button></div>`; });
+  h+=sig?`<button class="cgt-b pri" style="width:100%;min-height:52px;margin-top:14px;font-size:16px;background:#15803D;border-color:#15803D" onclick="cgColaEnviar('${sig.g.id}')">💬 ${MODAL.hechos.length?"Siguiente: ":"Enviar a "}${escH(sig.p.name.split(" ")[0])} (${pos} de ${lista.length})</button>`
+    :`<div style="margin-top:14px;padding:11px;border-radius:12px;background:#E3F1E7;color:#1B7A3D;font-weight:800;text-align:center">✅ Enviadas todas</div>`;
+  return h+`<button class="m-sec" style="margin-top:8px" onclick="closeModal()">Cerrar</button>`;
 }
 function cgSimQuitar(gid,i){ if(i==null){delete CG_SIM[gid];delete CG_SIM_MES[gid];} else { CG_SIM[gid].splice(i,1); if(!CG_SIM[gid].length){delete CG_SIM[gid];delete CG_SIM_MES[gid];} } render(); }
 function _cgMovs(key,gid){ const c=DATA.cuentasGrupo&&DATA.cuentasGrupo[key]&&DATA.cuentasGrupo[key][gid]; return (c&&c.movs)||[]; }
@@ -145,7 +179,7 @@ function cuentaGrupoHTML(g,principal){
     const signo=x.tipo==="arrastre"?"+":"−", k="cgdel-"+x.id, arm=!!DESP[k];
     h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff;border:1px solid #D5E3D9;border-radius:9px;padding:7px 9px;margin-top:6px;font-size:13.5px">
       <span style="flex:1;min-width:0">${txt}</span><b style="white-space:nowrap">${signo}${fmtEur(x.importe)} €</b>
-      ${x.tipo==="pasado"?"":`<button onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#C0492C"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Borrar?":"✕"}</button>`}</div>`;
+      ${x.tipo==="pasado"?"":`<button onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#C0492C"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;min-width:38px;min-height:36px;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Borrar?":"✕"}</button>`}</div>`;
   });
   const resto=_cgResto(g,idx); // v45.30
   if(resto>0)h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#E8F3EC;border:1px solid #B7D9C3;border-radius:9px;padding:7px 9px;margin-top:6px;font-size:13.5px">
@@ -235,6 +269,7 @@ function cobrosGruposHTML(){
   const datos=grs.map(x=>Object.assign(x,{d:_cgTarjetaDatos(x.g,pre,key)}));
   const nOk=datos.filter(x=>x.d.cerrada).length;
   let h=`<div class="mes-title" style="margin:14px 2px 8px">👥 Grupos <span style="font-weight:600;color:var(--muted)">· ${nOk} de ${datos.length} liquidados</span></div>`;
+  h+=`<button class="cgt-b" style="width:100%;min-height:48px;margin:0 0 10px;background:#15803D;border-color:#15803D;color:#fff;font-size:15px" onclick="abrirColaCuentas()">💬 Enviar las cuentas a los responsables</button>`; // v45.43
   datos.forEach(({g,p,d})=>{
     const nom=escH(p.name.split(" ")[0]), ids=[g.principalId,...(g.miembros||[])];
     const nombres=ids.map(id=>(DATA.members.find(m=>m.id===id)||{}).name||"").join(" | ");
@@ -292,6 +327,11 @@ function añadirMiembroGrupo(gid,mid){
     save();render();
   }
 }
+function quitarToque(gid,mid){ // v45.43: quitar a alguien del grupo pide dos toques
+  const k="qm-"+gid+"-"+mid;
+  if(!DESP[k]){ DESP[k]=true; render(); setTimeout(()=>{ if(DESP[k]){DESP[k]=false;render();} },4000); return; }
+  DESP[k]=false; quitarMiembroGrupo(gid,mid); const m=DATA.members.find(x=>x.id===mid); toast("Quitado del grupo"+(m?": "+m.name.split(" ")[0]:""));
+}
 function quitarMiembroGrupo(gid,mid){
   const g=gruposCierre().find(x=>x.id===gid);
   if(g){ g.miembros=(g.miembros||[]).filter(x=>x!==mid); save();render(); }
@@ -312,6 +352,7 @@ function marcarItemGrupo(tipo,mid,lid,pi){
 function marcarTodoGrupo(gid){
   const g=gruposCierre().find(x=>x.id===gid);
   if(!g)return;
+  UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.43: se puede deshacer
   itemsDeGrupo(g).forEach(it=>{
     if(it.yaPagado)return;
     if(it.tipo==="aporte"){
@@ -325,7 +366,7 @@ function marcarTodoGrupo(gid){
     }
   });
   recolocarAyudas();recalcMesRecargo();save();render();
-  toast("Grupo marcado como pagado ✓");
+  _avisoDeshacer("Grupo marcado como pagado ✓");
 }
 function recolocarAyudas(){
   DATA.members.forEach(m=>{

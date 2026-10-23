@@ -886,3 +886,19 @@ body.nh-admin .app-version{display:none!important}
 .pl-est.ok{color:#1B7A3D}
 .pl-est.pend{color:#94500F;background:#FFF1E0;border-radius:14px;padding:3px 9px}
 .pl-fl{color:#A49D93;font-size:20px;flex-shrink:0}
+/* v45.43 · visibilidad y toques seguros (solo administrador) */
+body.nh-admin .toggle-btn{width:54px;height:32px;border-radius:16px}
+body.nh-admin .toggle-btn::after{top:3px;left:3px;width:26px;height:26px}
+body.nh-admin .toggle-btn.on::after{transform:translateX(22px)}
+body.nh-admin .h-date-sel{min-height:40px;font-size:16px}
+body.nh-admin{--wa:#15803D}
+body.nh-admin [style*="background:#25D366"]{background:#15803D!important}
+body.nh-admin .share-btn,body.nh-admin .btn-pdf{background:#15803D}
+body.nh-admin .cuota-future .cuota-month,body.nh-admin .cuota-future .cuota-val,body.nh-admin .cuota-future .cuota-status{color:#6B655E}
+body.nh-admin .cuota-future{outline-color:#CFC9C0}
+body.nh-admin .ult-chip{background:#7A5F0E}
+body.nh-admin .desg-card .ult-chip,body.nh-admin .tot-final .ult-chip{background:rgba(233,196,106,.14)}
+body.nh-admin .desg-val{white-space:nowrap}
+body.nh-admin .pl-tag{font-size:12.5px}
+.qm-btn{min-width:40px;min-height:40px;border:1.5px solid #E8C9BE;border-radius:10px;background:#fff;color:#C0492C;font-size:16px;font-weight:800;cursor:pointer;padding:0 8px;font-family:inherit}
+.qm-btn.arm{background:#C0492C;border-color:#C0492C;color:#fff;font-size:13px}
