@@ -21,7 +21,7 @@ function _solFlechas(so,L){ const i=L.indexOf(so), b=(d,t,on)=>`<button ${on?`on
 function _mesesSolOpts(sel){ const c=_idxMes(DATA.reportMonth,DATA.reportYear); let o=""; for(let i=c;i<=c+3;i++){ const k=_keyDeIdx(i), t=_txtIdx(i); o+=`<option value="${k}"${k===sel?" selected":""}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`; } return o; }
 function _sols(){ if(!DATA.solicitudes)DATA.solicitudes=[]; return DATA.solicitudes; }
 function _solsR(){ return DATA.solicitudes||[]; } // solo lectura (para pintar)
-function solGuardar(){
+function solGuardar(otorgarYa){
   const mid=(document.getElementById("so-mid")||{}).value||"";
   const nom=String((document.getElementById("so-nom")||{}).value||"").trim();
   const cap=parseFloat(String((document.getElementById("so-cap")||{}).value||"").replace(",","."));
@@ -34,9 +34,17 @@ function solGuardar(){
   if(!(cap>0)){toast("Escribe la cantidad que pide");return;}
   const avalId=(document.getElementById("so-aval")||{}).value||null, grupoGid=(document.getElementById("so-grupo")||{}).value||null;
   const mes=(document.getElementById("so-mes")||{}).value||getMesKey(DATA.reportMonth,DATA.reportYear); // v45.17
-  _sols().push({id:"S"+Date.now()+Math.random().toString(36).slice(2,6),mid:m?m.id:null,nombre:m?m.name:nom,capital:_r2(cap),cuotas:n,fecha:_hoyDMA(),estado:"pendiente",avalId,grupoGid,mes,...(tipoNuevo?{tipoNuevo}:{})});
+  const nid="S"+Date.now()+Math.random().toString(36).slice(2,6); // v45.45
+  _sols().push({id:nid,mid:m?m.id:null,nombre:m?m.name:nom,capital:_r2(cap),cuotas:n,fecha:_hoyDMA(),estado:"pendiente",avalId,grupoGid,mes,...(tipoNuevo?{tipoNuevo}:{})});
   if(SOL_PREFILL&&SOL_PREFILL.simGid){ const a=CG_SIM[SOL_PREFILL.simGid]; if(a){ const i=a.indexOf(SOL_PREFILL.simRef); if(i>=0)a.splice(i,1); if(!a.length){delete CG_SIM[SOL_PREFILL.simGid];delete CG_SIM_MES[SOL_PREFILL.simGid];} } } // v45.17: sale de la simulación
-  SOL_FORM=false; SOL_PREFILL=null; save(); render(); toast("Solicitud apuntada ✓");
+  SOL_FORM=false; SOL_PREFILL=null; save(); render();
+  if(!otorgarYa){ toast("Solicitud apuntada ✓"); return; }
+  // v45.45: «Guardar y otorgar ya»: solo si es de este mes, no hay otras delante y el dinero alcanza
+  const so=_sols().find(x=>x.id===nid), otras=_solsR().filter(x=>x.estado==="pendiente"&&x.id!==nid&&_solEsAhora(x)), disp=dineroAyudasMes().disponible;
+  if(!_solEsAhora(so)){ toast("Apuntada para "+_txtIdx(_solMesIdx(so)).split(" ")[0]+": se otorga en el cierre de ese mes",4000); return; }
+  if(otras.length){ toast("Apuntada en la lista: hay "+otras.length+(otras.length===1?" solicitud":" solicitudes")+" antes. Otórgalas en orden.",4500); return; }
+  if(so.capital>disp){ toast("Apuntada en la lista: el dinero del mes no alcanza (faltan "+fmtEur(_r2(so.capital-Math.max(0,disp)))+" €)",4500); return; }
+  solOtorgar(nid);
 }
 function soAvalCambio(){ const a=(document.getElementById("so-aval")||{}).value||"", g=document.getElementById("so-grupo"); if(g&&a){ const gid=_grupoDe(a); if(gid)g.value=gid; } }
 function soMidCambio(){
@@ -207,7 +215,9 @@ function ayudasTabHTML(){
       <select id="so-mes" class="m-select" style="font-size:15px">${_mesesSolOpts(getMesKey(DATA.reportMonth,DATA.reportYear))}</select>
       <div id="so-prev"></div>
       <div style="display:flex;gap:6px"><button onclick="SOL_FORM=false;SOL_PREFILL=null;render()" style="flex:1;padding:11px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#8A7A60;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>
-      <button onclick="solGuardar()" style="flex:2;padding:11px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:14px;font-weight:800;cursor:pointer">Guardar en la lista</button></div></div>`;
+      <button onclick="solGuardar()" style="flex:2;padding:11px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14px;font-weight:800;cursor:pointer">Guardar en la lista</button></div>
+      <button onclick="solGuardar(true)" style="width:100%;margin-top:8px;min-height:48px;padding:11px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:15px;font-weight:800;cursor:pointer">✅ Guardar y otorgar ya</button>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.4">Se otorga en el momento si es para este mes, no hay otras solicitudes delante y el dinero alcanza. Si no, queda en la lista.</div></div>`; // v45.45
   } else h+=`<button onclick="SOL_FORM=true;render()" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1.5px dashed #2D6A4F;background:#fff;color:#1B4332;font-size:14px;font-weight:800;cursor:pointer">＋ Nueva solicitud</button>`;
   // Otorgadas este mes y no otorgadas
   const desp=(k,t,lista,fn)=>{ if(!lista.length)return ""; const o=!!DESP[k]; let x=`<button onclick="DESP['${k}']=!DESP['${k}'];render()" style="display:block;background:none;border:none;color:#2D6A4F;font-size:13.5px;font-weight:700;cursor:pointer;padding:10px 0 0">${o?"▾":"▸"} ${t} (${lista.length})</button>`; if(o)x+=lista.map(fn).join(""); return x; };
@@ -220,6 +230,7 @@ function ayudasTabHTML(){
   return h+`</div>`;
 }
 function cuotaToque(mid,lid,pi){
+  if(_mesBloqueado(_mesDeCuota(mid,lid,pi)))return; // v45.46: mes cerrado
   const m=DATA.members.find(x=>x.id===mid), l=m&&[...(m.loans||[]),...(m.closedLoans||[])].find(x=>x.id===lid); if(!l||!l.pays[pi])return;
   const key=mid+"|"+lid+"|"+pi;
   if(!l.pays[pi].paid&&_cuotaArmada!==key){

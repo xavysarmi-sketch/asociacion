@@ -13,6 +13,7 @@ function anotarFechaAporte(md,mid){
 function anotarFechaCuota(p){ if(!p)return; if(p.paid)p.fecha=_fechaHoyISO(); else delete p.fecha; }
 // Elegir el aporte de un mes (cierre, cierre grupal o ficha). Solo 50/100/150/200 (AP-2, AP-3).
 function setAporteMes(mid,monto,key){
+  if(_mesBloqueado(key||getMesKey(DATA.reportMonth,DATA.reportYear))){render();return;} // v45.46: mes cerrado
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
   monto=parseInt(monto)||0;
   if(!APORTE_OPCIONES.includes(monto)){toast("El aporte debe ser 50, 100, 150 o 200 €");render();return;}
@@ -79,6 +80,7 @@ function totalMesBloqueHTML(m,rm,ry,tot,isTerc,MF,MS){
 }
 
 function togglePay(mid,lid,pi){
+  if(_mesBloqueado(_mesDeCuota(mid,lid,pi)))return; // v45.46: mes cerrado
   UNDO_SNAPSHOT=JSON.stringify(DATA);
   clearTimeout(UNDO_TIMER);
 
@@ -141,7 +143,10 @@ function mText(member){
   t+=`━━━━━━━━━━━━━━━━━━━━\n\n_El aporte del mes va aparte: desde 50 € (puedes poner 50, 100, 150 o 200 €)_`;
   return t;
 }
+function _nomCorto(mid){ const m=DATA.members.find(x=>x.id===mid); return m?m.name.split(" ")[0]:""; }
 function toggleAporte(memberId,mes,anio){
+  if(_mesBloqueado(getMesKey(mes||DATA.reportMonth,anio||DATA.reportYear)))return; // v45.46: mes cerrado
+  UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.45: cada cobro se puede deshacer
   const mm=mes||DATA.reportMonth, yy=anio||DATA.reportYear;
   const md=getMesData(mm,yy);
   md.aportes[memberId]=!md.aportes[memberId];
@@ -149,6 +154,7 @@ function toggleAporte(memberId,mes,anio){
   // Recalcular recargo desde cuotas cobradas marcadas
   recalcMesRecargo();
   save();render();
+  _avisoDeshacer(_nomCorto(memberId)+(md.aportes[memberId]?": aporte cobrado ✓":": aporte desmarcado"));
 }
 // v45.43: los cambios de muchos cobros a la vez se pueden deshacer (mismo «Deshacer» que las cuotas)
 function _avisoDeshacer(msg){
@@ -162,22 +168,26 @@ function desmarcarToque(){ // v45.43: «Desmarcar todo» con dos toques
   DESP["ap-desm"]=false; desmarcarTodosAportes();
 }
 function marcarTodosAportes(){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
   UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.43
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
   DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)&&!enPausaMes(m,DATA.reportMonth,DATA.reportYear)).forEach(m=>{const ya=md.aportes[m.id]===true;md.aportes[m.id]=true;if(!ya)anotarFechaAporte(md,m.id);}); // v45.37: fecha solo a los que se cobran ahora
   save();render();_avisoDeshacer("Todos marcados como pagados ✓");
 }
 function desmarcarTodosAportes(){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
   UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.43
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
   DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)).forEach(m=>{md.aportes[m.id]=false;anotarFechaAporte(md,m.id);}); // v45.37: se quita la fecha
   save();render();_avisoDeshacer("Todos desmarcados");
 }
 function toggleCuotaCierre(mid,lid,pi){
+  if(_mesBloqueado(_mesDeCuota(mid,lid,pi)))return; // v45.46: mes cerrado
+  UNDO_SNAPSHOT=JSON.stringify(DATA); let ahora=false; // v45.45: cada cobro se puede deshacer
   DATA.members.forEach(m=>{
     if(m.id===mid){
       [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
-        if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);} // v45.37: + fecha
+        if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);ahora=l.pays[pi].paid;} // v45.37: + fecha
       });
       // Reordenar: si todas pagadas → closedLoans; si alguna pendiente → loans
       const todas=[...(m.loans||[]),...(m.closedLoans||[])];
@@ -187,6 +197,7 @@ function toggleCuotaCierre(mid,lid,pi){
   });
   recalcMesRecargo(); // actualiza el recargo automático
   save();render();
+  _avisoDeshacer(_nomCorto(mid)+(ahora?": cuota cobrada ✓":": cuota desmarcada"));
 }
 function recalcMesRecargo(){
   // Recargo automático = suma del recargo de cada cuota cobrada del mes.
@@ -207,6 +218,7 @@ function recalcRecargoForzar(mes,anio){
   save();render();toast(`Retorno de ${rm} ${ry} recalculado automáticamente ✓`);
 }
 function setMesRecargo(val){
+  if(_mesBloqueado()){render();return;} // v45.46: mes cerrado
   const md=getMesData(DATA.reportMonth,DATA.reportYear);
   md.recargo=parseFloat(val)||0;
   md.recargoManual=true;
@@ -309,4 +321,86 @@ function chipAuditoriaHTML(){
   const ok=r.errores.length===0;
   const txt=ok?"✅ Todo cuadra":`🔴 ${r.errores.length} error${r.errores.length>1?"es":""}`;
   return `<div style="margin-top:8px"><button onclick="TAB='manage';AUDIT_OPEN=true;render()" style="border:1px solid rgba(255,255,255,.4);background:${ok?"rgba(45,106,79,.35)":"rgba(192,73,44,.35)"};color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;cursor:pointer">🔍 Auditoría: ${txt}</button></div>`;
+}
+// ══ v45.46 · CERRAR EL MES ═══════════════════════════════════════════════════════════════════
+// Antes de cerrar se comprueba que todo cuadra. Al cerrar: copia en este teléfono, el mes queda
+// bloqueado (no se marca ni desmarca nada de ese mes) y el acta queda como definitiva. Se puede reabrir.
+// Se guarda en monthlyData[mes].cierre (el Excel y la auditoría del ordenador no lo leen).
+function mesCerrado(key){ const md=DATA.monthlyData&&DATA.monthlyData[key]; return !!(md&&md.cierre); }
+function _mesBloqueado(key){
+  key=key||getMesKey(DATA.reportMonth,DATA.reportYear);
+  if(!mesCerrado(key))return false;
+  const [y,m]=key.split("-").map(Number);
+  toast("🔒 "+MONTHS_FULL[m-1]+" está cerrado. Para cambiarlo, reábrelo en Cobros.",4500);
+  return true;
+}
+function _mesDeCuota(mid,lid,pi){
+  const m=DATA.members.find(x=>x.id===mid), l=m&&[...(m.loans||[]),...(m.closedLoans||[])].find(x=>x.id===lid), p=l&&l.pays[pi];
+  return p?getMesKey(p.m,p.y):"";
+}
+function irAlMes(idx){ const {mes,anio}=_mesDeIdx(idx); DATA.reportYear=anio; DATA.reportMonth=mes; if(YEARS.indexOf(anio)===-1)YEARS.push(anio); save(); TAB="mes"; FICHA_ID=null; DESP={}; render(); window.scrollTo(0,0); }
+// Lo que se comprueba antes de cerrar (solo lee)
+function comprobacionCierre(){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, idx=_idxMes(rm,ry), mesTxt=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
+  const md=(DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)])||{};
+  const asocMes=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)&&!enPausaMes(m,rm,ry));
+  const aptPag=asocMes.filter(m=>md.aportes&&md.aportes[m.id]).length, cuotas=cuotasDelMes(rm,ry), cuoPag=cuotas.filter(c=>c.paid).length;
+  const pre=cuotas, sinLiq=gruposCierre().filter(g=>DATA.members.some(m=>m.id===g.principalId)&&itemsDeGrupo(g,undefined,undefined,pre).length&&!_cgCerrada(g,pre))
+    .map(g=>DATA.members.find(m=>m.id===g.principalId).name.split(" ")[0]);
+  const nErr=auditarNHCached().errores.length, retornoMal=!!bannerRecargoHTML();
+  const solP=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente"&&_solEsAhora(x)).length;
+  const d=dineroAyudasMes();
+  const faltan=(asocMes.length-aptPag)+(cuotas.length-cuoPag);
+  return {d,aptPag,nAp:asocMes.length,cuoPag,nCu:cuotas.length,lista:[
+    {ok:!faltan,txt:faltan?`Faltan ${faltan} ${faltan===1?"cobro":"cobros"} (aportes ${aptPag}/${asocMes.length} · cuotas ${cuoPag}/${cuotas.length})`:`Todo cobrado (aportes ${aptPag}/${asocMes.length} · cuotas ${cuoPag}/${cuotas.length})`},
+    {ok:!sinLiq.length,txt:sinLiq.length?`Grupos sin liquidar: ${sinLiq.join(", ")}`:"Todos los grupos liquidados"},
+    {ok:!retornoMal,txt:retornoMal?"El retorno de algún mes no cuadra (aviso arriba)":"El retorno del mes cuadra"},
+    {ok:!nErr,txt:nErr?`La auditoría tiene ${nErr} ${nErr===1?"error":"errores"} (Más › Auditoría)`:"La auditoría: todo cuadra"},
+    {ok:!solP,txt:solP?`${solP} ${solP===1?"solicitud":"solicitudes"} de ${mesTxt} sin decidir (Ayudas)`:"Ninguna solicitud sin decidir"},
+    {ok:!(d.porPagar>0),txt:d.porPagar>0?`Salidas de ${mesTxt} sin marcar como pagadas: ${fmtEur(d.porPagar)} € (Más › Histórico)`:"Las salidas del mes, pagadas"},
+  ]};
+}
+function cierreMesHTML(){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), mesTxt=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
+  const md=(DATA.monthlyData&&DATA.monthlyData[key])||{}, c=md.cierre;
+  const papeles=`<div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="abrirDocImp('cobro')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">🧾 Hoja de cobro</button>
+      <button onclick="abrirDocImp('acta')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📄 Acta de cierre</button></div>
+    <button onclick="abrirDocImp('carpeta')" style="width:100%;margin-top:8px;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📚 Carpeta de actas (desde agosto 2025)</button>`;
+  if(c){
+    const r=c.resumen||{}, armR=!!DESP["reabrir-mes"];
+    return `<div class="mes-card" id="cierre-mes" style="border:2px solid #1B4332"><div class="mes-title" style="margin-bottom:6px">🔒 ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry} está cerrado</div>
+      <div class="ini-sin" style="margin:0 0 8px">Cerrado el ${_fechaCorta(c.fecha)} a las ${escH(c.hora||"")}${c.conAvisos&&c.conAvisos.length?` · con ${c.conAvisos.length} ${c.conAvisos.length===1?"aviso":"avisos"}`:""}. No se puede marcar ni desmarcar nada de este mes.</div>
+      ${r.cobrado!=null?`<div class="ay-fila"><span>Cobrado</span><b>${fmtEur(r.cobrado)} € de ${fmtEur(r.previsto)} €</b></div>
+      <div class="ay-fila"><span>Ayudas entregadas</span><b>${fmtEur(r.ayudas||0)} €</b></div>
+      <div class="ay-fila ay-total"><span>En caja al cerrar</span><b>${fmtEur(r.enCaja)} €</b></div>`:""}
+      ${(c.conAvisos||[]).length?`<div style="margin-top:6px;font-size:13px;color:#8A4F12">${c.conAvisos.map(x=>"⚠️ "+escH(x)).join("<br>")}</div>`:""}
+      ${papeles}
+      <button onclick="reabrirMesToque()" class="cgt-b ${armR?"arm":""}" style="width:100%;margin-top:12px;min-height:44px;${armR?"":"border-color:#C9BFAF;color:#5F5A55"}">${armR?"¿Reabrir "+mesTxt+"? Toca otra vez":"🔓 Reabrir el mes"}</button></div>`;
+  }
+  const k=comprobacionCierre(), malos=k.lista.filter(x=>!x.ok).length, arm=!!DESP["cerrar-mes"];
+  return `<div class="mes-card" id="cierre-mes"><div class="mes-title" style="margin-bottom:8px">🔒 Cierre de ${mesTxt}</div>
+    ${k.lista.map(x=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;font-size:14.5px;line-height:1.35;color:${x.ok?"var(--dark)":"#8A4F12"}"><span>${x.ok?"✅":"⚠️"}</span><span>${escH(x.txt)}</span></div>`).join("")}
+    ${papeles}
+    <button onclick="cerrarMesToque()" class="cgt-b ${arm?"arm":"pri"}" style="width:100%;margin-top:12px;min-height:50px;font-size:15.5px">${arm?(malos?`¿Cerrar con ${malos} ${malos===1?"aviso":"avisos"}? Toca otra vez`:`¿Cerrar ${mesTxt}? Toca otra vez`):`🔒 Cerrar ${mesTxt}`}</button>
+    <div class="ini-sin" style="margin-top:6px">Al cerrar se guarda una copia en este teléfono y el mes queda bloqueado. Se puede reabrir.</div></div>`;
+}
+function cerrarMesToque(){
+  if(_mesBloqueado())return;
+  if(!DESP["cerrar-mes"]){ DESP["cerrar-mes"]=true; render(); setTimeout(()=>{ if(DESP["cerrar-mes"]){DESP["cerrar-mes"]=false;render();} },5000); return; }
+  DESP["cerrar-mes"]=false;
+  const rm=DATA.reportMonth, ry=DATA.reportYear, k=comprobacionCierre(), d=k.d, ahora=new Date();
+  try{ guardarRespaldoLocal(JSON.parse(JSON.stringify(DATA)),"cierre",Date.now()); }catch(e){}
+  const md=getMesData(rm,ry);
+  md.cierre={fecha:_fechaHoyISO(),hora:String(ahora.getHours()).padStart(2,"0")+":"+String(ahora.getMinutes()).padStart(2,"0"),
+    conAvisos:k.lista.filter(x=>!x.ok).map(x=>x.txt),
+    resumen:{cobrado:_r2(d.previsto-d.porCobrar),previsto:d.previsto,ayudas:d.ayudasDadas,enCaja:d.enCaja,disponible:d.disponible,aportes:k.aptPag+"/"+k.nAp,cuotas:k.cuoPag+"/"+k.nCu,retorno:md.recargo}};
+  save(); render(); toast("🔒 "+MONTHS_FULL[MONTHS.indexOf(rm)]+" cerrado ✓ · copia guardada en este teléfono",4000);
+}
+function reabrirMesToque(){
+  if(!DESP["reabrir-mes"]){ DESP["reabrir-mes"]=true; render(); setTimeout(()=>{ if(DESP["reabrir-mes"]){DESP["reabrir-mes"]=false;render();} },5000); return; }
+  DESP["reabrir-mes"]=false;
+  const md=getMesData(DATA.reportMonth,DATA.reportYear); if(!md.cierre)return;
+  (md.reaperturas=md.reaperturas||[]).push({fecha:_fechaHoyISO(),cerradoEl:md.cierre.fecha}); // queda anotado
+  delete md.cierre; save(); render(); toast("🔓 Mes reabierto");
 }

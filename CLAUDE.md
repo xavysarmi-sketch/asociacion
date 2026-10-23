@@ -36,6 +36,10 @@ lenguaje sencillo antes de aplicarlos.
   que dineroAyudasMes) y debajo «Por persona»; un grupo se abre solo (abrirGrupoCobros) con la cuenta del
   responsable arriba. Personas es una lista compacta por grupos (listaPersonasHTML, js/personas.js). En el
   alta hay que elegir grupo (o «Sin grupo»). En los <option> no usar emojis sin icono (ver iconizar).
+- Desde v45.46: cierre del mes en Cobros (cierreMesHTML, js/cierre.js). Se guarda en
+  monthlyData[mes].cierre (y reaperturas); un mes cerrado no deja marcar ni desmarcar (_mesBloqueado en
+  cada función que cambia cobros). render() es un envoltorio de _renderPantalla con _MEMO_RENDER (solo
+  cuotasDelMes se guarda durante un pintado); dineroAyudasMes usa _cajaMovMes del mes, no cajaMensual.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

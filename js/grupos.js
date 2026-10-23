@@ -105,8 +105,9 @@ function _cgResto(g,idx){
 }
 function _cgFalta(g,idx){ return _r2(_cgFaltaApuntes(g,idx)-_cgResto(g,idx)); }
 function _cgHoy(){ const d=new Date(); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0"); }
-function cgAbrir(gid,tipo){ CG_FORM={gid,tipo}; render(); }
+function cgAbrir(gid,tipo){ if(tipo!=="sim"&&_mesBloqueado())return; CG_FORM={gid,tipo}; render(); } // v45.46
 function cgGuardar(gid){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
   const g=gruposCierre().find(x=>x.id===gid); if(!g||!CG_FORM)return;
   const key=getMesKey(DATA.reportMonth,DATA.reportYear);
   if(CG_FORM.tipo==="entrega"){
@@ -122,12 +123,14 @@ function cgGuardar(gid){
   CG_FORM=null; save(); render(); toast("Apuntado ✓");
 }
 function cgBorrar(gid,mvid){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
   const key=getMesKey(DATA.reportMonth,DATA.reportYear), c=_cgW(key,gid), mv=c.movs.find(x=>x.id===mvid);
   if(mv&&mv.tipo==="arrastre"&&mv.de){ const p=_cgW(mv.de,gid); p.movs=p.movs.filter(x=>!(x.tipo==="pasado"&&x.par===mvid)); }
   c.movs=c.movs.filter(x=>x.id!==mvid); delete DESP["cgdel-"+mvid]; save(); render();
 }
 // Pasa lo que quedó pendiente del mes anterior a este mes (queda cerrado allí con «pasado»)
 function cgArrastrar(gid){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
   const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), pk=_keyDeIdx(idx-1), f=_cgFalta(g,idx-1); if(!(f>0))return;
   const id="cg"+Date.now()+Math.random().toString(36).slice(2,6);
@@ -142,10 +145,10 @@ function _cgAyudasDisponibles(key){
   return out.sort((a,b)=>a.m.name.localeCompare(b.m.name));
 }
 // v45.14: ¿cuenta del mes cerrada? Todo lo del grupo marcado como pagado, o la cuenta llega a 0 con apuntes
-function _cgCerrada(g){
+function _cgCerrada(g,pre){ // v45.46: pre = cuotasDelMes del mes (opcional, para no recalcularlo)
   // v45.26: si hay apuntes en la cuenta del grupo, manda la cuenta (liquidada = no falta nada).
   // Sin apuntes, basta con que todo esté marcado como cobrado en el Cierre.
-  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), items=itemsDeGrupo(g);
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), items=itemsDeGrupo(g,undefined,undefined,pre);
   if(_cgMovs(_keyDeIdx(idx),g.id).length>0)return _cgFalta(g,idx)===0;
   return items.length>0&&items.every(it=>it.yaPagado);
 }
@@ -260,7 +263,8 @@ function _cgTarjetaDatos(g,pre,key){
   const total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
   const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda").reduce((a,x)=>a+x.importe,0));
   const cobrado=Math.min(total,Math.max(pagado,ent));
-  return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g)};
+  const movs=_cgMovs(key,g.id), deMas=movs.length?Math.max(0,-_cgFalta(g,_idxMes(DATA.reportMonth,DATA.reportYear))):0; // v45.45
+  return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};
 }
 function cobrosGruposHTML(){
   const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
@@ -277,6 +281,8 @@ function cobrosGruposHTML(){
     const chip=!d.items.length?`<span class="cgt-chip">Nada este mes</span>`
       :d.cerrada?`<span class="cgt-chip ok">✅ Liquidado</span>`
       :d.falta>0?`<span class="cgt-chip pend">Faltan ${fmtEur(d.falta)} €</span>`
+      :d.deMas>0?`<span class="cgt-chip rev">Dio ${fmtEur(d.deMas)} € de más</span>`
+      :d.entTodo&&d.sinMarcar?`<span class="cgt-chip ok">Entregado todo</span>`
       :`<span class="cgt-chip rev">Revisar ›</span>`;
     const armado=!!DESP["cgtodo-"+g.id], formEnt=CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="entrega";
     h+=`<div class="cgt" data-nombre="${escH(nombres)}">
@@ -284,6 +290,9 @@ function cobrosGruposHTML(){
         <span class="cgt-nom">${escH(p.name)}<span class="cgt-sub">${ids.length} ${ids.length===1?"persona":"personas"} · ${d.items.length} ${d.items.length===1?"cobro":"cobros"}</span></span>${chip}</button>`;
     if(d.items.length)h+=`<div class="reserva-bar-bg" style="margin:8px 0 4px"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
       <div class="cgt-cifras">Cobrado <b>${fmtEur(d.cobrado)} €</b> de ${fmtEur(d.total)} €</div>`;
+    if(d.entTodo&&d.sinMarcar>0&&!formEnt) // v45.45: ya entregó todo → un toque para marcar sus cobros
+      h+=`<div class="cgt-sug">✅ ${nom} ya te entregó todo. ¿Marcamos sus ${d.sinMarcar} ${d.sinMarcar===1?"cobro":"cobros"} como cobrados?
+        <button class="cgt-b pri" style="width:100%;margin-top:8px" onclick="marcarTodoGrupo('${g.id}')">✓ Marcar ${d.sinMarcar===1?"su cobro":"sus "+d.sinMarcar+" cobros"}</button></div>`;
     if(formEnt){
       h+=`<label class="m-label" style="margin-top:10px">¿Cuánto te ha entregado ${nom}?</label>
         <input id="cg-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: ${d.falta>0?fmtEur(d.falta):"500"}" style="font-size:16px">
@@ -291,7 +300,7 @@ function cobrosGruposHTML(){
     } else if(d.items.length){
       h+=`<div class="cgt-btns">
         ${!d.cerrada?`<button class="cgt-b sec" onclick="cgAbrir('${g.id}','entrega')">＋ Entrega</button>`:""}
-        ${d.sinMarcar>0?`<button class="cgt-b ${armado?"arm":"pri"}" onclick="cgTodoToque('${g.id}')">${armado?"¿Todo cobrado? Toca otra vez":"✓ Todo cobrado"}</button>`:""}
+        ${d.sinMarcar>0&&!d.entTodo?`<button class="cgt-b ${armado?"arm":"pri"}" onclick="cgTodoToque('${g.id}')">${armado?"¿Todo cobrado? Toca otra vez":"✓ Todo cobrado"}</button>`:""}
         <button class="cgt-b sec" onclick="abrirGrupoCobros('${g.id}')">Abrir ›</button></div>`;
     }
     h+=`</div>`;
@@ -337,19 +346,23 @@ function quitarMiembroGrupo(gid,mid){
   if(g){ g.miembros=(g.miembros||[]).filter(x=>x!==mid); save();render(); }
 }
 function marcarItemGrupo(tipo,mid,lid,pi){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
+  UNDO_SNAPSHOT=JSON.stringify(DATA); let ahora=false; // v45.45: cada cobro se puede deshacer
   if(tipo==="aporte"){
     const md=getMesData(DATA.reportMonth,DATA.reportYear);
     if(!md.aportes)md.aportes={};
-    md.aportes[mid]=!md.aportes[mid];
+    md.aportes[mid]=!md.aportes[mid]; ahora=md.aportes[mid];
     anotarFechaAporte(md,mid); // v45.37
   } else {
     const m=DATA.members.find(x=>x.id===mid);
-    if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);}}); // v45.37: + fecha
+    if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{if(l.id===lid){l.pays[pi].paid=!l.pays[pi].paid;anotarFechaCuota(l.pays[pi]);ahora=l.pays[pi].paid;}}); // v45.37: + fecha
     recolocarAyudas();
   }
   recalcMesRecargo();save();render();
+  _avisoDeshacer(_nomCorto(mid)+(tipo==="aporte"?(ahora?": aporte cobrado ✓":": aporte desmarcado"):(ahora?": cuota cobrada ✓":": cuota desmarcada")));
 }
 function marcarTodoGrupo(gid){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
   const g=gruposCierre().find(x=>x.id===gid);
   if(!g)return;
   UNDO_SNAPSHOT=JSON.stringify(DATA); // v45.43: se puede deshacer

@@ -218,7 +218,11 @@ function filtrarEnVivo(texto, scopeSelector){
   });
 }
 
-function render(){
+// v45.46: mientras se pinta una pantalla los datos no cambian (el render no escribe), así que lo que
+// se calcula muchas veces (las cuotas del mes) se guarda solo durante ese pintado.
+let _MEMO_RENDER=null;
+function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; } }
+function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
   // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)
   document.body.classList.toggle("nh-admin",!READONLY_ID&&!VISTA_ASOC&&!ES_MODO_GRUPO&&!DOC_IMP);
@@ -291,13 +295,15 @@ function render(){
 
     // ── CABECERA: título + cuánto se lleva cobrado + buscador ── (v45.42: los papeles del mes van abajo)
     const idxMes=MONTHS.indexOf(rm);
+    const _dmMes=grAbierto?null:dineroAyudasMes(); // v45.46: una sola vez por pantalla
     if(!grAbierto){
-      const _dm=dineroAyudasMes(), _cobM=_r2(_dm.previsto-_dm.porCobrar), _pctM=_dm.previsto>0?Math.round(_cobM/_dm.previsto*100):100;
+      const _dm=_dmMes, _cobM=_r2(_dm.previsto-_dm.porCobrar), _pctM=_dm.previsto>0?Math.round(_cobM/_dm.previsto*100):100;
       h+=`<div class="mes-card">
       <div class="mes-title" style="margin-bottom:4px">💶 Cobros de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Para ver otro mes, cámbialo arriba (📅 Mes de trabajo).</div>
       ${_dm.previsto>0?`<div class="cgt-cifras" style="font-size:15px">Cobrado <b>${fmtEur(_cobM)} €</b> de ${fmtEur(_dm.previsto)} €${_dm.porCobrar>0?` · faltan <b style="color:var(--warm)">${fmtEur(_dm.porCobrar)} €</b>`:" · ✅ todo"}</div>
       <div class="reserva-bar-bg" style="margin:6px 0 12px"><div class="reserva-bar-fill" style="width:${_pctM}%"></div></div>`:""}
+      ${mesCerrado(getMesKey(rm,ry))?`<div style="margin:0 0 10px;padding:9px 11px;border-radius:10px;background:#1B4332;color:#fff;font-size:14px;font-weight:800">🔒 Este mes está cerrado: no se puede marcar ni desmarcar nada. Para cambiarlo, reábrelo abajo.</div>`:""}
       <input id="cierre-search" type="text" placeholder="Buscar persona…" oninput="filtrarEnVivo(this.value,'#cierre-listas')"
         style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box">
     </div>`;
@@ -308,7 +314,7 @@ function render(){
     // v45.42: primero los grupos (casi todo se cobra a través de ellos); debajo, «Por persona»
     if(!hayAbierto){
       h+=cobrosGruposHTML();
-      const _dmR=dineroAyudasMes().resto;
+      const _dmR=_dmMes.resto;
       h+=`<div class="mes-title" style="margin:18px 2px 8px">👤 Por persona</div>`;
       if(_dmR.total>0)h+=`<div class="ini-sin" style="margin:-4px 2px 8px">Sin grupo: ${fmtEur(_dmR.cobrado)} € cobrados de ${fmtEur(_dmR.total)} €. Se marcan aquí abajo.</div>`;
     }
@@ -573,12 +579,7 @@ function render(){
     // KPIs al final (solo si no hay ningún bloque abierto) · v45.42: + crear grupo y papeles del mes
     if(!hayAbierto){
       h+=crearGrupoHTML();
-      h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:10px">📄 Papeles del mes</div>
-      <div style="display:flex;gap:8px">
-        <button onclick="abrirDocImp('cobro')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">🧾 Hoja de cobro</button>
-        <button onclick="abrirDocImp('acta')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📄 Acta de cierre</button>
-      </div>
-      <button onclick="abrirDocImp('carpeta')" style="width:100%;margin-top:8px;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📚 Carpeta de actas (desde agosto 2025)</button></div>`;
+      h+=cierreMesHTML(); // v45.46: comprobación, papeles del mes y cerrar el mes
       h+=kpiHTML;
     }
   }

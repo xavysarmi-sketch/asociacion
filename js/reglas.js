@@ -787,16 +787,16 @@ function previstoMes(mi){ return _sinCrearMes(mi,()=>{ const {mes,anio}=_mesDeId
 // Dinero del mes para ayudas: lo cobrado (marcado en el cierre, o entregado por el principal de un grupo)
 // − lo que ya salió este mes − las salidas comprometidas que se pagan este mes (FO-4)
 function dineroAyudasMes(){
-  _CAJA_CACHE=null;
   const rm=DATA.reportMonth, ry=DATA.reportYear, idx=_idxMes(rm,ry), key=getMesKey(rm,ry);
-  const c=cajaMensual()[key]||{salidas:0,apoyos:0,puntIn:0};
+  // v45.46: solo el mes del cierre (antes recalculaba todos los meses desde agosto de 2025) y las cuotas del mes una sola vez
+  const c=(idx>=_idxMes("Ago",2025))?_cajaMovMes(rm,ry,idx):{salidas:0,apoyos:0,puntIn:0}, pre=cuotasDelMes(rm,ry);
   const enGrupo=new Set(), grupos=[];
   gruposCierre().forEach(g=>{ const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
     [g.principalId,...(g.miembros||[])].forEach(x=>enGrupo.add(x));
-    const items=itemsDeGrupo(g), total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
+    const items=itemsDeGrupo(g,undefined,undefined,pre), total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
     const movs=_cgMovs(key,g.id), ent=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda").reduce((a,x)=>a+x.importe,0));
     grupos.push({g,p,total,cobrado:Math.max(pagado,ent)}); });
-  let rT=0,rC=0; DATA.members.filter(m=>!enGrupo.has(m.id)&&activoEnReporte(m)).forEach(m=>itemsDeMiembro(m.id).forEach(it=>{ rT+=it.importe; if(it.yaPagado)rC+=it.importe; }));
+  let rT=0,rC=0; DATA.members.filter(m=>!enGrupo.has(m.id)&&activoEnReporte(m)).forEach(m=>itemsDeMiembro(m.id,undefined,undefined,pre).forEach(it=>{ rT+=it.importe; if(it.yaPagado)rC+=it.importe; }));
   const cobrado=_r2(grupos.reduce((a,x)=>a+x.cobrado,0)+rC+(c.puntIn||0));
   const porPagar=_r2(salidasPrevistas(rm,ry).lista.filter(x=>x.clase==="comp"&&x.pagoIdx<=idx).reduce((a,x)=>a+x.importe,0));
   const salido=_r2(c.salidas||0), disponible=_r2(cobrado-salido-porPagar);
@@ -807,6 +807,7 @@ function dineroAyudasMes(){
 }
 
 function cuotasDelMes(rm,ry){
+  const _k="cdm|"+rm+"|"+ry; if(_MEMO_RENDER&&_MEMO_RENDER[_k])return _MEMO_RENDER[_k].slice(); // v45.46: ver render()
   const out=[];
   DATA.members.forEach(m=>{
     [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
@@ -823,7 +824,9 @@ function cuotasDelMes(rm,ry){
     });
   });
   // asociados primero, terceros después
-  return out.sort((a,b)=>(a.tipo===b.tipo?0:a.tipo==="asociado"?-1:1));
+  out.sort((a,b)=>(a.tipo===b.tipo?0:a.tipo==="asociado"?-1:1));
+  if(_MEMO_RENDER)_MEMO_RENDER[_k]=out.slice();
+  return out;
 }
 // Recalcula los importes de un apoyo. ÚNICA función (junto con ayudaCuotas) que puede
 // escribir total/inst/cuotas — ver REGLA PERMANENTE en las instrucciones del proyecto.
@@ -1593,6 +1596,25 @@ function quienRefirio(m){
   }
   return "";
 }
+// v45.46: lo que entra y sale en UN mes (lo usan cajaMensual, mes a mes, y dineroAyudasMes, solo el mes
+// del cierre: así el dinero del mes no recalcula todos los meses desde 2025 en cada pantalla).
+function _cajaMovMes(rm,y,idx){
+  const key=getMesKey(rm,y), R=resumenMesDoc(rm,y);
+  let puntIn=0,puntOut=0,nPuntIn=0,nPuntOut=0;
+  Object.values(DATA.aportesPuntuales||{}).forEach(arr=>(arr||[]).forEach(a=>{
+    if(a.mes===rm&&a.anio===y){puntIn+=a.capital||0;nPuntIn++;}
+    if(a.devuelto&&a.mesDev===rm&&a.anioDev===y){puntOut+=a.total||0;nPuntOut++;}
+  }));
+  const apoyos=R.concedidos.reduce((s,x)=>s+(x.l.capital||0),0);
+  const bajas=DATA.members.filter(m=>m.baja&&m.baja.pagada&&(()=>{const p=mesPagoBaja(m.baja);return p.mes===rm&&p.anio===y;})())
+    .reduce((s,m)=>s+(m.baja.total||0),0);
+  // v45.1: beneficio retirado sin salir (PE-5, PE-7) que ya se pagó este mes
+  let retir=0,nRetir=0; DATA.members.forEach(m=>retiradasDe(m).forEach(r=>{ if(r.pagada&&pagoRetiradaIdx(r)===idx){retir+=importeRetirada(m,r);nRetir++;} }));
+  const r2=x=>Math.round(x*100)/100;
+  const gL=(DATA.gastos||[]).filter(g=>g.mes===key), gastos=r2(gL.reduce((s,g)=>s+(+g.importe||0),0)); // v45.23
+  const ent=r2(R.apCob+R.cuCob+puntIn), sal=r2(apoyos+puntOut+bajas+retir+gastos);
+  return {R,puntIn,nPuntIn,puntOut,nPuntOut,apoyos,bajas,retir,nRetir,gL,gastos,ent,sal,salidas:sal};
+}
 function cajaMensual(){
   if(_CAJA_CACHE)return _CAJA_CACHE;
   const fin=DATA.reportYear*12+MONTHS.indexOf(DATA.reportMonth);
@@ -1600,17 +1622,7 @@ function cajaMensual(){
   const loans=[]; DATA.members.forEach(m=>[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>loans.push({m,l})));
   while(y*12+i<=fin){
     const rm=MONTHS[i], key=getMesKey(rm,y), idx=y*12+i;
-    const R=resumenMesDoc(rm,y);
-    let puntIn=0,puntOut=0,nPuntIn=0,nPuntOut=0;
-    Object.values(DATA.aportesPuntuales||{}).forEach(arr=>(arr||[]).forEach(a=>{
-      if(a.mes===rm&&a.anio===y){puntIn+=a.capital||0;nPuntIn++;}
-      if(a.devuelto&&a.mesDev===rm&&a.anioDev===y){puntOut+=a.total||0;nPuntOut++;}
-    }));
-    const apoyos=R.concedidos.reduce((s,x)=>s+(x.l.capital||0),0);
-    const bajas=DATA.members.filter(m=>m.baja&&m.baja.pagada&&(()=>{const p=mesPagoBaja(m.baja);return p.mes===rm&&p.anio===y;})())
-      .reduce((s,m)=>s+(m.baja.total||0),0);
-    // v45.1: beneficio retirado sin salir (PE-5, PE-7) que ya se pagó este mes
-    let retir=0,nRetir=0; DATA.members.forEach(m=>retiradasDe(m).forEach(r=>{ if(r.pagada&&pagoRetiradaIdx(r)===idx){retir+=importeRetirada(m,r);nRetir++;} }));
+    const {R,puntIn,nPuntIn,puntOut,nPuntOut,apoyos,bajas,retir,nRetir,gL,gastos,ent,sal}=_cajaMovMes(rm,y,idx); // v45.46
     let cartera=0;
     loans.forEach(({l})=>{
       if(l.gYear*12+MONTHS.indexOf(l.gMonth)>idx)return;
@@ -1618,8 +1630,6 @@ function cajaMensual(){
       cartera+=Math.max(0,l.capital-dev);
     });
     const r2=x=>Math.round(x*100)/100;
-    const gL=(DATA.gastos||[]).filter(g=>g.mes===key), gastos=r2(gL.reduce((s,g)=>s+(+g.importe||0),0)); // v45.23
-    const ent=r2(R.apCob+R.cuCob+puntIn), sal=r2(apoyos+puntOut+bajas+retir+gastos);
     const ini=r2(saldo); saldo=r2(saldo+ent-sal);
     // ¿De quién es el dinero? aportaciones acumuladas (se devuelven al terminar el ciclo),
     // beneficios devengados (idem) y aportes puntuales aún no devueltos; el resto es el

@@ -38,6 +38,7 @@ function inicioHTML(){
     ${fila("Aportes",aptPag+"/"+asocMes.length,aptPag===asocMes.length,"TAB='mes';render();window.scrollTo(0,0)")}
     ${fila("Cuotas de ayudas",cuoPag+"/"+cuotas.length,cuoPag===cuotas.length,"TAB='mes';render();window.scrollTo(0,0)")}
     ${fila("Auditoría",nErr?nErr+" error"+(nErr>1?"es":""):"todo cuadra",!nErr,"TAB='manage';AUDIT_OPEN=true;render()")}
+    ${fila("Cierre del mes",mesCerrado(getMesKey(rm,ry))?"cerrado":"sin cerrar",mesCerrado(getMesKey(rm,ry)),"TAB='mes';DESP={};render();setTimeout(()=>{const e=document.getElementById('cierre-mes');if(e)e.scrollIntoView({block:'start'});},50)")}
   </div>`;
   // Dinero del mes (la misma cuenta que en Ayudas → Dinero del mes)
   // v45.43: aquí, solo lo esencial; el detalle (ayudas entregadas, salidas, de dónde viene) está en Ayudas
@@ -54,7 +55,10 @@ function inicioHTML(){
   const nSol=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente").length;
   const banner=bannerRecargoHTML();
   const avisos=avisosPermanenciaHTML(rm,ry)+salidasPrevistasHTML(rm,ry);
+  // v45.46: el mes anterior sigue sin cerrar (desde octubre de 2026, cuando empezó el cierre)
+  const _iAnt=_idxMes(rm,ry)-1, _kAnt=_keyDeIdx(_iAnt), _sinCerrarAnt=_iAnt>=_idxMes("Oct",2026)&&!mesCerrado(_kAnt);
   h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">🔔 Avisos</div>
+    ${_sinCerrarAnt?`<button class="ini-aviso" style="color:#8A4F12" onclick="irAlMes(${_iAnt})">🔒 ${_txtIdx(_iAnt).split(" ")[0].replace(/^./,c=>c.toUpperCase())} sigue sin cerrar: ciérralo ›</button>`:""}
     <button class="ini-aviso" onclick="TAB='ayudas';render();window.scrollTo(0,0)">📝 Solicitudes de ayuda: <b>${nSol?nSol+" pendiente"+(nSol>1?"s":""):"ninguna pendiente"}</b> ›</button>
     ${banner?`<button class="ini-aviso" style="color:#8A4F12" onclick="TAB='mes';render();window.scrollTo(0,0)">⚠️ El retorno del mes no cuadra: revísalo en Cobros ›</button>`:""}
     ${avisos?"":`<div class="ini-sin">Sin avisos de permanencias ni salidas este mes.</div>`}

@@ -906,3 +906,7 @@ body.nh-admin .pl-tag{font-size:12.5px}
 .mas-sec{font-size:13px;font-weight:800;color:#5F5A55;text-transform:uppercase;letter-spacing:.5px;margin:18px 4px 8px}
 .mas-sec:first-child{margin-top:8px}
 body.nh-admin .ft-card-title,body.nh-admin .ft-drop-titulo,body.nh-admin .ft-section-title,body.nh-admin .ft-hero-val{font-family:inherit;font-weight:800}
+/* v45.45 · sugerencia en la tarjeta del grupo */
+.cgt-sug{margin-top:10px;padding:10px 12px;border-radius:12px;background:#EEF7F1;border:1.5px solid #B7D9C3;color:#1B4332;font-size:14.5px;font-weight:700;line-height:1.4}
+/* v45.46 · los avisos largos se leen enteros (antes una sola línea que se salía de la pantalla) */
+body.nh-admin .toast{white-space:normal;width:max-content;max-width:calc(100vw - 32px);text-align:center;line-height:1.35;padding:12px 20px;border-radius:18px}
