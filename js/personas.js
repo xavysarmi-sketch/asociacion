@@ -1081,7 +1081,7 @@ function _fichaHTMLbase(m,readonly=false){
       <div class="mgmt-grid">
         <button class="mgmt-btn" style="background:#25D366;color:#fff" onclick="abrirBienvenida('${esc(m.id)}')">📲 Bienvenida</button>
         <button class="mgmt-btn secondary" onclick="openModal('telefono',{mid:'${esc(m.id)}'})">📞 ${m.phone?escH(m.phone):"Teléfono"}</button>
-        <button class="mgmt-btn" style="background:#3D4080;color:#fff" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver como lo ve</button>
+
         <button class="mgmt-btn secondary" onclick="copyLink('${esc(m.id)}')">🔗 Copiar su enlace</button>
       </div>
       <div class="zona-delicada"><div class="acc-grupo-tit" style="color:#B5422E;margin-top:0">⚠️ Zona delicada</div>

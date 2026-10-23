@@ -902,3 +902,7 @@ body.nh-admin .desg-val{white-space:nowrap}
 body.nh-admin .pl-tag{font-size:12.5px}
 .qm-btn{min-width:40px;min-height:40px;border:1.5px solid #E8C9BE;border-radius:10px;background:#fff;color:#C0492C;font-size:16px;font-weight:800;cursor:pointer;padding:0 8px;font-family:inherit}
 .qm-btn.arm{background:#C0492C;border-color:#C0492C;color:#fff;font-size:13px}
+/* v45.44 · Más en apartados y títulos de la ficha con la letra de la app (solo administrador) */
+.mas-sec{font-size:13px;font-weight:800;color:#5F5A55;text-transform:uppercase;letter-spacing:.5px;margin:18px 4px 8px}
+.mas-sec:first-child{margin-top:8px}
+body.nh-admin .ft-card-title,body.nh-admin .ft-drop-titulo,body.nh-admin .ft-section-title,body.nh-admin .ft-hero-val{font-family:inherit;font-weight:800}

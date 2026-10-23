@@ -713,6 +713,7 @@ function render(){
     // v45.42: sin buscador ni «👥 Personas y ayudas» aquí: las personas (con su buscador) están en «Personas»
     // y editar o eliminar sus ayudas, en la ficha de cada una.
     // v45.39: las Solicitudes están en la pestaña «Ayudas». Aquí, lo de consultar y los ajustes.
+    h+=`<div class="mas-sec">📂 Consultas</div>`; // v45.43: Más en tres apartados
     h+=`<div class="mg-acc-head" onclick="TAB='historico';render();window.scrollTo(0,0)">
       <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>
       <span class="mg-acc-fl">›</span></div>`;
@@ -722,21 +723,24 @@ function render(){
     h+=telefonosGestionHTML(asocAll,tercAll);
     // 🧾 v45.23: gastos administrativos (Maestro v18.9 · FO-6)
     h+=gastosGestionHTML();
+    h+=`<div class="mas-sec">🔍 Revisión</div>`;
     // 🔍 Auditoría interna (dinero/reglas) — antes del auto-chequeo técnico
     h+=auditoriaInternaHTML();
-    // 🛡️ Auto-chequeo del sistema (al final)
-    h+=chequeoHTML();
-    // ⚙️ Configuración (al final)
-    h+=configHTML();
-
-    h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin-top:20px;border:1px solid var(--border)">
-      <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:4px">💾 Copia de seguridad</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Exporta tus datos para no perderlos si borras el caché</div>
-      <button class="backup-btn backup-export" onclick="exportData()">📤 Exportar datos (JSON)</button>
+    // 🛡️ Auto-chequeo del sistema · v45.43: plegado si todo está en verde (se abre solo si hay un aviso)
+    h+=chequeoPlegableHTML();
+    h+=`<div class="mas-sec">⚙️ Datos y ajustes</div>`;
+    { const ab=!!DESP["mg-copia"], upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+      h+=`<div class="mg-acc-head" onclick="DESP['mg-copia']=!DESP['mg-copia'];render()"><span>💾 Copia de seguridad <span style="font-weight:600;color:var(--muted)">· subida ${escH(upd)}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      if(ab)h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin:-4px 0 12px;border:1px solid var(--border)">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Cada noche se guarda una copia en tu ordenador (si está encendido). Aquí puedes guardar o recuperar los datos a mano.</div>
       <button class="backup-btn" style="background:#2D6A4F;color:#fff" onclick="subirAhoraNube()">☁️ Subir ahora a la nube</button>
+      <button class="backup-btn backup-export" onclick="exportData()">📤 Exportar datos (JSON)</button>
       <button class="backup-btn backup-import" onclick="importData()">📂 Importar backup</button>
-      <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
-    </div>`;
+      <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
+    </div>`; }
+    { const ab=!!DESP["mg-cfg"];
+      h+=`<div class="mg-acc-head" onclick="DESP['mg-cfg']=!DESP['mg-cfg'];render()"><span>⚙️ Configuración <span style="font-weight:600;color:var(--muted)">· retorno ${DATA.rate} % · mes nuevo el día ${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      if(ab)h+=configHTML(); }
     h+=pantallaAjustesHTML(); // v45.39: Texto grande
     h+=sesionHTML(); // v45.27
 
@@ -986,7 +990,7 @@ function chequeoHTML(){
   const syncOk = SYNC_STATUS==="ok";
   chk.push(linea(syncOk, syncOk
     ? "Conectado con la nube — los asociados ven tus cambios"
-    : "Sin confirmar subida a la nube — pulsa \"Subir ahora\" antes de cerrar"));
+    : "Sin confirmar subida a la nube — pulsa «Subir ahora» antes de cerrar"));
 
   const s1 = !CODE_CHECKS.ran ? null : (!CODE_CHECKS.online ? "offline" : CODE_CHECKS.ok1);
   chk.push(lineaEstado(s1,
@@ -1019,20 +1023,24 @@ function chequeoHTML(){
     "Comprobando cálculo de tope y beneficio extra…",
     "Comprobando cálculo de tope y beneficio extra…"));
 
-  return `<div style="background:#F0F7F2;border:2px solid #2D6A4F;border-radius:14px;padding:14px;margin-top:20px;margin-bottom:16px;font-size:13px;line-height:1.5;color:#1B4332">
-    <div style="font-weight:800;margin-bottom:8px;font-size:15px">🛡️ Auto-chequeo del sistema</div>
+  return `<div style="background:#F0F7F2;border:2px solid #2D6A4F;border-radius:14px;padding:14px;margin-top:-4px;margin-bottom:12px;font-size:13px;line-height:1.5;color:#1B4332">
     ${chk.join("")}
     <div style="border-top:1px solid #cfe0d5;margin:10px 0 8px"></div>
     <div>☁️ Última subida a la nube: <b>${upd}</b></div>
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-weight:700" onclick="subirAhoraNube()">☁️ Subir ahora</button>
+      ${syncOk?"":`<button style="flex:1;padding:10px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-weight:700" onclick="subirAhoraNube()">☁️ Subir ahora</button>`}<!-- v45.43: solo si hace falta (también está en Copia de seguridad) -->
       <button style="flex:1;padding:10px;border:none;border-radius:10px;background:#E07A3A;color:#fff;font-weight:700" onclick="diagLeerLS();runCodeChecks(true)">🔄 Re-verificar</button>
     </div>
   </div>`;
 }
+function chequeoPlegableHTML(){ // v45.43
+  const html=chequeoHTML(), nMal=(html.match(/⚠️/g)||[]).length, nEsp=(html.match(/⏳/g)||[]).length;
+  const ab=DESP["mg-chq"]!=null?!!DESP["mg-chq"]:nMal>0; // con un aviso se abre solo
+  const est=nMal?`<span style="color:#A93C25">⚠️ ${nMal} ${nMal===1?"aviso":"avisos"}</span>`:nEsp?`<span style="color:var(--muted)">⏳ sin terminar de comprobar</span>`:`<span style="color:#1B7A3D">✅ todo en verde</span>`;
+  return `<div class="mg-acc-head" onclick="DESP['mg-chq']=!${ab};render()"><span>🛡️ Auto-chequeo · ${est}</span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`+(ab?html:"");
+}
 function configHTML(){
-  return `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
-    <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:12px">⚙️ Configuración</div>
+  return `<div style="background:#fff;border-radius:16px;padding:16px;margin:-4px 0 12px;border:1px solid var(--border)">
     <div class="cfg-row">
       <div><div class="cfg-label">Retorno compartido por cuota</div><div class="cfg-sub">% sobre el capital en cada cuota. Es una regla del Documento Maestro: cámbialo solo si cambia el Maestro. Afecta a las ayudas nuevas.</div></div>
       ${DESP["cfg-rate"]?`<input id="cfg-rate" class="cfg-input" type="number" value="${DATA.rate}" min="0" step="0.5"> %`:`<span style="white-space:nowrap;font-weight:800;font-size:16px">${DATA.rate} %</span>`}

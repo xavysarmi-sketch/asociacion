@@ -40,8 +40,16 @@ function inicioHTML(){
     ${fila("Auditoría",nErr?nErr+" error"+(nErr>1?"es":""):"todo cuadra",!nErr,"TAB='manage';AUDIT_OPEN=true;render()")}
   </div>`;
   // Dinero del mes (la misma cuenta que en Ayudas → Dinero del mes)
-  const d=dineroAyudasMes();
-  h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:8px">💰 Dinero del mes</div>${dineroMesCuerpoHTML(d)}</div>`;
+  // v45.43: aquí, solo lo esencial; el detalle (ayudas entregadas, salidas, de dónde viene) está en Ayudas
+  const d=dineroAyudasMes(), rojo=v=>v<0?"color:#C0492C":"";
+  h+=`<div class="mes-card" style="cursor:pointer" onclick="TAB='ayudas';FICHA_ID=null;render();window.scrollTo(0,0)"><div class="mes-title" style="margin-bottom:4px">💰 Dinero del mes</div>
+    <div class="ay-fila"><span>Cobrado hasta hoy</span><b style="color:#2D6A4F">${fmtEur(d.cobrado)} €</b></div>
+    ${d.salido?`<div class="ay-fila"><span>En caja hoy</span><b style="${rojo(d.enCaja)}">${fmtEur(d.enCaja)} €</b></div>`:""}
+    ${d.porPagar?`<div class="ay-fila"><span>Salidas por pagar este mes</span><b>−${fmtEur(d.porPagar)} €</b></div>`:""}
+    <div class="ay-fila ay-total"><span>Disponible para ayudas</span><b style="font-size:19px;${rojo(d.disponible)}">${fmtEur(d.disponible)} €</b></div>
+    ${d.porCobrar>0?`<div class="ini-sin" style="margin-top:2px">Falta por cobrar ${fmtEur(d.porCobrar)} €.</div>`:""}
+    ${d.alCierre<0?`<div style="margin-top:6px;padding:8px 10px;border-radius:10px;background:#FFF4E5;border:1px solid #E0A040;color:#8A4F12;font-size:13.5px;font-weight:700">⚠️ Aunque se cobre todo, este mes no llega: faltarían ${fmtEur(-d.alCierre)} €.</div>`:""}
+    <div style="margin-top:8px;font-size:14px;font-weight:800;color:#1B4332">Ver el detalle en Ayudas ›</div></div>`;
   // Avisos: lo que pide una decisión este mes
   const nSol=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente").length;
   const banner=bannerRecargoHTML();
