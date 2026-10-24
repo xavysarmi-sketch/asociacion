@@ -472,6 +472,7 @@ function _renderPantalla(){
           </div>`;
         if(gOpen){
           h+=cuentaGrupoHTML(g,principal); // v45.13 · v45.42: la cuenta con el responsable va arriba (es lo que más se mira)
+          h+=cuentasAnterioresHTML(g); // v45.47: historial de cuentas de meses anteriores
           h+=`<div style="margin-top:10px">`;
           // Agrupar items por persona (mid), preservando orden de aparición
           const orden=[];
@@ -647,6 +648,9 @@ function _renderPantalla(){
         if(REPORT_FILTER==="terc")lista=ordered.filter(m=>m.type==="tercero");
         h+=`<div id="asoc-listas">`;
         h+=listaPersonasHTML(lista); // v45.42: una línea por persona, por grupos (antes, la tarjeta grande de cada una)
+        { // v45.47: quien ya salió pero aún no se le ha pagado sigue a mano aquí (si no, solo estaría en Histórico)
+          const pend=DATA.members.filter(m=>m.baja&&!m.baja.pagada&&!activoEnReporte(m));
+          if(pend.length)h+=`<div class="pl-sec" data-nombre="${escH(pend.map(m=>m.name).join(" | "))}"><div class="pl-tit">🚪 Han salido · falta pagarles <span>· ${pend.length}</span></div>${pend.map(m=>{const b=datosBaja(m);return `<button class="pl-fila" data-nombre="${escH(m.name)}" onclick="openFicha('${esc(m.id)}')"><span class="pl-txt"><span class="pl-nom">${escH(m.name)}</span><span class="pl-meta">Se le paga ${escH(b.fechaPago||"")}</span></span><span class="pl-est pend">${fmtEur(Math.abs(b.total||0))} €</span><span class="pl-fl">›</span></button>`;}).join("")}</div>`; }
         if(lista.length===0){
           h+=`<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0">No hay miembros con ayudas activas este mes.</p>`;
         }

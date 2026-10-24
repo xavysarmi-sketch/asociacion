@@ -120,7 +120,7 @@ function _altaAplicarGrupo(m,gSel){
   const p=DATA.members.find(x=>x.id===g.principalId); return ` · en el grupo de ${p?p.name.split(" ")[0]:""}`;
 }
 function addMemberSubmit(convertir){
-  const name=document.getElementById("m-name").value.trim();if(!name)return;
+  const name=nombreBonito(document.getElementById("m-name").value);if(!name)return; // v45.47: mayúsculas bien puestas
   const gSel=(document.getElementById("m-grupo")||{}).value||""; // v45.42
   if(!gSel){toast("⛔ Elige su grupo (o «Sin grupo»)",3500);const gEl=document.getElementById("m-grupo");if(gEl)gEl.scrollIntoView({block:"center"});return;}
   const telAlta=_telLimpio(document.getElementById("m-phone")?.value); // v45.21: opcional
@@ -236,6 +236,24 @@ function salidaResumenHTML(m,ancho,sinNombre){
   </div>`;
 }
 
+// v45.47: la salida, arriba en la ficha del administrador (desde que la pide hasta que se le paga, y después)
+function salidaAdminFichaHTML(m){
+  const b=datosBaja(m); if(!b)return "";
+  const rm=DATA.reportMonth, ry=DATA.reportYear, activo=cuentaComoActivo(m,getMesKey(rm,ry));
+  const mesB=MONTHS_FULL[MONTHS.indexOf(b.month)]||b.month, ult=b.ultimoMes?(MONTHS_FULL[MONTHS.indexOf(b.ultimoMes)]+" "+b.ultimoAnio).toLowerCase():"";
+  const pago=b.fechaPago||(()=>{const p=mesPagoBaja(b);return "del 5 al 10 de "+MONTHS_FULL[MONTHS.indexOf(p.mes)].toLowerCase()+" "+p.anio;})();
+  const tit=b.pagada?"🚪 Salió del fondo · ya está pagada":activo?"🚪 Ha pedido la salida":"🚪 Ya ha salido del fondo";
+  let t=[];
+  if(ult)t.push(`Último aporte: <b>${escH(ult)}</b>${activo?"":` · desde ${escH(mesB.toLowerCase())} ya no aporta ni paga cuotas`}`);
+  t.push(b.pagada?`Se le pagó ${b.fechaPagada?"el "+escH(b.fechaPagada):""}: <b>${fmtEur(Math.abs(b.total||0))} €</b>`:`${(b.total||0)>=0?"Se le paga":"Falta por cubrir"} ${(b.total||0)>=0?escH(pago)+": ":""}<b>${fmtEur(Math.abs(b.total||0))} €</b>`);
+  if(b.ayudaDescontada>0)t.push(`Lo que quedaba de su ayuda (${fmtEur(b.ayudaDescontada)} €) se descuenta de lo que recibe`);
+  return `<div style="margin:10px 0 4px;border:1.5px solid #E0A040;background:#FFF8EC;border-radius:14px;padding:12px 14px">
+    <div style="font-size:16px;font-weight:800;color:#7A4A10;margin-bottom:4px">${tit}</div>
+    <div style="font-size:14px;color:#4A3A20;line-height:1.5">${t.join("<br>")}</div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="cgt-b sec" style="border-color:#B06A1E;color:#8A4F12" onclick="FICHA_ID=null;TAB='historico';render();window.scrollTo(0,0)">📜 Ver en Histórico</button>
+      ${b.v18&&!b.pagada?`<button class="cgt-b sec" style="border-color:#B06A1E;color:#8A4F12" onclick="salidaEnviarWA('${esc(m.id)}')">💬 Enviarle el resumen</button>`:""}</div></div>`;
+}
 // v45.32: aviso en su ficha (enlace personal) mientras la salida está pendiente de pago
 function salidaAvisoFichaHTML(m){
   const d=salidaResumenDatos(m); if(!d)return "";
@@ -522,10 +540,11 @@ function listaPersonasHTML(lista){
       const nAy=(m.loans||[]).filter(l=>(l.pays||[]).some(p=>!p.paid)).length;
       const pausa=!isT&&enPausaMes(m,rm,ry), aval=isT?avalistaNombre(m):"";
       const fund=(!isT&&m.joinMonth==="Ago"&&m.joinYear===2025);
+      const sale=""; const saleTxt=m.baja&&!m.baja.pagada?`🚪 Sale en ${(MONTHS_FULL[MONTHS.indexOf(m.baja.month)]||"").toLowerCase()}`:""; // v45.47
       const est=!its.length?`<span class="pl-est">—</span>`:pend>0?`<span class="pl-est pend">Falta ${fmtEur(pend)} €</span>`:`<span class="pl-est ok">✓ Al día</span>`;
-      const meta=(isT?"Tercero":"Asociado")+(aval?` · aval ${escH(aval.split(" ")[0])}`:"")+(nAy?` · 🤝 ${nAy} ${nAy===1?"ayuda":"ayudas"}`:"")+(pausa?" · ⏸ en pausa":"")+(tot>0&&pend>0&&pend<tot?` · pagado ${fmtEur(_r2(tot-pend))} €`:"");
-      h+=`<button class="pl-fila${isT?" terc":""}" data-nombre="${escH(m.name)}" onclick="openFicha('${esc(m.id)}')">
-        <span class="pl-txt"><span class="pl-nom">${escH(m.name)}${fund?" ⭐":""}${m.id===s.ppal?` <span class="pl-tag">responsable</span>`:""}</span><span class="pl-meta">${meta}</span></span>
+      const meta=(m.id===s.ppal?`<span class="pl-tag">responsable</span> `:"")+(isT?"Tercero":"Asociado")+(aval?` · aval ${escH(aval.split(" ")[0])}`:"")+(nAy?` · 🤝 ${nAy} ${nAy===1?"ayuda":"ayudas"}`:"")+(pausa?" · ⏸ en pausa":"")+sale+(tot>0&&pend>0&&pend<tot?` · pagado ${fmtEur(_r2(tot-pend))} €`:"");
+      h+=`<button class="pl-fila${isT?" terc":""}${saleTxt?" sale":""}" data-nombre="${escH(m.name)}" onclick="openFicha('${esc(m.id)}')">
+        <span class="pl-txt"><span class="pl-nom">${escH(m.name)}${fund?" ⭐":""}</span><span class="pl-meta">${meta}</span>${saleTxt?`<span class="pl-sale">${saleTxt}</span>`:""}</span>
         ${est}<span class="pl-fl">›</span></button>`;
     });
     h+=`</div>`;
@@ -766,6 +785,9 @@ function _fichaHTMLbase(m,readonly=false){
   }
   h+=`</div>`;
   h+=avisoSubidaNivelHTML(m,rm,ry); // v44.17: aviso de subida de nivel (mes de la subida y el siguiente)
+  if(!readonly&&m.baja)h+=salidaAdminFichaHTML(m); // v45.47: la salida pedida se ve arriba en su ficha
+  const _salido=!readonly&&!!m.baja&&!cuentaComoActivo(m,getMesKey(rm,ry)); // v45.47: ya no aporta ni paga cuotas
+  if(!_salido){
 
   /* ────────────────────────────────────────────────
      2. LO QUE DEBES PAGAR ESTE MES
@@ -809,6 +831,7 @@ function _fichaHTMLbase(m,readonly=false){
   }
   { const _tb=totalMesBloqueHTML(m,rm,ry,tot,isTerc,MF,MS);
     h+=(_tb?`<div class="desg-separador"></div>${_tb}`:"")+`</div>`; }
+  } // v45.47: fin de «Corresponde este mes» (no se muestra a quien ya ha salido)
 
   /* 3. (v44.16) Aquí estaba el bloque "Estado del aporte" con un botón para marcar el
      aporte. Se quitó entero: el aporte se marca en el Cierre mensual y el estado ya se ve

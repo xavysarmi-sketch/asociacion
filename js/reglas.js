@@ -757,7 +757,7 @@ function itemsDeMiembro(mid,rm,ry,cuotasPre){ // v45.42: cuotasPre = cuotasDelMe
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return [];
   const items=[];
-  if(m.type==="asociado"&&!enPausaMes(m,rm,ry)){ // v45.33: en pausa no hay aporte que cobrar
+  if(m.type==="asociado"&&!enPausaMes(m,rm,ry)&&cuentaComoActivo(m,getMesKey(rm,ry))){ // v45.33: en pausa no hay aporte que cobrar · v45.47: tras su salida, tampoco
     const md=getMesData(rm,ry);
     const pagado=!!(md.aportes&&md.aportes[m.id]);
     const {nReferidos,descuento}=descuentoReferidoMes(m.id,rm,ry);
@@ -806,13 +806,16 @@ function dineroAyudasMes(){
   return {grupos,resto:{total:_r2(rT),cobrado:_r2(rC)},puntIn:c.puntIn||0,cobrado,salido,ayudasDadas:c.apoyos||0,gastos:c.gastos||0,porPagar,disponible,previsto,porCobrar,alCierre,enCaja:_r2(cobrado-salido)};
 }
 
+// v45.47: desde el mes de su salida, las cuotas que le quedan no se cobran: se descuentan de lo que
+// recibe (SA-10) y quedan «compensadas» al marcar la salida como pagada.
+function _cuotaVaEnSalida(m,p){ const b=m.baja; return !!(b&&b.v18&&!b.pagada&&!p.paid&&_idxMes(p.m,p.y)>=_idxMes(b.month,b.year)); }
 function cuotasDelMes(rm,ry){
   const _k="cdm|"+rm+"|"+ry; if(_MEMO_RENDER&&_MEMO_RENDER[_k])return _MEMO_RENDER[_k].slice(); // v45.46: ver render()
   const out=[];
   DATA.members.forEach(m=>{
     [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{
       l.pays.forEach((p,pi)=>{
-        if(p.m===rm&&p.y===ry&&!p.compensada){ // v45.1: compensada al pagar una baja (SA-10)
+        if(p.m===rm&&p.y===ry&&!p.compensada&&!_cuotaVaEnSalida(m,p)){ // v45.1: compensada al pagar una baja (SA-10) · v45.47: o que se le va a descontar
           const rec=recargoPorCuota(l);
           const imp=cuotaDe(l,pi); // aplazada = solo retorno; normal = cuota exacta (l.cuotas)
           const cap=p.aplazada?0:Math.round((imp-rec)*100)/100;

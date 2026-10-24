@@ -23,6 +23,15 @@ function fmtEur(x){
 function _idxMes(mes,anio){ return anio*12+MONTHS.indexOf(mes); }
 function _hoyDMA(){ const d=new Date(); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear(); }
 // v45.17: «📝 Pasar a solicitudes» desde una ayuda simulada del cierre grupal (nombre, importe, grupo y mes ya puestos)
+// v45.47: nombres bien escritos al apuntarlos: «genessis solorzano MIranda» → «Genessis Solorzano Miranda».
+// Mayúscula al empezar cada palabra (y tras un guion), el resto en minúscula; «de», «del», «la», «los», «las», «y»
+// quedan en minúscula si no van al principio; sin espacios de más.
+function nombreBonito(t){
+  const pq=new Set(["de","del","la","las","los","y","e","da","do","dos","van","von"]);
+  return String(t||"").replace(/\s+/g," ").trim().split(" ").map((w,i)=>{ const l=w.toLocaleLowerCase("es");
+    if(i>0&&pq.has(l))return l;
+    return l.split("-").map(s=>s?s.charAt(0).toLocaleUpperCase("es")+s.slice(1):s).join("-"); }).join(" ");
+}
 const _normNom=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 
 function baseUrl(){

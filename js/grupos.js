@@ -8,7 +8,7 @@ function _cgSimIdx(gid){ const c=_idxMes(DATA.reportMonth,DATA.reportYear), v=CG
 function cgSimAdd(gid){
   const v=parseFloat(String((document.getElementById("cg-sim")||{}).value||"").replace(",","."));
   if(!(v>0)){toast("Escribe el importe de la ayuda");return;}
-  const nombre=String((document.getElementById("cg-sim-nom")||{}).value||"").trim();
+  const nombre=nombreBonito((document.getElementById("cg-sim-nom")||{}).value); // v45.47
   const ms=(document.getElementById("cg-sim-mes")||{}).value; if(ms!=null&&ms!=="")CG_SIM_MES[gid]=+ms; // v45.17: mes de la simulación
   (CG_SIM[gid]=CG_SIM[gid]||[]).push({v:_r2(v),nombre}); CG_FORM=null; render();
 }
@@ -157,8 +157,11 @@ function cuentaGrupoHTML(g,principal){
   { // v45.14: liquidada → solo un enlace pequeño; sin apuntes → una línea que se abre al tocarla
     const idx0=_idxMes(DATA.reportMonth,DATA.reportYear), mes0=MONTHS_FULL[((idx0%12)+12)%12].toLowerCase(), nom0=escH(principal.name.split(" ")[0]);
     const usando=(CG_FORM&&CG_FORM.gid===g.id)||!!CG_SIM[g.id];
-    if(_cgCerrada(g)&&!DESP["cgver-"+g.id]&&!usando)
-      return `<div style="text-align:center;margin-top:10px"><button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px">Ver cuenta de ${mes0}</button></div>`;
+    if(_cgCerrada(g)&&!DESP["cgver-"+g.id]&&!usando){ // v45.47: liquidada → una línea clara con lo entregado (antes solo un enlace)
+      const tot0=_cgTotal(g,idx0);
+      return `<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#E8F3EC;border:1.5px solid #B7D9C3">
+        <span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#1B4332">✅ Cuenta de ${mes0} liquidada<span style="display:block;font-size:13px;font-weight:600;color:#2D6A4F">${nom0} te ha entregado ${fmtEur(tot0)} € · no falta nada</span></span>
+        <button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#1B4332;font-size:13.5px;font-weight:800;text-decoration:underline;cursor:pointer;padding:4px;white-space:nowrap">Ver detalle</button></div>`; }
     const pf0=_cgMovs(_keyDeIdx(idx0-1),g.id).length?_cgFalta(g,idx0-1):0;
     if(!_cgCerrada(g)&&!_cgMovs(_keyDeIdx(idx0),g.id).length&&!(pf0>0)&&!DESP["cgabrir-"+g.id]&&!usando)
       return `<button onclick="DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
@@ -197,8 +200,11 @@ function cuentaGrupoHTML(g,principal){
     if(CG_FORM.tipo==="sim"){
       h+=`<label class="m-label" style="margin-top:10px">¿De cuánto sería la ayuda?</label>
         <input id="cg-sim" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 500" style="font-size:16px">
-        <label class="m-label">¿Para quién? <span style="font-weight:600;color:var(--muted)">(opcional)</span></label>
-        <input id="cg-sim-nom" type="text" class="m-input" placeholder="Ej: Ana" style="font-size:16px">
+        <label class="m-label">¿Para quién? <span style="font-weight:600;color:var(--muted)">(opcional · escribe y elígelo de la lista)</span></label>
+        <input id="cg-sim-nom" type="text" class="m-input" placeholder="Empieza a escribir el nombre…" style="font-size:16px" list="cg-sim-nombres" autocomplete="off">
+        <datalist id="cg-sim-nombres">${(()=>{ const ids=[g.principalId,...(g.miembros||[])], act=DATA.members.filter(m=>activoEnReporte(m));
+          const del=act.filter(m=>ids.includes(m.id)).sort((a,b)=>a.name.localeCompare(b.name)), resto=act.filter(m=>!ids.includes(m.id)).sort((a,b)=>a.name.localeCompare(b.name));
+          return [...del,...resto].map(m=>`<option value="${escH(m.name)}">${m.type==="tercero"?"Tercero":"Asociado"}${ids.includes(m.id)?" · de este grupo":""}</option>`).join(""); })()}</datalist><!-- v45.47: sugiere los nombres registrados -->
         <label class="m-label">¿Para qué mes?${(CG_SIM[g.id]||[]).length?` <span style="font-weight:600;color:var(--muted)">(cambia toda la simulación)</span>`:""}</label>
         <select id="cg-sim-mes" class="m-select" style="font-size:15px">${[0,1,2,3].map(k=>{const i=idx+k,t=_txtIdx(i);return `<option value="${i}"${i===_cgSimIdx(g.id)?" selected":""}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`;}).join("")}</select>`; // v45.17
     } else if(CG_FORM.tipo==="entrega"){
@@ -317,6 +323,25 @@ function crearGrupoHTML(){
       <option value="">— Elegir responsable —</option>${disp.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>`
       :`<div class="ini-sin">Todos los asociados ya están en un grupo.</div>`}
     <button class="cgt-b sec" style="width:100%;margin-top:8px" onclick="DESP['cg-crear']=false;render()">Cancelar</button></div>`;
+}
+// v45.47: cuentas de meses anteriores con el responsable (consulta; cada mes nuevo empieza su cuenta)
+function cuentasAnterioresHTML(g){
+  const ts=parseInt(String(g.id).slice(1)), dC=ts>1.6e12?new Date(ts):null, creado=dC?dC.getFullYear()*12+dC.getMonth():-1; // el grupo se creó ese mes (antes no había cuenta)
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), desde=Math.max(_idxMes("Ago",2025),idx-12,creado), k="cghist-"+g.id, ab=!!DESP[k];
+  const meses=[]; for(let i=idx-1;i>=desde;i--){ const r=_sinCrearMes(i,()=>{ const total=_cgTotal(g,i); if(!total)return null;
+      const movs=_cgMovs(_keyDeIdx(i),g.id), falta=_cgFalta(g,i), resto=_cgResto(g,i);
+      return {i,total,falta,resto,movs}; }); if(r)meses.push(r); }
+  if(!meses.length)return "";
+  let h=`<button onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;border-radius:11px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit"><span>📜 Cuentas de meses anteriores</span><span>${ab?"▲":"▼"}</span></button>`;
+  if(!ab)return h;
+  h+=`<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 11px 11px;padding:4px 12px 10px;margin-top:-6px;background:#fff">`;
+  meses.forEach(x=>{ const est=x.falta>0?`<b style="color:#94500F">faltan ${fmtEur(x.falta)} €</b>`:x.falta<0?`<b style="color:#A93C25">${fmtEur(-x.falta)} € de más</b>`:`<b style="color:#1B7A3D">✅ liquidada</b>`;
+    const t=_txtIdx(x.i), det=x.movs.filter(m=>m.tipo!=="pasado").map(m=>`${m.tipo==="entrega"?"Entrega "+escH(m.fecha||""):m.tipo==="ayuda"?"Ayuda a "+escH(m.nombre||""):"Pendiente anterior"} ${m.tipo==="arrastre"?"+":"−"}${fmtEur(m.importe)} €`);
+    if(x.resto>0)det.push(`Entregado sin apuntar −${fmtEur(x.resto)} €`);
+    if(x.movs.some(m=>m.tipo==="pasado"))det.push("Lo pendiente pasó al mes siguiente");
+    h+=`<div style="padding:8px 0;border-bottom:1px solid #F1EBE4"><div style="display:flex;justify-content:space-between;gap:8px;font-size:14.5px"><span style="font-weight:800">${t.charAt(0).toUpperCase()+t.slice(1)}</span><span>${fmtEur(x.total)} € · ${est}</span></div>
+      ${det.length?`<div style="font-size:12.5px;color:var(--muted);margin-top:2px">${det.join(" · ")}</div>`:""}</div>`; });
+  return h+`<div style="font-size:12px;color:var(--muted);margin-top:6px">Se calcula con las personas que hoy están en el grupo.</div></div>`;
 }
 function crearGrupo(principalId){
   if(!principalId)return;

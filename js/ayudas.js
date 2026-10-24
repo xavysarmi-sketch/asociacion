@@ -21,9 +21,29 @@ function _solFlechas(so,L){ const i=L.indexOf(so), b=(d,t,on)=>`<button ${on?`on
 function _mesesSolOpts(sel){ const c=_idxMes(DATA.reportMonth,DATA.reportYear); let o=""; for(let i=c;i<=c+3;i++){ const k=_keyDeIdx(i), t=_txtIdx(i); o+=`<option value="${k}"${k===sel?" selected":""}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`; } return o; }
 function _sols(){ if(!DATA.solicitudes)DATA.solicitudes=[]; return DATA.solicitudes; }
 function _solsR(){ return DATA.solicitudes||[]; } // solo lectura (para pintar)
+// v45.47: WhatsApp al responsable del grupo con las solicitudes de su grupo que están apuntadas
+function solAvisarGrupo(gid){
+  const g=gruposCierre().find(x=>x.id===gid); if(!g)return; const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+  const lista=_solOrdenar(_solsR().filter(x=>x.estado==="pendiente"&&x.grupoGid===gid)); if(!lista.length)return;
+  const nom=p.name.split(" ")[0], meses=[...new Set(lista.map(_solMesIdx))].sort((a,b)=>a-b);
+  // v45.47 (a petición de Ángel): sin «se deciden…» ni «nueva, con tu aval»; cada una con sus cuotas mes a mes
+  const una=lista.length===1, idxR=_idxMes(DATA.reportMonth,DATA.reportYear), mesDe=i=>MONTHS_FULL[((i%12)+12)%12].toLowerCase();
+  const lst=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" y "+a[a.length-1];
+  let t=`Hola ${nom} 👋\nTe confirmo que he apuntado ${una?"esta solicitud":"estas solicitudes"} de apoyo de tu grupo:\n`;
+  meses.forEach(mi=>{ const mIdx=mi<-1e8?idxR:mi, del=lista.filter(x=>_solMesIdx(x)===mi);
+    if(meses.length>1)t+=`\n*Para ${mesDe(mIdx)}:*`;
+    del.forEach(so=>{ const {cuotas}=ayudaCuotas(so.capital,so.cuotas,DATA.rate), a=cuotas[0], u=cuotas[cuotas.length-1];
+      const cu=cuotas.length<=4?`${cuotas.length===1?"Cuota":"Cuotas"}: ${lst(cuotas.map((v,k)=>`${mesDe(mIdx+1+k)} ${fmtEur(v)} €`))}`
+        :`${cuotas.length} cuotas de ${fmtEur(a)} €${u!==a?` (la última de ${fmtEur(u)} €)`:""}, de ${mesDe(mIdx+1)} a ${mesDe(mIdx+cuotas.length)}`;
+      t+=`\n*${so.mid?so.nombre:nombreBonito(so.nombre)}* · ${fmtEur(so.capital)} €\n${cu}\n`; }); });
+  t+=`\n${meses.length===1?`${una?"La tendrás":"Las tendrás"} en ${mesDe(meses[0]<-1e8?idxR:meses[0])}.`:`${una?"La tendrás":"Las tendrás"} en el mes que se indica.`} Te aviso en cuanto ${una?"la envíe":"las envíe"}.\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  const tel=_telWA(p.phone); if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; }
+  if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
+  else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+}
 function solGuardar(otorgarYa){
   const mid=(document.getElementById("so-mid")||{}).value||"";
-  const nom=String((document.getElementById("so-nom")||{}).value||"").trim();
+  const nom=nombreBonito((document.getElementById("so-nom")||{}).value); // v45.47
   const cap=parseFloat(String((document.getElementById("so-cap")||{}).value||"").replace(",","."));
   const n=parseInt((document.getElementById("so-n")||{}).value||"5");
   const m=mid?DATA.members.find(x=>x.id===mid):null;
@@ -191,6 +211,11 @@ function ayudasTabHTML(){
           <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:8px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#C0492C"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button></div></div></div>`;
     });
   });
+  { // v45.47: avisar al responsable del grupo de que sus solicitudes están apuntadas
+    const gids=[...new Set(pendT.map(x=>x.grupoGid).filter(Boolean))].filter(gid=>gruposCierre().some(g=>g.id===gid));
+    if(gids.length&&!SOL_FORM)h+=`<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:13.5px;font-weight:800;color:#1B4332;margin-bottom:6px">💬 Avisar a los responsables de que están apuntadas</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${gids.map(gid=>{ const g=gruposCierre().find(x=>x.id===gid), p=DATA.members.find(m=>m.id===g.principalId), n=pendT.filter(x=>x.grupoGid===gid).length;
+        return p?`<button class="cgt-b" style="flex:1 1 45%;background:#15803D;border-color:#15803D;color:#fff;min-height:44px" onclick="solAvisarGrupo('${gid}')">💬 ${escH(p.name.split(" ")[0])} (${n})</button>`:""; }).join("")}</div></div>`; }
   if(SOL_FORM){
     const asoc=DATA.members.filter(m=>m.type==="asociado"&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name)), terc=DATA.members.filter(m=>m.type==="tercero"&&activoEnReporte(m)).sort((a,b)=>a.name.localeCompare(b.name));
     h+=`<div style="border:1.5px solid #2D6A4F;border-radius:12px;padding:12px;margin-top:10px;background:#F4F9F6">
