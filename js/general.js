@@ -787,6 +787,7 @@ function _renderPantalla(){
     if(MODAL.type==="telefono")h+=telefonoModalHTML(); // v45.22
     if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
     if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
+    if(MODAL.type==="nombre")h+=nombreModalHTML(); // v45.50
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;

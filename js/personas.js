@@ -245,13 +245,31 @@ function nombresPorCorregirHTML(){
     <button class="cgt-b pri" style="width:100%;margin-top:10px;min-height:46px" onclick="corregirNombres()">✓ Corregir ${l.length===1?"el nombre":"los "+l.length+" nombres"}</button>
     <div class="ini-sin" style="margin-top:6px">Sus enlaces no cambian (van por número, no por nombre).</div></div>`;
 }
+// v45.50: cambiar el nombre de una persona (también en sus solicitudes y en los bonos por referido que la nombran)
+function _renombrar(m,n){
+  const viejo=_normNombre(m.name);
+  (DATA.solicitudes||[]).forEach(so=>{ if(so.mid===m.id)so.nombre=n; });
+  Object.values(DATA.referidos||{}).forEach(r=>Object.values(r||{}).forEach(v=>{ if(v&&v.nombres)v.nombres=String(v.nombres).split(",").map(x=>_normNombre(x)===viejo?n:x.trim()).join(", "); }));
+  m.name=n;
+}
+function nombreModalHTML(){
+  const m=DATA.members.find(x=>x.id===MODAL.mid); if(!m)return "";
+  return `<div class="modal-title">✏️ Nombre de ${escH(m.name.split(" ")[0])}</div>
+<input id="nm-in" class="m-input" type="text" value="${escH(m.name)}" autocomplete="off" style="font-size:17px">
+<div style="font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.4">Las mayúsculas se ponen solas; las tildes, escríbelas tú. Su enlace no cambia (va por número, no por nombre).</div>
+<button class="m-primary" onclick="guardarNombre('${esc(m.id)}')">Guardar</button>`;
+}
+function guardarNombre(mid){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return;
+  const n=nombreBonito((document.getElementById("nm-in")||{}).value); if(!n){toast("Escribe el nombre");return;}
+  if(n===m.name){closeModal();return;}
+  const otro=DATA.members.find(x=>x.id!==mid&&_normNombre(x.name)===_normNombre(n)); if(otro){toast("⚠️ Ya hay otra persona con ese nombre: "+otro.name,4000);return;}
+  UNDO_SNAPSHOT=JSON.stringify(DATA); _renombrar(m,n); MODAL=null; save(); render(); _avisoDeshacer("Nombre cambiado: "+n);
+}
 function corregirNombres(){
   const l=_nombresMal(); if(!l.length)return;
   UNDO_SNAPSHOT=JSON.stringify(DATA);
-  l.forEach(m=>{ const n=nombreBonito(m.name), viejo=_normNombre(m.name);
-    (DATA.solicitudes||[]).forEach(so=>{ if(so.mid===m.id)so.nombre=n; });
-    Object.values(DATA.referidos||{}).forEach(r=>Object.values(r||{}).forEach(v=>{ if(v&&v.nombres)v.nombres=String(v.nombres).split(",").map(x=>_normNombre(x)===viejo?n:x.trim()).join(", "); })); // los bonos por referido nombran a la persona
-    m.name=n; });
+  l.forEach(m=>_renombrar(m,nombreBonito(m.name)));
   (DATA.solicitudes||[]).forEach(so=>{ if(!so.mid&&so.nombre)so.nombre=nombreBonito(so.nombre); });
   save(); render(); _avisoDeshacer(l.length===1?"Nombre corregido ✓":l.length+" nombres corregidos ✓");
 }
@@ -1123,6 +1141,7 @@ function _fichaHTMLbase(m,readonly=false){
       <div class="mgmt-grid">
         <button class="mgmt-btn" style="background:#25D366;color:#fff" onclick="abrirBienvenida('${esc(m.id)}')">📲 Bienvenida</button>
         <button class="mgmt-btn secondary" onclick="openModal('telefono',{mid:'${esc(m.id)}'})">📞 ${m.phone?escH(m.phone):"Teléfono"}</button>
+        <button class="mgmt-btn secondary" onclick="openModal('nombre',{mid:'${esc(m.id)}'})">✏️ Nombre</button><!-- v45.50 -->
 
         <button class="mgmt-btn secondary" onclick="copyLink('${esc(m.id)}')">🔗 Copiar su enlace</button>
       </div>
