@@ -32,6 +32,32 @@ function nombreBonito(t){
     if(i>0&&pq.has(l))return l;
     return l.split("-").map(s=>s?s.charAt(0).toLocaleUpperCase("es")+s.slice(1):s).join("-"); }).join(" ");
 }
+// v45.51: tildes en los nombres — la app SUGIERE (nunca cambia sola): «¿Quieres decir Jessica Sánchez?».
+// Lista de nombres y apellidos habituales que casi siempre llevan tilde. Si la palabra ya lleva tilde, no se toca.
+const _TILDES=("Sánchez García Rodríguez Pérez Martínez López González Hernández Gómez Díaz Fernández Jiménez Álvarez Ramírez "+
+ "Velázquez Vázquez Velásquez Vásquez Cárdenas Gutiérrez Domínguez Suárez Benítez Méndez Márquez Núñez Ordóñez Chávez Gálvez "+
+ "Báez Peláez Ibáñez Sáez Cortés Bolívar Alarcón Calderón León Rincón Colón Guzmán Durán Beltrán Galán Román Morán Millán "+
+ "Roldán Monzón Pinzón Quiñónez Ríos Zúñiga Narváez Mejía Ávila Céspedes Echeverría Garcés Valdés Andrés Martín Tobón "+
+ "María José Josué Jesús Ángel Ángela Ángeles Álvaro Lucía Mónica Raúl Rubén Sebastián Sofía Tomás Nicolás Joaquín Ramón "+
+ "Iván Adrián Víctor Héctor Óscar César Fátima Inés Belén Verónica Bárbara Germán Agustín Valentín Simón Matías Elías Tobías "+
+ "Darío Julián Fabián Damián Cristóbal Noé Moisés Íñigo Ítalo Aníbal Félix Efraín Génesis Rocío Asunción Concepción "+
+ "Encarnación Ascensión Solórzano Vélez Macías Bermúdez Cáceres Jácome").split(" ");
+const _TILDE_MAP=(()=>{ const o={}; _TILDES.forEach(w=>{ o[w.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()]=w; }); return o; })();
+function sugerenciaTildes(t){
+  const base=nombreBonito(t); if(!base)return "";
+  const out=base.split(" ").map(w=>{ if(/[áéíóúÁÉÍÓÚ]/.test(w))return w; const k=w.toLowerCase(), v=_TILDE_MAP[k]; return v?(k===w?v.toLowerCase():v):w; }).join(" ");
+  return out!==base?out:"";
+}
+// Pinta la sugerencia debajo del campo (id del campo, id del recuadro)
+function tildeSugerir(inputId,boxId){
+  const i=document.getElementById(inputId), b=document.getElementById(boxId); if(!i||!b)return;
+  const s=sugerenciaTildes(i.value);
+  b.innerHTML=s?`<div class="tilde-sug"><span>¿Quieres decir <b>${escH(s)}</b>?</span><button type="button" onclick="tildeAplicar('${inputId}','${boxId}')">Sí, corregir</button></div>`:"";
+}
+function tildeAplicar(inputId,boxId){
+  const i=document.getElementById(inputId); if(!i)return; const s=sugerenciaTildes(i.value); if(s)i.value=s;
+  const b=document.getElementById(boxId); if(b)b.innerHTML=""; if(inputId==="m-name")altaNombreCambio();
+}
 const _normNom=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 
 function baseUrl(){

@@ -229,7 +229,7 @@ function ayudasTabHTML(){
         <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup>
         <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</optgroup></select>
       <div id="so-nom-wrap"><div style="font-size:12px;color:var(--muted);margin:2px 0 6px">o, si aún no está en la app:</div>
-      <input id="so-nom" type="text" class="m-input" placeholder="Nombre y apellidos" style="font-size:16px">
+      <input id="so-nom" type="text" class="m-input" placeholder="Nombre y apellidos" style="font-size:16px" oninput="tildeSugerir('so-nom','so-tilde')"><div id="so-tilde"></div><!-- v45.51 -->
       <label class="m-label">¿Cómo entra?</label>
       <select id="so-tipo" class="m-select" style="font-size:15px"><option value="">— Elegir —</option><option value="asociado">Como asociado</option><option value="tercero">Como tercero con aval</option></select></div>
       <label class="m-label">¿Quién la avala?</label>

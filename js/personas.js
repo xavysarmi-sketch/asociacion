@@ -183,6 +183,7 @@ function _altaConvHTML(nombre,tipo){
   </div>`;
 }
 function altaNombreCambio(){
+  tildeSugerir("m-name","m-tilde"); // v45.51
   const el=document.getElementById("m-conv"); if(!el)return;
   const tipo=document.querySelector(".m-opt.active[data-type]")?.dataset.type||"asociado";
   el.innerHTML=_altaConvHTML(document.getElementById("m-name")?.value||"",tipo);
@@ -255,7 +256,8 @@ function _renombrar(m,n){
 function nombreModalHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid); if(!m)return "";
   return `<div class="modal-title">✏️ Nombre de ${escH(m.name.split(" ")[0])}</div>
-<input id="nm-in" class="m-input" type="text" value="${escH(m.name)}" autocomplete="off" style="font-size:17px">
+<input id="nm-in" class="m-input" type="text" value="${escH(m.name)}" autocomplete="off" style="font-size:17px" oninput="tildeSugerir('nm-in','nm-tilde')">
+<div id="nm-tilde">${(()=>{const s=sugerenciaTildes(m.name);return s?`<div class="tilde-sug"><span>¿Quieres decir <b>${escH(s)}</b>?</span><button type="button" onclick="tildeAplicar('nm-in','nm-tilde')">Sí, corregir</button></div>`:"";})()}</div>
 <div style="font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.4">Las mayúsculas se ponen solas; las tildes, escríbelas tú. Su enlace no cambia (va por número, no por nombre).</div>
 <button class="m-primary" onclick="guardarNombre('${esc(m.id)}')">Guardar</button>`;
 }
@@ -1550,6 +1552,7 @@ function memberFormHTML(){
   return`<div class="modal-title">${pr==="tercero"?"Nuevo tercero":"Nuevo asociado"}</div>
 ${MODAL.sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;border-radius:9px;padding:7px 10px;margin-bottom:10px">📝 Es nueva: primero se da de alta y después se abre su ayuda ya rellena.</div>`:""}
 <input id="m-name" class="m-input" placeholder="Nombre completo" value="${MODAL.solNombre?escH(MODAL.solNombre):""}" oninput="altaNombreCambio()">
+<div id="m-tilde">${(()=>{const s=sugerenciaTildes(MODAL.solNombre||"");return s?`<div class="tilde-sug"><span>¿Quieres decir <b>${escH(s)}</b>?</span><button type="button" onclick="tildeAplicar('m-name','m-tilde')">Sí, corregir</button></div>`:"";})()}</div>
 <div id="m-conv">${_altaConvHTML(MODAL.solNombre||"",pr)}</div>
 <input id="m-phone" class="m-input" type="tel" inputmode="tel" placeholder="Teléfono (WhatsApp) · opcional">
 <div style="display:flex;gap:8px;margin-bottom:12px">
