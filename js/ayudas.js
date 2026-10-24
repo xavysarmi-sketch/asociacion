@@ -34,12 +34,12 @@ function solAvisarGrupo(gid){
     if(meses.length>1)t+=`\n*Para ${mesDe(mIdx)}:*`;
     del.forEach(so=>{ const {cuotas}=ayudaCuotas(so.capital,so.cuotas,DATA.rate), a=cuotas[0], u=cuotas[cuotas.length-1];
       // v45.48: con muchas cuotas, se agrupan las iguales: «6 cuotas: 217 € al mes de diciembre a marzo y 216 € en abril y mayo»
-      const tramos=[]; cuotas.forEach((v,k)=>{ const t0=tramos[tramos.length-1]; if(t0&&t0.v===v)t0.n++; else tramos.push({v,ini:k,n:1}); });
-      const conA=i=>mesDe(i)+(Math.floor(i/12)!==Math.floor(mIdx/12)?" de "+Math.floor(i/12):""); // el año, si ya es el siguiente
-      const tramo=x=>{ const m1=mesDe(mIdx+1+x.ini), m2=conA(mIdx+x.ini+x.n); return x.n===1?`${fmtEur(x.v)} € en ${m1}`:x.n===2?`${fmtEur(x.v)} € en ${m1} y ${m2}`:`${fmtEur(x.v)} € al mes de ${m1} a ${m2}`; };
-      const cu=cuotas.length<=4?`${cuotas.length===1?"Cuota":"Cuotas"}: ${lst(cuotas.map((v,k)=>`${mesDe(mIdx+1+k)} ${fmtEur(v)} €`))}`
-        :`${cuotas.length} cuotas: ${lst(tramos.map(tramo))}`;
-      t+=`\n*${so.mid?so.nombre:nombreBonito(so.nombre)}* · ${fmtEur(so.capital)} €\n${cu}\n`; }); });
+      // v45.49: siempre igual de claro, sea cual sea el nº de cuotas: periodo en una línea y lo que paga al mes en otra
+      const ini=mIdx+1, fin=mIdx+cuotas.length, conA=i=>mesDe(i)+(Math.floor(i/12)!==Math.floor(mIdx/12)?" de "+Math.floor(i/12):"");
+      const nU=cuotas.filter(v=>v===u).length;
+      const linPer=cuotas.length===1?`📅 1 cuota, en ${conA(ini)}`:cuotas.length===2?`📅 2 cuotas, en ${mesDe(ini)} y ${conA(fin)}`:`📅 ${cuotas.length} cuotas, de ${mesDe(ini)} a ${conA(fin)}`;
+      const linImp=cuotas.length===1?`💶 ${fmtEur(a)} €`:`💶 ${fmtEur(a)} € al mes`; // v45.49: sin el detalle de la última (está en su ficha)
+      t+=`\n*${so.mid?so.nombre:nombreBonito(so.nombre)}* · ${fmtEur(so.capital)} €\n${linPer}\n${linImp}\n`; }); });
   t+=`\n${meses.length===1?`${una?"La tendrás":"Las tendrás"} en ${mesDe(meses[0]<-1e8?idxR:meses[0])}.`:`${una?"La tendrás":"Las tendrás"} en el mes que se indica.`} Te aviso en cuanto ${una?"la envíe":"las envíe"}.\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
   const tel=_telWA(p.phone); if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; }
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }

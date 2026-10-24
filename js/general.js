@@ -718,6 +718,7 @@ function _renderPantalla(){
     // v45.42: sin buscador ni «👥 Personas y ayudas» aquí: las personas (con su buscador) están en «Personas»
     // y editar o eliminar sus ayudas, en la ficha de cada una.
     // v45.39: las Solicitudes están en la pestaña «Ayudas». Aquí, lo de consultar y los ajustes.
+    h+=nombresPorCorregirHTML(); // v45.49: solo sale si hay nombres con las mayúsculas mal puestas
     h+=`<div class="mas-sec">📂 Consultas</div>`; // v45.43: Más en tres apartados
     h+=`<div class="mg-acc-head" onclick="TAB='historico';render();window.scrollTo(0,0)">
       <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>

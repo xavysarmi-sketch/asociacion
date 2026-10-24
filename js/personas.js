@@ -236,6 +236,25 @@ function salidaResumenHTML(m,ancho,sinNombre){
   </div>`;
 }
 
+// v45.49: nombres ya registrados con las mayúsculas mal puestas (una sola vez; después ya se escriben bien al apuntarlos)
+function _nombresMal(){ return DATA.members.filter(m=>m.name&&nombreBonito(m.name)!==m.name); }
+function nombresPorCorregirHTML(){
+  const l=_nombresMal(); if(!l.length)return "";
+  return `<div class="mes-card" style="border:1.5px solid #B7D9C3;background:#F4F9F6"><div class="mes-title" style="margin-bottom:6px">✏️ Nombres por corregir · ${l.length}</div>
+    ${l.map(m=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #DCEBE1;font-size:14.5px"><span style="color:var(--muted)">${escH(m.name)}</span><b>→ ${escH(nombreBonito(m.name))}</b></div>`).join("")}
+    <button class="cgt-b pri" style="width:100%;margin-top:10px;min-height:46px" onclick="corregirNombres()">✓ Corregir ${l.length===1?"el nombre":"los "+l.length+" nombres"}</button>
+    <div class="ini-sin" style="margin-top:6px">Sus enlaces no cambian (van por número, no por nombre).</div></div>`;
+}
+function corregirNombres(){
+  const l=_nombresMal(); if(!l.length)return;
+  UNDO_SNAPSHOT=JSON.stringify(DATA);
+  l.forEach(m=>{ const n=nombreBonito(m.name), viejo=_normNombre(m.name);
+    (DATA.solicitudes||[]).forEach(so=>{ if(so.mid===m.id)so.nombre=n; });
+    Object.values(DATA.referidos||{}).forEach(r=>Object.values(r||{}).forEach(v=>{ if(v&&v.nombres)v.nombres=String(v.nombres).split(",").map(x=>_normNombre(x)===viejo?n:x.trim()).join(", "); })); // los bonos por referido nombran a la persona
+    m.name=n; });
+  (DATA.solicitudes||[]).forEach(so=>{ if(!so.mid&&so.nombre)so.nombre=nombreBonito(so.nombre); });
+  save(); render(); _avisoDeshacer(l.length===1?"Nombre corregido ✓":l.length+" nombres corregidos ✓");
+}
 // v45.47: la salida, arriba en la ficha del administrador (desde que la pide hasta que se le paga, y después)
 function salidaAdminFichaHTML(m){
   const b=datosBaja(m); if(!b)return "";
