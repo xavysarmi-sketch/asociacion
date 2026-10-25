@@ -49,6 +49,10 @@ lenguaje sencillo antes de aplicarlos.
   usa sanitizeData); render() pinta nhaPantalla. Peticiones de apoyo: peticiones/{código_ms} → Ayudas, «Pedidas
   desde la app». Envío por WhatsApp y tarjetas con QR en Más → App de asociados (js/qr.js, librería MIT, se carga
   solo al hacer tarjetas). Reglas de Firestore y su prueba con el emulador: NH Oficial\pruebas_app\reglas_firebase.
+- Desde v45.53: en la app de asociados los simuladores tienen pantalla propia («Simular», o desde Inicio); letra
+  mínima 13,5 px (app/app.css sube también los estilos escritos en js/). «¿Cuánto puedo ganar?» usa los números de
+  la persona (_simProyeccion). El simulador NO ofrece la permanencia indefinida (decisión de Ángel 25/10/2026: solo
+  llega a 36 meses; quien ya es indefinido la sigue viendo como la suya); las preguntas frecuentes, igual.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

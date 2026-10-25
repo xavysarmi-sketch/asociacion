@@ -580,7 +580,9 @@ function abrirSimulador(mid,tab){
   SIM={mid,tab:tab||"ayuda",ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,_simMaxCuotas(m))),ap:50};
   openModal('sim',{mid});
 }
-function _simPermOpciones(m){ const c=(m.ciclo!=null?m.ciclo:12); return PERM_OPCIONES.filter(v=>c===0?v===0:(v===0||v>=c)); }
+// v45.53 (decisión de Ángel 25/10/2026): el simulador ya no ofrece la permanencia indefinida (llega hasta 36 meses);
+// quien ya la tiene la sigue viendo como la suya.
+function _simPermOpciones(m){ const c=(m.ciclo!=null?m.ciclo:12); return PERM_OPCIONES.filter(v=>c===0?v===0:(v!==0&&v>=c)); }
 // Límites de la ayuda con la permanencia simulada. ini = mes de la 1.ª cuota (el siguiente al actual).
 function _simLimitesAyuda(m,ciclo){
   const rep=_idxMes(DATA.reportMonth,DATA.reportYear), ini=rep+1;
@@ -608,7 +610,7 @@ function simuladorHTML(){
       <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:0;margin:8px 0;border:1px solid #D5E3D9;border-radius:10px;overflow:hidden;font-size:13px">
         <div style="background:#1B4332;color:#fff;padding:6px 8px;font-weight:700">Permanencia</div><div style="background:#1B4332;color:#fff;padding:6px 8px;font-weight:700">Puedes pedir</div><div style="background:#1B4332;color:#fff;padding:6px 8px;font-weight:700">Lo devuelves en</div>
         <div style="padding:6px 8px">12 meses</div><div style="padding:6px 8px"><b>hasta ${REGLAS.AYUDA_MAX_CORTA} €</b></div><div style="padding:6px 8px">hasta ${REGLAS.CUOTAS_MAX_CORTA} meses</div>
-        <div style="padding:6px 8px;background:#F4F9F6">24, 36 meses o indefinida</div><div style="padding:6px 8px;background:#F4F9F6"><b>hasta ${_miles(SIM_MAX_AYUDA)} €</b></div><div style="padding:6px 8px;background:#F4F9F6">hasta ${REGLAS.CUOTAS_MAX} meses</div>
+        <div style="padding:6px 8px;background:#F4F9F6">${m.ciclo===0?"24, 36 meses o indefinida":"24 o 36 meses"}</div><div style="padding:6px 8px;background:#F4F9F6"><b>hasta ${_miles(SIM_MAX_AYUDA)} €</b></div><div style="padding:6px 8px;background:#F4F9F6">hasta ${REGLAS.CUOTAS_MAX} meses</div>
       </div>
       La última cuota se paga, como máximo, en el <b>último mes de tu permanencia</b>. Si necesitas más, puedes <b>ampliar tu permanencia</b> cuando quieras.</div>`;
   h+=`<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Tu permanencia: <b style="color:var(--dark)">${m.ciclo===0?"indefinida":m.ciclo+" meses"}</b>${finPermanenciaIdx(m)!=null?` · termina en ${_txtIdx(finPermanenciaIdx(m))}`:""}</div>`;
@@ -632,7 +634,7 @@ function simuladorHTML(){
 // ¿Qué permanencia hace falta para esta ayuda? (AY-1 y AY-6). Devuelve la primera que vale, desde la actual.
 function _simPermNecesaria(m,cap,n){
   const ini=_idxMes(DATA.reportMonth,DATA.reportYear)+1, cur=(m.ciclo!=null?m.ciclo:12);
-  const cand=[cur,24,36,0].filter((c,i,a)=>a.indexOf(c)===i&&(cur===0?c===0:(c===0||c>=cur)));
+  const cand=[cur,24,36].filter((c,i,a)=>a.indexOf(c)===i&&(cur===0?c===0:c>=cur)); // v45.53: sin ofrecer la indefinida
   for(const c of cand){
     if(c===12&&(cap>500||n>5))continue;
     if(cap>SIM_MAX_AYUDA||n>12)continue;
@@ -702,7 +704,7 @@ function simBenResHTML(m){
     :fin==null?""
     :rep<fin?`En ${_txtIdx(fin)}, con tu último aporte, decides si en ${_txtIdx(fin+1)} amplías tu permanencia o te retiras.`
     :rep===fin?`Este mes es tu último aporte: decides si en ${_txtIdx(fin+1)} amplías tu permanencia o te retiras.`
-    :"Tu permanencia ha terminado: habla con el coordinador para ampliarla o retirarte.";
+    :"Tu permanencia ha terminado: habla con el administrador para ampliarla o retirarte.";
   // 1) Tu situación hoy (desplegable)
   const abierto=!!DESP["sim-hoy"];
   let h=`<button onclick="DESP['sim-hoy']=!DESP['sim-hoy'];render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;margin:0 0 ${abierto?0:16}px;padding:12px 14px;border-radius:${abierto?"12px 12px 0 0":"12px"};border:1.5px solid #2D6A4F;background:#EEF7F1;color:#1B4332">
@@ -714,25 +716,28 @@ function simBenResHTML(m){
       +(pend?_simFila(`Beneficio de ${mesTxt} (se guarda en ${sigTxt})`,"+"+fmtEur(pend)+" €"):"")
       +_simFila("Llevas acumulado",fmtEur(yaTienes)+" €",true)
       +(notaDecision?`<div style="font-size:12.5px;opacity:.9;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.2)">${notaDecision}</div>`:""))+`</div>`;
-  // 2) Ejemplos generales (no son los datos de la persona: esos están en «Tu situación hoy»)
-  //    Tarifas BE-2: 10 € el 1.er año, 12 € el 2.º (24, 36, indefinida), 15 € desde el 3.º (36, indefinida).
-  const tarifas=c=>c===12?[10]:c===24?[10,12]:c===36?[10,12,15]:[10,12,15,15]; // indefinida: ejemplo con 4 años
+  // 2) v45.53 (decisión de Ángel 25/10/2026): con SUS números, no con ejemplos de alguien que empieza de cero.
+  //    Lo que ya tiene + lo que aporta desde hoy hasta su último aporte (y el beneficio que eso genera), para su
+  //    permanencia y para cada una a la que puede ampliar. Cálculo: _simProyeccion (mismas tarifas BE-2 y pausas).
   const ab2=!!DESP["sim-var"];
-  h+=`<div style="font-size:15px;font-weight:800;color:var(--dark);margin:0 0 8px">🌱 ¿Y si te quedas más tiempo?</div>
-`;
-  h+=`<label class="m-label">Elige tu aporte mensual</label>
-    <div style="display:flex;gap:6px;margin-bottom:12px">${APORTE_OPCIONES.map(v=>`<button onclick="SIM.ap=${v};render()" style="flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid ${SIM.ap===v?"#1B4332":"#E3DDD2"};background:${SIM.ap===v?"#1B4332":"#fff"};color:${SIM.ap===v?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${v} €</button>`).join("")}</div>`;
-  const fila=(l,v,o={})=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:${o.big?15.5:13.5}px;padding:${o.big?"6px 0 0":"2px 0"};${o.top?"border-top:1px solid #E3DDD2;margin-top:6px;":""}"><span style="${o.big?"font-weight:800;color:#1B4332":"color:#4A4A4A"}">${l}</span><b style="white-space:nowrap;${o.color?`color:${o.color}`:""};font-size:${o.big?19:14}px">${v}</b></div>`;
-  const ejemplo=c=>{ const t=tarifas(c), meses=t.length*12, pon=SIM.ap*meses, gana=t.reduce((a,x)=>a+12*(SIM.ap/50)*x,0); return {meses,pon,gana,recibe:pon+gana}; };
-    PERM_OPCIONES.forEach(c=>{
-    const r=ejemplo(c), ord=["1.er","2.º","3.er","4.º"];
-    h+=`<div style="border:1.5px solid #E3DDD2;border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#fff">
-      <div style="font-size:15px;font-weight:800;color:#1B4332">Con permanencia ${c===0?"indefinida":`de ${c} meses`}</div>
-      <div style="margin:4px 0 ${c===0?2:6}px"><span style="display:inline-block;font-size:12.5px;font-weight:800;padding:2px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D">${c===12?"10 €":c===24?"pasas de 10 € a 12 €":"pasas de 10 € a 12 € y a 15 €"}</span></div>
-      ${c===0?`<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">Sin fecha de fin · ejemplo con 4 años</div>`:""}
-      ${fila(`Aportas ${SIM.ap} € × ${r.meses} meses`,fmtEur(r.pon)+" €")}
-      ${tarifas(c).map((t,a)=>fila(`Ganas ${ord[a]} año: ${fmtEur((SIM.ap/50)*t)} € × 12`,"+"+fmtEur((SIM.ap/50)*t*12)+" €",{color:"#2D6A4F"})).join("")}
-      ${fila(c===0?"A los 4 años tendrías":"Al terminar recibes",fmtEur(r.recibe)+" €",{big:true,top:true})}
+  h+=`<div style="font-size:15px;font-weight:800;color:var(--dark);margin:0 0 4px">🌱 ¿Cuánto te llevarás?</div>
+    <div style="font-size:13px;color:var(--muted);margin:0 0 8px;line-height:1.4">Con lo que ya tienes y aportando cada mes:</div>`;
+  h+=`<div style="display:flex;gap:6px;margin-bottom:12px">${APORTE_OPCIONES.map(v=>`<button onclick="SIM.ap=${v};render()" style="flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid ${SIM.ap===v?"#1B4332":"#E3DDD2"};background:${SIM.ap===v?"#1B4332":"#fff"};color:${SIM.ap===v?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${v} €</button>`).join("")}</div>`;
+  const fila=(l,v,o={})=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:${o.big?15.5:13.5}px;padding:${o.big?"6px 0 0":"2px 0"};${o.top?"border-top:1px solid #E3DDD2;margin-top:6px;":""}"><span style="${o.big?"font-weight:800;color:#1B4332":"color:#4A4A4A"}">${l}</span><b style="white-space:nowrap;${o.color?`color:${o.color}`:""};font-size:${o.big?18:13.5}px">${v}</b></div>`;
+  const cur=(m.ciclo!=null?m.ciclo:12);
+  _simPermOpciones(m).forEach(c=>{
+    const r=_simProyeccion(m,c,SIM.ap), meses=r.porAnio.reduce((a,x)=>a+x.meses,0), ya=_r2(r.yaAp+r.yaBen-r.ret);
+    const tar=[...new Set(r.porAnio.map(x=>x.t))].filter(x=>x>0), chip=tar.length<=1?`${tar[0]||REGLAS.BENEFICIO_ANIO1} € por cada 50 € al mes`:tar.length===2?`pasas de ${tar[0]} € a ${tar[1]} € por cada 50 €`:`pasas de ${tar[0]} € a ${tar[1]} € y a ${tar[2]} € por cada 50 €`;
+    const tit=c===cur?(c===0?"Con tu permanencia indefinida":`Si sigues con tu permanencia de ${c} meses`):(c===0?"Si pasas a permanencia indefinida":`Si amplías a ${c} meses`);
+    h+=`<div style="border:1.5px solid ${c===cur?"#2D6A4F":"#E3DDD2"};border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#fff">
+      <div style="font-size:15px;font-weight:800;color:#1B4332">${tit}</div>
+      <div style="margin:4px 0 6px"><span style="display:inline-block;font-size:12.5px;font-weight:800;padding:2px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D">${chip}</span></div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${c===0?`Sin fecha de fin: aquí, la cuenta hasta ${_txtIdx(r.fin)}. Después sigues ganando ${REGLAS.BENEFICIO_ANIO3} € por cada 50 € al mes, y cada 12 meses puedes retirar tu beneficio.`:`Tu último aporte: ${_txtIdx(r.fin)}`}</div>
+      ${fila("Lo que ya tienes",fmtEur(ya)+" €")}
+      ${meses?fila(`Aportas ${meses} ${meses===1?"mes":"meses"} más × ${SIM.ap} €`,"+"+fmtEur(r.nAp)+" €"):""}
+      ${meses?fila("Ganas de beneficio","+"+fmtEur(r.nBen)+" €",{color:"#2D6A4F"}):""}
+      ${fila(c===0?`En ${_txtIdx(r.fin)} tendrías`:"Al terminar recibes",fmtEur(r.recibe)+" €",{big:true,top:true})}
+      ${c===0?"":`<div style="font-size:12.5px;color:var(--muted);margin-top:4px">Se paga del 5 al 10 de ${_txtIdx(r.fin+1)}.</div>`}
     </div>`;
   });
   // v45.10: «¿Tengo que aportar siempre lo mismo?» va al final, después de los cuadros
