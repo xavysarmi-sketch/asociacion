@@ -1,0 +1,121 @@
+/* Nuevos Horizontes · app/app.css — App de asociados (v45.52)
+   Se carga DESPUÉS de ../css/nh.css (los cuadros de la ficha son los mismos); aquí solo va
+   el marco de la app: cabecera, barra de abajo, tarjetas de Inicio y preguntas. */
+body.nh-app{background:var(--bg);padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+body.nh-app .app-version,body.nh-app .update-banner{display:none}
+.nha-cargando,.nha-error{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px 24px;text-align:center;color:var(--dark);font-size:16px}
+.nha-logo{width:44px;height:44px;flex-shrink:0;border-radius:13px;background:#1B4332;color:#F5F0EB;display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif;font-weight:800;font-size:18px;letter-spacing:.5px;box-shadow:0 2px 8px rgba(27,67,50,.25)}
+.nha-cargando .nha-logo,.nha-error .nha-logo{width:64px;height:64px;font-size:26px;border-radius:18px}
+.nha-error-ic{font-size:30px;color:#1B4332}
+.nha-error-ic .ic{width:34px;height:34px}
+.nha-error-tit{font-family:Georgia,"Times New Roman",serif;font-size:23px;font-weight:700}
+.nha-error-txt{font-size:15.5px;color:#5E5A55;line-height:1.5;max-width:320px}
+.nha-top{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(245,240,235,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.nha-top-txt{flex:1;min-width:0}
+.nha-top-tit{font-family:Georgia,"Times New Roman",serif;font-size:18px;font-weight:700;color:#1B4332;line-height:1.15}
+.nha-top-sub{font-size:13.5px;color:#6B6660;margin-top:1px}
+.nha-top-btn{width:42px;height:42px;border-radius:12px;border:1px solid var(--border);background:#fff;color:#1B4332;display:flex;align-items:center;justify-content:center}
+.nha-top-btn .ic{width:20px;height:20px}
+.nha-main{padding:14px 14px 6px}
+.nha-tit{display:flex;align-items:center;gap:12px;margin:4px 2px 14px}
+.nha-tit h1{font-family:Georgia,"Times New Roman",serif;font-size:26px;font-weight:700;color:#1B4332;line-height:1.1;margin:0}
+.nha-tit-sub{font-size:14px;color:#6B6660;margin-top:3px}
+.nha-av{width:46px;height:46px;flex-shrink:0;border-radius:50%;background:#E9E1D5;color:#6B5A3E;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.nha-sec{font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:700;color:#1B4332;margin:20px 4px 10px}
+.nha-card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;border:1px solid var(--border);box-shadow:0 1px 6px rgba(0,0,0,.03)}
+.nha-card-tit{font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:700;color:#1B4332;margin-bottom:8px}
+.nha-kicker{font-size:11.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#8B7E6A;margin-bottom:2px}
+.nha-txt{font-size:15px;line-height:1.5;color:#3B3B3B}
+.nha-nota{font-size:13.5px;color:#6B6660;line-height:1.45;margin:-2px 4px 12px}
+.nha-btn{width:100%;margin-top:12px;padding:14px;border-radius:14px;border:none;background:#1B4332;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
+.nha-btn.arm{background:#C75B0E}
+.nha-btn[disabled]{opacity:.6}
+.nha-btn .ic{width:20px;height:20px}
+.nha-verde{color:#2D6A4F}
+/* Inicio */
+.nha-main .desg-card{border-radius:22px;margin-bottom:12px}
+.nha-tiles{display:flex;gap:10px;margin-bottom:10px}
+.nha-tile{flex:1;min-width:0;background:#fff;border-radius:18px;padding:14px;border:1px solid var(--border)}
+.nha-tile-ic{width:36px;height:36px;border-radius:11px;background:#EEF7F1;color:#1B4332;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.nha-tile-ic .ic{width:19px;height:19px}
+.nha-tile-lbl{font-size:13px;color:#6B6660}
+.nha-tile-val{font-family:Georgia,"Times New Roman",serif;font-size:24px;font-weight:700;color:#1B4332;margin-top:2px;white-space:nowrap}
+.nha-tile-sub{font-size:12px;color:#8A847C;margin-top:4px}
+.nha-acum{padding:4px 16px}
+.nha-acum .ft-total{border-top:none;margin-top:0}
+.nha-perm{background:#FBF3DC;border:1px solid #EAD9A0;border-radius:18px;padding:14px 16px;margin-bottom:12px}
+.nha-perm-top{display:flex;align-items:center;gap:10px;font-size:16px;color:#5B4A1A}
+.nha-perm-top b{font-family:Georgia,"Times New Roman",serif;font-size:18px;flex:1}
+.nha-perm-ic{width:34px;height:34px;border-radius:50%;background:#F1E2B5;display:flex;align-items:center;justify-content:center;color:#7A5C10}
+.nha-perm-ic .ic{width:18px;height:18px}
+.nha-perm-n{font-size:13.5px;font-weight:700;color:#8A6D1E;white-space:nowrap}
+.nha-barra{height:9px;border-radius:9px;background:#EDE3C6;margin:12px 0 8px;overflow:hidden}
+.nha-barra div{height:100%;border-radius:9px;background:#1B4332}
+.nha-perm-txt{font-size:13.5px;color:#6B5A2E;line-height:1.45}
+.nha-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:none;border:none;border-top:1px solid #EFEAE0;padding:12px 0;color:var(--text)}
+.nha-item-ic{width:38px;height:38px;flex-shrink:0;border-radius:50%;background:#EEF7F1;color:#1B4332;display:flex;align-items:center;justify-content:center}
+.nha-item-ic .ic{width:19px;height:19px}
+.nha-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nha-item-txt b{font-size:15.5px;color:#1B4332}
+.nha-item-txt span{font-size:13.5px;color:#6B6660;line-height:1.4}
+.nha-item-fl{font-size:22px;color:#A39C92}
+.nha-vacio{font-size:14.5px;color:#6B6660;padding:6px 0 2px;line-height:1.45}
+/* Grupo */
+.nha-grupo{background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:22px;padding:18px;color:#fff;margin-bottom:12px;box-shadow:0 4px 14px rgba(27,67,50,.2)}
+.nha-grupo-lbl{font-size:14px;opacity:.85;margin-top:8px}
+.nha-grupo-num{font-family:Georgia,"Times New Roman",serif;font-size:38px;font-weight:700;line-height:1.1}
+.nha-grupo-num span{font-family:system-ui,-apple-system,sans-serif;font-size:15px;font-weight:800;color:#F1D58A;margin-left:6px}
+.nha-grupo-2{display:flex;gap:10px;margin-top:12px}
+.nha-grupo-2 div{flex:1;background:rgba(255,255,255,.13);border-radius:12px;padding:9px 12px}
+.nha-grupo-2 small{display:block;font-size:12.5px;opacity:.8}
+.nha-grupo-2 b{font-size:18px}
+/* Simuladores y pedir */
+.nha-sims{background:linear-gradient(135deg,#F4F9F6,#fff);border:1.5px solid #2D6A4F;margin-top:6px}
+.nha-sim-b{flex:1;padding:12px 6px;border-radius:12px;border:none;background:#1B4332;color:#fff;font-size:14.5px;font-weight:800;line-height:1.25}
+.nha-sim-b2{background:#2D6A4F}
+.nha-pedir{border:1.5px solid #2D6A4F}
+.nha-pedir-caja{margin-top:16px;padding:14px;border-radius:14px;background:#F4F9F6;border:1.5px solid #2D6A4F}
+.nha-pedir-caja textarea{margin-top:10px;font-size:15px;resize:vertical;min-height:58px}
+/* Preguntas */
+.nha-faq{padding:4px 16px}
+.nha-faq-q{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;border-bottom:1px solid #EFEAE0;padding:14px 0;font-size:15.5px;font-weight:700;color:#1B4332}
+.nha-faq-q span:first-child{flex:1}
+.nha-faq-fl{font-size:22px;color:#A39C92;transition:transform .15s}
+.nha-faq-q.ab .nha-faq-fl{transform:rotate(90deg)}
+.nha-faq-a{font-size:15px;line-height:1.55;color:#3B3B3B;padding:10px 0 14px;border-bottom:1px solid #EFEAE0}
+.nha-tabla{width:100%;border-collapse:collapse;margin:8px 0 10px;font-size:14px;border-radius:10px;overflow:hidden}
+.nha-tabla th{background:#1B4332;color:#fff;text-align:left;padding:7px 8px;font-weight:700}
+.nha-tabla td{padding:7px 8px;border-bottom:1px solid #E5EDE7}
+.nha-tabla tr:nth-child(odd) td{background:#F4F9F6}
+.nha-pie{text-align:center;font-size:12px;color:#8A847C;padding:16px 0 8px;line-height:1.6}
+/* Barra de abajo */
+.nha-nav{position:fixed;left:0;right:0;bottom:0;z-index:90;max-width:500px;margin:0 auto;display:flex;gap:4px;background:#fff;border-top:1px solid var(--border);padding:6px 8px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+.nha-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:7px 0;min-height:54px;border-radius:14px;font-size:12.5px;font-weight:700;color:#6B6660}
+.nha-nav-btn .ic{width:24px;height:24px}
+.nha-nav-btn.on{color:#1B4332;background:#E3F1E7}
+body.nh-app .modal-sheet{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.nha-gest{padding-bottom:6px}
+.nha-gfila{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;border-top:1px solid #EFEAE0;padding:11px 0;color:var(--text)}
+.nha-av-s{width:38px;height:38px;font-size:13.5px}
+.nha-gfila-n{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.nha-gfila-n b{font-size:15px;color:#1B4332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.nha-gfila-t{font-weight:800;font-size:15px;white-space:nowrap}
+.nha-chip{font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
+.nha-chip.ok{background:#E3F1E7;color:#1B7A3D}
+.nha-chip.pend{background:#FFF4E5;color:#8A4F12}
+.nha-gdet{padding:2px 0 10px}
+/* Bienvenida e instalación */
+.nha-bv{padding:calc(18px + env(safe-area-inset-top)) 16px 20px}
+.nha-bv-top{text-align:center;padding:10px 6px 18px}
+.nha-logo-g{width:72px;height:72px;font-size:28px;border-radius:20px;margin:0 auto 14px}
+.nha-bv-tit{font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:700;color:#1B4332}
+.nha-bv-sub{font-size:16px;line-height:1.5;color:#4A4640;margin-top:8px}
+.nha-so{font-size:15px;font-weight:800;color:#1B4332;margin:12px 0 4px}
+.nha-paso{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #EFEAE0}
+.nha-paso-n{width:30px;height:30px;flex-shrink:0;border-radius:50%;background:#1B4332;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.nha-paso-t{flex:1;font-size:15px;line-height:1.45;color:#2C2C2C}
+.nha-paso-ic{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:#EEF7F1;color:#1B4332;display:flex;align-items:center;justify-content:center}
+.nha-paso-ic svg{width:24px;height:24px}
+.nha-mini-logo{width:30px;height:30px;border-radius:8px;background:#1B4332;color:#F5F0EB;font-family:Georgia,serif;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
+.nha-aviso{font-size:14px;line-height:1.45;background:#FFF4E5;border:1px solid #E0A040;color:#6B4210;border-radius:10px;padding:8px 10px;margin:4px 0 6px}
+.nha-bv-otro{width:100%;margin-top:10px;padding:10px;border:none;background:transparent;color:#2D6A4F;font-size:14.5px;font-weight:700;text-decoration:underline}

@@ -38,6 +38,10 @@ function bloquearFirestoreProduccion(motivo){
   window.dispatchEvent(new Event("firebase-ready"));
 }
 
+// v45.52 · App de asociados: fichas privadas (fichas/{código}) y peticiones (peticiones/{id}).
+// Por defecto no hay nube (sin conexión, bloqueado o error): nada se lee ni se escribe.
+window._fbFichas={leer:async()=>null,escribir:async()=>false,borrar:async()=>false,pedir:async()=>false,peticiones:async()=>null,borrarPeticion:async()=>false};
+
 function initFirebase(){
   const entorno=detectarEntornoNH();
   const prodConfig={
@@ -128,8 +132,20 @@ function initFirebase(){
       }catch(e){console.error("Firebase load error:",e);return null;}
     };
 
+    // v45.52 · App de asociados. Cada ficha es un documento cuyo nombre es el código secreto de la
+    // persona: quien no tiene el código no puede leerla (las reglas de Firebase no dejan listar).
+    window._fbFichas={
+      leer:async c=>{ const s=await db.collection("fichas").doc(c).get(); return s.exists?s.data():null; },
+      escribir:async(c,obj)=>{ await db.collection("fichas").doc(c).set(obj); return true; },
+      borrar:async c=>{ await db.collection("fichas").doc(c).delete(); return true; },
+      pedir:async(id,obj)=>{ await db.collection("peticiones").doc(id).set(obj); return true; },
+      peticiones:async()=>{ const q=await db.collection("peticiones").get(); return q.docs.map(d=>Object.assign({id:d.id},d.data())); },
+      borrarPeticion:async id=>{ await db.collection("peticiones").doc(id).delete(); return true; }
+    };
+
     if(entorno.modo==="desarrollo"){
       const prepararFixture=async()=>{
+        if(window.NH_ES_APP_ASOCIADOS)return; // v45.52: la app de asociados no usa el documento de la app del administrador
         const snap=await DOC_REF.get();
         if(!snap.exists){
           if(!window.NH_DEV_FIXTURE||window.NH_DEV_FIXTURE.fixtureLabel!=="DATOS DE PRUEBA — NO PRODUCCIÓN"){

@@ -735,6 +735,7 @@ function _renderPantalla(){
     // 🛡️ Auto-chequeo del sistema · v45.43: plegado si todo está en verde (se abre solo si hay un aviso)
     h+=chequeoPlegableHTML();
     h+=`<div class="mas-sec">⚙️ Datos y ajustes</div>`;
+    h+=appAsociadosGestionHTML(); // v45.52: app de asociados (códigos y fichas privadas)
     { const ab=!!DESP["mg-copia"], upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
       h+=`<div class="mg-acc-head" onclick="DESP['mg-copia']=!DESP['mg-copia'];render()"><span>💾 Copia de seguridad <span style="font-weight:600;color:var(--muted)">· subida ${escH(upd)}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
       if(ab)h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin:-4px 0 12px;border:1px solid var(--border)">
@@ -788,6 +789,8 @@ function _renderPantalla(){
     if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
     if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
     if(MODAL.type==="nombre")h+=nombreModalHTML(); // v45.50
+    if(MODAL.type==="app_cola")h+=appColaModalHTML(); // v45.52
+    if(MODAL.type==="app_tarjeta")h+=appTarjetaModalHTML(); // v45.52
     h+=`</div></div>`;
   }
   document.getElementById("app").innerHTML=h;

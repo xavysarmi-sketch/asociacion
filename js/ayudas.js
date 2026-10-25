@@ -165,6 +165,7 @@ function ayudasTabHTML(){
     <div style="margin-top:6px;padding:9px 11px;border-radius:10px;font-size:14px;font-weight:800;background:${dif>=0?"#E3F1E7":"#FFF4E5"};color:${dif>=0?"#1B7A3D":"#8A4F12"}">${dif>=0?"✅ Te alcanza para todas":`Te faltan ${fmtEur(-dif)} € para darlas todas`}</div>`:""}`;
   h+=origenCobradoHTML(d); // v45.23
   h+=`</div>`;
+  h+=peticionesAppHTML(); // v45.52: pedidas desde la app de asociados
   // Solicitudes
   h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">📝 Solicitudes de ayuda ${pend.length?`<span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#FFF4E5;color:#8A4F12;vertical-align:middle">${pend.length} pendiente${pend.length>1?"s":""}</span>`:""}</div>`;
   if(!pend.length&&!SOL_FORM)h+=`<div style="color:var(--muted);font-size:13px;padding:6px 0">No hay solicitudes pendientes para ${mesTxt}.</div>`;

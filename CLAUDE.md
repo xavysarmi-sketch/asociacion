@@ -40,6 +40,15 @@ lenguaje sencillo antes de aplicarlos.
   monthlyData[mes].cierre (y reaperturas); un mes cerrado no deja marcar ni desmarcar (_mesBloqueado en
   cada función que cambia cobros). render() es un envoltorio de _renderPantalla con _MEMO_RENDER (solo
   cuotasDelMes se guarda durante un pintado); dineroAyudasMes usa _cajaMovMes del mes, no cajaMensual.
+- Desde v45.52: APP DE ASOCIADOS en app/ (app/index.html, app.js, app.css; se instala desde el enlace con
+  «Añadir a pantalla de inicio»; sin manifest ni Service Worker para no perder el ?c= del enlace). Cada persona
+  tiene m.codigoApp (20 símbolos secretos). Su ficha privada (fichaPrivadaDe, js/fichas.js: sus datos y, si es
+  responsable, los de su grupo; sin teléfonos, códigos ni notas internas) se sube a Firestore fichas/{código}
+  solo con la sesión del administrador y solo si cambió (publicarFichas, tras save() y al abrir). La app lee esa
+  ficha y carga los MISMOS js/ de reglas (window.NH_APP_ASOCIADOS: arranque.js no llama a load() y la app nunca
+  usa sanitizeData); render() pinta nhaPantalla. Peticiones de apoyo: peticiones/{código_ms} → Ayudas, «Pedidas
+  desde la app». Envío por WhatsApp y tarjetas con QR en Más → App de asociados (js/qr.js, librería MIT, se carga
+  solo al hacer tarjetas). Reglas de Firestore y su prueba con el emulador: NH Oficial\pruebas_app\reglas_firebase.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

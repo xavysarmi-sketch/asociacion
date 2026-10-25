@@ -9,7 +9,8 @@ const KEY_BACKUPS=NH_ES_DESARROLLO?"nh-app-v9-backups-dev":"nh-app-v9-backups"; 
 // save() NO debe subir a Firebase: si lo hiciera, lo local viejo pisaría lo más reciente
 // de la nube antes de que el usuario decida. Se reanuda al resolver el modal.
 let SYNC_DECISION_PENDING=false;
-const READONLY_ID=URL_PARAMS.get("socio")||null;
+// v45.52: en la app de asociados (carpeta app/) la persona viene de su ficha privada, no del enlace
+const READONLY_ID=(window.NH_APP_ASOCIADOS&&window.NH_APP_ASOCIADOS.mid)||URL_PARAMS.get("socio")||null;
 const GRUPO_IDS=URL_PARAMS.get("grupo")?URL_PARAMS.get("grupo").split(",").map(id=>decodeURIComponent(id)):null;
 // Enlace grupal ESTABLE: apunta al asociado principal del grupo (?grupoppal=ID).
 // La lista de miembros se lee del grupo guardado (gruposCierre) en el momento de abrir,
@@ -139,4 +140,4 @@ const renderGrupo=_enVistaPersonal(_renderGrupoBase);
 
 
 
-load();
+if(!window.NH_APP_ASOCIADOS)load(); // v45.52: la app de asociados arranca por su cuenta (app/app.js)
