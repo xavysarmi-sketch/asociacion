@@ -1,7 +1,10 @@
 CLAUDE.md — Proyecto Nuevos Horizontes (NH Reportes)
 
+Guía general de NH (qué es cada cosa, carpetas, reglas para cualquier IA): `..\..\LEEME_PRIMERO.md`.
+Este archivo solo añade las reglas técnicas de la app.
+
 ## Contexto
-App de gestión de un fondo común de apoyo mutuo en Madrid. Administrador único: Ángel (Xavy),
+App de gestión de un fondo común de apoyo mutuo en Madrid. Administrador único: Ángel (Ángel),
 conocimientos técnicos básicos. Idioma de trabajo: SIEMPRE español. Explicar los cambios en
 lenguaje sencillo antes de aplicarlos.
 
@@ -46,7 +49,7 @@ lenguaje sencillo antes de aplicarlos.
   responsable, los de su grupo; sin teléfonos, códigos ni notas internas) se sube a Firestore fichas/{código}
   solo con la sesión del administrador y solo si cambió (publicarFichas, tras save() y al abrir). La app lee esa
   ficha y carga los MISMOS js/ de reglas (window.NH_APP_ASOCIADOS: arranque.js no llama a load() y la app nunca
-  usa sanitizeData); render() pinta nhaPantalla. Peticiones de apoyo: peticiones/{código_ms} → Ayudas, «Pedidas
+  usa sanitizeData); render() pinta nhaPantalla. Peticiones de ayuda: peticiones/{código_ms} → Ayudas, «Pedidas
   desde la app». Envío por WhatsApp y tarjetas con QR en Más → App de asociados (js/qr.js, librería MIT, se carga
   solo al hacer tarjetas). Reglas de Firestore y su prueba con el emulador: NH Oficial\pruebas_app\reglas_firebase.
 - Desde v45.53: en la app de asociados los simuladores tienen pantalla propia («Simular», o desde Inicio); letra
@@ -56,9 +59,10 @@ lenguaje sencillo antes de aplicarlos.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
-1. Los datos reales viven en el iPhone (localStorage). El INITIAL dentro de index.html está
-   SIEMPRE desactualizado. Nunca tocar datos de miembros/importes sin un JSON exportado
-   desde la app (Gestión → Exportar datos). Si falta, pedirlo y no inventar números.
+1. Los datos reales viven en Firestore (con copia en el móvil). El INITIAL del código está
+   SIEMPRE desactualizado. Nunca tocar datos de miembros/importes sin datos reales: el último
+   `NH Oficial\json\auto_*.json` (lo guarda la sincronización cada noche) o una exportación
+   desde la app. Si falta, pedirlo y no inventar números.
 2. La línea `const URL_PARAMS = new URLSearchParams(window.location.search)` debe conservarse
    inmediatamente después de la llave de cierre de sanitizeData() (las dos en js/datos.js). Si se borra, la app queda
    en pantalla en blanco.
@@ -119,40 +123,21 @@ lenguaje sencillo antes de aplicarlos.
   comprueba. Nunca escribir el número a mano en appVersionTag.
 - La versión visible (elemento id="appVersionTag", abajo a la derecha) la rellena el JS
   a partir de APP_VERSION; el div no lleva texto fijo. Incrementar APP_VERSION en cada
-  cambio (formato v43.XX).
-- Mensaje de commit: empieza con la versión, ej. "v43.20 — descripción breve".
+  cambio (formato v45.XX; el número lo elige Claude y lo dice en el resumen).
+- Mensaje de commit: empieza con la versión, ej. "v45.55 — descripción breve".
 - Antes de hacer commit/push, mostrar resumen de cambios y esperar aprobación de Ángel.
 - GitHub Pages tarda 1–2 min en publicar; la PWA puede necesitar recarga con ?_v=timestamp.
-- REGLA DE CIERRE OBLIGATORIA (ejecutar siempre al terminar cualquier tarea, no opcional):
-  tras aplicar el cambio, validar `node --check` y confirmar la versión en APP_VERSION, y
-  como ÚLTIMO paso, sin que Ángel lo pida:
-  1. Copiar la app final (index.html, css\ y js\) a la carpeta-puente
-     `C:\Users\xavys\Documents\NH Oficial\para_subir_a_Claude\`, sobrescribiendo lo que haya.
-  2. Si la tarea tocó también el Excel (NH_Contabilidad_Maestra.xlsx), el Documento Maestro
-     (NH_Documento_Maestro_vNN.docx) o se usó un backup JSON para verificar, copiar igualmente
-     esa versión actualizada a la misma carpeta.
-  3. Confirmar en el resumen final, en una sección aparte, qué archivos quedaron copiados y
-     con qué versión ("sin cambios" si un archivo no se tocó esta vez):
-     ```
-     ARCHIVOS DEJADOS EN para_subir_a_Claude
-     · index.html — v44.1
-     · NH_Documento_Maestro_v16.docx — Versión 16, Julio 2026
-     · NH_Contabilidad_Maestra.xlsx — sin cambios / actualizado
-     · NH_backup_AAAAMMDD.json — sin cambios / nuevo
-     ```
-  La carpeta-puente nunca debe quedarse en una versión anterior a la del repo. Si este paso no
-  se ejecuta, la tarea no está completa.
+- CIERRE: el informe final incluye una sección con los archivos tocados y su versión («sin
+  cambios» si no se tocó). Ya no hay carpeta-puente: Claude, ChatGPT y Grok leen los archivos
+  directamente de su sitio. No se dejan copias de la app ni del Maestro en otras carpetas.
   COHERENCIA DE VERSIONES: el número de versión del contenido y el del nombre del archivo
-  deben coincidir siempre (documento y app). Si no coinciden, corregir el nombre antes de
-  seguir — no arrastrar la discrepancia (pasó una vez: un .docx llamado "v13" con contenido
-  de la versión 15 hizo que Claude diera instrucciones sobre contenido que ya existía).
-  Detalle completo en el CLAUDE.md de NH Oficial, sección "Carpeta para_subir_a_Claude".
+  deben coincidir siempre (documento y app). Si no coinciden, corregir el nombre antes de seguir.
 
 ## Terminología obligatoria (textos visibles y documentos)
-- Usar: asociados, aportaciones/aportes, apoyos, adelantos solidarios, retornos compartidos,
-  devoluciones, recargo.
-- Evitar: socios, clientes, préstamo, interés. ("Ayudas" solo es aceptable en la interfaz
-  de la app, nunca en documentos.)
+- Usar: asociados, aportes, ayudas, retorno, permanencia, devoluciones/cuotas, aval.
+- Evitar: socios, clientes, préstamo, crédito, interés, inversión, «nivel» y «ciclo» (decía así
+  hasta el Maestro v18; en el código el campo sigue llamándose `ciclo` y no se renombra).
+- Al citar reglas del Maestro, usar su código (AY-1, PE-8…).
 
 ## Archivos fuera del repo
 - Ver Regla Crítica 6. El Excel de contabilidad y los documentos Word están FUERA de esta
@@ -164,18 +149,17 @@ lenguaje sencillo antes de aplicarlos.
   *.pdf, *.csv y carpetas de trabajo) — es un respaldo, no una excusa para copiar archivos
   de datos aquí a propósito.
 
-## Forma de trabajo — protocolo completo por tarea sobre index.html
-Contexto: Xavy trabaja desde Windows (ordenador), despliega con GitHub Desktop y verifica en
-iPhone (Safari y PWA). Las specs las prepara Claude en el Proyecto; Code las ejecuta sobre el
-código.
+## Forma de trabajo — protocolo completo por tarea sobre la app
+Contexto: Ángel trabaja desde Windows y verifica en iPhone (Safari y PWA). Las decisiones de reglas
+se toman con Ángel en el Proyecto de Claude; Claude Code las ejecuta sobre el código y hace commit y
+push solo tras su «SÍ».
 
 1. Apertura — antes de proponer nada, declarar:
-   `Partida: index.html vXX.XX (leído de <ruta completa>)`
-   Si la versión no coincide con la que indica Xavy, DETENERSE y avisar.
+   `Partida: vXX.XX (APP_VERSION de js/datos.js)`
+   Si la versión no coincide con la que indica Ángel, DETENERSE y avisar.
 2. Cambios visuales — si la tarea afecta a CSS, colores, tamaños, posiciones o layout, generar
-   primero un archivo de previsualización `preview_<descripcion>.html` en para_subir_a_Claude,
-   con solo el bloque afectado y datos de ejemplo, para revisarlo en el móvil ANTES de tocar
-   index.html. No aplicar hasta que Xavy apruebe la preview.
+   primero una previsualización (`preview_<descripcion>.html`, FUERA del repo) con solo el
+   bloque afectado y datos de ejemplo, para revisarla en el móvil ANTES de tocar el código. No aplicar hasta que Ángel apruebe la preview.
 3. Aplicación — búsqueda/reemplazo literal, sin reinterpretar la spec; cambios quirúrgicos, no
    reescribir el archivo entero. Si el texto a buscar no aparece exactamente, DETENERSE y
    avisar; no improvisar.
@@ -183,15 +167,14 @@ código.
 5. Reporte — SIEMPRE dentro de un bloque de código markdown (triple backtick), con: versión de
    partida, líneas antes→después de cada cambio, resultado de validaciones, y lista explícita
    de lo NO tocado. No volcar el archivo completo salvo que Ángel lo pida.
-6. Cierre — copiar index.html (y Excel/Documento si se tocaron) a para_subir_a_Claude (ver
-   "REGLA DE CIERRE OBLIGATORIA" en Versionado y deploy).
-7. Commit — NUNCA hacer commit+push sin confirmación explícita de Xavy tras revisar el reporte.
+6. Cierre — informe con los archivos tocados y su versión (ver «CIERRE» en Versionado y deploy).
+7. Commit — NUNCA hacer commit+push sin confirmación explícita de Ángel tras revisar el reporte.
 8. Efectos secundarios — al cambiar CSS de layout (padding, position, z-index, safe-area),
    enumerar en el reporte qué otras zonas podrían verse afectadas. Ejemplo real: quitar
    padding-top del body arregló la cabecera pero dejó el contenido bajo la barra de estado al
    hacer scroll.
 9. Herramientas — si una tarea requiere instalar, actualizar o configurar algo en el equipo de
-   Xavy (paquetes, dependencias, ajustes), AVISAR ANTES con: qué hace falta, por qué, y los
+   Ángel (paquetes, dependencias, ajustes), AVISAR ANTES con: qué hace falta, por qué, y los
    pasos exactos en Windows. No dar por supuesto que está instalado ni ejecutar instalaciones
    sin avisar.
 
