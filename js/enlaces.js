@@ -284,10 +284,12 @@ function _renderGrupoBase(ov){ // v45.21: ov = {ppal, ids, yo} solo desde «👁
   const MS2=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const MF2=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const rm=DATA.reportMonth,ry=DATA.reportYear;
-  const totalGrupo=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).total,0);
+  // v45.54: quien está de baja no se ve en el grupo y tampoco suma en totales, fichas ni mes
+  const activos=members.filter(activoEnReporte);
+  const totalGrupo=activos.reduce((s,m)=>s+totalDelMes(m,rm,ry).total,0);
   // Mes a mostrar: el mes objetivo más común del grupo
   const _cuentaG={};
-  members.forEach(m=>{const d=desgloseDelMes(m);const k=d.mesObj+"|"+d.anioObj;_cuentaG[k]=(_cuentaG[k]||0)+1;});
+  activos.forEach(m=>{const d=desgloseDelMes(m);const k=d.mesObj+"|"+d.anioObj;_cuentaG[k]=(_cuentaG[k]||0)+1;});
   const _kG=Object.keys(_cuentaG).sort((a,b)=>_cuentaG[b]-_cuentaG[a])[0]||(rm+"|"+ry);
   const gMes=_kG.split("|")[0], gAnio=parseInt(_kG.split("|")[1]);
 
@@ -296,7 +298,7 @@ function _renderGrupoBase(ov){ // v45.21: ov = {ppal, ids, yo} solo desde «👁
     <div class="h-sub">Reporte · ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
     <div style="color:#fff;font-size:15px;font-weight:700;margin-top:2px">Hola, ${escH(titular.name)} 👋</div>
     <div style="margin-top:10px;background:rgba(255,255,255,.15);border-radius:12px;padding:8px 16px;display:inline-block">
-      <span style="color:#fff;font-size:13px;font-weight:600">${members.length} fichas · Total grupal: <b style="font-size:18px">${fmtEur(totalGrupo)} €</b>${_nAbiertosG(members,rm,ry)>0?" + aportes":""}</span>
+      <span style="color:#fff;font-size:13px;font-weight:600">${activos.length} fichas · Total grupal: <b style="font-size:18px">${fmtEur(totalGrupo)} €</b>${_nAbiertosG(members,rm,ry)>0?" + aportes":""}</span>
     </div>
   </div>`;
 
@@ -351,10 +353,10 @@ function _renderGrupoBase(ov){ // v45.21: ov = {ppal, ids, yo} solo desde «👁
   }
 
   // ── Vista grupal (resumen entre todos) ──
-  members.filter(activoEnReporte).forEach(m=>{ h+=fichaResumenHTML(m); }); // baja: fuera de la vista de grupo (solo en Histórico)
+  activos.forEach(m=>{ h+=fichaResumenHTML(m); }); // baja: fuera de la vista de grupo (solo en Histórico)
 
-  const totalAportes=members.filter(m=>m.type!=="tercero").reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
-  const totalCuotas2=members.reduce((s,m)=>s+totalDelMes(m,rm,ry).totalCuotas,0);
+  const totalAportes=activos.filter(m=>m.type!=="tercero").reduce((s,m)=>s+totalDelMes(m,rm,ry).aporteImporte,0);
+  const totalCuotas2=activos.reduce((s,m)=>s+totalDelMes(m,rm,ry).totalCuotas,0);
 
   h+=`<div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:16px;padding:16px;margin-bottom:24px">
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resumen total — ${MF2[MS2.indexOf(gMes)]} ${gAnio}</div>
@@ -365,7 +367,7 @@ function _renderGrupoBase(ov){ // v45.21: ov = {ppal, ids, yo} solo desde «👁
       <span style="font-size:14px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px">Total entre todos</span>
       <span style="font-size:36px;font-weight:900;color:#fff">${fmtEur(totalGrupo)} €${_nAbiertosG(members,rm,ry)>0?`<span style="display:block;text-align:right;font-size:15px;font-weight:800;color:#F1D58A;margin-top:2px">+ los aportes</span>`:""}</span>
     </div>
-    <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">${members.length} fichas incluidas</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">${activos.length} fichas incluidas</div>
   </div>`;
 
   h+=`<div style="text-align:center;padding:0 0 28px;font-size:12px;color:var(--muted)">Vista de solo lectura · Contacta con el administrador</div>`;
