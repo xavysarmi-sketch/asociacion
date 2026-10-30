@@ -84,7 +84,9 @@ function nhaFilas(html){ // filas «etiqueta → valor» de una pestaña, tal co
 function nhaGrupo(m){ return (DATA.gruposCierre||[]).find(g=>g&&g.principalId===m.id)||null; }
 function nhaPrimerNombre(m){ return escH(String(m.name||"").trim().split(/\s+/)[0]||""); }
 function nhaIniciales(m){ return escH(String(m.name||"").trim().split(/\s+/).slice(0,2).map(w=>w[0]||"").join("").toUpperCase()); }
-function nhaIr(p){ NHA.pant=p; MODAL=null; render(); window.scrollTo(0,0); }
+function nhaIr(p){ if(p!==NHA.pant&&NHA.pant!=="simular")NHA.prev=NHA.pant; NHA.pant=p; MODAL=null; render(); window.scrollTo(0,0); }
+// v45.59: «‹ Atrás» arriba en cualquier pantalla que no sea Inicio (vuelve a la anterior o a Inicio)
+function nhaAtras(){ const p=NHA.pant==="simular"?(NHA.simDesde||"inicio"):(NHA.prev&&NHA.prev!==NHA.pant?NHA.prev:"inicio"); NHA.prev="inicio"; NHA.pant=p; MODAL=null; render(); window.scrollTo(0,0); }
 function nhaFecha(ts){ return ts?new Date(ts).toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"—"; }
 const _nhaDots=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>`;
 
@@ -104,7 +106,7 @@ function nhaPantalla(){
   const pants=[["inicio","home","Inicio"]].concat(esTerc?[]:[["aportes","wallet","Aportes"]],[["ayudas","hand","Ayudas"]],g?[["grupo","users","Mi grupo"]]:[],[["mas","","Más"]]);
   const validas=pants.map(p=>p[0]).concat(puedeSim?["simular"]:[]);
   if(!validas.includes(NHA.pant))NHA.pant="inicio";
-  let h=`<header class="nha-top"><div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-top-txt"><div class="nha-top-hola">Hola, ${nhaPrimerNombre(m)}</div><div class="nha-top-sub">Nuevos Horizontes · ${escH(MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)])} ${DATA.reportYear}</div></div></header><main class="nha-main">`;
+  let h=`<header class="nha-top">${NHA.pant!=="inicio"?`<button class="nha-atras" onclick="nhaAtras()" aria-label="Atrás">‹</button>`:""}<div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-top-txt"><div class="nha-top-hola">Hola, ${nhaPrimerNombre(m)}</div><div class="nha-top-sub">Nuevos Horizontes</div></div></header><main class="nha-main">`;
   if(NHA.pant==="inicio")h+=nhaInicioHTML(m,salidaPend,g);
   else if(NHA.pant==="aportes")h+=nhaAportesHTML(m);
   else if(NHA.pant==="ayudas")h+=nhaAyudasHTML(m);
@@ -122,7 +124,7 @@ function nhaPantalla(){
 }
 // Título de cada pantalla: con el icono de la sección
 function nhaTitulo(m,t,sub,ic){
-  return `<div class="nha-tit"><div class="nha-tit-ic">${_icSVG(ic||"user")}</div><div><h1>${t}</h1>${sub?`<div class="nha-tit-sub">${sub}</div>`:""}</div></div>`;
+  return `<div class="nha-tit"><div class="nha-tit-ic">${_icSVG(ic||"user")}</div><div><h1>${t}</h1></div></div>`; // v45.60: sin subtítulo (repetía el título)
 }
 
 // ── Inicio ──
@@ -221,7 +223,9 @@ function nhaGrupoHTML(m,g){
       :`<button class="nha-ctl-c${marca!=null?" on":""}" aria-label="${marca!=null?"Quitar la marca":"Me lo ha dado"}" onclick="nhaCtlToca('${esc(x.id)}')">${marca!=null?"✓":""}</button>`;
     h+=`<div class="nha-gfila-w">${circ}<button class="nha-gfila ${t.alDia?"ok":marca!=null?"dado":"pend"}" onclick="nhaGFila('${esc(x.id)}')"><span class="nha-gfila-n"><b>${escH(x.name)}</b>${est}</span><span class="nha-gfila-t">${fmtEur(t.total)}&nbsp;€</span><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
     if(NHA.ctlPreg===x.id)h+=nhaCtlPreguntaHTML(x,t);
-    else if(marca!=null&&nhaCtlAporteLibre(x,t))h+=`<div class="nha-ctl-ap">Con aporte de ${fmtEur(_r2(marca-(t.pendiente-APORTE_MINIMO)))}&nbsp;€ · <button onclick="NHA.ctlPreg='${esc(x.id)}';render()">¿Puso más? Cambiar</button></div>`;
+    else if(nhaCtlAporteLibre(x,t))h+=marca!=null
+      ?`<div class="nha-ctl-ap">Con aporte de ${fmtEur(_r2(marca-(t.pendiente-APORTE_MINIMO)))}&nbsp;€ · <button onclick="NHA.ctlPreg='${esc(x.id)}';render()">Cambiar</button></div>`
+      :`<div class="nha-ctl-ap">Aporte de 50&nbsp;€ · <button onclick="NHA.ctlPreg='${esc(x.id)}';render()">¿Pone más? Elegir</button></div>`;
     if(ab)h+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}<button class="nha-gdet-cerrar" onclick="nhaGFila('${esc(x.id)}')">Cerrar ✕</button></div>`; });
   return h+`</div>`;
 }
@@ -262,7 +266,8 @@ function nhaCtlResumenHTML(m,act,rm,ry){
   rec=_r2(rec); falta=_r2(falta);
   return `<div class="nha-card nha-ctl"><div class="nha-card-tit">Tu control</div>
     <div class="nha-ctl-2"><div><small>Has recogido</small><b>${fmtEur(rec)}&nbsp;€</b><span>${nRec} ${nRec===1?"persona":"personas"}</span></div><div class="${falta>0?"falta":""}"><small>Te falta recoger</small><b>${fmtEur(falta)}&nbsp;€</b><span>${nFalta} ${nFalta===1?"persona":"personas"}</span></div></div>
-    <div class="nha-nota" style="margin:8px 0">Toca el círculo de cada persona cuando te pague. <b>Solo se guarda en este móvil</b> y no cambia los datos de nadie: lo que cuenta es lo que anota el administrador.</div>
+    <button class="nha-ctl-info" onclick="DESP['nha-ctl-info']=!DESP['nha-ctl-info'];render()">ℹ️ ¿Cómo funciona? <span style="transform:rotate(${DESP["nha-ctl-info"]?90:0}deg)">›</span></button>
+    ${DESP["nha-ctl-info"]?`<div class="nha-ctl-info-t">Toca el círculo de cada persona cuando te pague. Si ha puesto más de 50 € de aporte, elige cuánto. <b>Solo se guarda en este móvil</b> y no cambia los datos de nadie: lo que cuenta es lo que anota el administrador. Las marcas se borran solas al empezar el mes.</div>`:""}
     <button class="nha-btn nha-wa" onclick="nhaCtlWaAdmin()">💬 Enviar al administrador</button>
     ${nRec?`<button class="nha-ctl-borrar" onclick="nhaCtlBorrar()">${NHA.ctlBorrarArm?"Toca otra vez para borrar tus marcas":"Borrar mis marcas"}</button>`:""}</div>`;
 }

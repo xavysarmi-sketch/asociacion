@@ -13,20 +13,20 @@ body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-top{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(245,240,235,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
 .nha-top-txt{flex:1;min-width:0}
 .nha-top-tit{font-family:Georgia,"Times New Roman",serif;font-size:18px;font-weight:700;color:#1B4332;line-height:1.15}
-.nha-top-sub{font-size:13.5px;color:#6B6660;margin-top:1px}
+.nha-top-sub{font-size:13.5px;color:#1F1F1F;margin-top:1px}
 .nha-top-btn{width:42px;height:42px;border-radius:12px;border:1px solid var(--border);background:#fff;color:#1B4332;display:flex;align-items:center;justify-content:center}
 .nha-top-btn .ic{width:20px;height:20px}
 .nha-main{padding:14px 14px 6px}
 .nha-tit{display:flex;align-items:center;gap:12px;margin:4px 2px 14px}
 .nha-tit h1{font-family:Georgia,"Times New Roman",serif;font-size:26px;font-weight:700;color:#1B4332;line-height:1.1;margin:0}
-.nha-tit-sub{font-size:14px;color:#6B6660;margin-top:3px}
+.nha-tit-sub{font-size:14px;color:#1F1F1F;margin-top:3px}
 .nha-av{width:46px;height:46px;flex-shrink:0;border-radius:50%;background:#E9E1D5;color:#6B5A3E;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
 .nha-sec{font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:700;color:#1B4332;margin:20px 4px 10px}
 .nha-card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;border:1px solid var(--border);box-shadow:0 1px 6px rgba(0,0,0,.03)}
 .nha-card-tit{font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:700;color:#1B4332;margin-bottom:8px}
-.nha-kicker{font-size:11.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#8B7E6A;margin-bottom:2px}
-.nha-txt{font-size:15px;line-height:1.5;color:#3B3B3B}
-.nha-nota{font-size:13.5px;color:#6B6660;line-height:1.45;margin:-2px 4px 12px}
+.nha-kicker{font-size:11.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#1F1F1F;margin-bottom:2px}
+.nha-txt{font-size:15px;line-height:1.5;color:#1F1F1F}
+.nha-nota{font-size:13.5px;color:#1F1F1F;line-height:1.45;margin:-2px 4px 12px}
 .nha-btn{width:100%;margin-top:12px;padding:14px;border-radius:14px;border:none;background:#1B4332;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
 .nha-btn.arm{background:#C75B0E}
 .nha-btn[disabled]{opacity:.6}
@@ -38,9 +38,9 @@ body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-tile{flex:1;min-width:0;background:#fff;border-radius:18px;padding:14px;border:1px solid var(--border)}
 .nha-tile-ic{width:36px;height:36px;border-radius:11px;background:#EEF7F1;color:#1B4332;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
 .nha-tile-ic .ic{width:19px;height:19px}
-.nha-tile-lbl{font-size:13px;color:#6B6660}
+.nha-tile-lbl{font-size:13px;color:#1F1F1F}
 .nha-tile-val{font-family:Georgia,"Times New Roman",serif;font-size:24px;font-weight:700;color:#1B4332;margin-top:2px;white-space:nowrap}
-.nha-tile-sub{font-size:12px;color:#8A847C;margin-top:4px}
+.nha-tile-sub{font-size:12px;color:#1F1F1F;margin-top:4px}
 .nha-acum{padding:4px 16px}
 .nha-acum .ft-total{border-top:none;margin-top:0}
 .nha-perm{background:#FBF3DC;border:1px solid #EAD9A0;border-radius:18px;padding:14px 16px;margin-bottom:12px}
@@ -57,9 +57,9 @@ body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-item-ic .ic{width:19px;height:19px}
 .nha-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .nha-item-txt b{font-size:15.5px;color:#1B4332}
-.nha-item-txt span{font-size:13.5px;color:#6B6660;line-height:1.4}
-.nha-item-fl{font-size:22px;color:#A39C92}
-.nha-vacio{font-size:14.5px;color:#6B6660;padding:6px 0 2px;line-height:1.45}
+.nha-item-txt span{font-size:13.5px;color:#1F1F1F;line-height:1.4}
+.nha-item-fl{font-size:22px;color:#1F1F1F}
+.nha-vacio{font-size:14.5px;color:#1F1F1F;padding:6px 0 2px;line-height:1.45}
 /* Grupo */
 .nha-grupo{background:linear-gradient(135deg,#1B4332,#2D6A4F);border-radius:22px;padding:18px;color:#fff;margin-bottom:12px;box-shadow:0 4px 14px rgba(27,67,50,.2)}
 .nha-grupo-lbl{font-size:14px;opacity:.85;margin-top:8px}
@@ -80,17 +80,17 @@ body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-faq{padding:4px 16px}
 .nha-faq-q{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;border-bottom:1px solid #EFEAE0;padding:14px 0;font-size:15.5px;font-weight:700;color:#1B4332}
 .nha-faq-q span:first-child{flex:1}
-.nha-faq-fl{font-size:22px;color:#A39C92;transition:transform .15s}
+.nha-faq-fl{font-size:22px;color:#1F1F1F;transition:transform .15s}
 .nha-faq-q.ab .nha-faq-fl{transform:rotate(90deg)}
-.nha-faq-a{font-size:15px;line-height:1.55;color:#3B3B3B;padding:10px 0 14px;border-bottom:1px solid #EFEAE0}
+.nha-faq-a{font-size:15px;line-height:1.55;color:#1F1F1F;padding:10px 0 14px;border-bottom:1px solid #EFEAE0}
 .nha-tabla{width:100%;border-collapse:collapse;margin:8px 0 10px;font-size:14px;border-radius:10px;overflow:hidden}
 .nha-tabla th{background:#1B4332;color:#fff;text-align:left;padding:7px 8px;font-weight:700}
 .nha-tabla td{padding:7px 8px;border-bottom:1px solid #E5EDE7}
 .nha-tabla tr:nth-child(odd) td{background:#F4F9F6}
-.nha-pie{text-align:center;font-size:12px;color:#8A847C;padding:16px 0 8px;line-height:1.6}
+.nha-pie{text-align:center;font-size:12px;color:#1F1F1F;padding:16px 0 8px;line-height:1.6}
 /* Barra de abajo */
 .nha-nav{position:fixed;left:0;right:0;bottom:0;z-index:90;max-width:500px;margin:0 auto;display:flex;gap:4px;background:#fff;border-top:1px solid var(--border);padding:6px 8px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,.06)}
-.nha-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:7px 0;min-height:54px;border-radius:14px;font-size:12.5px;font-weight:700;color:#6B6660}
+.nha-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:7px 0;min-height:54px;border-radius:14px;font-size:12.5px;font-weight:700;color:#1F1F1F}
 .nha-nav-btn .ic{width:24px;height:24px}
 .nha-nav-btn.on{color:#1B4332;background:#E3F1E7}
 body.nh-app .modal-sheet{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
@@ -217,7 +217,7 @@ body.nh-app{font-size:16px}
 .nha-main .cuota-ultima{padding-top:24px!important}
 
 /* ── v45.55 · revisión de Ángel (30/10/2026): sin naranjas, letra más oscura y legible ── */
-body.nh-app{--muted:#3D3D3D;--text:#1F1F1F}
+body.nh-app{--muted:#1F1F1F;--text:#1F1F1F}
 .nha-top-hola{font-size:21px;font-weight:800;color:#1B4332;line-height:1.15}
 .nha-top-sub{font-size:13.5px!important;color:#4A4540!important;margin-top:2px}
 /* Detalle de una persona (Mi grupo, Aportes, Ayudas): el total en verde, como el resto de la app */
@@ -244,10 +244,10 @@ body.nh-app{--muted:#3D3D3D;--text:#1F1F1F}
 .nha-ctl-2{display:flex;gap:8px}
 .nha-ctl-2>div{flex:1;background:#EEF7F1;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .nha-ctl-2>div.falta{background:#FFF3D6}
-.nha-ctl-2 small{font-size:13.5px;color:#3D3D3D;font-weight:600}
+.nha-ctl-2 small{font-size:13.5px;color:#1F1F1F;font-weight:600}
 .nha-ctl-2 b{font-size:22px;color:#1B4332}
 .nha-ctl-2 .falta b{color:#6B4210}
-.nha-ctl-2 span{font-size:13.5px;color:#3D3D3D}
+.nha-ctl-2 span{font-size:13.5px;color:#1F1F1F}
 .nha-btn.nha-wa{background:#1F8F4E;margin-top:8px}
 .nha-ctl-borrar{display:block;width:100%;margin-top:8px;padding:8px;border:none;background:none;color:#6B4210;font-size:14px;font-weight:700;text-decoration:underline}
 .nha-gfila-w{display:flex;align-items:center;gap:6px;border-top:1px solid #EFEAE0}
@@ -260,11 +260,42 @@ body.nh-app{--muted:#3D3D3D;--text:#1F1F1F}
 .nha-ctl-preg{background:#FFFBF0;border:1.5px solid #E8D9B5;border-radius:12px;padding:10px 12px;margin:2px 0 10px;font-size:15px;color:#1F1F1F}
 .nha-ctl-ops{display:flex;gap:6px;margin:8px 0 4px}
 .nha-ctl-ops button{flex:1;padding:10px 0;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:15px;font-weight:800}
-.nha-ctl-preg small{display:block;font-size:13.5px;color:#3D3D3D}
-.nha-ctl-x{border:none;background:none;color:#3D3D3D;font-size:14px;text-decoration:underline;padding:6px 0 0}
+.nha-ctl-preg small{display:block;font-size:13.5px;color:#1F1F1F}
+.nha-ctl-x{border:none;background:none;color:#1F1F1F;font-size:14px;text-decoration:underline;padding:6px 0 0}
 
 /* ── v45.58 · Mi grupo más limpio ── */
 .nha-gfila{padding-left:12px}
-.nha-ctl-ap{margin:-4px 0 8px 44px;font-size:14px;color:#3D3D3D}
+.nha-ctl-ap{margin:-4px 0 8px 44px;font-size:14px;color:#1F1F1F}
 .nha-ctl-ap button{border:none;background:none;padding:0;color:#1B4332;font-weight:800;font-size:14px;text-decoration:underline}
 .nha-gdet-cerrar{display:block;width:100%;margin-top:8px;padding:10px;border:1.5px solid #E8E0D8;border-radius:12px;background:#fff;color:#1B4332;font-size:15px;font-weight:800}
+
+/* ── v45.59 · Atrás en la cabecera ── */
+.nha-atras{flex:0 0 40px;width:40px;height:40px;margin-right:-4px;border:none;border-radius:12px;background:#E8F2EC;color:#1B4332;font-size:30px;font-weight:700;line-height:1;padding:0 0 4px;display:flex;align-items:center;justify-content:center}
+
+/* ── v45.60 · visualidad clara: letra negra, blanco puro en los cuadros verdes, sin naranjas ── */
+body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
+.nha-top-sub{color:#1F1F1F!important}
+.nha-pie,.nha-pie *{color:#1F1F1F}
+.nha-pie-b{color:#1B4332}
+/* Cuadros verdes: todo el texto en blanco puro */
+.nha-grupo-mes,.nha-grupo-lbl,.nha-grupo-2 small,.desg-titulo,.desg-lbl{color:#fff!important;opacity:1!important}
+.nha-main .desg-card [style*="rgba(255,255,255"],.nha-main .nha-grupo [style*="rgba(255,255,255"]{color:#fff!important}
+.nha-main [style*="opacity:.85"],.nha-main [style*="opacity:.8"],.nha-main [style*="opacity:.9"]{opacity:1!important}
+.nha-grupo-2 .falta{background:rgba(255,255,255,.13)}
+.nha-grupo-2 .falta b{color:#FFE7A8}
+.desg-titulo{font-size:13.5px}
+.desg-lbl{font-size:15px}
+.desg-val{font-size:16px}
+/* Tu control: explicación plegada */
+.nha-ctl-info{display:flex;align-items:center;gap:6px;margin:10px 0 2px;padding:0;border:none;background:none;color:#1B4332;font-size:15px;font-weight:800}
+.nha-ctl-info span{display:inline-block;font-size:18px}
+.nha-ctl-info-t{margin:6px 0 4px;font-size:15px;line-height:1.45;color:#1F1F1F}
+.nha-main .ft-lbl,.nha-accesos small,.nha-accesos button small{color:#1F1F1F!important}
+.nha-main .ft-lbl [style*="color"],.nha-main .ft-row [style*="color:var(--muted)"]{color:#1F1F1F!important}
+.nha-main .ft-hero-lbl{opacity:1!important;color:#fff!important}
+.nha-main .ft-val[style*="C75B0E"],.nha-main .ft-val[style*="c75b0e"]{color:#1B4332!important}
+.nha-main .ft-val[style*="B06A1E"],.nha-main .ft-val[style*="b06a1e"]{color:#6B4210!important}
+.nha-seg button{color:#1F1F1F}
+.nha-seg button.on{color:#fff}
+.nha-main [style*="color:#4A4A4A"],.nha-main [style*="color:#4a4a4a"]{color:#1F1F1F!important}
+.nha-main .tot-final-lbl{opacity:1!important}
