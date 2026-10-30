@@ -140,7 +140,11 @@ function initFirebase(){
       borrar:async c=>{ await db.collection("fichas").doc(c).delete(); return true; },
       pedir:async(id,obj)=>{ await db.collection("peticiones").doc(id).set(obj); return true; },
       peticiones:async()=>{ const q=await db.collection("peticiones").get(); return q.docs.map(d=>Object.assign({id:d.id},d.data())); },
-      borrarPeticion:async id=>{ await db.collection("peticiones").doc(id).delete(); return true; }
+      borrarPeticion:async id=>{ await db.collection("peticiones").doc(id).delete(); return true; },
+      // v45.61: aviso de «app instalada» (lo escribe la app de asociados la primera vez que se abre desde el icono;
+      // solo guarda la fecha y el tipo de móvil, nada más; lo lee solo el administrador)
+      instalada:async(c,obj)=>{ await db.collection("instalaciones").doc(c).set(obj); return true; },
+      instalaciones:async()=>{ const q=await db.collection("instalaciones").get(); const o={}; q.docs.forEach(d=>{ o[d.id]=d.data(); }); return o; }
     };
 
     if(entorno.modo==="desarrollo"){

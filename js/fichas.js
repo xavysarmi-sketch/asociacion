@@ -76,6 +76,15 @@ function fichaPrivadaDe(m){ return {v:FICHA_VERSION,mid:m.id,datos:datosPrivados
 // DATA.appAsociados = {publicar:true|false, revocados:[códigos ya sin uso]}
 const _FICHAS_KEY="nh-fichas-huellas";
 let FICHAS_ESTADO={enCurso:false,otraVez:false,ultima:null,error:null,escritas:0};
+// v45.61: quién tiene la app instalada en el móvil (instalaciones/{código}); se lee al abrir el panel
+let APP_INST=null, APP_INST_TS=0;
+async function cargarInstalaciones(forzar){
+  if(!_fichasNubeOk()||!window._fbReady||!window._fbFichas||!window._fbFichas.instalaciones)return;
+  if(!forzar&&Date.now()-APP_INST_TS<60000)return; APP_INST_TS=Date.now();
+  try{ const o=await window._fbFichas.instalaciones(); const antes=JSON.stringify(APP_INST); APP_INST=o||{}; if(antes!==JSON.stringify(APP_INST))render(); }
+  catch(e){ console.warn("[NH] No se pudieron leer las instalaciones:",e); }
+}
+function _instDe(m){ return APP_INST&&m&&m.codigoApp?APP_INST[m.codigoApp]||null:null; }
 let PETICIONES=null, PETICIONES_TS=0, _petArmada=null, _codArmado=null;
 function _huella(s){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
   h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
@@ -147,10 +156,11 @@ function appAsociadosGestionHTML(){
   const est=appAsociadosActiva()?(FICHAS_ESTADO.error==="permisos"?`<span style="color:#A93C25">⛔ faltan reglas</span>`:`<span style="color:#1B7A3D">en marcha</span>`):`<span style="color:var(--muted)">en pruebas</span>`;
   let h=`<div class="mg-acc-head" onclick="DESP['mg-app']=!DESP['mg-app'];render()"><span>📱 App de asociados <span style="font-weight:600">· ${est}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
   if(!ab)return h;
+  cargarInstalaciones();
   const ult=FICHAS_ESTADO.ultima?new Date(FICHAS_ESTADO.ultima).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}):null;
   h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin:-4px 0 12px;border:1px solid var(--border)">
     <div style="font-size:13.5px;color:var(--dark);line-height:1.5;margin-bottom:10px">Cada persona tiene un <b>enlace con un código secreto</b>. Con él ve solo su ficha (y su grupo, si es responsable). Nadie más puede verla. <b>Nada se envía solo:</b> cada mensaje lo envías tú desde WhatsApp.</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;font-size:13.5px"><div style="flex:1;background:#EEF7F1;border-radius:10px;padding:8px 10px"><b style="font-size:18px">${con.length}</b><br>con código</div><div style="flex:1;background:${sin.length?"#FFF4E5":"#F5F0EB"};border-radius:10px;padding:8px 10px"><b style="font-size:18px">${sin.length}</b><br>sin código</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;font-size:13.5px"><div style="flex:1;background:#EEF7F1;border-radius:10px;padding:8px 10px"><b style="font-size:18px">${con.length}</b><br>con código</div><div style="flex:1;background:${sin.length?"#FFF4E5":"#F5F0EB"};border-radius:10px;padding:8px 10px"><b style="font-size:18px">${sin.length}</b><br>sin código</div><div style="flex:1;background:#D8F3DC;border-radius:10px;padding:8px 10px"><b style="font-size:18px">${APP_INST?con.filter(_instDe).length:"…"}</b><br>instalada</div></div>
     ${sin.length?`<button class="backup-btn" style="background:#1B4332;color:#fff" onclick="crearCodigosApp()">🔑 Crear los códigos que faltan (${sin.length})</button>`:""}
     ${con.length?`<button class="backup-btn" style="background:#2D6A4F;color:#fff" onclick="subirFichasAhora()">☁️ Subir todas las fichas ahora</button>`:""}
     <div style="font-size:12.5px;color:var(--muted);line-height:1.45;margin:2px 0 8px">${appAsociadosActiva()?"Se actualizan solas cada vez que guardas algo.":"Cuando las subas la primera vez, se actualizarán solas cada vez que guardes algo."}${ult?` Última subida: ${ult}${FICHAS_ESTADO.escritas?` (${FICHAS_ESTADO.escritas} fichas)`:" (sin cambios)"}.`:""}${FICHAS_ESTADO.error==="permisos"?` <b style="color:#A93C25">Firebase no deja guardarlas: faltan las reglas nuevas.</b>`:FICHAS_ESTADO.error?` <b style="color:#A93C25">La última subida falló (conexión).</b>`:""}</div>
@@ -163,7 +173,7 @@ function appAsociadosGestionHTML(){
     h+=`<div class="mg-acc-head" style="margin:8px 0 0" onclick="DESP['mg-app-l']=!DESP['mg-app-l'];render()"><span>👥 Enlaces por persona</span><span class="mg-acc-fl">${abL?"▲ ocultar":"▼ mostrar"}</span></div>`;
     if(abL){ const env=_appEnviados(); con.slice().sort((a,b)=>a.name.localeCompare(b.name,"es")).forEach(m=>{
       const bt=(fn,txt,st)=>`<button onclick="${fn}" style="flex:1;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;${st}">${txt}</button>`;
-      h+=`<div style="padding:10px 0;border-bottom:1px solid #EFEAE0"><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><span style="flex:1;min-width:0;font-size:15px;font-weight:700">${escH(m.name)}</span>${env[m.id]?`<span style="font-size:12px;font-weight:800;color:#1B7A3D;white-space:nowrap">✓ enviada ${escH(env[m.id].slice(0,5))}</span>`:""}</div>
+      h+=`<div style="padding:10px 0;border-bottom:1px solid #EFEAE0"><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><span style="flex:1;min-width:0;font-size:15px;font-weight:700">${escH(m.name)}</span>${_instDe(m)?`<span style="font-size:12px;font-weight:800;color:#1B4332;background:#D8F3DC;border-radius:8px;padding:1px 7px;white-space:nowrap">📲 instalada ${escH(new Date(_instDe(m).t).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}))}</span>`:env[m.id]?`<span style="font-size:12px;font-weight:800;color:#1B7A3D;white-space:nowrap">✓ enviada ${escH(env[m.id].slice(0,5))}</span>`:""}</div>
         <div style="display:flex;gap:6px">${bt(`abrirAppDe('${esc(m.id)}')`,"👁️ Abrir","border:1.5px solid #2D6A4F;background:#fff;color:#1B4332")}${bt(`abrirTarjetaApp('${esc(m.id)}')`,"📸 Tarjeta QR","border:1.5px solid #2D6A4F;background:#fff;color:#1B4332")}${bt(`appEnviarA('${esc(m.id)}')`,"💬 Enviar","border:1.5px solid #15803D;background:#15803D;color:#fff")}</div>
         <div style="display:flex;gap:14px;margin-top:6px;font-size:12.5px"><button onclick="copiarEnlaceApp('${esc(m.id)}')" style="border:none;background:none;padding:2px 0;color:var(--muted);text-decoration:underline;cursor:pointer">Copiar enlace</button>
         <button onclick="cambiarCodigoApp('${esc(m.id)}')" style="border:none;background:none;padding:2px 0;color:${_codArmado===m.id?"#fff":"#C0492C"};${_codArmado===m.id?"background:#C0492C;border-radius:6px;padding:2px 8px;":"text-decoration:underline;"}cursor:pointer">${_codArmado===m.id?"¿Seguro? El enlace anterior dejará de funcionar":"Código nuevo"}</button></div></div>`;

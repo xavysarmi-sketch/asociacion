@@ -57,6 +57,17 @@ async function nhaArrancar(){
   setCurrentMonthYear();      // mes operativo de hoy (solo en pantalla: aquí no se guarda nada)
   SYNC_STATUS="ok";
   render();
+  nhaAvisarInstalada();
+}
+// v45.61: la primera vez que se abre desde el icono del móvil, se avisa al administrador («✓ instalada»).
+// Solo se guarda la fecha y el tipo de móvil. Si falla (sin conexión o sin permiso), se reintenta la próxima vez.
+async function nhaAvisarInstalada(){
+  try{
+    if(!nhaInstalada()||!NHA.codigo||!window._fbFichas||!window._fbFichas.instalada)return;
+    const k="nha-inst-"+NHA.codigo; if(localStorage.getItem(k))return;
+    const s=nhaSistema(); await window._fbFichas.instalada(NHA.codigo,{t:Date.now(),so:s.so==="ios"?"ios":s.so==="android"?"android":"otro"});
+    localStorage.setItem(k,"1");
+  }catch(e){}
 }
 
 // ── Piezas de la ficha personal (las mismas que el enlace de siempre) ─────────
