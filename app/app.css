@@ -262,3 +262,9 @@ body.nh-app{--muted:#3D3D3D;--text:#1F1F1F}
 .nha-ctl-ops button{flex:1;padding:10px 0;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:15px;font-weight:800}
 .nha-ctl-preg small{display:block;font-size:13.5px;color:#3D3D3D}
 .nha-ctl-x{border:none;background:none;color:#3D3D3D;font-size:14px;text-decoration:underline;padding:6px 0 0}
+
+/* ── v45.58 · Mi grupo más limpio ── */
+.nha-gfila{padding-left:12px}
+.nha-ctl-ap{margin:-4px 0 8px 44px;font-size:14px;color:#3D3D3D}
+.nha-ctl-ap button{border:none;background:none;padding:0;color:#1B4332;font-weight:800;font-size:14px;text-decoration:underline}
+.nha-gdet-cerrar{display:block;width:100%;margin-top:8px;padding:10px;border:1.5px solid #E8E0D8;border-radius:12px;background:#fff;color:#1B4332;font-size:15px;font-weight:800}

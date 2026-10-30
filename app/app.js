@@ -219,9 +219,10 @@ function nhaGrupoHTML(m,g){
     const est=t.alDia?`<span class="nha-chip ok">Al día</span>`:marca!=null?`<span class="nha-chip dado">Te dio ${fmtEur(marca)}&nbsp;€</span>`:`<span class="nha-chip pend">Falta ${fmtEur(t.pendiente)}&nbsp;€${abierto?" + aporte":""}</span>`;
     const circ=t.alDia?`<span class="nha-ctl-c ok" title="Al día">✓</span>`
       :`<button class="nha-ctl-c${marca!=null?" on":""}" aria-label="${marca!=null?"Quitar la marca":"Me lo ha dado"}" onclick="nhaCtlToca('${esc(x.id)}')">${marca!=null?"✓":""}</button>`;
-    h+=`<div class="nha-gfila-w">${circ}<button class="nha-gfila ${t.alDia?"ok":marca!=null?"dado":"pend"}" onclick="DESP['nhag-${esc(x.id)}']=!DESP['nhag-${esc(x.id)}'];render()"><span class="nha-av nha-av-s">${nhaIniciales(x)}</span><span class="nha-gfila-n"><b>${escH(x.name)}</b>${est}</span><span class="nha-gfila-t">${fmtEur(t.total)}&nbsp;€</span><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
+    h+=`<div class="nha-gfila-w">${circ}<button class="nha-gfila ${t.alDia?"ok":marca!=null?"dado":"pend"}" onclick="nhaGFila('${esc(x.id)}')"><span class="nha-gfila-n"><b>${escH(x.name)}</b>${est}</span><span class="nha-gfila-t">${fmtEur(t.total)}&nbsp;€</span><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
     if(NHA.ctlPreg===x.id)h+=nhaCtlPreguntaHTML(x,t);
-    if(ab)h+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}</div>`; });
+    else if(marca!=null&&nhaCtlAporteLibre(x,t))h+=`<div class="nha-ctl-ap">Con aporte de ${fmtEur(_r2(marca-(t.pendiente-APORTE_MINIMO)))}&nbsp;€ · <button onclick="NHA.ctlPreg='${esc(x.id)}';render()">¿Puso más? Cambiar</button></div>`;
+    if(ab)h+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}<button class="nha-gdet-cerrar" onclick="nhaGFila('${esc(x.id)}')">Cerrar ✕</button></div>`; });
   return h+`</div>`;
 }
 // ── «Tu control» del responsable (v45.56, decisión de Ángel 30/10/2026) ──
@@ -240,16 +241,16 @@ function _nhaCtlPersona(id){ return (DATA.members||[]).find(x=>String(x.id)===St
 function nhaCtlToca(id){
   const x=_nhaCtlPersona(id); if(!x)return; const rm=DATA.reportMonth, ry=DATA.reportYear, t=totalDelMes(x,rm,ry), o=nhaCtlLeer();
   if(o[id]!=null){ delete o[id]; nhaCtlGuardar(o); NHA.ctlPreg=null; render(); return; }
-  if(nhaCtlAporteLibre(x,t)){ NHA.ctlPreg=NHA.ctlPreg===id?null:id; render(); return; } // aporte sin pagar: ¿cuánto aporta?
-  o[id]=t.pendiente; nhaCtlGuardar(o); render();
+  o[id]=t.pendiente; nhaCtlGuardar(o); NHA.ctlPreg=null; render(); // v45.58: casi todos ponen 50 €; si puso más, «Cambiar»
 }
 // Aporte sin pagar y sin aporte habitual anotado (> 50 €): el asociado elige cuánto pone (AP-2)
 function nhaCtlAporteLibre(x,t){ return x.type==="asociado"&&!t.aportePagado&&t.aporteImporte>0&&aporteBaseDe(x)<=APORTE_MINIMO; }
 function nhaCtlPreguntaHTML(x,t){
   const otros=_r2(t.pendiente-APORTE_MINIMO);
-  return `<div class="nha-ctl-preg"><div>¿Cuánto aporta <b>${nhaPrimerNombre(x)}</b> este mes?</div><div class="nha-ctl-ops">${REGLAS.APORTE_OPCIONES.map(v=>`<button onclick="nhaCtlMarca('${esc(x.id)}',${_r2(otros+v)})">${v} €</button>`).join("")}</div>
+  return `<div class="nha-ctl-preg"><div>¿Cuánto ha aportado <b>${nhaPrimerNombre(x)}</b> este mes?</div><div class="nha-ctl-ops">${REGLAS.APORTE_OPCIONES.map(v=>`<button onclick="nhaCtlMarca('${esc(x.id)}',${_r2(otros+v)})">${v} €</button>`).join("")}</div>
     ${otros>0?`<small>Se suma a lo demás que le toca (${fmtEur(otros)} €).</small>`:""}<button class="nha-ctl-x" onclick="NHA.ctlPreg=null;render()">Cancelar</button></div>`;
 }
+function nhaGFila(id){ const k="nhag-"+id; DESP[k]=!DESP[k]; NHA.ctlPreg=null; render(); }
 function nhaCtlMarca(id,imp){ const o=nhaCtlLeer(); o[id]=imp; nhaCtlGuardar(o); NHA.ctlPreg=null; render(); }
 function nhaCtlBorrar(){
   if(!NHA.ctlBorrarArm){ NHA.ctlBorrarArm=true; render(); setTimeout(()=>{ if(NHA.ctlBorrarArm){ NHA.ctlBorrarArm=false; render(); } },4000); return; }
@@ -270,10 +271,11 @@ function _nhaWa(txt){ window.open("https://wa.me/?text="+encodeURIComponent(txt)
 // A una persona: SOLO lo suyo de este mes
 function nhaCtlWaPersona(id){
   const x=_nhaCtlPersona(id); if(!x)return; const rm=DATA.reportMonth, ry=DATA.reportYear, t=totalDelMes(x,rm,ry);
-  const nom=String(x.name||"").trim().split(/\s+/)[0], L=[`Hola ${nom} 👋`,`Esto es lo que te queda por pagar de ${_nhaMesTxt()} en Nuevos Horizontes:`];
-  if(x.type!=="tercero"&&!t.aportePagado&&t.aporteImporte>0){ const lib=nhaCtlAporteLibre(x,t); L.push(`• Aporte: ${fmtEur(t.aporteImporte)} €${lib?" (puedes poner 50, 100, 150 o 200 €)":""}`); }
-  t.cuotas.filter(c=>!c.paid).forEach(c=>{ const ult=c.idx===(c.loan.pays||[]).length-1; L.push(`• Cuota de tu ayuda de ${fmtEur(c.loan.capital)} €: ${fmtEur(c.inst)} €${ult?" (la última)":""}`); });
-  L.push(`Total: ${fmtEur(t.pendiente)} €`);
+  const nom=String(x.name||"").trim().split(/\s+/)[0], L=[`Hola ${nom} 👋`,`Esto es lo que te toca pagar en ${_nhaMesTxt()}:`,""];
+  if(x.type!=="tercero"&&!t.aportePagado&&t.aporteImporte>0){ const lib=nhaCtlAporteLibre(x,t); L.push(`• Tu aporte: ${fmtEur(t.aporteImporte)} €${lib?" (si quieres, puedes poner más: 100, 150 o 200 €)":""}`); }
+  t.cuotas.filter(c=>!c.paid).forEach(c=>{ const tot=(c.loan.pays||[]).length, num=c.idx+1, mesAy=MONTHS_FULL[MONTHS.indexOf(c.loan.gMonth)]||"";
+    L.push(`• Cuota ${num} de ${tot} de tu ayuda${mesAy?" de "+mesAy.toLowerCase():""}: ${fmtEur(c.inst)} €${num===tot?". ¡Es la última!":""}`); });
+  L.push("",`Total: ${fmtEur(t.pendiente)} €`,"","Gracias 🙏");
   _nhaWa(L.join("\n"));
 }
 // Al administrador: quién ha pagado y quién falta (según las marcas de este móvil)
