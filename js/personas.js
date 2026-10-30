@@ -838,7 +838,7 @@ function _fichaHTMLbase(m,readonly=false){
   const _dr2=descuentoReferidoMes(m.id,rm,ry);
   const _base2=aporteBrutoMes(m,rm,ry); // v45: aporte elegido ese mes
   h+=`<div class="desg-card">
-    <div class="desg-titulo">📋 Corresponde este mes · ${mesLabel}</div>`;
+    <div class="desg-titulo">📋 Corresponde este mes</div><div class="desg-mes">${mesLabel}</div>`;
 
   if(!isTerc&&enPausaMes(m,rm,ry)){ // v45.33
     h+=`<div class="desg-fila"><span class="desg-lbl">Aporte</span><span class="desg-val ok">⏸ En pausa</span></div>`;
@@ -1029,7 +1029,7 @@ function _fichaHTMLbase(m,readonly=false){
       if(activasL.length>0){
         activasL.forEach(loan=>{ h+=tarjetaAyuda(loan,false); });
       } else {
-        h+=`<div class="ft-card"><div class="ft-empty">No tiene ayudas activas.</div></div>`;
+        h+=`<div class="ft-card"><div class="ft-empty">${VISTA_ASOC||READONLY_ID?"No tienes ayudas activas.":"No tiene ayudas activas."}</div></div>`;
       }
 
       // AYUDAS PAGADAS (desplegable)

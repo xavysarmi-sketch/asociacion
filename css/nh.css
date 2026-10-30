@@ -916,3 +916,4 @@ body.nh-admin .toast{white-space:normal;width:max-content;max-width:calc(100vw -
 /* v45.51 · sugerencia de tildes en los nombres */
 .tilde-sug{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:-4px 0 12px;padding:9px 11px;border-radius:10px;background:#EEF7F1;border:1px solid #B7D9C3;font-size:14px;color:#1B4332}
 .tilde-sug button{margin-left:auto;padding:7px 12px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.desg-mes{font-size:16px;font-weight:800;color:#fff;margin:-6px 0 10px}

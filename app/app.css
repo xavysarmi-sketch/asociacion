@@ -299,3 +299,12 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 .nha-seg button.on{color:#fff}
 .nha-main [style*="color:#4A4A4A"],.nha-main [style*="color:#4a4a4a"]{color:#1F1F1F!important}
 .nha-main .tot-final-lbl{opacity:1!important}
+
+/* ── v45.63 ── */
+.desg-mes{font-size:18px;font-weight:800;color:#fff;margin:-8px 0 10px}
+.desg-titulo{margin-bottom:10px}
+.nha-main .ft-card-title svg,.nha-main .ft-card-title .icw svg{display:none}
+.nha-leyenda{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:15px;line-height:1.35;color:#1F1F1F}
+.nha-ley-c{flex:0 0 26px!important;width:26px!important;height:26px!important;border-width:2.5px!important}
+.nha-ley-fl{flex:0 0 26px;text-align:center;font-size:30px;font-weight:700;line-height:1;color:#1B4332}
+.nha-gfila .nha-item-fl{font-size:32px;font-weight:700;color:#1B4332;line-height:1;padding:0 2px}

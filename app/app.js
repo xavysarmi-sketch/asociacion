@@ -117,7 +117,7 @@ function nhaPantalla(){
   const pants=[["inicio","home","Inicio"]].concat(esTerc?[]:[["aportes","wallet","Aportes"]],[["ayudas","hand","Ayudas"]],g?[["grupo","users","Mi grupo"]]:[],[["mas","","Más"]]);
   const validas=pants.map(p=>p[0]).concat(puedeSim?["simular"]:[]);
   if(!validas.includes(NHA.pant))NHA.pant="inicio";
-  let h=`<header class="nha-top">${NHA.pant!=="inicio"?`<button class="nha-atras" onclick="nhaAtras()" aria-label="Atrás">‹</button>`:""}<div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-top-txt"><div class="nha-top-hola">Hola, ${nhaPrimerNombre(m)}</div><div class="nha-top-sub">Nuevos Horizontes</div></div></header><main class="nha-main">`;
+  let h=`<header class="nha-top">${NHA.pant!=="inicio"?`<button class="nha-atras" onclick="nhaAtras()" aria-label="Atrás">‹</button>`:""}<div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-top-txt"><div class="nha-top-hola">Hola, ${nhaPrimerNombre(m)}</div><div class="nha-top-sub">Asociación Nuevos Horizontes</div></div></header><main class="nha-main">`;
   if(NHA.pant==="inicio")h+=nhaInicioHTML(m,salidaPend,g);
   else if(NHA.pant==="aportes")h+=nhaAportesHTML(m);
   else if(NHA.pant==="ayudas")h+=nhaAyudasHTML(m);
@@ -143,7 +143,7 @@ function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
   let h="";
   if(salidaPend)h+=salidaAvisoFichaHTML(m); else if(pausaVigente(m))h+=pausaAvisoFichaHTML(m);
-  h+=p.arriba; // lo que corresponde este mes (el mismo cuadro verde de siempre)
+  if(!salidaPend)h+=p.arriba; // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
     const desde=f["Mes de ingreso"]?f["Mes de ingreso"].txt:"";
     h+=`<div class="nha-tiles">
@@ -153,10 +153,11 @@ function nhaInicioHTML(m,salidaPend,g){
     const ret=Object.keys(f).find(k=>/^Beneficio ya retirado/.test(k));
     h+=`<div class="nha-card nha-acum">${ret?`<div class="ft-row"><span class="ft-lbl">${f[ret].lblHtml}</span><span class="ft-val" style="color:#B08D3E">${f[ret].html}</span></div>`:""}
       <div class="ft-row ft-total" style="border-bottom:none"><span class="ft-lbl">Llevas acumulado hasta ahora</span><span class="ft-val" style="color:#1B4332">${f["Llevas acumulado hasta ahora"]?f["Llevas acumulado hasta ahora"].html:"—"}</span></div></div>`;
-    h+=nhaPermanenciaHTML(m,f);
+    if(!salidaPend)h+=nhaPermanenciaHTML(m,f);
   } else if(esTerc){
     h+=p.cuerpo;
   }
+  if(salidaPend)return h;
   h+=nhaImportanteHTML(m,g);
   if(!esTerc&&m.joinMonth)h+=`<div class="nha-accesos"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span><b>¿Cuánto puedo pedir?</b><small>Simula una ayuda</small></button>
     <button onclick="abrirSimulador('${esc(m.id)}','ben')"><span class="nha-acc-ic">${_icSVG("sprout")}</span><b>¿Cuánto puedo ganar?</b><small>Simula tus beneficios</small></button></div>`;
@@ -178,7 +179,7 @@ function nhaImportanteHTML(m,g){
   (m.loans||[]).forEach(l=>{ const i=(l.pays||[]).findIndex(p=>!p.paid); if(i<0)return;
     const p=l.pays[i], pag=l.pays.filter(x=>x.paid).length, ult=esUltimaCuota(l,i);
     items.push(["📅",`${ult?"Última cuota":"Próxima cuota"} de tu ayuda de ${fmtEur(l.capital)} €`,`${fmtEur(cuotaDe(l,i))} € · ${MONTHS_FULL[MONTHS.indexOf(p.m)].toLowerCase()} ${p.y} · llevas ${pag} de ${l.n} pagadas`,"ayudas"]); });
-  (DATA.solicitudes||[]).forEach(s=>{
+  (DATA.solicitudes||[]).forEach(s=>{ if(s.mid&&s.mid!==m.id)return; // v45.63: solo las suyas (la ficha ya trae solo las suyas)
     const mi=s.mes&&/^\d{4}-\d{2}$/.test(s.mes)?MONTHS_FULL[parseInt(s.mes.slice(5))-1].toLowerCase():"";
     if(s.estado==="pendiente")items.push(["📝",`Tu solicitud de ${fmtEur(s.capital)} € está apuntada`,`${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"}${mi?` · para ${mi}`:""}. Te avisaremos cuando se decida.`,"ayudas"]);
     else if(s.estado==="otorgada"&&s.mesOtorgada===getMesKey(DATA.reportMonth,DATA.reportYear))items.push(["✅",`Tu ayuda de ${fmtEur(s.capital)} € está aprobada`,`Este mes. La verás en «Ayudas».`,"ayudas"]);
@@ -225,7 +226,7 @@ function nhaGrupoHTML(m,g){
   if(_nBaseG(ms,rm,ry)>0)h+=`<div class="nha-nota">Los aportes aún sin pagar se cuentan con 50 €: cada uno puede aportar 50, 100, 150 o 200 €.</div>`;
   h+=nhaCtlResumenHTML(m,act,rm,ry);
   // Estado de cada persona (una fila); al tocarla se abre su detalle, el mismo del reporte de grupo
-  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Cada persona</div><div class="nha-nota" style="margin:0 0 6px">Toca un nombre para ver su detalle.</div>`;
+  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Cada persona</div><div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> para ver todo su detalle.</span></div>`;
   const ctl=nhaCtlLeer();
   act.slice().sort((a,b)=>(totalDelMes(a,rm,ry).alDia?1:0)-(totalDelMes(b,rm,ry).alDia?1:0)).forEach(x=>{ const t=totalDelMes(x,rm,ry), ab=!!DESP["nhag-"+x.id], abierto=x.type!=="tercero"&&aporteMostradoMes(x,rm,ry).abierto;
     const marca=!t.alDia&&ctl[x.id]!=null?ctl[x.id]:null;
@@ -311,8 +312,6 @@ function nhaMasHTML(m){
   let h=nhaTitulo(m,"Más","Tu aval, preguntas frecuentes y cómo instalarla.","settings");
   if(aval)h+=`<div class="ft-card"><div class="ft-card-title">🤝 Aval</div>${aval}</div>`;
   h+=`<div class="nha-sec">Preguntas frecuentes</div>`+nhaFaqHTML();
-  h+=`<div class="nha-sec">Tener la app en el móvil</div><div class="nha-card nha-txt">${nhaInstalada()?"✅ Ya la tienes en tu móvil: ábrela siempre desde el icono <b>NH</b>.":"Instálala y la tendrás siempre a mano, con su icono, como cualquier otra app."}
-    <button class="nha-btn" style="background:#2D6A4F" onclick="nhaVerBienvenida()">📲 Cómo instalarla</button></div>`;
   h+=`<div class="nha-sec">Tu enlace es privado</div><div class="nha-card nha-txt">Con tu enlace se ve tu cuenta: <b>no lo compartas</b>. Si crees que alguien más lo tiene, pídele al administrador uno nuevo y el antiguo dejará de funcionar.</div>`;
   return h;
 }
@@ -444,7 +443,7 @@ function nhaBienvenidaHTML(m){
       <a class="nha-bv-otro" href="instalar/" target="_blank" style="display:block;text-align:center;text-decoration:underline">🖼️ Ver los pasos con dibujos grandes</a></div>
     <div class="nha-card nha-txt">🛡️ Este enlace es <b>solo tuyo</b>: con él se ve tu cuenta. No lo compartas.</div>
     <button class="nha-btn" onclick="nhaEntrar()">Entrar a mi cuenta</button>
-    <div class="nha-pie">Puedes volver a ver estos pasos en <b>Más</b>.</div></div>`;
+    </div>`;
 }
 
 nhaArrancar();
