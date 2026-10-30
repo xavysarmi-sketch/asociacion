@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Cómo poner la app NH en tu móvil</title>
+<style>
+body{margin:0;background:#F5F0EB;font-family:system-ui,-apple-system,sans-serif;color:#111}
+.w{max-width:560px;margin:0 auto;padding:12px}
+img{width:100%;height:auto;display:block;border-radius:14px}
+.otro{display:block;width:100%;margin:16px 0;padding:14px;border:2px solid #1B4332;border-radius:14px;background:#fff;color:#1B4332;font-size:17px;font-weight:800}
+</style></head><body><div class="w">
+<!-- v45.61+ · Pasos con dibujos para poner la app en el móvil. Sin datos de nadie: es pública. -->
+<img id="a" alt="Pasos"><button class="otro" id="b"></button><img id="c" alt="Pasos" style="display:none">
+<script>
+var ua=navigator.userAgent||"", and=/Android/.test(ua);
+var p=and?["android.jpg","iphone.jpg","¿Tienes iPhone? Ver sus pasos"]:["iphone.jpg","android.jpg","¿Tienes Android? Ver sus pasos"];
+document.getElementById("a").src=p[0]; document.getElementById("c").src=p[1]; var b=document.getElementById("b"); b.textContent=p[2];
+b.onclick=function(){ document.getElementById("c").style.display="block"; b.style.display="none"; };
+</script></div></body></html>

@@ -225,9 +225,11 @@ async function peticionDescartar(pid){
 // ══ v45.52 · ENVIAR LA APP A CADA ASOCIADO: mensaje de WhatsApp y tarjeta con su QR ═══════════
 // Nada se envía solo: cada mensaje lo abre el administrador y lo envía él desde WhatsApp.
 // DATA.appAsociados.enviados = {mid: "dd/mm/aaaa"} (cuándo se le abrió el mensaje por última vez)
+// v45.62: página pública con los pasos dibujados para poner la app en el móvil (sin datos de nadie)
+function _appUrlInstalar(){ return location.origin+location.pathname.replace(/[^/]*$/,"")+"app/instalar/"; }
 function _appMensajeWA(m){
   const nom=String(m.name||"").trim().split(/\s+/)[0]||"";
-  return `Hola ${nom} 👋\nYa tienes tu *app de Nuevos Horizontes*. Ahí ves tus aportes, tus apoyos y tus beneficios, siempre al día.\n\n👉 Tu enlace (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\n*Para tenerla en el móvil:*\n1️⃣ Abre el enlace.\n2️⃣ iPhone: toca *Compartir* y luego «Añadir a pantalla de inicio».\n    Android: toca los *tres puntos* y luego «Añadir a pantalla de inicio».\n3️⃣ Ya está: ábrela siempre desde el icono *NH*.\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  return `Hola ${nom} 👋\nYa tienes tu *app de Nuevos Horizontes*. Ahí ves tus aportes, tus ayudas y tus beneficios, siempre al día.\n\n👉 Tu enlace (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\n*Para tenerla en el móvil:*\n1️⃣ Abre el enlace.\n2️⃣ iPhone: toca *Compartir* y luego «Añadir a pantalla de inicio».\n    Android: toca los *tres puntos* y luego «Añadir a pantalla de inicio».\n3️⃣ Ya está: ábrela siempre desde el icono *NH*.\n\n🖼️ ¿Te lías? Aquí tienes los pasos con dibujos:\n${_appUrlInstalar()}\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
 }
 function _appEnviados(){ return (_appCfg().enviados)||{}; }
 function appEnviarA(mid){

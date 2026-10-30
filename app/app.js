@@ -440,7 +440,8 @@ function nhaBienvenidaHTML(m){
   return `<div class="nha-bv"><div class="nha-bv-top"><div class="nha-logo nha-logo-g nha-luz"><span>NH</span></div><div class="nha-bv-tit">Hola, ${nhaPrimerNombre(m)}</div>
       <div class="nha-bv-sub">Esta es tu app de <b>Nuevos Horizontes</b>. Aquí ves tus aportes, tus ayudas y tus beneficios, siempre al día.</div></div>
     <div class="nha-card"><div class="nha-card-tit">Instálala en tu móvil</div><div class="nha-txt" style="margin-bottom:6px">Solo la primera vez. Son 3 pasos:</div>${pasos}
-      ${otro?`<button class="nha-bv-otro" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">¿Tienes otro móvil? Ver los pasos</button><div style="display:none">${otro}</div>`:""}</div>
+      ${otro?`<button class="nha-bv-otro" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">¿Tienes otro móvil? Ver los pasos</button><div style="display:none">${otro}</div>`:""}
+      <a class="nha-bv-otro" href="instalar/" target="_blank" style="display:block;text-align:center;text-decoration:underline">🖼️ Ver los pasos con dibujos grandes</a></div>
     <div class="nha-card nha-txt">🛡️ Este enlace es <b>solo tuyo</b>: con él se ve tu cuenta. No lo compartas.</div>
     <button class="nha-btn" onclick="nhaEntrar()">Entrar a mi cuenta</button>
     <div class="nha-pie">Puedes volver a ver estos pasos en <b>Más</b>.</div></div>`;
