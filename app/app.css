@@ -215,3 +215,25 @@ body.nh-app{font-size:16px}
 .nha-main .ult-chip{font-size:13.5px}
 .nha-main .cuota-ultima::before{font-size:11.5px;padding:3px 0}
 .nha-main .cuota-ultima{padding-top:24px!important}
+
+/* ── v45.55 · revisión de Ángel (30/10/2026): sin naranjas, letra más oscura y legible ── */
+body.nh-app{--muted:#3D3D3D;--text:#1F1F1F}
+.nha-top-hola{font-size:21px;font-weight:800;color:#1B4332;line-height:1.15}
+.nha-top-sub{font-size:13.5px!important;color:#4A4540!important;margin-top:2px}
+/* Detalle de una persona (Mi grupo, Aportes, Ayudas): el total en verde, como el resto de la app */
+.nha-main .total-ban{background:linear-gradient(135deg,#1B4332,#2D6A4F)}
+.nha-main .total-ban [style*="rgba(255,255,255"]{color:#fff!important}
+.nha-main .total-ban [style*="font-size:11px"],.nha-main .total-ban [style*="font-size:12px"]{font-size:14px!important}
+.nha-main .tot-final-lbl{color:#fff!important;opacity:.9}
+.nha-main .tot-chip.pend,.nha-main .ult-chip{background:#FFF3D6!important;color:#6B4210!important;border-color:transparent!important}
+/* Cuotas: 4 por fila, todas del mismo tamaño; la última sin el marco que se montaba sobre las de arriba */
+.nha-main .timeline{gap:8px}
+.nha-main .timeline .cuota{flex:0 0 calc(25% - 6px);box-sizing:border-box}
+.nha-main .cuota-ultima{box-shadow:none;border:none!important;padding-top:20px!important}
+.nha-main .cuota-ultima::before{font-size:10px;padding:2px 0}
+.nha-main .cuota-due{background:#FFF8E6!important;border-color:#C9A227!important;outline:2px solid #C9A227!important;box-shadow:none!important}
+.nha-main .cuota-due *{color:#6B4210!important}
+/* Mi grupo: lo pendiente en ámbar suave, no en naranja */
+.nha-gfila.pend{border-left-color:#C9A227;background:#fff}
+.nha-chip.pend{background:#FFF3D6;color:#6B4210}
+.nha-btn.arm{background:#1B4332}
