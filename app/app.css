@@ -237,3 +237,28 @@ body.nh-app{--muted:#3D3D3D;--text:#1F1F1F}
 .nha-gfila.pend{border-left-color:#C9A227;background:#fff}
 .nha-chip.pend{background:#FFF3D6;color:#6B4210}
 .nha-btn.arm{background:#1B4332}
+
+/* ── v45.56 · Volver desde el simulador y «Tu control» del responsable de grupo ── */
+.nha-volver{display:inline-flex;align-items:center;gap:4px;margin:2px 0 8px;padding:8px 12px 8px 8px;border:none;border-radius:10px;background:#E8F2EC;color:#1B4332;font-size:15px;font-weight:800}
+.nha-ctl .nha-card-tit{margin-bottom:8px}
+.nha-ctl-2{display:flex;gap:8px}
+.nha-ctl-2>div{flex:1;background:#EEF7F1;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.nha-ctl-2>div.falta{background:#FFF3D6}
+.nha-ctl-2 small{font-size:13.5px;color:#3D3D3D;font-weight:600}
+.nha-ctl-2 b{font-size:22px;color:#1B4332}
+.nha-ctl-2 .falta b{color:#6B4210}
+.nha-ctl-2 span{font-size:13.5px;color:#3D3D3D}
+.nha-btn.nha-wa{background:#1F8F4E;margin-top:8px}
+.nha-ctl-borrar{display:block;width:100%;margin-top:8px;padding:8px;border:none;background:none;color:#6B4210;font-size:14px;font-weight:700;text-decoration:underline}
+.nha-gfila-w{display:flex;align-items:center;gap:6px;border-top:1px solid #EFEAE0}
+.nha-gfila-w .nha-gfila{border-top:none;flex:1;min-width:0}
+.nha-ctl-c{flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:2.5px solid #C9A227;background:#fff;color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0}
+.nha-ctl-c.on{background:#C9A227;border-color:#C9A227}
+.nha-ctl-c.ok{background:#2D6A4F;border-color:#2D6A4F}
+.nha-gfila.dado{border-left-color:#C9A227;background:#FFFBF0}
+.nha-chip.dado{background:#FFF3D6;color:#6B4210}
+.nha-ctl-preg{background:#FFFBF0;border:1.5px solid #E8D9B5;border-radius:12px;padding:10px 12px;margin:2px 0 10px;font-size:15px;color:#1F1F1F}
+.nha-ctl-ops{display:flex;gap:6px;margin:8px 0 4px}
+.nha-ctl-ops button{flex:1;padding:10px 0;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:15px;font-weight:800}
+.nha-ctl-preg small{display:block;font-size:13.5px;color:#3D3D3D}
+.nha-ctl-x{border:none;background:none;color:#3D3D3D;font-size:14px;text-decoration:underline;padding:6px 0 0}

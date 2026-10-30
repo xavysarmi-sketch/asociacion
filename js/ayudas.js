@@ -710,7 +710,7 @@ function simBenResHTML(m){
   // 1) Tu situación hoy (desplegable)
   const abierto=!!DESP["sim-hoy"];
   let h=`<button onclick="DESP['sim-hoy']=!DESP['sim-hoy'];render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;margin:0 0 ${abierto?0:16}px;padding:12px 14px;border-radius:${abierto?"12px 12px 0 0":"12px"};border:1.5px solid #2D6A4F;background:#EEF7F1;color:#1B4332">
-      <span style="font-size:22px">📍</span><span style="flex:1;font-size:14.5px;font-weight:800">Tu situación hoy <span style="font-weight:600;font-size:12.5px;opacity:.8">Toca aquí para verla</span></span>
+      <span style="font-size:22px">📍</span><span style="flex:1;font-size:14.5px;font-weight:800">${window.NH_ES_APP_ASOCIADOS?"Lo que tienes hoy, "+escH(String(m.name||"").trim().split(/\s+/)[0]):"Tu situación hoy"} <span style="font-weight:600;font-size:12.5px;opacity:.8">Toca aquí para ${window.NH_ES_APP_ASOCIADOS?"verlo":"verla"}</span></span>
       <span style="font-size:18px;transform:rotate(${abierto?90:0}deg)">›</span></button>`;
   if(abierto)h+=`<div style="margin-bottom:16px">`+_simCaja(`<div style="font-size:12.5px;opacity:.85;margin-bottom:4px">Tu permanencia actual es ${m.ciclo===0?"indefinida":`de ${m.ciclo} meses`}</div>`,
        _simFila("Tus aportes",fmtEur(aportes)+" €")
