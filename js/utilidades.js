@@ -105,6 +105,15 @@ function _keyDeIdx(i){ return Math.floor(i/12)+"-"+String(((i%12)+12)%12+1).padS
 function _mesDeIdx(i){ return {mes:MONTHS[((i%12)+12)%12],anio:Math.floor(i/12)}; }
 function _txtIdx(i){ return MONTHS_FULL[((i%12)+12)%12].toLowerCase()+" "+Math.floor(i/12); }
 function _r2(x){ return Math.round((x||0)*100)/100; }
+// v45.57: lee un importe escrito a la española. «7.209,50», «7209,50» y «7209.50» → 7209.5; «1.000» → 1000.
+// Antes se cambiaba solo la coma por punto y «7.209,50» se leía como 7,21 (el gasto de octubre 2026).
+function numES(v){
+  let s=String(v==null?"":v).trim().replace(/[\s€]/g,"");
+  if(!s)return NaN;
+  if(s.indexOf(",")>=0)s=s.replace(/\./g,"").replace(",",".");      // con coma: los puntos son de miles
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");      // «1.000» o «12.500»: miles
+  return parseFloat(s);
+}
 // TAREA FUTURA (pendiente de revisar): salida de TERCEROS del grupo al saldar su última
 // cuota — mecanismo distinto al de baja de asociado. Un tercero no tiene permanencia ni
 // devolución; simplemente deja de tener ayudas activas. Revisar cuándo/cómo retirarlo de

@@ -48,7 +48,7 @@ function solAvisarGrupo(gid){
 function solGuardar(otorgarYa){
   const mid=(document.getElementById("so-mid")||{}).value||"";
   const nom=nombreBonito((document.getElementById("so-nom")||{}).value); // v45.47
-  const cap=parseFloat(String((document.getElementById("so-cap")||{}).value||"").replace(",","."));
+  const cap=numES((document.getElementById("so-cap")||{}).value);
   const n=parseInt((document.getElementById("so-n")||{}).value||"5");
   const m=mid?DATA.members.find(x=>x.id===mid):null;
   if(!m&&!nom){toast("Elige a la persona o escribe su nombre");return;}
@@ -78,7 +78,7 @@ function soMidCambio(){
   if(a&&av)a.value=av; if(g){ const gid=_grupoDe(mid)||(av?_grupoDe(av):""); if(gid)g.value=gid; }
 }
 function solPreview(){
-  const cap=parseFloat(String((document.getElementById("so-cap")||{}).value||"").replace(",","."))||0, n=parseInt((document.getElementById("so-n")||{}).value||"5");
+  const cap=numES((document.getElementById("so-cap")||{}).value)||0, n=parseInt((document.getElementById("so-n")||{}).value||"5");
   const el=document.getElementById("so-prev"); if(!el)return;
   if(!(cap>0)){el.innerHTML="";return;}
   const {total,cuotas}=ayudaCuotas(cap,n,DATA.rate), a=cuotas[0], b=cuotas[cuotas.length-1];

@@ -32,7 +32,7 @@ function gastosGestionHTML(){
 }
 function gastoAnadir(){
   const mes=document.getElementById("gas-mes")?.value, con=(document.getElementById("gas-con")?.value||"").trim();
-  const imp=_r2(parseFloat(String(document.getElementById("gas-imp")?.value||"").replace(",","."))||0);
+  const imp=_r2(numES(document.getElementById("gas-imp")?.value)||0);
   if(!mes||imp<=0){ toast("⛔ Pon el importe del gasto",3000); return; }
   if(!DATA.gastos)DATA.gastos=[];
   DATA.gastos.push({id:"g"+Date.now(),mes,concepto:con||"Gasto administrativo",importe:imp,fecha:new Date().toISOString().slice(0,10)});

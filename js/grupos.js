@@ -6,7 +6,7 @@
 function _grupoDe(mid){ const g=gruposCierre().find(x=>x.principalId===mid||(x.miembros||[]).includes(mid)); return g?g.id:""; }
 function _cgSimIdx(gid){ const c=_idxMes(DATA.reportMonth,DATA.reportYear), v=CG_SIM_MES[gid]; return (v!=null&&v>=c)?v:c; }
 function cgSimAdd(gid){
-  const v=parseFloat(String((document.getElementById("cg-sim")||{}).value||"").replace(",","."));
+  const v=numES((document.getElementById("cg-sim")||{}).value);
   if(!(v>0)){toast("Escribe el importe de la ayuda");return;}
   const nombre=nombreBonito((document.getElementById("cg-sim-nom")||{}).value); // v45.47
   const ms=(document.getElementById("cg-sim-mes")||{}).value; if(ms!=null&&ms!=="")CG_SIM_MES[gid]=+ms; // v45.17: mes de la simulación
@@ -111,7 +111,7 @@ function cgGuardar(gid){
   const g=gruposCierre().find(x=>x.id===gid); if(!g||!CG_FORM)return;
   const key=getMesKey(DATA.reportMonth,DATA.reportYear);
   if(CG_FORM.tipo==="entrega"){
-    const v=parseFloat(String((document.getElementById("cg-imp")||{}).value||"").replace(",","."));
+    const v=numES((document.getElementById("cg-imp")||{}).value);
     if(!(v>0)){toast("Escribe el importe que te ha entregado");return;}
     _cgW(key,gid).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"entrega",importe:_r2(v),fecha:_cgHoy()});
   } else {
