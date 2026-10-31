@@ -77,6 +77,7 @@ let SOL_PREFILL=null; // v45.17: {simGid, simRef} cuando la solicitud viene de u
 // movs: {id, tipo:"entrega"|"ayuda"|"arrastre"|"pasado", importe, fecha, lid?, mid?, nombre?, de?}
 let CG_FORM=null; // {gid, tipo} formulario abierto
 let CG_SIM_MES={}; // v45.17: mes de la simulación por grupo {gid:idx} (por defecto, el del cierre)
+let CG_SIM_SAL={}; // v45.68: salidas incluidas en la simulación por grupo {gid:[mid,…]}
 let CG_SIM={};    // v45.13: simulación de ayudas por grupo {gid:[{v,nombre},…]} — solo en memoria, no se guarda
 
 let _delMemberArmed=null;
