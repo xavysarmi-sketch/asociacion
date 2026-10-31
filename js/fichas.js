@@ -229,7 +229,8 @@ async function peticionDescartar(pid){
 function _appUrlInstalar(){ return location.origin+location.pathname.replace(/[^/]*$/,"")+"app/instalar/"; }
 function _appMensajeWA(m){
   const nom=String(m.name||"").trim().split(/\s+/)[0]||"";
-  return `Hola ${nom} 👋\nYa tienes tu *app de Nuevos Horizontes*. Ahí ves tus aportes, tus ayudas y tus beneficios, siempre al día.\n\n👉 Tu enlace (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\n*Para tenerla en el móvil:*\n1️⃣ Abre el enlace.\n2️⃣ iPhone: toca *Compartir* y luego «Añadir a pantalla de inicio».\n    Android: toca los *tres puntos* y luego «Añadir a pantalla de inicio».\n3️⃣ Ya está: ábrela siempre desde el icono *NH*.\n\n🖼️ ¿Te lías? Aquí tienes los pasos con dibujos:\n${_appUrlInstalar()}\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  // v45.67: primero los pasos y el enlace al final, para que lo lean antes de tocarlo (decisión de Ángel 31/10/2026)
+  return `Hola ${nom} 👋\nAquí tienes tu *app de Nuevos Horizontes*.\n\n*Lee esto antes de tocar el enlace* (está al final):\n\n1️⃣ *Cómo instalarla:* toca tu enlace del final.\n\n📱 *Si tienes iPhone:*\n• Abajo, toca el botón *Compartir* 📤. Si no lo ves, toca primero los tres puntos *···*\n• Baja un poco y toca «*Añadir a pantalla de inicio*»\n• Arriba a la derecha, toca *Añadir*\n\n📱 *Si tienes Android:*\n• Arriba a la derecha, toca los *tres puntos* ⋮\n• Toca «*Añadir a pantalla de inicio*» (en algunos móviles pone «*Instalar aplicación*»)\n• Toca *Añadir* o *Instalar*\n\n2️⃣ *Listo:* en tu pantalla aparece el icono *NH*. Desde ahora ábrela siempre tocando ese icono.\n\n👇 *Tu enlace* (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\n🖼️ ¿Te lías? Los mismos pasos con dibujos:\n${_appUrlInstalar()}\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
 }
 function _appEnviados(){ return (_appCfg().enviados)||{}; }
 function appEnviarA(mid){
