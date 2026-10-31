@@ -542,7 +542,82 @@ ${MODAL.trasAlta?(()=>{ const gid=_grupoDe(m.id), g=gid&&gruposCierre().find(x=>
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="_copyFallback(document.getElementById('bv-txt').value)">📋 Copiar mensaje</button>
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver su enlace</button>
 </div>
+${tarjetaBienvenidaHTML(m)}
 <button style="width:100%;margin-top:10px;padding:10px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer" onclick="closeModal()">Ahora no</button>`;
+}
+// ══ v45.71 · TARJETA DE BIENVENIDA PARA EL GRUPO DE WHATSAPP (diseño «gala con marco dorado», elegido por Ángel 31/10/2026)
+// Se dibuja en el móvil (canvas) con los datos de la app y se comparte como imagen. No se guarda nada.
+function _tbSexoInicial(m){ const n=_normNom(String(m.name||"").split(" ")[0]); return /a$/.test(n)?"f":"m"; }
+function _tbDatos(m,sexo){
+  const ref=m.referidoPor?DATA.members.find(x=>x.id===m.referidoPor):null;
+  const n=DATA.members.filter(x=>x.type==="asociado"&&!x.baja).length;
+  return {f:sexo==="f",nombre:String(m.name||"").trim(),ref:ref?ref.name:"",bono:ref?REGLAS.BONO_REFERIDO:0,
+    desde:m.joinMonth?MONTHS_FULL[MONTHS.indexOf(m.joinMonth)]+" "+m.joinYear:"",n};
+}
+function _tbLineas(ctx,txt,max){ const ws=String(txt).split(/\s+/), out=[]; let l="";
+  ws.forEach(w=>{ const t=l?l+" "+w:w; if(ctx.measureText(t).width>max&&l){ out.push(l); l=w; } else l=t; }); if(l)out.push(l); return out; }
+function tarjetaBienvenidaCanvas(m,sexo){
+  const d=_tbDatos(m,sexo), W=1080, H=1350, c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d"), SANS='-apple-system,"SF Pro Display","Segoe UI",Roboto,Inter,Arial,sans-serif', SERIF='Georgia,"Times New Roman",serif';
+  const ls=v=>{ try{ x.letterSpacing=v+"px"; }catch(e){} };
+  const rr=(X,Y,w,h,r)=>{ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); };
+  const txt=(t,y,font,col,sp)=>{ x.font=font; x.fillStyle=col; x.textAlign="center"; ls(sp||0); x.fillText(t,W/2,y); ls(0); };
+  x.fillStyle="#1B4332"; x.fillRect(0,0,W,H);
+  let sd=7; const rnd=()=>{ sd=(sd*9301+49297)%233280; return sd/233280; }, cols=["#E9C46A","#C9A227","#FFFFFF","#74C69D","#F4A261"];
+  for(let i=0;i<30;i++){ const X=i%2?20+rnd()*90:970+rnd()*80, Y=70+rnd()*1220; x.save(); x.translate(X,Y); x.rotate((rnd()-.5)*2); x.globalAlpha=.85; x.fillStyle=cols[Math.floor(rnd()*cols.length)]; x.fillRect(0,0,[10,14,18][Math.floor(rnd()*3)],[24,30,12][Math.floor(rnd()*3)]); x.restore(); }
+  x.lineWidth=5; x.strokeStyle="#C9A227"; rr(34,34,W-68,H-68,44); x.stroke();
+  x.lineWidth=2; x.strokeStyle="rgba(201,162,39,.5)"; rr(50,50,W-100,H-100,34); x.stroke();
+  rr(W/2-60,96,120,120,32); x.fillStyle="#F5F0EB"; x.fill();
+  x.font="bold 54px "+SERIF; x.fillStyle="#1B4332"; x.textAlign="center"; x.textBaseline="middle"; x.fillText("NH",W/2,158); x.textBaseline="alphabetic";
+  txt("Asociación Nuevos Horizontes",282,"bold 40px "+SERIF,"#E9C46A");
+  txt("★   ★   ★",368,"60px "+SANS,"#E9C46A");
+  txt(d.f?"¡BIENVENIDA!":"¡BIENVENIDO!",446,"900 58px "+SANS,"#FFFFFF",2);
+  const ps=d.nombre.toUpperCase().split(/\s+/), lin=[ps[0],ps.slice(1).join(" ")].filter(Boolean); let tam=150;
+  const cabe=t=>{ x.font="900 "+t+"px "+SANS; return lin.every(l=>x.measureText(l).width<=880); };
+  while(tam>70&&!cabe(tam))tam-=4;
+  let y=486+tam*0.85; lin.forEach((l,i)=>{ txt(l,y,"900 "+tam+"px "+SANS,"#E9C46A",-1); if(i<lin.length-1)y+=tam*0.95; });
+  y+=80;
+  const et=d.f?"NUEVA ASOCIADA":"NUEVO ASOCIADO"; x.font="900 38px "+SANS; ls(4); const we=x.measureText(et).width; ls(0);
+  x.fillStyle="#C9A227"; x.fillRect(W/2-we/2-150,y-14,120,4); x.fillRect(W/2+we/2+30,y-14,120,4); txt(et,y,"900 38px "+SANS,"#FFFFFF",4);
+  y+=40;
+  // v45.71: cuadros en dos filas; el bono dice para quién y por qué
+  const caja=(bx,by,bw,bh,l,v,sub)=>{ rr(bx,by,bw,bh,26); x.fillStyle="rgba(255,255,255,.1)"; x.fill(); x.lineWidth=2; x.strokeStyle="rgba(233,196,106,.45)"; x.stroke();
+    x.textAlign="center"; let fl=26; x.font="800 "+fl+"px "+SANS; while(fl>18&&x.measureText(l).width>bw-28){ fl-=1; x.font="800 "+fl+"px "+SANS; }
+    x.fillStyle="#CFE3D7"; x.fillText(l,bx+bw/2,by+44);
+    x.font="900 44px "+SANS; const vl=_tbLineas(x,v,bw-30).slice(0,2); x.fillStyle="#FFFFFF";
+    const y0=by+(sub?90:(vl.length===1?104:92)); vl.forEach((t,k)=>x.fillText(t,bx+bw/2,y0+k*46));
+    if(sub){ x.font="700 28px "+SANS; x.fillStyle="#E9C46A"; x.fillText(sub,bx+bw/2,y0+(vl.length-1)*46+40); } };
+  const g=18, X0=W/2-440, bh=140, refN=d.ref?d.ref.split(" ")[0]:"";
+  if(d.ref){ const w2=(880-g)/2;
+    caja(X0,y,w2,bh,"🤝 "+(d.f?"LA HA INVITADO":"LO HA INVITADO"),d.ref);
+    caja(X0+w2+g,y,w2,bh,"🎁 BONO POR "+(d.f?"INVITARLA":"INVITARLO"),d.bono+" € para "+refN);
+    y+=bh+g; }
+  { const w2=(880-g)/2;
+    caja(X0,y,w2,bh,"📅 "+(d.f?"ASOCIADA DESDE":"ASOCIADO DESDE"),d.desde||"—");
+    caja(X0+w2+g,y,w2,bh,"👥 YA SOMOS",d.n+" asociados");
+    y+=bh; }
+  y-=8;
+  txt("«Solos avanzamos, juntos construimos.»",y+84,"italic 40px "+SERIF,"#F5F0EB");
+  return c;
+}
+function tbPintar(){ const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)), im=document.getElementById("tb-img"); if(!m||!im)return;
+  try{ im.src=tarjetaBienvenidaCanvas(m,MODAL.tbSexo||_tbSexoInicial(m)).toDataURL("image/png"); }catch(e){} }
+function tbCompartir(){
+  const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)); if(!m)return;
+  const c=tarjetaBienvenidaCanvas(m,MODAL.tbSexo||_tbSexoInicial(m)), nom="Bienvenida_"+_normNom(m.name.split(" ")[0])+".png";
+  c.toBlob(b=>{ if(!b)return; const f=new File([b],nom,{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){ navigator.share({files:[f]}).catch(()=>{}); return; }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=nom; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+    toast("🖼️ Tarjeta descargada: mándala al grupo desde WhatsApp"); },"image/png");
+}
+function tarjetaBienvenidaHTML(m){
+  if(m.type!=="asociado")return "";
+  const sx=MODAL.tbSexo||_tbSexoInicial(m), b=(v,t)=>`<button onclick="MODAL.tbSexo='${v}';render()" class="cgt-b ${sx===v?"pri":""}" style="min-height:40px;flex:1">${t}</button>`;
+  setTimeout(tbPintar,0);
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div class="m-label" style="margin-bottom:6px">🎉 Tarjeta para el grupo de asociados</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">${b("f","Bienvenida (ella)")}${b("m","Bienvenido (él)")}</div>
+    <img id="tb-img" alt="Tarjeta de bienvenida" style="width:100%;border-radius:12px;display:block;background:#1B4332;aspect-ratio:1080/1350">
+    <button style="width:100%;margin-top:8px;padding:13px;border-radius:14px;background:#1B4332;color:#fff;font-size:15px;font-weight:800;border:none;cursor:pointer" onclick="tbCompartir()">🎉 Compartir tarjeta (WhatsApp)</button></div>`;
 }
 function enviarBienvenida(){
   const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)); if(!m)return;
