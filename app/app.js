@@ -142,6 +142,8 @@ function nhaTitulo(m,t,sub,ic){
 function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
   let h="";
+  // v45.70: abierta desde el navegador (sin el icono NH): aviso para instalarla; desaparece al abrirla desde el icono
+  if(!nhaInstalada())h+=`<div class="nha-inst-av"><b>⚠️ Aún no tienes la app instalada</b>Así, desde el navegador, dejará de funcionar pronto. Crea el icono <b class="nha-inl">NH</b> en tu móvil para seguir viendo tus cuentas.<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div>`;
   if(salidaPend)h+=salidaAvisoFichaHTML(m); else if(pausaVigente(m))h+=pausaAvisoFichaHTML(m);
   if(!salidaPend)h+=p.arriba; // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
