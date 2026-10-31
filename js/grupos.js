@@ -13,25 +13,36 @@ function _cgSalidasPend(g){
   return ids.map(id=>DATA.members.find(m=>m.id===id)).filter(m=>m&&m.baja&&m.baja.v18&&!m.baja.pagada&&!usadas.has(m.id))
     .map(m=>({m,v:_r2((datosBaja(m)||{}).total||0)})).filter(x=>x.v>0);
 }
+// v45.69: solicitudes pendientes de ese grupo para ese mes (se apuntan en Ayudas; aquí solo se leen)
+function _cgSolsPend(g,idx){ const k=_keyDeIdx(idx); return _solsR().filter(s=>s.estado==="pendiente"&&s.grupoGid===g.id&&s.mes===k&&s.capital>0); }
 function cgSimAdd(gid){
   const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
   const v=numES((document.getElementById("cg-sim")||{}).value);
   const sal=_cgSalidasPend(g).filter(x=>(document.getElementById("cg-sim-sal-"+x.m.id)||{}).checked).map(x=>x.m.id);
-  if(!(v>0)&&!sal.length){toast("Escribe el importe de la ayuda");return;}
   const nombre=nombreBonito((document.getElementById("cg-sim-nom")||{}).value); // v45.47
   const ms=(document.getElementById("cg-sim-mes")||{}).value; if(ms!=null&&ms!=="")CG_SIM_MES[gid]=+ms; // v45.17: mes de la simulación
-  if(v>0)(CG_SIM[gid]=CG_SIM[gid]||[]).push({v:_r2(v),nombre});
+  const sols=_cgSolsPend(g,_cgSimIdx(gid)), fuera=sols.filter(s=>{ const c=document.getElementById("cg-sim-sol-"+s.id); return c&&!c.checked; }).map(s=>s.id);
+  // v45.69: la misma persona no entra dos veces: si ya tiene solicitud ese mes, se usa la solicitud
+  const dup=v>0&&nombre?sols.find(s=>_normNom(s.nombre)===_normNom(nombre)):null;
+  if(dup){ const i=fuera.indexOf(dup.id); if(i>=0)fuera.splice(i,1);
+    toast(_r2(v)===_r2(dup.capital)?`${dup.nombre.split(" ")[0]} ya tiene una solicitud de ${fmtEur(dup.capital)} € para ${_txtIdx(_cgSimIdx(gid)).split(" ")[0]}: se usa esa`:`${dup.nombre.split(" ")[0]} ya tiene una solicitud de ${fmtEur(dup.capital)} €. Si cambia el importe, corrígelo en su solicitud (Ayudas)`,5000); }
+  const incl=sols.filter(s=>!fuera.includes(s.id)).length;
+  if(!(v>0)&&!sal.length&&!incl){toast("Escribe el importe de la ayuda");return;}
+  if(v>0&&!dup)(CG_SIM[gid]=CG_SIM[gid]||[]).push({v:_r2(v),nombre});
   if(sal.length)CG_SIM_SAL[gid]=sal; else delete CG_SIM_SAL[gid];
-  CG_FORM=null; render();
+  if(fuera.length)CG_SIM_SOLX[gid]=fuera; else delete CG_SIM_SOLX[gid];
+  CG_SIM_ON[gid]=true; CG_FORM=null; render();
 }
+function cgSimQuitarSol(gid,id){ (CG_SIM_SOLX[gid]=CG_SIM_SOLX[gid]||[]).push(id); render(); }
 function cgSimQuitarSal(gid,mid){ CG_SIM_SAL[gid]=(CG_SIM_SAL[gid]||[]).filter(x=>x!==mid); if(!CG_SIM_SAL[gid].length)delete CG_SIM_SAL[gid]; if(!(CG_SIM[gid]||[]).length&&!CG_SIM_SAL[gid])delete CG_SIM_MES[gid]; render(); }
 function _cgSimEtq(x,i,n,html){ const nm=x.nombre?(html?escH(x.nombre):x.nombre):""; return (nm?`Ayuda a ${nm}`:`Ayuda${n>1?" "+(i+1):""}`)+" (si la das)"; }
 function _cgDatosSim(g){
   const idx=_cgSimIdx(g.id), movs=_cgMovs(_keyDeIdx(idx),g.id), sim=CG_SIM[g.id]||[]; // v45.17: mes elegido
   const sum=t=>_r2(movs.filter(x=>x.tipo===t).reduce((a,x)=>a+x.importe,0));
   const falta=_sinCrearMes(idx,()=>_cgFalta(g,idx)), simTot=_r2(sim.reduce((a,b)=>a+b.v,0));
+  const fuera=CG_SIM_SOLX[g.id]||[], sols=_cgSolsPend(g,idx).filter(s=>!fuera.includes(s.id)).map(s=>({id:s.id,nombre:s.nombre,v:_r2(s.capital)})), solTot=_r2(sols.reduce((a,b)=>a+b.v,0)); // v45.69
   const selS=CG_SIM_SAL[g.id]||[], sal=_cgSalidasPend(g).filter(x=>selS.includes(x.m.id)).map(x=>({mid:x.m.id,nombre:x.m.name,v:x.v})), salTot=_r2(sal.reduce((a,b)=>a+b.v,0)); // v45.68
-  return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:_r2(sum("entrega")+_sinCrearMes(idx,()=>_cgResto(g,idx))),ayudas:sum("ayuda"),salidasYa:sum("salida"),sim,simTot,sal,salTot,resto:_r2(falta-simTot-salTot)};
+  return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:_r2(sum("entrega")+_sinCrearMes(idx,()=>_cgResto(g,idx))),ayudas:sum("ayuda"),salidasYa:sum("salida"),sim,simTot,sal,salTot,sols,solTot,resto:_r2(falta-simTot-salTot-solTot)};
 }
 function cgSimEnviar(gid){
   const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
@@ -39,18 +50,19 @@ function cgSimEnviar(gid){
   const d=_cgDatosSim(g), nom=p.name.split(" ")[0], mes=_txtIdx(d.idx).split(" ")[0], e=v=>fmtEur(v)+" €";
   // v45.68: en palabras del responsable, no las cuentas internas del administrador (revisión de Ángel 31/10/2026)
   const lista=a=>a.length===1?`*${a[0]}*`:`*${a.slice(0,-1).join(", ")}* y *${a[a.length-1]}*`;
-  const quien=d.sim.map(x=>x.nombre).filter(Boolean), partes=[];
-  if(d.sim.length)partes.push(`das ${d.sim.length>1?"estas ayudas":"la ayuda"}${quien.length?" a "+lista(quien):""}`);
-  if(d.sal.length)partes.push(`le pagas a ${lista(d.sal.map(x=>x.nombre))} ${d.sal.length>1?"sus salidas":"su salida"}`);
+  const ays=[...d.sols,...d.sim], quien=ays.map(x=>x.nombre).filter(Boolean), partes=[];
+  if(ays.length)partes.push(`damos ${ays.length>1?(quien.length===ays.length?"las ayudas":"estas ayudas"):"la ayuda"}${quien.length?" a "+lista(quien):""}`);
+  if(d.sal.length)partes.push(`le pagamos a ${lista(d.sal.map(x=>x.nombre))} ${d.sal.length>1?"sus salidas":"su salida"}`);
   let t=`Hola ${nom} 👋\nAsí quedaría *${mes}* si ${partes.join(" y ")} con el dinero que recoges de tu grupo:\n\n💶 Lo que recoges de tu grupo: ${e(d.total)}`;
   if(d.arrastre)t+=`\n➕ Te quedó del mes pasado: ${e(d.arrastre)}`;
   if(d.entregado)t+=`\n✅ Ya me has entregado: −${e(d.entregado)}`;
   if(d.ayudas)t+=`\n🤝 Ayudas que ya has dado: −${e(d.ayudas)}`;
   if(d.salidasYa)t+=`\n🚪 Salidas que ya has pagado: −${e(d.salidasYa)}`;
+  d.sols.forEach(x=>{ t+=`\n🤝 Ayuda para ${x.nombre}: −${e(x.v)}`; }); // v45.69
   d.sim.forEach((x,i)=>{ t+=`\n🤝 Ayuda${x.nombre?" para "+x.nombre:d.sim.length>1?" "+(i+1):""}: −${e(x.v)}`; });
   d.sal.forEach(x=>{ t+=`\n🚪 Salida de ${x.nombre}: −${e(x.v)}`; });
   t+= d.resto>0?`\n\n👉 *Después me entregas a mí: ${e(d.resto)}*`:d.resto===0?`\n\n👉 *No me tienes que entregar nada más*`:`\n\n👉 *Los ${e(-d.resto)} que faltan te los pasa la asociación*`;
-  t+=`\n\nTodavía no está hecho: es para que veas cómo quedaría.`;
+  t+=`\n\nEs una simulación. Dime si estás de acuerdo y lo hacemos.`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
   else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
@@ -109,7 +121,7 @@ function cgColaModalHTML(){
     :`<div style="margin-top:14px;padding:11px;border-radius:12px;background:#E3F1E7;color:#1B7A3D;font-weight:800;text-align:center">✅ Enviadas todas</div>`;
   return h+`<button class="m-sec" style="margin-top:8px" onclick="closeModal()">Cerrar</button>`;
 }
-function cgSimQuitar(gid,i){ if(i==null){delete CG_SIM[gid];delete CG_SIM_MES[gid];delete CG_SIM_SAL[gid];} else { CG_SIM[gid].splice(i,1); if(!CG_SIM[gid].length){delete CG_SIM[gid]; if(!CG_SIM_SAL[gid])delete CG_SIM_MES[gid];} } render(); }
+function cgSimQuitar(gid,i){ if(i==null){delete CG_SIM[gid];delete CG_SIM_MES[gid];delete CG_SIM_SAL[gid];delete CG_SIM_SOLX[gid];delete CG_SIM_ON[gid];} else { CG_SIM[gid].splice(i,1); if(!CG_SIM[gid].length){delete CG_SIM[gid]; if(!CG_SIM_SAL[gid])delete CG_SIM_MES[gid];} } render(); }
 function _cgMovs(key,gid){ const c=DATA.cuentasGrupo&&DATA.cuentasGrupo[key]&&DATA.cuentasGrupo[key][gid]; return (c&&c.movs)||[]; }
 function _cgW(key,gid){ if(!DATA.cuentasGrupo)DATA.cuentasGrupo={}; if(!DATA.cuentasGrupo[key])DATA.cuentasGrupo[key]={}; if(!DATA.cuentasGrupo[key][gid])DATA.cuentasGrupo[key][gid]={movs:[]}; return DATA.cuentasGrupo[key][gid]; }
 function _cgTotal(g,idx){ const {mes,anio}=_mesDeIdx(idx); return _r2(itemsDeGrupo(g,mes,anio).reduce((s,it)=>s+it.importe,0)); }
@@ -226,6 +238,7 @@ function cuentaGrupoHTML(g,principal){
       <b style="color:#1B4332;font-size:15px">${falta>0?"Falta por entregarte":falta<0?"Te ha dado de más":"✅ Liquidado"}</b>
       ${falta!==0?`<b style="font-size:20px;color:${falta>0?"#B06A1E":"#C0492C"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div>`;
   // v45.30: sin aviso de descuadre: lo marcado como cobrado en el Cierre cuenta como entregado
+  { const ps=_cgSolsPend(g,idx); if(ps.length)h+=`<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#FFF8EE;border:1.5px solid #E8C9A0;font-size:14px;color:#6B4210;line-height:1.35">📝 <b>${ps.length} ${ps.length===1?"solicitud":"solicitudes"} de su grupo para ${mesTxt}: ${fmtEur(_r2(ps.reduce((a,s)=>a+s.capital,0)))} €</b><br><span style="font-size:13px">${ps.map(s=>escH(s.nombre)+" "+fmtEur(s.capital)+" €").join(" · ")} · entran solas en «Simular ayudas»</span></div>`; } // v45.69
   if(CG_FORM&&CG_FORM.gid===g.id){
     if(CG_FORM.tipo==="sim"){
       h+=`<label class="m-label" style="margin-top:10px">¿De cuánto sería la ayuda?</label>
@@ -237,6 +250,7 @@ function cuentaGrupoHTML(g,principal){
           return [...del,...resto].map(m=>`<option value="${escH(m.name)}">${m.type==="tercero"?"Tercero":"Asociado"}${ids.includes(m.id)?" · de este grupo":""}</option>`).join(""); })()}</datalist><!-- v45.47: sugiere los nombres registrados -->
         <label class="m-label">¿Para qué mes?${(CG_SIM[g.id]||[]).length?` <span style="font-weight:600;color:var(--muted)">(cambia toda la simulación)</span>`:""}</label>
         <select id="cg-sim-mes" class="m-select" style="font-size:15px">${[0,1,2,3].map(k=>{const i=idx+k,t=_txtIdx(i);return `<option value="${i}"${i===_cgSimIdx(g.id)?" selected":""}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`;}).join("")}</select>`; // v45.17
+      _cgSolsPend(g,_cgSimIdx(g.id)).forEach(s=>{ h+=`<label style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border:1.5px solid #D5E3D9;border-radius:10px;background:#fff;font-size:15px;font-weight:700;color:var(--dark)"><input type="checkbox" id="cg-sim-sol-${esc(s.id)}" style="-webkit-appearance:checkbox;appearance:auto;accent-color:#1B4332;flex:none;width:24px;height:24px;margin:0"${(CG_SIM_SOLX[g.id]||[]).includes(s.id)?"":" checked"}> Incluir la solicitud de ${escH(s.nombre)} (${fmtEur(s.capital)} €)</label>`; }); // v45.69: vienen marcadas
       _cgSalidasPend(g).forEach(x=>{ h+=`<label style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border:1.5px solid #D5E3D9;border-radius:10px;background:#fff;font-size:15px;font-weight:700;color:var(--dark)"><input type="checkbox" id="cg-sim-sal-${esc(x.m.id)}" style="-webkit-appearance:checkbox;appearance:auto;accent-color:#1B4332;flex:none;width:24px;height:24px;margin:0"${(CG_SIM_SAL[g.id]||[]).includes(x.m.id)?" checked":""}> Incluir la salida de ${escH(x.m.name)} (${fmtEur(x.v)} €)</label>`; }); // v45.68
     } else if(CG_FORM.tipo==="salida"){ // v45.68
       const ps=_cgSalidasPend(g);
@@ -266,7 +280,7 @@ function cuentaGrupoHTML(g,principal){
   }
   // v45.13: simulación de ayudas, escrita para enviársela al responsable del grupo (no se guarda)
   const sim=CG_SIM[g.id]||[];
-  if(sim.length||(CG_SIM_SAL[g.id]||[]).length){
+  if(sim.length||(CG_SIM_SAL[g.id]||[]).length||(CG_SIM_ON[g.id]&&_cgDatosSim(g).sols.length)){
     const d=_cgDatosSim(g); 
     const fl=(l,v,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;padding:3px 0"><span>${l}</span><b style="white-space:nowrap;${c||""}">${v}</b></div>`;
     h+=`<div style="border:1.5px dashed #B06A1E;border-radius:10px;padding:10px 12px;margin-top:10px;background:#FFF8EE">
@@ -278,6 +292,7 @@ function cuentaGrupoHTML(g,principal){
       ${d.salidasYa?fl("Salidas que ya has pagado","−"+fmtEur(d.salidasYa)+" €"):""}
       ${sim.map((x,i)=>`<div style="padding:3px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px"><span style="min-width:0">${_cgSimEtq(x,i,sim.length,true)}</span><span style="white-space:nowrap"><b>−${fmtEur(x.v)} €</b> <button onclick="cgSimQuitar('${g.id}',${i})" style="border:none;background:none;color:#C0492C;font-size:15px;cursor:pointer;padding:0 2px">✕</button></span></div>
         <button onclick="solDesdeSim('${g.id}',${i})" style="margin-top:3px;padding:5px 9px;border-radius:8px;border:1px solid #2D6A4F;background:#fff;color:#1B4332;font-size:12px;font-weight:800;cursor:pointer">📝 Pasar a solicitudes</button></div>`).join("")}
+      ${d.sols.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;padding:3px 0"><span style="min-width:0">📝 Solicitud de ${escH(x.nombre)} (si se aprueba)</span><span style="white-space:nowrap"><b>−${fmtEur(x.v)} €</b> <button onclick="cgSimQuitarSol('${g.id}','${esc(x.id)}')" style="border:none;background:none;color:#C0492C;font-size:15px;cursor:pointer;padding:0 2px">✕</button></span></div>`).join("")}
       ${d.sal.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;padding:3px 0"><span style="min-width:0">🚪 Salida de ${escH(x.nombre)} (si la paga)</span><span style="white-space:nowrap"><b>−${fmtEur(x.v)} €</b> <button onclick="cgSimQuitarSal('${g.id}','${esc(x.mid)}')" style="border:none;background:none;color:#C0492C;font-size:15px;cursor:pointer;padding:0 2px">✕</button></span></div>`).join("")}
       <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid #E8C9A0;margin-top:6px;padding-top:6px">
         <b style="color:#8A4F12;font-size:14px">${d.resto>=0?"Te quedaría por entregar":"Te pasa la asociación"}</b>
