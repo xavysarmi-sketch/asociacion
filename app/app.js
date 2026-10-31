@@ -190,7 +190,7 @@ function nhaImportanteHTML(m,g){
   if(g){ const ms=[g.principalId,...(g.miembros||[])].map(id=>DATA.members.find(x=>x.id===id)).filter(x=>x&&activoEnReporte(x));
     const tot=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).total,0)), pend=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).pendiente,0));
     items.push(["👥",`Tu grupo este mes: ${fmtEur(tot)} €`,pend>0?`Falta por cobrar ${fmtEur(pend)} €`:"Todo cobrado",`grupo`]); }
-  let h=`<div class="nha-card"><div class="nha-kicker">Para ti</div><div class="nha-card-tit">Lo importante</div>`;
+  let h=`<div class="nha-card"><div class="nha-card-tit">Tus avisos</div>`;
   if(!items.length)h+=`<div class="nha-vacio">Todo en orden. No tienes nada pendiente aparte de lo de este mes.</div>`;
   items.forEach(([ic,t,s,ir])=>{ t=t.replace(/ €/g,"&nbsp;€"); s=s.replace(/ €/g,"&nbsp;€"); h+=`<button class="nha-item" onclick="nhaIr('${ir}')"><span class="nha-item-ic">${ic}</span><span class="nha-item-txt"><b>${t}</b><span>${s}</span></span><span class="nha-item-fl">›</span></button>`; });
   return h+`</div>`;
@@ -204,7 +204,11 @@ function nhaAportesHTML(m){
 // ── Ayudas ──
 function nhaAyudasHTML(m){
   const a=nhaPartes(m,"ayudas"), esTerc=m.type==="tercero";
-  let h=nhaTitulo(m,"Mis ayudas","Tus cuotas, mes a mes.","hand")+a.cuerpo;
+  let h=nhaTitulo(m,"Mis ayudas","Tus cuotas, mes a mes.","hand");
+  const sal=m.baja&&m.baja.v18&&!m.baja.pagada?m.baja:null; // v45.64: quien ya ha salido: lo que le falte se descuenta de lo que recibe (SA-10)
+  if(sal&&sal.ayudaDescontada>0)h+=`<div class="nha-aviso" style="font-size:15px">Lo que te queda por pagar de tu ayuda (<b>${fmtEur(sal.ayudaDescontada)}&nbsp;€</b>) <b>no tienes que pagarlo</b>: ya está descontado de lo que recibes al salir.</div>`;
+  h+=a.cuerpo;
+  if(sal)return h;
   if(!esTerc&&m.joinMonth)h+=`<div class="nha-card nha-pedir"><div class="nha-card-tit">¿Necesitas una ayuda?</div>
     <div class="nha-txt">Mira cuánto puedes pedir y en cuántos meses devolverlo. Si te encaja, desde ahí mismo se lo pides al administrador.</div>
     <button class="nha-btn" onclick="abrirSimulador('${esc(m.id)}','ayuda')">💡 ¿Cuánto puedo pedir?</button></div>`;
@@ -226,7 +230,7 @@ function nhaGrupoHTML(m,g){
   if(_nBaseG(ms,rm,ry)>0)h+=`<div class="nha-nota">Los aportes aún sin pagar se cuentan con 50 €: cada uno puede aportar 50, 100, 150 o 200 €.</div>`;
   h+=nhaCtlResumenHTML(m,act,rm,ry);
   // Estado de cada persona (una fila); al tocarla se abre su detalle, el mismo del reporte de grupo
-  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Cada persona</div><div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> para ver todo su detalle.</span></div>`;
+  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Cada persona</div><div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> para ver todo su detalle.</span></div>${act.some(x=>{const t=totalDelMes(x,rm,ry);return !t.alDia&&nhaCtlAporteLibre(x,t);})?`<div class="nha-leyenda"><span class="nha-ley-fl" style="font-size:13px">▾</span><span>Si alguien pone <b>más de 50 €</b> de aporte, toca su botón <b>«Aporte»</b> y elige cuánto.</span></div>`:""}`;
   const ctl=nhaCtlLeer();
   act.slice().sort((a,b)=>(totalDelMes(a,rm,ry).alDia?1:0)-(totalDelMes(b,rm,ry).alDia?1:0)).forEach(x=>{ const t=totalDelMes(x,rm,ry), ab=!!DESP["nhag-"+x.id], abierto=x.type!=="tercero"&&aporteMostradoMes(x,rm,ry).abierto;
     const marca=!t.alDia&&ctl[x.id]!=null?ctl[x.id]:null;
@@ -235,9 +239,8 @@ function nhaGrupoHTML(m,g){
       :`<button class="nha-ctl-c${marca!=null?" on":""}" aria-label="${marca!=null?"Quitar la marca":"Me lo ha dado"}" onclick="nhaCtlToca('${esc(x.id)}')">${marca!=null?"✓":""}</button>`;
     h+=`<div class="nha-gfila-w">${circ}<button class="nha-gfila ${t.alDia?"ok":marca!=null?"dado":"pend"}" onclick="nhaGFila('${esc(x.id)}')"><span class="nha-gfila-n"><b>${escH(x.name)}</b>${est}</span><span class="nha-gfila-t">${fmtEur(t.total)}&nbsp;€</span><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
     if(NHA.ctlPreg===x.id)h+=nhaCtlPreguntaHTML(x,t);
-    else if(nhaCtlAporteLibre(x,t))h+=marca!=null
-      ?`<div class="nha-ctl-ap">Con aporte de ${fmtEur(_r2(marca-(t.pendiente-APORTE_MINIMO)))}&nbsp;€ · <button onclick="NHA.ctlPreg='${esc(x.id)}';render()">Cambiar</button></div>`
-      :`<div class="nha-ctl-ap">Aporte de 50&nbsp;€ · <button onclick="NHA.ctlPreg='${esc(x.id)}';render()">¿Pone más? Elegir</button></div>`;
+    else if(nhaCtlAporteLibre(x,t)){ const apV=marca!=null?_r2(marca-(t.pendiente-APORTE_MINIMO)):APORTE_MINIMO;
+      h+=`<div class="nha-ctl-ap"><button class="nha-ap-btn" onclick="NHA.ctlPreg='${esc(x.id)}';render()">Aporte: <b>${fmtEur(apV)}&nbsp;€</b> <span class="nha-ap-fl">▾</span></button></div>`; }
     if(ab)h+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}<button class="nha-gdet-cerrar" onclick="nhaGFila('${esc(x.id)}')">Cerrar ✕</button></div>`; });
   return h+`</div>`;
 }
@@ -263,7 +266,7 @@ function nhaCtlToca(id){
 function nhaCtlAporteLibre(x,t){ return x.type==="asociado"&&!t.aportePagado&&t.aporteImporte>0&&aporteBaseDe(x)<=APORTE_MINIMO; }
 function nhaCtlPreguntaHTML(x,t){
   const otros=_r2(t.pendiente-APORTE_MINIMO);
-  return `<div class="nha-ctl-preg"><div>¿Cuánto ha aportado <b>${nhaPrimerNombre(x)}</b> este mes?</div><div class="nha-ctl-ops">${REGLAS.APORTE_OPCIONES.map(v=>`<button onclick="nhaCtlMarca('${esc(x.id)}',${_r2(otros+v)})">${v} €</button>`).join("")}</div>
+  return `<div class="nha-ctl-preg"><div>¿Cuánto ha puesto <b>${nhaPrimerNombre(x)}</b> de aporte este mes? <small style="display:inline">Al elegirlo, queda marcada como que te ha pagado.</small></div><div class="nha-ctl-ops">${REGLAS.APORTE_OPCIONES.map(v=>`<button onclick="nhaCtlMarca('${esc(x.id)}',${_r2(otros+v)})">${v} €</button>`).join("")}</div>
     ${otros>0?`<small>Se suma a lo demás que le toca (${fmtEur(otros)} €).</small>`:""}<button class="nha-ctl-x" onclick="NHA.ctlPreg=null;render()">Cancelar</button></div>`;
 }
 function nhaGFila(id){ const k="nhag-"+id; DESP[k]=!DESP[k]; NHA.ctlPreg=null; render(); }
@@ -278,7 +281,7 @@ function nhaCtlResumenHTML(m,act,rm,ry){
   rec=_r2(rec); falta=_r2(falta);
   return `<div class="nha-card nha-ctl"><div class="nha-card-tit">Tu control</div>
     <div class="nha-ctl-2"><div><small>Has recogido</small><b>${fmtEur(rec)}&nbsp;€</b><span>${nRec} ${nRec===1?"persona":"personas"}</span></div><div class="${falta>0?"falta":""}"><small>Te falta recoger</small><b>${fmtEur(falta)}&nbsp;€</b><span>${nFalta} ${nFalta===1?"persona":"personas"}</span></div></div>
-    <button class="nha-ctl-info" onclick="DESP['nha-ctl-info']=!DESP['nha-ctl-info'];render()">ℹ️ ¿Cómo funciona? <span style="transform:rotate(${DESP["nha-ctl-info"]?90:0}deg)">›</span></button>
+    <button class="nha-ctl-info" onclick="DESP['nha-ctl-info']=!DESP['nha-ctl-info'];render()">ℹ️ ¿Cómo funciona? <span class="nha-fl-c" style="transform:rotate(${DESP["nha-ctl-info"]?90:0}deg)">›</span></button>
     ${DESP["nha-ctl-info"]?`<div class="nha-ctl-info-t">Toca el círculo de cada persona cuando te pague. Si ha puesto más de 50 € de aporte, elige cuánto. <b>Solo se guarda en este móvil</b> y no cambia los datos de nadie: lo que cuenta es lo que anota el administrador. Las marcas se borran solas al empezar el mes.</div>`:""}
     <button class="nha-btn nha-wa" onclick="nhaCtlWaAdmin()">💬 Enviar al administrador</button>
     ${nRec?`<button class="nha-ctl-borrar" onclick="nhaCtlBorrar()">${NHA.ctlBorrarArm?"Toca otra vez para borrar tus marcas":"Borrar mis marcas"}</button>`:""}</div>`;
@@ -401,8 +404,18 @@ function nhaFaq(){
     ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el administrador. Si eres responsable de un grupo, ves también lo del mes de las personas de tu grupo.`],
   ];
 }
+// v45.64: a un tercero solo le salen las preguntas que le afectan (no aporta, no tiene permanencia ni beneficio)
+function nhaFaqTercero(){
+  const R=REGLAS;
+  return [
+    ["¿Puedo pedir otra ayuda?",`Sí. Con el aval de un asociado puedes pedir de <b>100 a ${R.AYUDA_MAX_CORTA} €</b> y devolverlo en <b>1 a ${R.CUOTAS_MAX_CORTA} meses</b>. Habla con tu aval o con el administrador.`],
+    ["¿Y si un mes no puedo pagar la cuota?",`Avisa cuanto antes al administrador o a tu aval. Si no pagas, responde tu aval por ti.`],
+    ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el administrador.`],
+  ];
+}
 function nhaFaqHTML(){
-  return `<div class="nha-card nha-faq">`+nhaFaq().map(([q,a],i)=>{ const ab=!!NHA.faq[i];
+  const esTerc=NHA.m&&NHA.m.type==="tercero";
+  return `<div class="nha-card nha-faq">`+(esTerc?nhaFaqTercero():nhaFaq()).map(([q,a],i)=>{ const ab=!!NHA.faq[i];
     return `<button class="nha-faq-q${ab?" ab":""}" onclick="NHA.faq[${i}]=!NHA.faq[${i}];render()"><span>${q}</span><span class="nha-faq-fl">›</span></button>${ab?`<div class="nha-faq-a">${a}</div>`:""}`; }).join("")+`</div>`;
 }
 

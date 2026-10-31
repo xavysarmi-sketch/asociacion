@@ -1053,7 +1053,7 @@ function _fichaHTMLbase(m,readonly=false){
     const permTxt=m.ciclo===0?"Indefinida":m.ciclo!=null?`${m.ciclo} meses`:"⛔ sin guardar";
     h+=`<div class="ft-card">
       <div class="ft-card-title">💰 Tus aportes</div>
-      <div class="ft-row"><span class="ft-lbl">Meses pagados</span><span class="ft-val">${cuotasPagadas}</span></div>`; // v45.23: ingreso, permanencia y aporte están en «Resumen»
+      <div class="ft-row"><span class="ft-lbl">Meses aportados</span><span class="ft-val">${cuotasPagadas}</span></div>`; // v45.23: ingreso, permanencia y aporte están en «Resumen»
     h+=`<div class="ft-row ft-total"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val" style="color:#2D6A4F">${fmtEur(totalAportado)} €</span></div>
     </div>`;
 

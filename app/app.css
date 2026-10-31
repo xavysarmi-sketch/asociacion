@@ -308,3 +308,24 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 .nha-ley-c{flex:0 0 26px!important;width:26px!important;height:26px!important;border-width:2.5px!important}
 .nha-ley-fl{flex:0 0 26px;text-align:center;font-size:30px;font-weight:700;line-height:1;color:#1B4332}
 .nha-gfila .nha-item-fl{font-size:32px;font-weight:700;color:#1B4332;line-height:1;padding:0 2px}
+
+/* ── v45.64 · una sola letra moderna; la clásica solo en el título grande de cada pantalla y en la bienvenida ── */
+.nha-main .nha-card-tit,.nha-main .nha-sec,.nha-main .ft-card-title,.nha-main .ft-drop-titulo,.nha-main .ft-section-title,
+.nha-main .nha-perm-top b,.nha-main .nha-tile-val,.nha-main .nha-grupo-num,.nha-main .ft-hero-val,.nha-main .ft-drop-head,.nha-main .ft-drop-head *{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif!important}
+.nha-main .nha-card-tit,.nha-main .nha-sec,.nha-main .ft-card-title{font-weight:800}
+.nha-main .nha-tile-val,.nha-main .ft-hero-val{font-weight:800}
+
+/* ── v45.65 · todo lo que se despliega o lleva a otra pantalla, con la misma flecha grande en un círculo verde ── */
+.nha-item-fl,.nha-faq-fl,.nha-gfila .nha-item-fl,.nha-fl-c{flex:0 0 34px;width:34px;height:34px;border-radius:50%;background:#1B4332;color:#fff!important;display:inline-flex;align-items:center;justify-content:center;font-size:28px!important;font-weight:900!important;line-height:1;padding:0 0 3px 2px;box-sizing:border-box;transition:transform .15s}
+.nha-faq-q.ab .nha-faq-fl{transform:rotate(90deg);background:#B08D3E}
+.nha-main .ft-drop-chevron{width:38px;height:38px;font-size:32px}
+.nha-main .ft-drop-hint{color:#1F1F1F;font-size:13.5px}
+.nha-main .nha-sim button>span:last-child[style*="rotate"]{flex:0 0 32px;width:32px;height:32px;border-radius:50%;background:#1B4332;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:26px!important;font-weight:900;padding-bottom:3px;box-sizing:border-box}
+.nha-ley-fl{flex:0 0 26px;width:26px;height:26px;border-radius:50%;background:#1B4332;color:#fff;font-size:22px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;padding:0 0 3px 2px;box-sizing:border-box}
+/* Botón del aporte en Mi grupo: se ve que se despliega */
+.nha-ctl-ap{display:flex;align-items:center;gap:10px;margin:-2px 0 10px 44px;font-size:14px;color:#1F1F1F}
+.nha-ap-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:2px solid #1B4332;border-radius:10px;background:#fff;color:#1B4332;font-size:15px;font-weight:700}
+.nha-ap-fl{font-size:18px;line-height:1}
+.nha-ctl-ap .nha-ap-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:2px solid #1B4332;border-radius:10px;background:#fff;color:#1B4332;font-size:15px;font-weight:700;text-decoration:none}
+.nha-ctl-ap .nha-ap-btn b{font-weight:800}
+.nha-ctl-ap .nha-ap-fl{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#1B4332;color:#fff;align-items:center;justify-content:center;font-size:13px}
