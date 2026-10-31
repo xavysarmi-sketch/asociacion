@@ -395,7 +395,11 @@ function cerrarMesToque(){
   md.cierre={fecha:_fechaHoyISO(),hora:String(ahora.getHours()).padStart(2,"0")+":"+String(ahora.getMinutes()).padStart(2,"0"),
     conAvisos:k.lista.filter(x=>!x.ok).map(x=>x.txt),
     resumen:{cobrado:_r2(d.previsto-d.porCobrar),previsto:d.previsto,ayudas:d.ayudasDadas,enCaja:d.enCaja,disponible:d.disponible,aportes:k.aptPag+"/"+k.nAp,cuotas:k.cuoPag+"/"+k.nCu,retorno:md.recargo}};
-  save(); render(); toast("🔒 "+MONTHS_FULL[MONTHS.indexOf(rm)]+" cerrado ✓ · copia guardada en este teléfono",4000);
+  // v45.66: si el mes cerrado es anterior al de hoy (desde el día de aviso, el siguiente), se vuelve a ese
+  // mes para seguir anotando lo que entreguen antes de fin de mes
+  const op=mesOperativoHoy(ahora); let txtVuelta="";
+  if(getMesKey(rm,ry)<op.key){ DATA.reportMonth=op.mes; DATA.reportYear=op.anio; if(YEARS.indexOf(op.anio)===-1)YEARS.push(op.anio); DESP={}; txtVuelta=" · seguimos en "+MONTHS_FULL[MONTHS.indexOf(op.mes)].toLowerCase(); }
+  save(); render(); toast("🔒 "+MONTHS_FULL[MONTHS.indexOf(rm)]+" cerrado ✓ · copia guardada en este teléfono"+txtVuelta,4500);
 }
 function reabrirMesToque(){
   if(!DESP["reabrir-mes"]){ DESP["reabrir-mes"]=true; render(); setTimeout(()=>{ if(DESP["reabrir-mes"]){DESP["reabrir-mes"]=false;render();} },5000); return; }

@@ -230,17 +230,27 @@ function nhaGrupoHTML(m,g){
   if(_nBaseG(ms,rm,ry)>0)h+=`<div class="nha-nota">Los aportes aún sin pagar se cuentan con 50 €: cada uno puede aportar 50, 100, 150 o 200 €.</div>`;
   h+=nhaCtlResumenHTML(m,act,rm,ry);
   // Estado de cada persona (una fila); al tocarla se abre su detalle, el mismo del reporte de grupo
-  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Cada persona</div><div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> para ver todo su detalle.</span></div>${act.some(x=>{const t=totalDelMes(x,rm,ry);return !t.alDia&&nhaCtlAporteLibre(x,t);})?`<div class="nha-leyenda"><span class="nha-ley-fl" style="font-size:13px">▾</span><span>Si alguien pone <b>más de 50 €</b> de aporte, toca su botón <b>«Aporte»</b> y elige cuánto.</span></div>`:""}`;
+  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Grupo de ${nhaPrimerNombre(m)}</div>
+    <button class="nha-ctl-info" onclick="DESP['nha-gr-info']=!DESP['nha-gr-info'];render()">ℹ️ ¿Cómo se usa? <span class="nha-fl-c" style="transform:rotate(${DESP["nha-gr-info"]?90:0}deg)">›</span></button>
+    ${DESP["nha-gr-info"]?`<div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> o la <b>flecha</b> para ver todo su detalle.</span></div>${act.some(x=>{const t=totalDelMes(x,rm,ry);return !t.alDia&&nhaCtlAporteLibre(x,t);})?`<div class="nha-leyenda"><span class="nha-ley-fl" style="font-size:13px">▾</span><span>Si alguien pone <b>más de 50 €</b> de aporte, toca su botón <b>«50&nbsp;€&nbsp;▾»</b> y elige cuánto.</span></div>`:""}`:""}`; // v45.66: título con el nombre del responsable; las instrucciones, plegadas
   const ctl=nhaCtlLeer();
   act.slice().sort((a,b)=>(totalDelMes(a,rm,ry).alDia?1:0)-(totalDelMes(b,rm,ry).alDia?1:0)).forEach(x=>{ const t=totalDelMes(x,rm,ry), ab=!!DESP["nhag-"+x.id], abierto=x.type!=="tercero"&&aporteMostradoMes(x,rm,ry).abierto;
     const marca=!t.alDia&&ctl[x.id]!=null?ctl[x.id]:null;
-    const est=t.alDia?`<span class="nha-chip ok">Al día</span>`:marca!=null?`<span class="nha-chip dado">Te dio ${fmtEur(marca)}&nbsp;€</span>`:`<span class="nha-chip pend">Falta ${fmtEur(t.pendiente)}&nbsp;€${abierto?" + aporte":""}</span>`;
+    const lib=nhaCtlAporteLibre(x,t), cls=t.alDia?"ok":marca!=null?"dado":"pend";
     const circ=t.alDia?`<span class="nha-ctl-c ok" title="Al día">✓</span>`
       :`<button class="nha-ctl-c${marca!=null?" on":""}" aria-label="${marca!=null?"Quitar la marca":"Me lo ha dado"}" onclick="nhaCtlToca('${esc(x.id)}')">${marca!=null?"✓":""}</button>`;
-    h+=`<div class="nha-gfila-w">${circ}<button class="nha-gfila ${t.alDia?"ok":marca!=null?"dado":"pend"}" onclick="nhaGFila('${esc(x.id)}')"><span class="nha-gfila-n"><b>${escH(x.name)}</b>${est}</span><span class="nha-gfila-t">${fmtEur(t.total)}&nbsp;€</span><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
+    const abrir=`onclick="nhaGFila('${esc(x.id)}')"`;
+    // v45.66: como Cobros del administrador: una línea por cada cosa y cada cifra una sola vez
+    const lin=[];
+    if(!t.alDia&&marca==null){
+      if(!t.esTerc&&!t.aportePagado&&t.aporteImporte>0)lin.push(`<div class="nha-gl"><span>Aporte</span>${lib?`<button class="nha-gsel" onclick="NHA.ctlPreg=NHA.ctlPreg==='${esc(x.id)}'?null:'${esc(x.id)}';render()">${fmtEur(t.aporteImporte)}&nbsp;€ <span class="nha-ap-fl">▾</span></button>`:`<b>${fmtEur(t.aporteImporte)}&nbsp;€</b>`}</div>`);
+      t.cuotas.filter(c=>!c.paid).forEach(c=>{ const n=c.loan.pays.length, k=c.idx+1;
+        const et=c.aplazada?"Cuota aplazada":k===n?(n===1?"Cuota de su ayuda":"Última cuota"):`Cuota ${k} de ${n}`;
+        lin.push(`<div class="nha-gl"><span>${et}</span><b>${fmtEur(c.inst)}&nbsp;€</b></div>`); });
+    }
+    const der=t.alDia?`<span class="nha-gtag">Al día</span>`:marca!=null?`<span class="nha-gtag">Te dio ${fmtEur(marca)}&nbsp;€</span>`:lin.length>1?`<b class="nha-gtot">${fmtEur(t.pendiente)}&nbsp;€</b>`:"";
+    h+=`<div class="nha-gf ${cls}">${circ}<div class="nha-gb"><div class="nha-gtop"><button class="nha-gnom" ${abrir}>${escH(x.name)}</button>${der}</div>${lin.join("")}</div><button class="nha-gfl" ${abrir} aria-label="Ver detalle"><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
     if(NHA.ctlPreg===x.id)h+=nhaCtlPreguntaHTML(x,t);
-    else if(nhaCtlAporteLibre(x,t)){ const apV=marca!=null?_r2(marca-(t.pendiente-APORTE_MINIMO)):APORTE_MINIMO;
-      h+=`<div class="nha-ctl-ap"><button class="nha-ap-btn" onclick="NHA.ctlPreg='${esc(x.id)}';render()">Aporte: <b>${fmtEur(apV)}&nbsp;€</b> <span class="nha-ap-fl">▾</span></button></div>`; }
     if(ab)h+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}<button class="nha-gdet-cerrar" onclick="nhaGFila('${esc(x.id)}')">Cerrar ✕</button></div>`; });
   return h+`</div>`;
 }
