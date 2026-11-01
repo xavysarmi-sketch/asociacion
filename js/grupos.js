@@ -51,8 +51,10 @@ function _cgDatosSim(g){
 function _cgTicket(filas,resultado){
   const cifra=v=>fmtEur(Math.abs(v))+" €", sig=v=>v<0?"-":v>0?"+":"=";
   const todas=[...filas.map(f=>f[1]),resultado], W=Math.max(...todas.map(v=>cifra(v).length));
-  const caja=v=>"`"+sig(v)+" ".repeat(W-cifra(v).length+1)+cifra(v)+"`";
-  return filas.map(([l,v])=>caja(v)+" "+l).join("\n")+"\n━━━━━━━━\n"+caja(resultado)+" *RESULTADO*\n";
+  const caja=(v,s)=>"`"+(s||sig(v))+" ".repeat(W-cifra(v).length+1)+cifra(v)+"`";
+  // v45.76: el resultado sin signo menos y dicho en palabras (Ángel 01/11/2026: el «-475 RESULTADO» confundía)
+  const txt=resultado<0?"A TU FAVOR":resultado>0?"ME ENTREGAS":"CUADRADO";
+  return filas.map(([l,v])=>caja(v)+" "+l).join("\n")+"\n━━━━━━━━\n"+caja(resultado,"=")+" *"+txt+"*\n";
 }
 // v45.72: «Está de acuerdo: hacerlo real»: lista de lo que hay que hacer, cada cosa con su botón (Ángel 01/11/2026)
 // Aprobar una ayuda lo decide siempre el administrador (cuotas y fecha): la app le lleva a ella ya rellenada.
@@ -93,7 +95,7 @@ function cgSimEnviar(gid){
   if(d.sal.length)partes.push(`le pagamos a ${lista(d.sal.map(x=>x.nombre))} ${d.sal.length>1?"sus salidas":"su salida"}`);
   let t=`Hola ${nom} 👋\nAsí quedaría *${mes}* si ${partes.join(" y ")} con el dinero que recoges de tu grupo:\n\n`;
   // v45.72: la cuenta como un ticket (columnas alineadas, letra de ancho fijo de WhatsApp) y el resultado al final
-  const fil=[["De tu grupo",d.total]];
+  const fil=[["Total del mes",d.total]];
   if(d.arrastre)fil.push(["Del mes pasado",d.arrastre]);
   if(d.entregado)fil.push(["Ya me has entregado",-d.entregado]);
   if(d.ayudas)fil.push(["Ayudas ya dadas",-d.ayudas]);
@@ -104,9 +106,10 @@ function cgSimEnviar(gid){
   d.sim.forEach((x,i)=>fil.push([x.nombre?"Ayuda a "+pn(x.nombre):"Ayuda"+(d.sim.length>1?" "+(i+1):""),-x.v]));
   d.sal.forEach(x=>fil.push(["Salida de "+pn(x.nombre),-x.v]));
   t+=_cgTicket(fil,d.resto);
-  t+= d.resto>0?`\n👉 *Después me entregas a mí: ${e(d.resto)}*`:d.resto===0?`\n👉 *No me tienes que entregar nada más*`:`\n👉 *Los ${e(-d.resto)} que faltan te los pasa la asociación*`;
+  t+= d.resto>0?"" /* v45.76: «ME ENTREGAS» ya lo dice la tabla */:d.resto===0?`\n👉 *No me tienes que entregar nada más*`:`\n💚 *Los ${e(-d.resto)} que faltan los pone la asociación: te los paso yo* (en mano o por Bizum).`; // v45.76
   t+=`\n\nEs una propuesta. Dime si estás de acuerdo y lo hacemos.`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  t=t.replace(/\n{3,}/g,"\n\n"); // v45.76: sin líneas vacías de más
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
   else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
 }
@@ -118,7 +121,7 @@ function cgEnviarCuenta(gid){
   const nom=p.name.split(" ")[0], mes=MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase(), e=v=>fmtEur(v)+" €";
   const mesDe=k=>MONTHS_FULL[+k.slice(5)-1].toLowerCase();
   // v45.73: ticket; el encabezado y el final dicen en qué punto está la cuenta (pendiente, hecha y por pasarle, cerrada)
-  const fil=[["De tu grupo",_cgTotal(g,idx)]], pn=n=>String(n||"").split(" ")[0];
+  const fil=[["Total del mes",_cgTotal(g,idx)]], pn=n=>String(n||"").split(" ")[0];
   movs.forEach(x=>{
     if(x.tipo==="arrastre")fil.push(["Pendiente de "+mesDe(x.de),x.importe]);
     else if(x.tipo==="entrega")fil.push(["Entrega"+(x.fecha?" "+x.fecha:""),-x.importe]);
@@ -130,8 +133,9 @@ function cgEnviarCuenta(gid){
   const conPago=movs.some(x=>x.tipo==="pago"), conPagos=movs.some(x=>x.tipo==="ayuda"||x.tipo==="salida");
   const cab=falta<0?`✅ Hecho. Tus cuentas de *${mes}*:`:falta===0&&(conPago||conPagos)?`✅ Cuenta de *${mes}* cerrada:`:`Tus cuentas de *${mes}*:`;
   let t=`Hola ${nom} 👋\n${cab}\n\n`+_cgTicket(fil,falta);
-  t+= falta>0?`\n👉 *Te falta por entregar: ${e(falta)}*`:falta<0?(conPagos?`\n👉 *Te paso los ${e(-falta)} que faltan*`:`\n👉 *Me has entregado ${e(-falta)} de más: te los devuelvo*`):`\n✅ *Todo cuadrado. ¡Gracias!*`;
+  t+= falta>0?"" /* v45.76: «ME ENTREGAS» ya lo dice la tabla */:falta<0?(conPagos?`\n💚 *Los ${e(-falta)} que faltan los pone la asociación: te los paso yo* (en mano o por Bizum).`:`\n👉 *Me has entregado ${e(-falta)} de más: te los devuelvo*`):`\n✅ *Todo cuadrado. ¡Gracias!*`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  t=t.replace(/\n{3,}/g,"\n\n"); // v45.76: sin líneas vacías de más
   const tel=_telWA(p.phone); if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; } // v45.43: con su teléfono, se abre directamente su chat
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
   else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
