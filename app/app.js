@@ -26,14 +26,20 @@ function nhaEsperarFirebase(){
 }
 function nhaError(tipo){
   const T={
-    "sin-codigo":["🔗","Falta tu código","Abre la app con el enlace que te envió el administrador."],
+    "sin-codigo":["🔗","Falta tu código","Vuelve al mensaje de WhatsApp en el que te llegó la app y toca <b>tu enlace</b> (el que va después de «👇 Tu enlace»)."],
     "no-existe":["🔍","No encontramos tu cuenta","El enlace no es correcto o ya no está en uso. Pide uno nuevo al administrador."],
     "cerrada":["🚪","Tu cuenta ya está cerrada","Tu salida del fondo ya está liquidada. Gracias por haber formado parte de Nuevos Horizontes."],
     "conexion":["📶","No se ha podido cargar","Comprueba tu conexión a internet y vuelve a abrir la app."]
   }[tipo]||["⚠️","Algo no ha ido bien","Vuelve a abrir la app. Si sigue igual, avisa al administrador."];
   document.getElementById("app").innerHTML=`<div class="nha-error"><div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-error-ic">${T[0]}</div>
     <div class="nha-error-tit">${T[1]}</div><div class="nha-error-txt">${T[2]}</div>
-    ${tipo==="conexion"?`<button class="nha-btn" onclick="location.reload()">Volver a intentarlo</button>`:""}</div>`;
+    ${tipo==="conexion"?`<button class="nha-btn" onclick="location.reload()">Volver a intentarlo</button>`:""}
+    ${tipo==="sin-codigo"||tipo==="no-existe"?`<button class="nha-btn nha-wa" onclick="nhaPedirEnlace('${tipo}')">💬 Pedir mi enlace a Angel</button><div class="nha-error-txt" style="font-size:14px;margin-top:10px">Se abre WhatsApp con el mensaje ya escrito: elige a Angel y envíalo.</div>`:""}</div>`;
+}
+// v45.72: quien abre la app sin su código (o con uno que no vale) lo pide con un toque
+function nhaPedirEnlace(tipo){
+  const t=tipo==="sin-codigo"?"«Falta tu código»":"«No encontramos tu cuenta»";
+  window.open("https://wa.me/?text="+encodeURIComponent("Hola Angel 👋 No me abre la app de Nuevos Horizontes: me sale "+t+". ¿Me vuelves a mandar mi enlace? Gracias."),"_blank");
 }
 async function nhaArrancar(){
   const c=nhaCodigo(); if(!c)return nhaError("sin-codigo");

@@ -166,7 +166,8 @@ function appAsociadosGestionHTML(){
     <div style="font-size:12.5px;color:var(--muted);line-height:1.45;margin:2px 0 8px">${appAsociadosActiva()?"Se actualizan solas cada vez que guardas algo.":"Cuando las subas la primera vez, se actualizarán solas cada vez que guardes algo."}${ult?` Última subida: ${ult}${FICHAS_ESTADO.escritas?` (${FICHAS_ESTADO.escritas} fichas)`:" (sin cambios)"}.`:""}${FICHAS_ESTADO.error==="permisos"?` <b style="color:#A93C25">Firebase no deja guardarlas: faltan las reglas nuevas.</b>`:FICHAS_ESTADO.error?` <b style="color:#A93C25">La última subida falló (conexión).</b>`:""}</div>
     ${appAsociadosActiva()?`<button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer" onclick="pausarFichasApp()">Dejar de actualizarlas solas</button>`:""}
     ${con.length&&appAsociadosActiva()?`<div style="font-size:14px;font-weight:800;color:var(--dark);margin:12px 0 6px">Para que la tengan en su móvil</div>
-    <button class="backup-btn" style="background:#15803D;color:#fff" onclick="abrirColaApp()">💬 Enviar la app por WhatsApp, uno a uno (${_appColaLista(false).length} sin enviar)</button>
+    <button class="backup-btn" style="background:#15803D;color:#fff" onclick="abrirColaApp()">💬 Enviar la app por WhatsApp, uno a uno (${_appColaLista("sin").length} sin enviar)</button>
+    ${APP_INST&&_appColaLista("noinst").length?`<button class="backup-btn" style="background:#fff;color:#1B4332;border:2px solid #1B4332" onclick="abrirColaApp('noinst')">📲 Reenviar a los que aún no la han instalado (${_appColaLista("noinst").length})</button>`:""}
     <button class="backup-btn" style="background:#fff;color:#1B4332;border:1.5px solid #1B4332" onclick="imprimirTarjetasApp()">🖨️ Imprimir las tarjetas con QR (${con.length})</button>`:""}`;
   if(con.length){
     const abL=!!DESP["mg-app-l"];
@@ -230,7 +231,7 @@ function _appUrlInstalar(){ return location.origin+location.pathname.replace(/[^
 function _appMensajeWA(m){
   const nom=String(m.name||"").trim().split(/\s+/)[0]||"";
   // v45.67: primero los pasos y el enlace al final, para que lo lean antes de tocarlo (decisión de Ángel 31/10/2026)
-  return `Hola ${nom} 👋\nAquí tienes tu *app de Nuevos Horizontes*.\n\n*Lee esto antes de tocar el enlace* (está al final):\n\n1️⃣ *Cómo instalarla:* toca tu enlace del final.\n\n📱 *Si tienes iPhone:*\n• Abajo, toca el botón *Compartir* 📤. Si no lo ves, toca primero los tres puntos *···*\n• Baja un poco y toca «*Añadir a pantalla de inicio*»\n• Arriba a la derecha, toca *Añadir*\n\n📱 *Si tienes Android:*\n• Arriba a la derecha, toca los *tres puntos* ⋮\n• Toca «*Añadir a pantalla de inicio*» (en algunos móviles pone «*Instalar aplicación*»)\n• Toca *Añadir* o *Instalar*\n\n2️⃣ *Listo:* en tu pantalla aparece el icono *NH*. Desde ahora ábrela siempre tocando ese icono.\n\n👇 *Tu enlace* (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\n🖼️ ¿Te lías? Los mismos pasos con dibujos:\n${_appUrlInstalar()}\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  return `Hola ${nom} 👋\nAquí tienes tu *app de Nuevos Horizontes*.\n\n*Lee esto antes de tocar el enlace* (está al final):\n\n1️⃣ *Cómo instalarla:* toca tu enlace del final.\n\n📱 *Si tienes iPhone:*\n• Abajo, toca el botón *Compartir* 📤. Si no lo ves, toca primero los tres puntos *···*\n• Baja un poco y toca «*Añadir a pantalla de inicio*»\n• Arriba a la derecha, toca *Añadir*\n\n📱 *Si tienes Android:*\n• Arriba a la derecha, toca los *tres puntos* ⋮\n• Toca «*Añadir a pantalla de inicio*» (en algunos móviles pone «*Instalar aplicación*»)\n• Toca *Añadir* o *Instalar*\n\n2️⃣ *Listo:* en tu pantalla aparece el icono *NH*. Desde ahora ábrela siempre tocando ese icono.\n\n🖼️ Si te lías, al abrirla verás un botón con los mismos pasos en dibujos.\n\n👇 *Tu enlace* (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\nNuevos Horizontes · Construyendo un nuevo sistema`; // v45.72: un solo enlace (el de los dibujos está dentro de la app)
 }
 function _appEnviados(){ return (_appCfg().enviados)||{}; }
 function appEnviarA(mid){
@@ -243,14 +244,18 @@ function appEnviarA(mid){
   if(MODAL&&MODAL.type==="app_cola"&&!MODAL.hechos.includes(mid))MODAL.hechos.push(mid);
   save(); render();
 }
-function _appColaLista(todos){ const env=_appEnviados(); return DATA.members.filter(m=>tieneFichaApp(m)&&m.codigoApp&&(todos||!env[m.id])).sort((a,b)=>a.name.localeCompare(b.name,"es")); }
-function abrirColaApp(){ openModal("app_cola",{todos:false,hechos:[]}); }
+// v45.72: modo "sin" (aún no enviada), "noinst" (enviada pero sin «📲 instalada») o "todos"
+function _appColaLista(modo){ if(modo===true)modo="todos"; if(!modo)modo="sin"; const env=_appEnviados();
+  return DATA.members.filter(m=>tieneFichaApp(m)&&m.codigoApp&&(modo==="todos"||(modo==="sin"&&!env[m.id])||(modo==="noinst"&&env[m.id]&&!_instDe(m)))).sort((a,b)=>a.name.localeCompare(b.name,"es")); }
+function abrirColaApp(modo){ openModal("app_cola",{modo:modo||"sin",hechos:[]}); if(!APP_INST)cargarInstalaciones(true); }
 function appColaModalHTML(){
-  const todos=!!MODAL.todos, lista=_appColaLista(todos), env=_appEnviados(), sig=lista.find(m=>!MODAL.hechos.includes(m.id));
-  const chip=(v,t)=>`<button onclick="MODAL.todos=${v};render()" class="cgt-b ${todos===v?"pri":""}" style="min-height:40px">${t}</button>`;
+  const modo=MODAL.modo||(MODAL.todos?"todos":"sin"), lista=_appColaLista(modo), env=_appEnviados(), sig=lista.find(m=>!MODAL.hechos.includes(m.id));
+  const chip=(v,t)=>`<button onclick="MODAL.modo='${v}';MODAL.hechos=[];render()" class="cgt-b ${modo===v?"pri":""}" style="min-height:40px">${t}</button>`;
   let h=`<div class="modal-title">💬 Enviar la app, uno a uno</div>
-    <div class="cgt-btns" style="margin:0 0 10px">${chip(false,`Sin enviar (${_appColaLista(false).length})`)}${chip(true,`Todos (${_appColaLista(true).length})`)}</div>`;
-  if(!lista.length)return h+`<div class="ini-sin" style="margin:6px 0 14px">Ya se la has enviado a todos. Si quieres reenviarla, elige «Todos».</div><button class="m-sec" onclick="closeModal()">Cerrar</button>`;
+    <div class="cgt-btns" style="margin:0 0 10px;flex-wrap:wrap">${chip("sin",`Sin enviar (${_appColaLista("sin").length})`)}${chip("noinst",`Sin instalar (${APP_INST?_appColaLista("noinst").length:"…"})`)}${chip("todos",`Todos (${_appColaLista("todos").length})`)}</div>`;
+  if(modo==="noinst"&&!APP_INST)return h+`<div class="ini-sin" style="margin:6px 0 14px">Comprobando quién la tiene instalada…</div><button class="m-sec" onclick="closeModal()">Cerrar</button>`;
+  if(!lista.length)return h+`<div class="ini-sin" style="margin:6px 0 14px">${modo==="noinst"?"Todos a los que se la enviaste ya la tienen instalada. 🎉":"Ya se la has enviado a todos. Si quieres reenviarla, elige «Todos»."}</div><button class="m-sec" onclick="closeModal()">Cerrar</button>`;
+  if(modo==="noinst")h+=`<div style="font-size:13.5px;color:#1B4332;background:#EEF7F1;border-radius:10px;padding:8px 10px;margin-bottom:10px;line-height:1.4">Se la enviaste pero aún no la han abierto desde el icono NH. Se les manda el mensaje nuevo (un solo enlace, el suyo).</div>`;
   h+=`<div style="font-size:13.5px;color:var(--muted);margin-bottom:10px;line-height:1.4">Se abre WhatsApp con su mensaje y su enlace ya escritos. Envíalo y vuelve aquí: te saldrá el siguiente.</div>`;
   lista.forEach(m=>{ const ok=MODAL.hechos.includes(m.id);
     h+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
