@@ -44,13 +44,15 @@ function _cgDatosSim(g){
   const selS=CG_SIM_SAL[g.id]||[], sal=_cgSalidasPend(g).filter(x=>!selS.includes(x.m.id)).map(x=>({mid:x.m.id,nombre:x.m.name,v:x.v})), salTot=_r2(sal.reduce((a,b)=>a+b.v,0)); // v45.68
   return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:_r2(sum("entrega")+_sinCrearMes(idx,()=>_cgResto(g,idx))),ayudas:sum("ayuda"),salidasYa:sum("salida"),pagado:sum("pago"),sim,simTot,sal,salTot,sols,solTot,resto:_r2(falta-simTot-salTot-solTot)};
 }
-// v45.72: tabla tipo ticket para WhatsApp (```…``` = letra de ancho fijo): concepto a la izquierda, importe a la derecha
+// v45.74: cuenta para WhatsApp con el importe delante en un recuadro (`…` = letra de ancho fijo de WhatsApp) y el
+// concepto detrás en letra normal. Con la letra grande del móvil una tabla de ancho fijo se partía (Ángel 01/11/2026);
+// así los importes quedan en columna y, si el concepto no cabe, baja de línea sin descolocar nada. El hueco va entre
+// el signo y la cifra (WhatsApp no admite espacios al principio del recuadro).
 function _cgTicket(filas,resultado){
-  // v45.73: solo caracteres sencillos (guion normal, sin «−», «─» ni «…»): en algunos móviles esos signos no tienen el
-  // mismo ancho en la letra de WhatsApp y descolocaban las columnas. 24 de ancho para que no se parta con letra grande.
-  const W=24, imp=v=>(v<0?"-":"")+fmtEur(Math.abs(v))+" €";
-  const lin=(l,v)=>{ const a=imp(v), max=W-a.length-1; let t=String(l); if(t.length>max)t=t.slice(0,max-1).trimEnd()+"."; return t+" ".repeat(Math.max(1,W-t.length-a.length))+a; };
-  return "```\n"+filas.map(([l,v])=>lin(l,v)).join("\n")+"\n"+"-".repeat(W)+"\n"+lin("RESULTADO",resultado)+"\n```";
+  const cifra=v=>fmtEur(Math.abs(v))+" €", sig=v=>v<0?"-":v>0?"+":"=";
+  const todas=[...filas.map(f=>f[1]),resultado], W=Math.max(...todas.map(v=>cifra(v).length));
+  const caja=v=>"`"+sig(v)+" ".repeat(W-cifra(v).length+1)+cifra(v)+"`";
+  return filas.map(([l,v])=>caja(v)+" "+l).join("\n")+"\n━━━━━━━━\n"+caja(resultado)+" *RESULTADO*\n";
 }
 // v45.72: «Está de acuerdo: hacerlo real»: lista de lo que hay que hacer, cada cosa con su botón (Ángel 01/11/2026)
 // Aprobar una ayuda lo decide siempre el administrador (cuotas y fecha): la app le lleva a ella ya rellenada.
