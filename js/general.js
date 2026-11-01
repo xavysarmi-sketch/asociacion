@@ -790,6 +790,7 @@ function _renderPantalla(){
     if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
     if(MODAL.type==="nombre")h+=nombreModalHTML(); // v45.50
     if(MODAL.type==="app_cola")h+=appColaModalHTML(); // v45.52
+    if(MODAL.type==="tel_import")h+=telImportModalHTML(); // v45.73
     if(MODAL.type==="app_tarjeta")h+=appTarjetaModalHTML(); // v45.52
     h+=`</div></div>`;
   }

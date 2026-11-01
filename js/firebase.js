@@ -101,7 +101,10 @@ function initFirebase(){
     window._fbSave=async function(data,opts){
       const forzar=!!(opts&&opts.forzar);
       try{
-        const payload=JSON.stringify(data);
+        // v45.73: los teléfonos NO van en los datos generales (los enlaces antiguos los leen): se guardan aparte,
+        // en privado/telefonos, que solo puede leer y escribir el administrador con su sesión
+        const tels={}; const limpio=Object.assign({},data,{members:(data&&data.members||[]).map(m=>{ if(!m||!m.phone)return m; tels[m.id]=m.phone; const c=Object.assign({},m); delete c.phone; return c; })});
+        const payload=JSON.stringify(limpio);
         if(data&&typeof data.updatedAt==="number")window._nubeTsMios.add(data.updatedAt);
         const savePromise=db.runTransaction(async tx=>{
           const snap=await tx.get(DOC_REF);
@@ -109,6 +112,8 @@ function initFirebase(){
             let remota=null; try{ remota=JSON.parse(snap.data().payload); }catch(e){}
             const tsR=remota&&typeof remota.updatedAt==="number"?remota.updatedAt:null;
             if(tsR!=null&&tsR!==window._nubeTs&&!window._nubeTsMios.has(tsR)){
+              // v45.73: lo de la nube lleva los teléfonos que ya conocemos (si se elige «la nube», no se pierden)
+              try{ const tn=JSON.parse(window._telsNube||"{}"); (remota.members||[]).forEach(m=>{ if(m&&!m.phone&&tn[m.id])m.phone=tn[m.id]; }); }catch(e){}
               const err=new Error("conflicto-nube"); err.remota=remota; throw err;
             }
           }
@@ -117,6 +122,14 @@ function initFirebase(){
         const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error("timeout")),8000));
         await Promise.race([savePromise,timeoutPromise]);
         if(data&&typeof data.updatedAt==="number")window._nubeTs=data.updatedAt;
+        // v45.73: un teléfono solo desaparece de la nube si se borró a propósito (guardarTelefono vacío); si falta por
+        // otra razón (datos cargados sin teléfonos), se conserva el que había. Si al abrir no se pudieron leer, se leen ahora.
+        try{
+          if(window._telsNube==null){ const s2=await db.collection("privado").doc("telefonos").get(); window._telsNube=JSON.stringify((s2.exists&&s2.data().t)||{}); }
+          const ant=JSON.parse(window._telsNube||"{}"), borr=window._telsBorrar||new Set();
+          Object.keys(ant).forEach(id=>{ if(!(id in tels)&&!borr.has(id))tels[id]=ant[id]; });
+          const jt=JSON.stringify(tels); if(jt!==window._telsNube){ await db.collection("privado").doc("telefonos").set({t:tels}); window._telsNube=jt; borr.clear(); }
+        }catch(e){ console.warn("[NH] No se pudieron guardar los teléfonos:",e); if(Object.keys(tels).length&&typeof toast==="function")toast("⚠️ Los teléfonos no se han podido guardar en la nube: vuelve a abrir la app con conexión",6000); }
         return true;
       }catch(e){
         if(e&&e.message==="conflicto-nube"){ window._nubeConflicto=e.remota; console.warn("[NH] La nube cambió desde otro aparato: no se sube"); return false; }
@@ -127,7 +140,11 @@ function initFirebase(){
     window._fbLoad=async function(){
       try{
         const snap=await DOC_REF.get();
-        if(snap.exists){const d=JSON.parse(snap.data().payload); window._nubeTs=(d&&typeof d.updatedAt==="number")?d.updatedAt:null; return d;}
+        if(snap.exists){const d=JSON.parse(snap.data().payload); window._nubeTs=(d&&typeof d.updatedAt==="number")?d.updatedAt:null;
+          // v45.73: teléfonos aparte (solo los lee el administrador; en los enlaces de asociados falla y se ignora)
+          try{ const s2=await db.collection("privado").doc("telefonos").get(); const t=(s2.exists&&s2.data().t)||{}; window._telsNube=JSON.stringify(t);
+            (d.members||[]).forEach(m=>{ if(t[m.id])m.phone=t[m.id]; }); }catch(e){}
+          return d;}
         return null;
       }catch(e){console.error("Firebase load error:",e);return null;}
     };

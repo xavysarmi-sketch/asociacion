@@ -46,9 +46,11 @@ function _cgDatosSim(g){
 }
 // v45.72: tabla tipo ticket para WhatsApp (```…``` = letra de ancho fijo): concepto a la izquierda, importe a la derecha
 function _cgTicket(filas,resultado){
-  const W=28, imp=v=>(v<0?"−":"")+fmtEur(Math.abs(v))+" €";
-  const lin=(l,v)=>{ const a=imp(v), max=W-a.length-1; let t=String(l); if(t.length>max)t=t.slice(0,max-1)+"…"; return t+" ".repeat(W-t.length-a.length)+a; };
-  return "```\n"+filas.map(([l,v])=>lin(l,v)).join("\n")+"\n"+"─".repeat(W)+"\n"+lin("RESULTADO",resultado)+"\n```";
+  // v45.73: solo caracteres sencillos (guion normal, sin «−», «─» ni «…»): en algunos móviles esos signos no tienen el
+  // mismo ancho en la letra de WhatsApp y descolocaban las columnas. 24 de ancho para que no se parta con letra grande.
+  const W=24, imp=v=>(v<0?"-":"")+fmtEur(Math.abs(v))+" €";
+  const lin=(l,v)=>{ const a=imp(v), max=W-a.length-1; let t=String(l); if(t.length>max)t=t.slice(0,max-1).trimEnd()+"."; return t+" ".repeat(Math.max(1,W-t.length-a.length))+a; };
+  return "```\n"+filas.map(([l,v])=>lin(l,v)).join("\n")+"\n"+"-".repeat(W)+"\n"+lin("RESULTADO",resultado)+"\n```";
 }
 // v45.72: «Está de acuerdo: hacerlo real»: lista de lo que hay que hacer, cada cosa con su botón (Ángel 01/11/2026)
 // Aprobar una ayuda lo decide siempre el administrador (cuotas y fecha): la app le lleva a ella ya rellenada.
@@ -89,8 +91,8 @@ function cgSimEnviar(gid){
   if(d.sal.length)partes.push(`le pagamos a ${lista(d.sal.map(x=>x.nombre))} ${d.sal.length>1?"sus salidas":"su salida"}`);
   let t=`Hola ${nom} 👋\nAsí quedaría *${mes}* si ${partes.join(" y ")} con el dinero que recoges de tu grupo:\n\n`;
   // v45.72: la cuenta como un ticket (columnas alineadas, letra de ancho fijo de WhatsApp) y el resultado al final
-  const fil=[["Recoges de tu grupo",d.total]];
-  if(d.arrastre)fil.push(["Te quedó del mes pasado",d.arrastre]);
+  const fil=[["De tu grupo",d.total]];
+  if(d.arrastre)fil.push(["Del mes pasado",d.arrastre]);
   if(d.entregado)fil.push(["Ya me has entregado",-d.entregado]);
   if(d.ayudas)fil.push(["Ayudas ya dadas",-d.ayudas]);
   if(d.salidasYa)fil.push(["Salidas ya pagadas",-d.salidasYa]);
@@ -114,10 +116,10 @@ function cgEnviarCuenta(gid){
   const nom=p.name.split(" ")[0], mes=MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase(), e=v=>fmtEur(v)+" €";
   const mesDe=k=>MONTHS_FULL[+k.slice(5)-1].toLowerCase();
   // v45.73: ticket; el encabezado y el final dicen en qué punto está la cuenta (pendiente, hecha y por pasarle, cerrada)
-  const fil=[["Recoges de tu grupo",_cgTotal(g,idx)]], pn=n=>String(n||"").split(" ")[0];
+  const fil=[["De tu grupo",_cgTotal(g,idx)]], pn=n=>String(n||"").split(" ")[0];
   movs.forEach(x=>{
     if(x.tipo==="arrastre")fil.push(["Pendiente de "+mesDe(x.de),x.importe]);
-    else if(x.tipo==="entrega")fil.push(["Me entregaste"+(x.fecha?" "+x.fecha:""),-x.importe]);
+    else if(x.tipo==="entrega")fil.push(["Entrega"+(x.fecha?" "+x.fecha:""),-x.importe]);
     else if(x.tipo==="ayuda")fil.push(["Ayuda a "+pn(x.nombre),-x.importe]);
     else if(x.tipo==="salida")fil.push(["Salida de "+pn(x.nombre),-x.importe]);
     else if(x.tipo==="pago")fil.push(["Te pasé"+(x.fecha?" "+x.fecha:""),x.importe]);

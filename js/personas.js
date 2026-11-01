@@ -502,6 +502,7 @@ function guardarTelefono(mid,v,el){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
   const t=_telLimpio(v); if(t===(m.phone||""))return;
   if(t&&t.replace(/\D/g,"").length<9){ toast("⚠️ Ese número parece incompleto: revisa que tenga 9 cifras (o el prefijo del país)",4000); }
+  if(!t&&m.phone){ (window._telsBorrar=window._telsBorrar||new Set()).add(m.id); } // v45.73: borrado a propósito
   m.phone=t; save();
   if(el){ el.value=t; el.style.borderColor=t?"#8CC5A0":"var(--border)"; }
   toast(t?`📞 Teléfono de ${m.name.split(" ")[0]} guardado`:`Teléfono de ${m.name.split(" ")[0]} borrado`);

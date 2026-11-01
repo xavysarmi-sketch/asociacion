@@ -168,6 +168,8 @@ function appAsociadosGestionHTML(){
     ${con.length&&appAsociadosActiva()?`<div style="font-size:14px;font-weight:800;color:var(--dark);margin:12px 0 6px">Para que la tengan en su móvil</div>
     <button class="backup-btn" style="background:#15803D;color:#fff" onclick="abrirColaApp()">💬 Enviar la app por WhatsApp, uno a uno (${_appColaLista("sin").length} sin enviar)</button>
     ${APP_INST&&_appColaLista("noinst").length?`<button class="backup-btn" style="background:#fff;color:#1B4332;border:2px solid #1B4332" onclick="abrirColaApp('noinst')">📲 Reenviar a los que aún no la han instalado (${_appColaLista("noinst").length})</button>`:""}
+    <button class="backup-btn" style="background:#fff;color:#1B4332;border:1.5px solid #1B4332" onclick="document.getElementById('tel-vcf').click()">📇 Cargar teléfonos desde mis contactos (${DATA.members.filter(m=>tieneFichaApp(m)&&!_telWA(m.phone)).length} sin teléfono)</button>
+    <input id="tel-vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" style="display:none" onchange="telCargarVcf(this)">
     <button class="backup-btn" style="background:#fff;color:#1B4332;border:1.5px solid #1B4332" onclick="imprimirTarjetasApp()">🖨️ Imprimir las tarjetas con QR (${con.length})</button>`:""}`;
   if(con.length){
     const abL=!!DESP["mg-app-l"];
@@ -234,6 +236,60 @@ function _appMensajeWA(m){
   return `Hola ${nom} 👋\nAquí tienes tu *app de Nuevos Horizontes*.\n\n*Lee esto antes de tocar el enlace* (está al final):\n\n1️⃣ *Cómo instalarla:* toca tu enlace del final.\n\n📱 *Si tienes iPhone:*\n• Abajo, toca el botón *Compartir* 📤. Si no lo ves, toca primero los tres puntos *···*\n• Baja un poco y toca «*Añadir a pantalla de inicio*»\n• Arriba a la derecha, toca *Añadir*\n\n📱 *Si tienes Android:*\n• Arriba a la derecha, toca los *tres puntos* ⋮\n• Toca «*Añadir a pantalla de inicio*» (en algunos móviles pone «*Instalar aplicación*»)\n• Toca *Añadir* o *Instalar*\n\n2️⃣ *Listo:* en tu pantalla aparece el icono *NH*. Desde ahora ábrela siempre tocando ese icono.\n\n🖼️ Si te lías, al abrirla verás un botón con los mismos pasos en dibujos.\n\n👇 *Tu enlace* (es solo tuyo, no lo compartas):\n${enlaceAppDe(m)}\n\nNuevos Horizontes · Construyendo un nuevo sistema`; // v45.72: un solo enlace (el de los dibujos está dentro de la app)
 }
 function _appEnviados(){ return (_appCfg().enviados)||{}; }
+// ══ v45.73 · TELÉFONOS DESDE LOS CONTACTOS DEL MÓVIL ═══════════════════════════════════════════
+// El iPhone no deja a una web leer la agenda: se exporta una vez a un archivo .vcf (Contactos › Listas ›
+// mantener «Todos los contactos» › Exportar) y aquí se buscan los asociados por su nombre. El archivo solo se
+// lee en este móvil: no se guarda. Los teléfonos se guardan aparte (privado/telefonos, solo el administrador).
+function _vcfLeer(txt){
+  const L=String(txt).replace(/\r\n[ \t]/g,"").replace(/\n[ \t]/g,"").split(/\r?\n/), out=[]; let c=null;
+  const val=l=>l.slice(l.indexOf(":")+1).replace(/\\,/g,",").replace(/\\;/g,";").trim();
+  L.forEach(l=>{ const u=l.toUpperCase();
+    if(u.startsWith("BEGIN:VCARD"))c={fn:"",n:"",tels:[]};
+    else if(u.startsWith("END:VCARD")){ if(c&&(c.fn||c.n)&&c.tels.length)out.push(c); c=null; }
+    else if(c){ const k=u.split(":")[0].split(";")[0].replace(/^ITEM\d+\./,"");
+      if(k==="FN")c.fn=val(l); else if(k==="N"){ const p=val(l).split(";"); c.n=[p[1]||"",p[2]||"",p[0]||""].join(" ").replace(/\s+/g," ").trim(); }
+      else if(k==="TEL"){ const t=val(l).replace(/^tel:/i,""); if(_telWA(t)&&!c.tels.includes(t))c.tels.push(t); } } });
+  return out;
+}
+function _telCoinciden(m,cs){
+  const nm=_normNom(m.name), tm=nm.split(" ").filter(Boolean), ex=[], pa=[];
+  cs.forEach(c=>{ [c.fn,c.n].filter(Boolean).forEach(nom=>{ const nc=_normNom(nom), tc=nc.split(" ").filter(Boolean);
+    if(nc===nm){ if(!ex.includes(c))ex.push(c); }
+    else if(tm.length>=2&&tc.length>=2&&(tm.every(x=>tc.includes(x))||(tc.every(x=>tm.includes(x))&&tc.includes(tm[0])))){ if(!pa.includes(c)&&!ex.includes(c))pa.push(c); } }); });
+  return {ex,pa};
+}
+function telCargarVcf(inp){
+  const f=inp.files&&inp.files[0]; if(!f)return;
+  const r=new FileReader(); r.onload=()=>{ const cs=_vcfLeer(r.result); inp.value="";
+    if(!cs.length){ toast("No he encontrado contactos con teléfono en ese archivo",4500); return; }
+    openModal("tel_import",{cs,hechos:{},todos:false}); };
+  r.readAsText(f);
+}
+function _telLista(){ const cs=MODAL.cs||[]; return DATA.members.filter(m=>tieneFichaApp(m)&&(MODAL.todos||!_telWA(m.phone)||MODAL.hechos[m.id])).sort((a,b)=>a.name.localeCompare(b.name,"es")).map(m=>Object.assign({m},_telCoinciden(m,cs))); }
+function telUsar(mid,tel){ const m=DATA.members.find(x=>x.id===mid); if(!m)return; m.phone=tel; MODAL.hechos[mid]=tel; save(); render(); }
+function telUsarSeguros(){ let n=0; _telLista().forEach(x=>{ if(!MODAL.hechos[x.m.id]&&!_telWA(x.m.phone)&&x.ex.length===1&&x.ex[0].tels.length===1){ x.m.phone=x.ex[0].tels[0]; MODAL.hechos[x.m.id]=x.m.phone; n++; } });
+  if(n){ save(); toast("✓ "+n+" teléfonos guardados"); } render(); }
+function telImportModalHTML(){
+  const L=_telLista(), seguros=L.filter(x=>!MODAL.hechos[x.m.id]&&!_telWA(x.m.phone)&&x.ex.length===1&&x.ex[0].tels.length===1).length;
+  const b=(t,on,pri)=>`<button onclick="${on}" class="cgt-b ${pri?"pri":"sec"}" style="flex:0 0 auto;min-height:38px;padding:6px 10px;font-size:13.5px">${t}</button>`;
+  let h=`<div class="modal-title">📇 Teléfonos desde tus contactos</div>
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:10px;line-height:1.4">He leído <b>${MODAL.cs.length}</b> contactos con teléfono. Confirma el de cada asociado. El archivo no se guarda.</div>
+    ${seguros?`<button class="cgt-b pri" style="width:100%;min-height:48px;margin-bottom:10px;font-size:15px" onclick="telUsarSeguros()">✓ Usar los ${seguros} que coinciden exactamente</button>`:""}
+    <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-bottom:6px"><input type="checkbox" ${MODAL.todos?"checked":""} onchange="MODAL.todos=this.checked;render()" style="-webkit-appearance:checkbox;appearance:auto;width:20px;height:20px"> Ver también los que ya tienen teléfono</label>`;
+  // Primero los que hay que decidir (dos teléfonos o nombre parecido), luego los ya guardados; los que no están en
+  // los contactos, al final en una sola línea (con muchos contactos la lista sería eterna).
+  const nada=L.filter(x=>!x.ex.length&&!x.pa.length&&!MODAL.hechos[x.m.id]), conC=L.filter(x=>!nada.includes(x));
+  const peso=x=>MODAL.hechos[x.m.id]?2:(x.ex.length===1&&x.ex[0].tels.length===1?1:0);
+  conC.sort((a,b)=>peso(a)-peso(b));
+  if(conC.some(x=>!peso(x)))h+=`<div style="font-size:13.5px;font-weight:800;color:#8A4F12;margin-top:6px">Elige tú (${conC.filter(x=>!peso(x)).length})</div>`;
+  conC.forEach(x=>{ const m=x.m, hecho=MODAL.hechos[m.id], act=_telWA(m.phone)?m.phone:"";
+    const cands=[...x.ex.map(c=>({c,ex:true})),...x.pa.map(c=>({c,ex:false}))];
+    h+=`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-size:15.5px;font-weight:800;color:var(--dark)">${escH(m.name)}</span>${hecho?`<span style="font-size:13px;font-weight:800;color:#1B7A3D">✓ ${escH(hecho)}</span>`:act?`<span style="font-size:12.5px;color:var(--muted)">ahora: ${escH(act)}</span>`:""}</div>`;
+    cands.forEach(({c,ex})=>{ h+=`<div style="margin-top:6px;font-size:13px;color:${ex?"var(--dark)":"#8A4F12"}">${ex?"":"¿Es «"+escH(c.fn||c.n)+"»? "}</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${c.tels.map(t=>b((hecho===t?"✓ ":"Usar ")+escH(t),`telUsar('${esc(m.id)}','${esc(t)}')`,hecho!==t&&ex&&c.tels.length===1)).join("")}</div>`; });
+    h+=`</div>`; });
+  if(nada.length)h+=`<div style="margin-top:12px;font-size:13px;color:var(--muted);line-height:1.45"><b style="color:var(--dark)">No están en tus contactos con ese nombre (${nada.length}):</b> ${nada.map(x=>escH(x.m.name)).join(", ")}. Puedes ponerles el teléfono desde su ficha.</div>`;
+  return h+`<button class="m-sec" style="margin-top:10px" onclick="closeModal()">Cerrar</button>`;
+}
 function appEnviarA(mid){
   const m=DATA.members.find(x=>x.id===mid); if(!m||!m.codigoApp)return;
   const t=_appMensajeWA(m), tel=_telWA(m.phone);
