@@ -404,7 +404,7 @@ function cobrosGruposHTML(){
       :d.entTodo&&d.sinMarcar?`<span class="cgt-chip ok">Entregado todo</span>`
       :`<span class="cgt-chip rev">Revisar ›</span>`;
     const armado=!!DESP["cgtodo-"+g.id], formEnt=CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="entrega";
-    h+=`<div class="cgt" data-nombre="${escH(nombres)}">
+    h+=`<div class="cgt${window._DK_SEL===g.id?" dk-sel":""}" data-nombre="${escH(nombres)}">
       <button class="cgt-cab" onclick="abrirGrupoCobros('${g.id}')">
         <span class="cgt-nom">${escH(p.name)}<span class="cgt-sub">${ids.length} ${ids.length===1?"persona":"personas"} · ${d.items.length} ${d.items.length===1?"cobro":"cobros"}</span></span>${chip}</button>`;
     if(d.items.length)h+=`<div class="reserva-bar-bg" style="margin:8px 0 4px"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>

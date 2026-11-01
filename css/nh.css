@@ -917,3 +917,30 @@ body.nh-admin .toast{white-space:normal;width:max-content;max-width:calc(100vw -
 .tilde-sug{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:-4px 0 12px;padding:9px 11px;border-radius:10px;background:#EEF7F1;border:1px solid #B7D9C3;font-size:14px;color:#1B4332}
 .tilde-sug button{margin-left:auto;padding:7px 12px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit}
 .desg-mes{font-size:16px;font-weight:800;color:#fff;margin:-6px 0 10px}
+/* v45.75 · tablet y ordenador (solo la app del administrador; en el móvil no cambia nada) */
+@media (min-width:700px) and (max-width:999.98px){
+  body.nh-admin{max-width:820px}
+  body.nh-admin .nav-inf{max-width:820px}
+  body.nh-admin .ini-cols{column-count:2;column-gap:16px}
+  body.nh-admin .ini-cols>*{break-inside:avoid;-webkit-column-break-inside:avoid}
+}
+@media (min-width:1000px){
+  body.nh-admin{max-width:none;margin:0}
+  body.nh-admin::before{content:"";position:fixed;left:0;top:0;bottom:0;width:230px;background:linear-gradient(180deg,#1B4332,#2D6A4F);z-index:80}
+  body.nh-admin .header{position:fixed;left:0;top:0;width:230px;box-sizing:border-box;z-index:91;background:transparent;border-radius:0;text-align:left;padding:26px 18px 10px}
+  body.nh-admin .header .h-title{font-size:21px;line-height:1.15;margin-bottom:12px}
+  body.nh-admin .header .h-date-row{justify-content:flex-start;flex-wrap:wrap}
+  body.nh-admin .nav-inf{top:190px;bottom:auto;left:0;right:auto;width:230px;max-width:none;margin:0;flex-direction:column;gap:4px;background:transparent;border:none;box-shadow:none;padding:0 12px;z-index:91}
+  body.nh-admin .nav-btn{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 12px;min-height:0;font-size:16.5px;color:rgba(255,255,255,.88)}
+  body.nh-admin .nav-btn:hover{background:rgba(255,255,255,.08)}
+  body.nh-admin .nav-btn.on{color:#fff;background:rgba(255,255,255,.18)}
+  body.nh-admin .content{margin-left:230px;padding:24px 30px 40px;max-width:820px;box-sizing:content-box}
+  body.nh-admin .content.tab-inicio,body.nh-admin .content.dk-ancho{max-width:1500px}
+  body.nh-admin .ini-cols{column-count:3;column-gap:20px}
+  body.nh-admin .ini-cols>*{break-inside:avoid;-webkit-column-break-inside:avoid}
+  .dk-cob{display:grid;grid-template-columns:minmax(380px,460px) minmax(0,1fr);gap:24px;align-items:start}
+  .dk-izq{min-width:0}
+  .dk-der{min-width:0;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;background:#fff;border-radius:16px;padding:6px 16px 16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .dk-der.dk-vacio{text-align:center;padding:60px 24px}
+}
+@media (min-width:1000px){ .cgt.dk-sel{outline:3px solid #1B4332;outline-offset:-1px} }

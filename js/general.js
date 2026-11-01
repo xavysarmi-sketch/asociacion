@@ -221,6 +221,11 @@ function filtrarEnVivo(texto, scopeSelector){
 // v45.46: mientras se pinta una pantalla los datos no cambian (el render no escribe), así que lo que
 // se calcula muchas veces (las cuotas del mes) se guarda solo durante ese pintado.
 let _MEMO_RENDER=null;
+// v45.75: pantalla ancha (tablet en horizontal u ordenador): menú a la izquierda y Cobros a dos columnas.
+// Al girar la tablet o cambiar el tamaño de la ventana se vuelve a dibujar solo si se cruza ese límite.
+const _NH_MQ_ANCHO=window.matchMedia?window.matchMedia("(min-width: 1000px)"):null;
+function _nhAncho(){ return !!(_NH_MQ_ANCHO&&_NH_MQ_ANCHO.matches); }
+if(_NH_MQ_ANCHO){ const f=()=>{ try{ if(typeof DATA!=="undefined"&&DATA)render(); }catch(e){} }; if(_NH_MQ_ANCHO.addEventListener)_NH_MQ_ANCHO.addEventListener("change",f); else if(_NH_MQ_ANCHO.addListener)_NH_MQ_ANCHO.addListener(f); }
 function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
@@ -252,15 +257,17 @@ function _renderPantalla(){
 
   if(TAB==="send")TAB="asociados"; // v45.22: la pestaña Envíos se quitó (los enlaces se actualizan solos; enlace y bienvenida están en la ficha)
   // v45.39: las pestañas de arriba pasan a la barra de abajo (navInferiorHTML, js/inicio.js)
-  h+=`<div class="content">`;
+  h+=`<div class="content tab-${TAB}${_nhAncho()&&TAB==="mes"?" dk-ancho":""}">`; // v45.75: la pestaña, para colocarla en tablet y ordenador
 
   // ── INICIO (v45.39) ──
-  if(TAB==="inicio")h+=inicioHTML();
+  if(TAB==="inicio")h+=`<div class="ini-cols">${inicioHTML()}</div>`; // v45.75: en pantalla ancha, en columnas
   // ── AYUDAS (v45.39): dinero disponible, solicitudes y cartera ──
   if(TAB==="ayudas")h+=ayudasPantallaHTML();
 
   // ── PESTAÑA MES ──
-  if(TAB==="mes"){
+  // v45.75: en el ordenador (pantalla ancha) Cobros va a dos columnas: los grupos a la izquierda y el grupo abierto a la
+  // derecha. Es la misma pantalla de siempre dibujada dos veces (cerrada y abierta), sin cálculos nuevos.
+  const _mesHTML=()=>{ let h="";
     // v44.2: el render ya NO escribe el recargo del mes activo (antes, recalcMesRecargo()
     // lo sobrescribía en silencio en cada render, anulando el banner de reconciliación
     // para ese mes — así cambió el recargo de julio de 565 a 615 sin que Ángel lo supiera).
@@ -583,8 +590,16 @@ function _renderPantalla(){
       h+=cierreMesHTML(); // v45.46: comprobación, papeles del mes y cerrar el mes
       h+=kpiHTML;
     }
+      return h;
+  };
+  if(TAB==="mes"){
+    const _grA=_nhAncho()?gruposCierre().find(g=>!!DESP["grupo-"+g.id]):null;
+    if(!_nhAncho())h+=_mesHTML();
+    else if(_grA){ DESP["grupo-"+_grA.id]=false; window._DK_SEL=_grA.id; const _cgF=CG_FORM; if(_cgF&&_cgF.gid===_grA.id)CG_FORM=null; // el formulario abierto de ese grupo, solo a la derecha (sin casillas repetidas)
+      let izq; try{ izq=_mesHTML(); }finally{ DESP["grupo-"+_grA.id]=true; window._DK_SEL=null; CG_FORM=_cgF; }
+      h+=`<div class="dk-cob"><div class="dk-izq">${izq}</div><div class="dk-der">${_mesHTML()}</div></div>`; }
+    else h+=`<div class="dk-cob"><div class="dk-izq">${_mesHTML()}</div><div class="dk-der dk-vacio"><div style="font-size:44px">👈</div><div style="font-size:17px;font-weight:800;color:var(--dark);margin-top:8px">Toca «Abrir» en un grupo</div><div style="font-size:14px;color:var(--muted);margin-top:4px">Su detalle y la cuenta con el responsable se ven aquí, sin perder la lista.</div></div></div>`;
   }
-
 
   // ── PESTAÑA ASOCIADOS ──
   if(TAB==="asociados"){
