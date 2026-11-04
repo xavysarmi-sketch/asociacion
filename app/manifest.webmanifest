@@ -1,0 +1,16 @@
+{
+  "name": "Nuevos Horizontes",
+  "short_name": "NH Asociados",
+  "description": "Tu cuenta de Nuevos Horizontes: aportes, ayudas y beneficios.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F5F0EB",
+  "theme_color": "#1B4332",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

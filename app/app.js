@@ -10,6 +10,24 @@ const NHA_COD_RE=/^[a-z2-9]{20}$/;
 // v45.78: abierta desde «Ver» de la app del administrador
 const NHA_ADM=(()=>{ try{ return new URLSearchParams(location.search).get("adm")==="1"; }catch(e){ return false; } })();
 const NHA_ADM_BAR=NHA_ADM?`<a href="../" style="display:block;position:sticky;top:0;z-index:60;background:#1B4332;color:#fff;text-align:center;font-weight:800;font-size:15px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;text-decoration:none">← Volver a mi app de administrador</a>`:"";
+// v45.82: Android, instalar con un toque. El manifest (nombre, icono y modo app) se pone SOLO en Android: en el
+// iPhone, «Añadir a pantalla de inicio» guarda la dirección con el ?c= de cada persona y un manifest la cambiaría por
+// una común sin código. En Android, Chrome y la app instalada comparten la memoria del móvil, donde ya se guarda el
+// código al abrir el enlace (nha-codigo), así que el icono entra en su cuenta aunque arranque sin ?c=.
+// Sin service worker: no se guarda ninguna copia de la app ni de los datos en el móvil.
+let NHA_PROMPT=null;
+(function(){ try{
+  if(NHA_ADM||!/Android/.test(navigator.userAgent||""))return;
+  const l=document.createElement("link"); l.rel="manifest"; l.href="manifest.webmanifest"; document.head.appendChild(l);
+  window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); NHA_PROMPT=e; try{ if(NHA.m)nhaPantalla(); }catch(x){} });
+  window.addEventListener("appinstalled",()=>{ NHA_PROMPT=null; try{ toast("✅ Instalada. Desde ahora ábrela tocando el icono NH",6000); if(NHA.m)nhaPantalla(); }catch(x){} });
+}catch(e){} })();
+async function nhaInstalarAndroid(){
+  const e=NHA_PROMPT; if(!e)return;
+  try{ e.prompt(); const r=await e.userChoice; if(r&&r.outcome==="accepted"){ NHA_PROMPT=null; } }catch(x){}
+  try{ nhaPantalla(); }catch(x){}
+}
+function _nhaBotonInstalar(){ return NHA_PROMPT?`<button class="nha-btn" style="font-size:19px;min-height:60px;margin:6px 0 10px" onclick="nhaInstalarAndroid()">📲 Instalar mi app</button>`:""; }
 let NHA={pant:"inicio",codigo:null,m:null,publicada:null,faq:{},pedirArm:false,enviando:false};
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
@@ -152,7 +170,7 @@ function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
   let h="";
   // v45.70: abierta desde el navegador (sin el icono NH): aviso para instalarla; desaparece al abrirla desde el icono
-  if(!NHA_ADM&&!nhaInstalada())h+=`<div class="nha-inst-av"><b>⚠️ Aún no tienes la app instalada</b>Así, desde el navegador, dejará de funcionar pronto. Crea el icono <b class="nha-inl">NH</b> en tu móvil para seguir viendo tus cuentas.<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div>`;
+  if(!NHA_ADM&&!nhaInstalada())h+=`<div class="nha-inst-av"><b>⚠️ Aún no tienes la app instalada</b>Así, desde el navegador, dejará de funcionar pronto. Crea el icono <b class="nha-inl">NH</b> en tu móvil para seguir viendo tus cuentas.${_nhaBotonInstalar()}<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div>`;
   if(salidaPend)h+=salidaAvisoFichaHTML(m); else if(pausaVigente(m))h+=pausaAvisoFichaHTML(m);
   if(!salidaPend)h+=p.arriba; // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
@@ -462,9 +480,9 @@ function nhaBienvenidaHTML(m){
   const icono=`<span class="nha-mini-logo">NH</span>`;
   const ios=`<div class="nha-so">📱 iPhone</div>`+(s.so==="ios"&&s.otra?`<div class="nha-aviso">Si este enlace se ha abierto dentro de otra app, toca <b>«Abrir en Safari»</b> primero.</div>`:"")
     +paso(1,NHA_SVG.share,`Toca el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba). En Safari está abajo; en Chrome, arriba.`)
-    +paso(2,NHA_SVG.mas,`Baja un poco y toca <b>«Añadir a pantalla de inicio»</b>.`)
+    +paso(2,NHA_SVG.mas,`Baja un poco y toca <b>«Añadir a pantalla de inicio»</b>. <span style="font-weight:400">Si no aparece, es que se ha abierto dentro de WhatsApp: toca primero el icono de la brújula (abajo a la derecha) para abrirla en <b>Safari</b>.</span>`)
     +paso(3,icono,`Toca <b>Añadir</b>. Ya tienes el icono <b>NH</b> en tu móvil: ábrela siempre desde ahí.`);
-  const and=`<div class="nha-so">📱 Android</div>`+(s.so==="android"&&s.otra?`<div class="nha-aviso">Si este enlace se ha abierto dentro de otra app, toca los tres puntos y <b>«Abrir en Chrome»</b> primero.</div>`:"")
+  const and=`<div class="nha-so">📱 Android</div>`+(s.so==="android"&&NHA_PROMPT?_nhaBotonInstalar()+`<div class="nha-txt" style="margin:0 0 6px">Toca el botón y luego <b>Instalar</b>. Si no te sale, hazlo así:</div>`:"")+(s.so==="android"&&s.otra?`<div class="nha-aviso">Si este enlace se ha abierto dentro de otra app, toca los tres puntos y <b>«Abrir en Chrome»</b> primero.</div>`:"")
     +(s.samsung?paso(1,NHA_SVG.menu,`Toca el <b>menú</b> (las tres rayas, abajo).`)+paso(2,NHA_SVG.mas,`Toca <b>«Añadir página a»</b> y luego <b>«Pantalla de inicio»</b>.`)
       :paso(1,NHA_SVG.puntos,`Toca los <b>tres puntos</b> de arriba a la derecha.`)+paso(2,NHA_SVG.mas,`Toca <b>«Añadir a pantalla de inicio»</b> (o <b>«Instalar aplicación»</b>) y luego <b>Añadir</b>.`))
     +paso(3,icono,`Ya tienes el icono <b>NH</b> en tu móvil: ábrela siempre desde ahí.`);
