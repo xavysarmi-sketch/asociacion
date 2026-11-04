@@ -975,6 +975,16 @@ function runCodeChecks(force){
   });
 }
 // Tarjeta "🔍 Auditoría interna" (Gestión): SOLO informa (auditarNH nunca corrige nada).
+// v45.80: cuadre 5 bajo demanda (pinta la ficha de cada persona dos veces: tarda un poco)
+let CUADRE_FICHAS=null;
+function revisarFichasAhora(){ CUADRE_FICHAS={err:cuadreFichas(),t:Date.now()}; render(); }
+function _cuadreFichasHTML(){
+  const r=CUADRE_FICHAS;
+  return `<div style="margin-top:8px;padding:9px 10px;border-radius:10px;background:#fff;border:1px solid #DCE9E0;color:#1B4332">
+    <div style="font-size:12.5px;font-weight:800">Cuadre 5 · lo que ve cada asociado en su app = lo que ves tú</div>
+    ${r?(r.err.length?r.err.map(e=>`<div style="display:flex;gap:8px;margin:4px 0;font-size:12.5px;color:#7A2418"><span>❌</span><span>${escH(e)}</span></div>`).join(""):`<div style="font-size:12.5px;margin-top:3px">✅ Todas las fichas coinciden (revisado a las ${new Date(r.t).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})})</div>`):""}
+    <button onclick="revisarFichasAhora()" style="margin-top:6px;width:100%;padding:8px;border-radius:9px;border:1.5px solid #2D6A4F;background:#fff;color:#1B4332;font-weight:800;font-size:13px">🔎 ${r?"Volver a revisar":"Revisar las fichas ahora"}</button></div>`;
+}
 function auditoriaInternaHTML(){
   const r=auditarNHCached();
   const nE=r.errores.length,nA=r.advertencias.length;
@@ -989,6 +999,7 @@ function auditoriaInternaHTML(){
       ${nE===0&&nA===0?`<div style="font-size:12.5px">Sin errores ni avisos. Los ${(function(){let c=0;DATA.members.forEach(m=>{c+=(m.loans||[]).length+(m.closedLoans||[]).length;});return c;})()} ayudas registradas cuadran.</div>`:""}
       ${r.errores.map(e=>linea(e,true)).join("")}
       ${r.advertencias.map(a=>linea(a,false)).join("")}
+      ${_cuadreFichasHTML()}
       <div style="border-top:1px solid ${ok?"#cfe0d5":"#f0c9c2"};margin:10px 0 8px"></div>
       <button style="width:100%;padding:10px;border:none;border-radius:10px;background:${ok?"#2D6A4F":"#C0492C"};color:#fff;font-weight:700" onclick="AUDIT_OPEN=false;render();toast('Auditoría cerrada — no se ha corregido nada automáticamente')">Cerrar</button>
     </div>`:""}

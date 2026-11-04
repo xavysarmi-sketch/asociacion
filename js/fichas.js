@@ -400,3 +400,27 @@ async function imprimirTarjetasApp(){
     <div class="nt-g">${imgs}</div>`;
   document.body.appendChild(d);
 }
+// ══ v45.80 · CUADRE 5: LO QUE VE CADA ASOCIADO EN SU APP = LO QUE VE EL ADMINISTRADOR ═══════════════
+// Se pinta la ficha personal de cada persona dos veces (con todos los datos y solo con los datos de su ficha
+// privada, como la ve en su móvil) y se comparan las filas «etiqueta → cifra» de cada pestaña.
+// Es una revisión larga: la lanzan el verificador antes de publicar, el revisor y el botón de Más › Revisión.
+function cuadreFichas(){
+  const errores=[], D=DATA, tab0=FICHA_TAB, tabs=["resumen","aportes","beneficios","ayudas","aval"];
+  // todo el texto de la pestaña (cifras, estados «PAGADO», fechas…), sin espacios de más
+  const texto=html=>{ const t=document.createElement("template"); t.innerHTML=html; return t.content.textContent.replace(/\s+/g," ").trim(); };
+  try{
+    D.members.filter(m=>tieneFichaApp(m)&&m.codigoApp).forEach(m=>{
+      let priv=null; try{ priv=JSON.parse(JSON.stringify(datosPrivadosDe(m))); }catch(e){ errores.push(`Cuadre 5 · ficha de ${m.name}: no se ha podido preparar (${e.message})`); return; }
+      const m2=(priv.members||[]).find(x=>x.id===m.id); if(!m2){ errores.push(`Cuadre 5 · ficha de ${m.name}: falta la persona en su ficha`); return; }
+      for(const tab of tabs){
+        if(m.type==="tercero"&&(tab==="aportes"||tab==="beneficios"))continue;
+        DATA=D; _CAJA_CACHE=null; FICHA_TAB=tab; const a=texto(_fichaHTMLpersonal(m,true));
+        DATA=priv; _CAJA_CACHE=null; FICHA_TAB=tab; const b=texto(_fichaHTMLpersonal(m2,true));
+        DATA=D; _CAJA_CACHE=null;
+        if(a!==b){ let i=0; while(i<a.length&&a[i]===b[i])i++; const ctx=x=>x.slice(Math.max(0,i-35),i+35);
+          errores.push(`Cuadre 5 · ficha de ${m.name} (${tab}): tú ves «…${ctx(a)}…» y en su app sale «…${ctx(b)}…»`); }
+      }
+    });
+  } finally { DATA=D; _CAJA_CACHE=null; FICHA_TAB=tab0; }
+  return errores;
+}

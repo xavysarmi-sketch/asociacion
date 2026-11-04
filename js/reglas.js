@@ -552,6 +552,17 @@ function cuadresNH(){
   // Cuadre 2: la caja del mes (Inicio/Ayudas) contra la caja oficial; solo puede diferir en lo entregado sin marcar
   const enCaja=r2(d.cobrado-d.salido), oficial=r2(cm.ent-cm.sal);
   if(dif(enCaja,r2(oficial+sinMarcar)))errores.push(`Cuadre 2 · caja de ${mesTxt}: Inicio dice ${eur(enCaja)} y la caja oficial ${eur(oficial)}${sinMarcar?` + ${eur(sinMarcar)} sin marcar`:""} = ${eur(oficial+sinMarcar)}`);
+  // Cuadre 4: cada salida ya calculada: aportes + beneficio que conserva − lo ya retirado − ayuda descontada = lo que se le paga
+  DATA.members.forEach(m=>{ const b=m.baja; if(!b||!b.v18||b.total==null)return;
+    const esperado=r2((+b.capitalDevuelto||0)+Math.max(0,(+b.beneficioConservado||0)-(+b.beneficioRetiradoAntes||0))-(+b.ayudaDescontada||0));
+    if(dif(esperado,+b.total))errores.push(`Cuadre 4 · salida de ${m.name}: aportes ${eur(b.capitalDevuelto||0)} + beneficio ${eur(Math.max(0,(b.beneficioConservado||0)-(b.beneficioRetiradoAntes||0)))} − ayuda ${eur(b.ayudaDescontada||0)} = ${eur(esperado)}, pero se paga ${eur(b.total)}`);
+    if(b.beneficioGenerado!=null&&b.beneficioPerdido!=null&&dif(r2((+b.beneficioConservado||0)+(+b.beneficioPerdido||0)),+b.beneficioGenerado))
+      errores.push(`Cuadre 4 · salida de ${m.name}: beneficio conservado + perdido no da el generado (${eur(b.beneficioGenerado)})`);
+  });
+  // Cuadre 6: los asociados que tienen que aportar este mes, igual en Inicio y en Cobros
+  const debenAportar=DATA.members.filter(m=>m.type==="asociado"&&m.joinMonth&&activoEnReporte(m)&&!enPausaMes(m,rm,ry)).length;
+  let conAporte=0; DATA.members.forEach(m=>{ if(itemsDeMiembro(m.id,rm,ry).some(it=>it.tipo==="aporte"))conAporte++; });
+  if(debenAportar!==conAporte)errores.push(`Cuadre 6 · ${mesTxt}: Inicio cuenta ${debenAportar} asociados que aportan y Cobros les cobra el aporte a ${conAporte}`);
   return {errores,pendientes};
 }
 function invalidateAuditCache(){_audCache=null;_audKey=null;}
