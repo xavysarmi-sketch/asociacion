@@ -27,7 +27,8 @@ function _limpia(o){ const c=_copia(o); delete c.phone; delete c.codigoApp; dele
   ["loans","closedLoans"].forEach(k=>(c[k]||[]).forEach(l=>{ delete l._nota; }));
   if(c.baja){ delete c.baja.nota; delete c.baja.motivo; }
   return c; }
-function tieneFichaApp(m){ return !!m&&(!m.baja||!m.baja.pagada); }
+// v45.78: un tercero que ya pagó todas sus ayudas tampoco tiene ficha (pasa a históricos); si vuelve a tener una ayuda, se reabre sola
+function tieneFichaApp(m){ return !!m&&(!m.baja||!m.baja.pagada)&&!(m.type==="tercero"&&!(m.loans||[]).length); }
 function _esResponsable(m){ return gruposCierre().find(g=>g.principalId===m.id)||null; }
 // Los datos privados de una persona, con la forma de DATA
 function datosPrivadosDe(m){
@@ -150,7 +151,9 @@ function copiarEnlaceApp(mid){
   const m=DATA.members.find(x=>x.id===mid), url=enlaceAppDe(m); if(!url)return;
   try{ navigator.clipboard.writeText(url).then(()=>toast("Enlace copiado ✓"),()=>toast(url,6000)); }catch(e){ toast(url,6000); }
 }
-function abrirAppDe(mid){ const url=enlaceAppDe(DATA.members.find(x=>x.id===mid)); if(url)window.open(url,"_blank"); }
+// v45.78: «Ver» abre la app de esa persona en modo vista del administrador (&adm=1): no cuenta como instalada, no se
+// queda guardada en este móvil y arriba sale «← Volver a mi app» (en el iPhone se abría dentro de la app, sin salida)
+function abrirAppDe(mid){ const url=enlaceAppDe(DATA.members.find(x=>x.id===mid)); if(url)window.open(url+"&adm=1","_blank"); }
 function appAsociadosGestionHTML(){
   const ab=!!DESP["mg-app"], con=DATA.members.filter(m=>tieneFichaApp(m)&&m.codigoApp), sin=DATA.members.filter(m=>tieneFichaApp(m)&&!m.codigoApp);
   const est=appAsociadosActiva()?(FICHAS_ESTADO.error==="permisos"?`<span style="color:#A93C25">⛔ faltan reglas</span>`:`<span style="color:#1B7A3D">en marcha</span>`):`<span style="color:var(--muted)">en pruebas</span>`;

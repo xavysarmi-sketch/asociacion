@@ -7,12 +7,15 @@
 
 const NHA_ARCHIVOS=["maestro","utilidades","datos","reglas","iconos","general","cierre","grupos","documentos","personas","ayudas","gestion","enlaces","inicio","arranque"];
 const NHA_COD_RE=/^[a-z2-9]{20}$/;
+// v45.78: abierta desde «Ver» de la app del administrador
+const NHA_ADM=(()=>{ try{ return new URLSearchParams(location.search).get("adm")==="1"; }catch(e){ return false; } })();
+const NHA_ADM_BAR=NHA_ADM?`<a href="../" style="display:block;position:sticky;top:0;z-index:60;background:#1B4332;color:#fff;text-align:center;font-weight:800;font-size:15px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;text-decoration:none">← Volver a mi app de administrador</a>`:"";
 let NHA={pant:"inicio",codigo:null,m:null,publicada:null,faq:{},pedirArm:false,enviando:false};
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
 function nhaCodigo(){
   let c="", hay=false; try{ const u=new URLSearchParams(location.search); hay=u.has("c"); c=(u.get("c")||"").trim().toLowerCase(); }catch(e){}
-  if(NHA_COD_RE.test(c)){ try{ localStorage.setItem("nha-codigo",c); }catch(e){} return c; }
+  if(NHA_COD_RE.test(c)){ if(!NHA_ADM){ try{ localStorage.setItem("nha-codigo",c); }catch(e){} } return c; }
   if(hay)return null; // un código mal copiado no abre nunca la cuenta guardada en el móvil
   try{ c=localStorage.getItem("nha-codigo")||""; }catch(e){ c=""; } // abierta desde la pantalla de inicio sin el código en la dirección
   return NHA_COD_RE.test(c)?c:null;
@@ -28,10 +31,10 @@ function nhaError(tipo){
   const T={
     "sin-codigo":["🔗","Falta tu código","Vuelve al mensaje de WhatsApp en el que te llegó la app y toca <b>tu enlace</b> (el que va después de «👇 Tu enlace»)."],
     "no-existe":["🔍","No encontramos tu cuenta","El enlace no es correcto o ya no está en uso. Pide uno nuevo al administrador."],
-    "cerrada":["🚪","Tu cuenta ya está cerrada","Tu salida del fondo ya está liquidada. Gracias por haber formado parte de Nuevos Horizontes."],
+    "cerrada":["🚪","Tu cuenta ya está cerrada","Ya no tienes nada pendiente con Nuevos Horizontes. Gracias por haber formado parte."],
     "conexion":["📶","No se ha podido cargar","Comprueba tu conexión a internet y vuelve a abrir la app."]
   }[tipo]||["⚠️","Algo no ha ido bien","Vuelve a abrir la app. Si sigue igual, avisa al administrador."];
-  document.getElementById("app").innerHTML=`<div class="nha-error"><div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-error-ic">${T[0]}</div>
+  document.getElementById("app").innerHTML=NHA_ADM_BAR+`<div class="nha-error"><div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-error-ic">${T[0]}</div>
     <div class="nha-error-tit">${T[1]}</div><div class="nha-error-txt">${T[2]}</div>
     ${tipo==="conexion"?`<button class="nha-btn" onclick="location.reload()">Volver a intentarlo</button>`:""}
     ${tipo==="sin-codigo"||tipo==="no-existe"?`<button class="nha-btn nha-wa" onclick="nhaPedirEnlace('${tipo}')">💬 Pedir mi enlace a Angel</button><div class="nha-error-txt" style="font-size:14px;margin-top:10px">Se abre WhatsApp con el mensaje ya escrito: elige a Angel y envíalo.</div>`:""}</div>`;
@@ -69,7 +72,7 @@ async function nhaArrancar(){
 // Solo se guarda la fecha y el tipo de móvil. Si falla (sin conexión o sin permiso), se reintenta la próxima vez.
 async function nhaAvisarInstalada(){
   try{
-    if(!nhaInstalada()||!NHA.codigo||!window._fbFichas||!window._fbFichas.instalada)return;
+    if(NHA_ADM||!nhaInstalada()||!NHA.codigo||!window._fbFichas||!window._fbFichas.instalada)return;
     const k="nha-inst-"+NHA.codigo; if(localStorage.getItem(k))return;
     const s=nhaSistema(); await window._fbFichas.instalada(NHA.codigo,{t:Date.now(),so:s.so==="ios"?"ios":s.so==="android"?"android":"otro"});
     localStorage.setItem(k,"1");
@@ -114,7 +117,7 @@ function nhaPantalla(){
   if(!m){ nhaError("no-existe"); return; }
   const salidaPend=!!(m.baja&&m.baja.v18&&!m.baja.pagada&&salidaResumenDatos(m));
   if(m.baja&&!salidaPend){ nhaError("cerrada"); return; }
-  if(NHA.bienvenida==null)NHA.bienvenida=!nhaInstalada()&&!nhaBienvenidaVista();
+  if(NHA.bienvenida==null)NHA.bienvenida=!NHA_ADM&&!nhaInstalada()&&!nhaBienvenidaVista();
   if(NHA.bienvenida){ app.innerHTML=nhaBienvenidaHTML(m); return; }
   const esTerc=m.type==="tercero", g=nhaGrupo(m);
   const puedeSim=!esTerc&&!!m.joinMonth;
@@ -137,7 +140,7 @@ function nhaPantalla(){
     if(MODAL.type==="history")c=historyModalHTML();
     if(c)h+=`<div class="modal-bg" onclick="closeModal()"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-handle"></div>${c}</div></div>`;
   }
-  app.innerHTML=h;
+  app.innerHTML=NHA_ADM_BAR+h;
 }
 // Título de cada pantalla: con el icono de la sección
 function nhaTitulo(m,t,sub,ic){
@@ -149,7 +152,7 @@ function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
   let h="";
   // v45.70: abierta desde el navegador (sin el icono NH): aviso para instalarla; desaparece al abrirla desde el icono
-  if(!nhaInstalada())h+=`<div class="nha-inst-av"><b>⚠️ Aún no tienes la app instalada</b>Así, desde el navegador, dejará de funcionar pronto. Crea el icono <b class="nha-inl">NH</b> en tu móvil para seguir viendo tus cuentas.<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div>`;
+  if(!NHA_ADM&&!nhaInstalada())h+=`<div class="nha-inst-av"><b>⚠️ Aún no tienes la app instalada</b>Así, desde el navegador, dejará de funcionar pronto. Crea el icono <b class="nha-inl">NH</b> en tu móvil para seguir viendo tus cuentas.<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div>`;
   if(salidaPend)h+=salidaAvisoFichaHTML(m); else if(pausaVigente(m))h+=pausaAvisoFichaHTML(m);
   if(!salidaPend)h+=p.arriba; // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
