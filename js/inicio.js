@@ -37,7 +37,7 @@ function inicioHTML(){
     <div class="ini-est-tit">${estado==="ok"?"✅ ":estado==="falta"?"⏳ ":"⚠️ "}${tit}</div>
     ${fila("Aportes",aptPag+"/"+asocMes.length,aptPag===asocMes.length,"TAB='mes';render();window.scrollTo(0,0)")}
     ${fila("Cuotas de ayudas",cuoPag+"/"+cuotas.length,cuoPag===cuotas.length,"TAB='mes';render();window.scrollTo(0,0)")}
-    ${fila("Auditoría",nErr?nErr+" error"+(nErr>1?"es":""):"todo cuadra",!nErr,"TAB='manage';AUDIT_OPEN=true;render()")}
+    ${fila("Auditoría",nErr?nErr+" error"+(nErr>1?"es":""):aud.advertencias.length?"cuadra · "+aud.advertencias.length+" aviso"+(aud.advertencias.length>1?"s":""):"todo cuadra",!nErr&&!aud.advertencias.length,"TAB='manage';AUDIT_OPEN=true;render()")}
     ${fila("Cierre del mes",mesCerrado(getMesKey(rm,ry))?"cerrado":"sin cerrar",mesCerrado(getMesKey(rm,ry)),"TAB='mes';DESP={};render();setTimeout(()=>{const e=document.getElementById('cierre-mes');if(e)e.scrollIntoView({block:'start'});},50)")}
   </div>`;
   // Dinero del mes (la misma cuenta que en Ayudas → Dinero del mes)

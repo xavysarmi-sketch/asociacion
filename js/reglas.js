@@ -508,7 +508,51 @@ function auditarNH(){
     Object.values(vistos).filter(v=>v.meses.length>1).forEach(v=>
       advertencias.push(`Bono por referido duplicado: ${quien} tiene el bono de ${v.nombre} en ${v.meses.sort().map(k=>{const[yy,mm]=k.split("-").map(Number);return MONTHS_FULL[mm-1]+" "+yy;}).join(" y ")} — dejarlo solo en un mes (Ficha → 🎁 Referido)`));
   });
+  // v45.79: cuadres del dinero del mes (Ángel 04/11/2026: Inicio y Cobros daban cifras distintas y la auditoría no lo veía)
+  try{ const q=cuadresNH(); q.errores.forEach(e=>errores.push(e)); q.pendientes.forEach(a=>advertencias.push(a)); }
+  catch(e){ errores.push("Cuadres: no se han podido comprobar ("+(e&&e.message||e)+")"); }
   return {errores,advertencias};
+}
+// ══ v45.79 · CUADRES DEL DINERO DEL MES ═══════════════════════════════════════════════════
+// La misma cifra calculada por dos caminos tiene que dar lo mismo. Aquí se rehace cada cifra desde los datos
+// (marcas del Cierre y apuntes de la cuenta de cada grupo), sin usar las funciones de las pantallas, y se compara
+// con lo que enseñan Inicio, Ayudas, Cobros y la caja oficial. errores = no cuadra (rojo); pendientes = cuadra,
+// pero hay algo por hacer (ámbar).
+function cuadresNH(){
+  const errores=[], pendientes=[], r2=x=>Math.round(x*100)/100, eur=v=>fmtEur(r2(v))+" €", dif=(a,b)=>Math.abs(a-b)>0.005;
+  const rm=DATA.reportMonth, ry=DATA.reportYear, idx=_idxMes(rm,ry), key=getMesKey(rm,ry), mesTxt=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()+" "+ry;
+  const enGrupo=new Set(); let indInicio=0, indCobros=0, sinMarcar=0;
+  gruposCierre().forEach(g=>{ const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+    const ids=[g.principalId,...(g.miembros||[])]; ids.forEach(x=>enGrupo.add(x));
+    let total=0, marcado=0; ids.forEach(id=>itemsDeMiembro(id,rm,ry).forEach(it=>{ total+=it.importe; if(it.yaPagado)marcado+=it.importe; }));
+    total=r2(total); marcado=r2(marcado);
+    const movs=_cgMovs(key,g.id), suma=t=>r2(movs.filter(x=>x.tipo===t).reduce((a,x)=>a+(+x.importe||0),0));
+    const entregas=suma("entrega"), ayudas=suma("ayuda"), salidas=suma("salida"), pagos=suma("pago"), arrastre=suma("arrastre"), pasado=suma("pasado");
+    const delGrupo=r2(entregas+ayudas+salidas-pagos);   // lo que de verdad salió del bolsillo del grupo
+    const cob=Math.max(marcado,delGrupo);
+    indInicio+=cob; indCobros+=Math.min(cob,total);
+    const nom=p.name.split(" ")[0];
+    if(delGrupo>marcado+0.005){ sinMarcar+=delGrupo-marcado; pendientes.push(`Grupo de ${nom}: ${eur(delGrupo-marcado)} entregados o usados que aún no están marcados persona por persona en Cobros`); }
+    if(cob>total+0.005)pendientes.push(`Grupo de ${nom}: ha entregado ${eur(cob-total)} más de lo que tocaba este mes`);
+    // Cuadre 3: la cuenta del responsable
+    if(movs.length){
+      const falta=r2(total+arrastre+pagos-entregas-ayudas-salidas-pasado), app=_cgFaltaApuntes(g,idx);
+      if(dif(falta,app))errores.push(`Cuadre 3 · cuenta de ${p.name} (${mesTxt}): debería faltar ${eur(falta)} y la app dice ${eur(app)}`);
+      if(falta<-0.005)pendientes.push(`Grupo de ${nom}: la asociación tiene que pasarle ${eur(-falta)} («＋ Ya le he pasado…» en su cuenta)`);
+      if(_cgCerrada(g)&&dif(_cgFalta(g,idx),0))errores.push(`Cuadre 3 · cuenta de ${p.name}: sale como liquidada pero le falta ${eur(_cgFalta(g,idx))}`);
+    }
+  });
+  let rC=0; DATA.members.filter(m=>!enGrupo.has(m.id)&&activoEnReporte(m)).forEach(m=>itemsDeMiembro(m.id,rm,ry).forEach(it=>{ if(it.yaPagado)rC+=it.importe; }));
+  const cm=_cajaMovMes(rm,ry,idx), puntIn=cm.puntIn||0;
+  indInicio=r2(indInicio+rC+puntIn); indCobros=r2(indCobros+rC);
+  // Cuadre 1: lo cobrado, igual en Inicio/Ayudas y en Cobros
+  const d=dineroAyudasMes(), enCobros=r2(d.previsto-d.porCobrar);
+  if(dif(d.cobrado,indInicio))errores.push(`Cuadre 1 · cobrado de ${mesTxt}: Inicio y Ayudas dicen ${eur(d.cobrado)} y los datos dan ${eur(indInicio)}`);
+  if(dif(enCobros,indCobros))errores.push(`Cuadre 1 · cobrado de ${mesTxt}: Cobros dice ${eur(enCobros)} y los datos dan ${eur(indCobros)}`);
+  // Cuadre 2: la caja del mes (Inicio/Ayudas) contra la caja oficial; solo puede diferir en lo entregado sin marcar
+  const enCaja=r2(d.cobrado-d.salido), oficial=r2(cm.ent-cm.sal);
+  if(dif(enCaja,r2(oficial+sinMarcar)))errores.push(`Cuadre 2 · caja de ${mesTxt}: Inicio dice ${eur(enCaja)} y la caja oficial ${eur(oficial)}${sinMarcar?` + ${eur(sinMarcar)} sin marcar`:""} = ${eur(oficial+sinMarcar)}`);
+  return {errores,pendientes};
 }
 function invalidateAuditCache(){_audCache=null;_audKey=null;}
 function auditarNHCached(){
