@@ -384,7 +384,7 @@ function cgTodoToque(gid){
 function _cgTarjetaDatos(g,pre,key){
   const items=itemsDeGrupo(g,undefined,undefined,pre);
   const total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
-  const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0));
+  const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0)-_cgMovs(key,g.id).filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0)); // v45.77: lo que puso la asociación («pago») no es dinero cobrado al grupo
   const cobrado=Math.min(total,Math.max(pagado,ent));
   const movs=_cgMovs(key,g.id), deMas=movs.length?Math.max(0,-_cgFalta(g,_idxMes(DATA.reportMonth,DATA.reportYear))):0; // v45.45
   return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};

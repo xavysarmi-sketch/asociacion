@@ -794,7 +794,7 @@ function dineroAyudasMes(){
   gruposCierre().forEach(g=>{ const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
     [g.principalId,...(g.miembros||[])].forEach(x=>enGrupo.add(x));
     const items=itemsDeGrupo(g,undefined,undefined,pre), total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
-    const movs=_cgMovs(key,g.id), ent=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0));
+    const movs=_cgMovs(key,g.id), ent=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0)-_cgMovs(key,g.id).filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0)); // v45.77: lo que puso la asociación («pago») no es dinero cobrado al grupo
     grupos.push({g,p,total,cobrado:Math.max(pagado,ent)}); });
   let rT=0,rC=0; DATA.members.filter(m=>!enGrupo.has(m.id)&&activoEnReporte(m)).forEach(m=>itemsDeMiembro(m.id,undefined,undefined,pre).forEach(it=>{ rT+=it.importe; if(it.yaPagado)rC+=it.importe; }));
   const cobrado=_r2(grupos.reduce((a,x)=>a+x.cobrado,0)+rC+(c.puntIn||0));
