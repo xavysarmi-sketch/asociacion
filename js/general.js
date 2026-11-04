@@ -495,7 +495,6 @@ function _renderPantalla(){
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                 <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:12px;color:var(--muted);font-weight:700">(responsable)</span>':''}</div>
                 <div style="display:flex;align-items:center;gap:8px">
-                  <span style="font-size:13px;color:var(--muted)">${fmtEur(subtotal)} €</span>
                   ${!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""}<!-- v45.43: dos toques y más grande -->
                 </div>
               </div>`;
@@ -515,6 +514,12 @@ function _renderPantalla(){
                 </div>
               </div>`;
             });
+            // v45.81: el total de la persona va debajo, como una suma (Ángel 04/11/2026: arriba confundía)
+            if(lista.length>1){ const pag=lista.every(x=>x.yaPagado);
+              h+=`<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin:4px 0 0 10px;padding-top:6px;border-top:1.5px dashed #CFC6BA">
+                <span style="font-size:14px;font-weight:800;color:var(--dark)">Total</span>
+                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:800;color:${pag?"#2D6A4F":"var(--dark)"}">${fmtEur(subtotal)} €</span><span class="toggle-btn" style="visibility:hidden"></span></div>
+              </div>`; }
             h+=`</div>`;
           });
           // Añadir miembro a este grupo — excluir a quien ya esté en CUALQUIER grupo
