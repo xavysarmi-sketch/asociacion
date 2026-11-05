@@ -226,7 +226,42 @@ let _MEMO_RENDER=null;
 const _NH_MQ_ANCHO=window.matchMedia?window.matchMedia("(min-width: 1000px)"):null;
 function _nhAncho(){ return !!(_NH_MQ_ANCHO&&_NH_MQ_ANCHO.matches); }
 if(_NH_MQ_ANCHO){ const f=()=>{ try{ if(typeof DATA!=="undefined"&&DATA)render(); }catch(e){} }; if(_NH_MQ_ANCHO.addEventListener)_NH_MQ_ANCHO.addEventListener("change",f); else if(_NH_MQ_ANCHO.addListener)_NH_MQ_ANCHO.addListener(f); }
-function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; } }
+// v45.87: la letra de las dos apps sigue el tamaño de texto del iPhone (Ajustes › Pantalla y brillo ›
+// Tamaño del texto). Safari no agranda solo las páginas web, así que se lee el tamaño del sistema
+// (-apple-system-body: 17 px con el tamaño normal) y se agranda toda la pantalla en esa proporción,
+// entre 1 (nunca más pequeña que hoy) y 1,4. En Android lo hace ya Chrome. «Texto grande» sigue
+// valiendo en la app del administrador: se usa lo mayor de los dos.
+let _NH_LETRA_SIS=null;
+function nhLetraSistema(){
+  if(typeof window.NH_LETRA_PRUEBA==="number") return window.NH_LETRA_PRUEBA; // solo pruebas
+  if(_NH_LETRA_SIS!==null) return _NH_LETRA_SIS;
+  let e=1;
+  try{
+    if(window.CSS&&CSS.supports&&CSS.supports("font","-apple-system-body")&&document.body){
+      const x=document.createElement("span"); x.textContent="A";
+      x.style.cssText="font:-apple-system-body;position:absolute;visibility:hidden;pointer-events:none;left:-99px;top:0";
+      document.body.appendChild(x); const fs=parseFloat(getComputedStyle(x).fontSize); x.remove();
+      if(fs>0) e=fs/17;
+    }
+  }catch(err){}
+  _NH_LETRA_SIS=Math.round(Math.min(1.4,Math.max(1,e))*100)/100;
+  return _NH_LETRA_SIS;
+}
+function nhEscalaLetra(){
+  let e=nhLetraSistema();
+  try{ if(!window.NH_ES_APP_ASOCIADOS&&document.body.classList.contains("nh-grande"))e=Math.max(e,1.12); }catch(err){}
+  return e;
+}
+function _nhAplicarLetra(){
+  const a=document.getElementById("app"); if(!a)return;
+  const e=nhEscalaLetra(), v=e>1?String(e):"";
+  if(a.style.zoom!==v)a.style.zoom=v;
+  document.documentElement.classList.toggle("nh-letra-g",e>=1.15);
+  document.documentElement.classList.toggle("nh-letra-mg",e>=1.3);
+}
+// al volver a la app (por si se cambió el tamaño del texto en Ajustes) se mide otra vez
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState!=="visible")return; const antes=_NH_LETRA_SIS; _NH_LETRA_SIS=null; if(nhLetraSistema()!==antes){ try{ if(typeof DATA!=="undefined"&&DATA)render(); }catch(e){} } });
+function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
   // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)
@@ -247,7 +282,7 @@ function _renderPantalla(){
   let h=`<div class="header">
     <div class="h-title">NUEVOS HORIZONTES</div>
     <div class="h-date-row">
-      <span style="color:rgba(255,255,255,.75);font-size:13px;font-weight:600">📅 Mes de trabajo</span>
+      <span style="color:rgba(255,255,255,.75);font-size:13px;font-weight:600">📅 <span class="h-mes-txt">Mes de trabajo</span></span>
       <select class="h-date-sel" onchange="setReportMonth(this.value)" title="Cambiar mes">${mOpts}</select>
       <span style="color:rgba(255,255,255,.5);font-weight:700">·</span>
       <select class="h-date-sel" onchange="setReportYear(this.value)" title="Cambiar año">${yOpts}</select>
@@ -502,13 +537,13 @@ function _renderPantalla(){
               const colorImp=it.yaPagado?"#2D6A4F":"var(--warm)";
               const esCuota=it.tipo==="cuota";
               if(esCuota)_cuotaIdxGrupo++;
-              h+=`<div style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
+              h+=`<div class="cob-it" style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
                 ${esCuota?`<span class="cuota-num">${_cuotaIdxGrupo}</span>`:""}
-                <div style="flex:1;min-width:0">
+                <div class="cob-it-c" style="flex:1;min-width:0">
                   <div style="font-size:13px;color:var(--muted)">${it.concepto}</div>
                   ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
                 </div>
-                <div style="display:flex;align-items:center;gap:10px">
+                <div class="cob-it-d" style="display:flex;align-items:center;gap:10px">
                   ${it.tipo==="aporte"?`<span class="aporte-amt ${it.yaPagado?"ap-ok":""}">${selectorAporteHTML(DATA.members.find(x=>x.id===it.mid),getMesKey(DATA.reportMonth,DATA.reportYear),false)}</span>`:`<span class="aporte-amt" style="color:${colorImp};font-size:14px">${fmtEur(it.importe)} €</span>`}
                   <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
                 </div>

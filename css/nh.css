@@ -719,7 +719,7 @@ body.nh-admin .nav-inf{display:flex;position:fixed;left:0;right:0;bottom:0;z-ind
 body.nh-admin .mgmt-btn{min-height:48px}
 body.nh-admin .rep-filtros{flex-wrap:wrap}
 /* Texto grande (Más → Pantalla): agranda toda la pantalla del administrador en este teléfono */
-body.nh-admin.nh-grande #app{zoom:1.12}
+/* v45.87: el tamaño (zoom de #app) lo pone js/general.js: lo mayor entre la letra del iPhone y «Texto grande» (1,12) */
 /* Letra más grande: los textos pequeños suben 1,5–2 px (mínimo 12 px) */
 body.nh-admin .h-sub{font-size:13.5px}
 body.nh-admin .tab{font-size:14.5px}
@@ -944,3 +944,17 @@ body.nh-admin .toast{white-space:normal;width:max-content;max-width:calc(100vw -
   .dk-der.dk-vacio{text-align:center;padding:60px 24px}
 }
 @media (min-width:1000px){ .cgt.dk-sel{outline:3px solid #1B4332;outline-offset:-1px} }
+
+/* ── v45.87 · letra que sigue al iPhone y acabado más profesional ─────────────────────────────
+   nh-letra-g (desde 1,15) y nh-letra-mg (desde 1,3) las pone js/general.js en <html> según el tamaño. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-variant-numeric:tabular-nums}
+h1,h2,h3,.sec-title,.mes-title,.card-name,.nha-card-tit,.nha-sec,.nha-bv-tit,.nha-error-tit{text-wrap:balance}
+.ini-fila{gap:10px}
+.cob-it{flex-wrap:wrap}
+.cob-it-c{flex:1 1 92px!important}
+.cob-it-d{margin-left:auto;flex-shrink:0}
+html.nh-letra-g .pl-nom,html.nh-letra-g .pl-meta{white-space:normal;overflow:visible}
+html.nh-letra-g .h-mes-txt{display:none}
+html.nh-letra-g .ft-tabs{flex-wrap:wrap}
+html.nh-letra-g .ft-tab,html.nh-letra-g .ft-tabs.t5 .ft-tab{flex:1 1 auto;padding:9px 10px;overflow:visible;text-overflow:clip}

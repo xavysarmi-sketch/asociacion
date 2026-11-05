@@ -350,3 +350,7 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 .nha-inst-av>b:first-child{display:block;font-size:17px;margin-bottom:4px}
 .nha-inst-av .nha-inl{display:inline;font-size:inherit}
 .nha-inst-btn{display:block;margin-top:10px;text-align:center;text-decoration:none;color:#fff!important}
+
+/* ── v45.87 · con la letra grande del iPhone los dos cuadros de Inicio van uno debajo del otro ── */
+.nha-tiles{flex-wrap:wrap}
+.nha-tile{flex:1 1 150px}
