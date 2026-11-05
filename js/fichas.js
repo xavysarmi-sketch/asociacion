@@ -254,12 +254,14 @@ function _vcfLeer(txt){
       else if(k==="TEL"){ const t=val(l).replace(/^tel:/i,""); if(_telWA(t)&&!c.tels.includes(t))c.tels.push(t); } } });
   return out;
 }
+// v45.84: al comparar se ignoran signos y emojis («Karla España 🌸», «Karla (NH)» = «Karla España»)
+const _telNorm=t=>_normNom(t).replace(/[^a-z0-9ñ ]+/g," ").replace(/\s+/g," ").trim();
 function _telCoinciden(m,cs){
-  const nm=_normNom(m.name), tm=nm.split(" ").filter(Boolean), ex=[], pa=[];
-  cs.forEach(c=>{ [c.fn,c.n].filter(Boolean).forEach(nom=>{ const nc=_normNom(nom), tc=nc.split(" ").filter(Boolean);
+  const nm=_telNorm(m.name), tm=nm.split(" ").filter(Boolean), ex=[], pa=[];
+  cs.forEach(c=>{ [c.fn,c.n].filter(Boolean).forEach(nom=>{ const nc=_telNorm(nom), tc=nc.split(" ").filter(Boolean);
     if(nc===nm){ if(!ex.includes(c))ex.push(c); }
     else if(tm.length>=2&&tc.length>=2&&(tm.every(x=>tc.includes(x))||(tc.every(x=>tm.includes(x))&&tc.includes(tm[0])))){ if(!pa.includes(c)&&!ex.includes(c))pa.push(c); } }); });
-  return {ex,pa};
+  return {ex,pa:pa.filter(c=>!ex.includes(c))}; // v45.84: el mismo contacto no sale dos veces
 }
 function telCargarVcf(inp){
   const f=inp.files&&inp.files[0]; if(!f)return;
@@ -290,8 +292,32 @@ function telImportModalHTML(){
     h+=`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-size:15.5px;font-weight:800;color:var(--dark)">${escH(m.name)}</span>${hecho?`<span style="font-size:13px;font-weight:800;color:#1B7A3D">✓ ${escH(hecho)}</span>`:act?`<span style="font-size:12.5px;color:var(--muted)">ahora: ${escH(act)}</span>`:""}</div>`;
     cands.forEach(({c,ex})=>{ h+=`<div style="margin-top:6px;font-size:13px;color:${ex?"var(--dark)":"#8A4F12"}">${ex?"":"¿Es «"+escH(c.fn||c.n)+"»? "}</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${c.tels.map(t=>b((hecho===t?"✓ ":"Usar ")+escH(t),`telUsar('${esc(m.id)}','${esc(t)}')`,hecho!==t&&ex&&c.tels.length===1)).join("")}</div>`; });
     h+=`</div>`; });
-  if(nada.length)h+=`<div style="margin-top:12px;font-size:13px;color:var(--muted);line-height:1.45"><b style="color:var(--dark)">No están en tus contactos con ese nombre (${nada.length}):</b> ${nada.map(x=>escH(x.m.name)).join(", ")}. Puedes ponerles el teléfono desde su ficha.</div>`;
+  // v45.84: los que no coinciden por nombre: sugerencias (contactos con su mismo nombre o apellido) y un buscador.
+  // Nunca se pone solo: se elige con «Usar».
+  if(nada.length){
+    h+=`<div style="font-size:13.5px;font-weight:800;color:var(--dark);margin-top:14px">Sin coincidencia exacta (${nada.length})</div><div style="font-size:12.5px;color:var(--muted);line-height:1.4;margin-bottom:2px">Puede que los tengas guardados de otra forma («Karla», «Karla Trabajo»…). Mira las sugerencias o búscalos. Si no están en tus contactos, ponles el teléfono desde su ficha.</div>`;
+    nada.forEach(x=>{ const m=x.m, sug=_telSugerencias(m,MODAL.cs,3);
+      h+=`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:15.5px;font-weight:800;color:var(--dark)">${escH(m.name)}</div>
+        ${sug.length?`<div style="font-size:13px;color:#8A4F12;margin-top:4px">¿Es alguno de estos?</div>${_telCandHTML(m.id,sug)}`:""}
+        <input type="search" placeholder="🔎 Buscar en mis contactos" oninput="telBuscar('${esc(m.id)}',this.value)" style="width:100%;box-sizing:border-box;margin-top:6px;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;font-size:14.5px">
+        <div id="tel-res-${esc(m.id)}"></div></div>`; });
+  }
   return h+`<button class="m-sec" style="margin-top:10px" onclick="closeModal()">Cerrar</button>`;
+}
+// v45.84: contactos que comparten nombre o apellido (palabras de 3 letras o más), los que más comparten primero
+function _telSugerencias(m,cs,max){
+  const tm=_telNorm(m.name).split(" ").filter(w=>w.length>=3);
+  return cs.map(c=>{ const tc=new Set(_telNorm((c.fn||"")+" "+(c.n||"")).split(" ").filter(Boolean)); return {c,p:tm.filter(w=>tc.has(w)).length+(tc.has(tm[0])?0.5:0)}; })
+    .filter(x=>x.p>=1).sort((a,b)=>b.p-a.p).slice(0,max).map(x=>x.c);
+}
+function _telCandHTML(mid,cs){
+  return cs.map(c=>`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:5px"><span style="font-size:13.5px;color:var(--dark);flex:1 1 100%">${escH(c.fn||c.n)}</span>${c.tels.map(t=>`<button onclick="telUsar('${esc(mid)}','${esc(t)}')" class="cgt-b sec" style="flex:0 0 auto;min-height:38px;padding:6px 10px;font-size:13.5px">Usar ${escH(t)}</button>`).join("")}</div>`).join("");
+}
+function telBuscar(mid,q){
+  const el=document.getElementById("tel-res-"+mid); if(!el||!MODAL||!MODAL.cs)return;
+  const n=_telNorm(q); if(n.length<2){ el.innerHTML=""; return; }
+  const r=MODAL.cs.filter(c=>_telNorm((c.fn||"")+" "+(c.n||"")).includes(n)).slice(0,6);
+  el.innerHTML=r.length?_telCandHTML(mid,r):`<div style="font-size:13px;color:var(--muted);margin-top:5px">Ningún contacto con «${escH(q)}».</div>`;
 }
 function appEnviarA(mid){
   const m=DATA.members.find(x=>x.id===mid); if(!m||!m.codigoApp)return;
