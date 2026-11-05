@@ -20,20 +20,20 @@ async function shareT(text){
 }
 
 // FIX IPHONE: html2canvas y jsPDF se cargan LAZY aquí, solo cuando se necesitan
+// v45.83: cada librería de internet lleva su huella (integrity): si el archivo de cdnjs estuviera alterado, el
+// navegador no lo ejecuta (y la app avisa de que no se pudo crear el PDF o la imagen). jsPDF 2.5.1 → 4.2.1.
+// Huellas calculadas el 05/11/2026 sobre el archivo publicado; al cambiar de versión hay que poner la nueva.
+const NH_LIBS={
+  html2canvas:{url:"https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",sri:"sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"},
+  jspdf:{url:"https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js",sri:"sha384-qovJwSBbRDPP5cEjCp8S0UP66wrvnjaa60XMOGzTNanrThcrGfXfnZkvgY8N1KT3"}
+};
+function _scriptConHuella(lib,onload,onerror){ const s=document.createElement("script"); s.src=lib.url; s.integrity=lib.sri; s.crossOrigin="anonymous"; s.referrerPolicy="no-referrer"; s.onload=onload; s.onerror=onerror; document.head.appendChild(s); return s; }
 async function loadPDFLibs(){
   if(window.html2canvas&&window.jspdf)return true;
   return new Promise((resolve)=>{
-    const s1=document.createElement("script");
-    s1.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-    s1.onload=()=>{
-      const s2=document.createElement("script");
-      s2.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-      s2.onload=()=>resolve(true);
-      s2.onerror=()=>resolve(false);
-      document.head.appendChild(s2);
-    };
-    s1.onerror=()=>resolve(false);
-    document.head.appendChild(s1);
+    const conJspdf=()=>{ if(window.jspdf)return resolve(true); _scriptConHuella(NH_LIBS.jspdf,()=>resolve(true),()=>resolve(false)); };
+    if(window.html2canvas)return conJspdf();
+    _scriptConHuella(NH_LIBS.html2canvas,conJspdf,()=>resolve(false));
   });
 }
 

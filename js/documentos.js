@@ -328,10 +328,10 @@ function imprimirDoc(){
 // inicio, no deja imprimir; con el PDF se abre el menú de compartir (Imprimir, Guardar en Archivos,
 // WhatsApp…). Se hace en dos toques: el 1.º prepara el PDF y el 2.º lo comparte (Safari solo deja
 // compartir justo después de tocar un botón). Las librerías se cargan solo al pedir el PDF.
-const _PDF_LIBS=["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js","https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"];
+const _PDF_LIBS=[NH_LIBS.html2canvas,NH_LIBS.jspdf]; // v45.83: con su huella (js/general.js)
 function _esIphoneApp(){ return window.navigator.standalone===true; }
-function _cargarScript(u){ return new Promise((ok,ko)=>{ const ya=u.includes("html2canvas")?window.html2canvas:(window.jspdf&&window.jspdf.jsPDF); if(ya)return ok();
-  const s=document.createElement("script"); s.src=u; s.onload=()=>ok(); s.onerror=()=>ko(new Error("No se pudo cargar "+u)); document.head.appendChild(s); }); }
+function _cargarScript(lib){ return new Promise((ok,ko)=>{ const ya=lib===NH_LIBS.html2canvas?window.html2canvas:(window.jspdf&&window.jspdf.jsPDF); if(ya)return ok();
+  _scriptConHuella(lib,()=>ok(),()=>ko(new Error("No se pudo cargar "+lib.url))); }); }
 function _nombrePdf(){ const {tipo,rm,ry}=DOC_IMP||{}; const mes=rm?MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()+"_"+ry:"";
   return "NH_"+(tipo==="cobro"?"Hoja_de_cobro_"+mes:tipo==="acta"?"Acta_de_cierre_"+mes:"Carpeta_de_actas")+".pdf"; }
 function pdfDocBoton(){ if(PDF_LISTO)compartirPdf(); else crearPdfDoc(); }
