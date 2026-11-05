@@ -353,4 +353,4 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 
 /* ── v45.87 · con la letra grande del iPhone los dos cuadros de Inicio van uno debajo del otro ── */
 .nha-tiles{flex-wrap:wrap}
-.nha-tile{flex:1 1 150px}
+.nha-tile{flex:1 1 170px}

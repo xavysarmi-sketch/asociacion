@@ -228,8 +228,8 @@ function _nhAncho(){ return !!(_NH_MQ_ANCHO&&_NH_MQ_ANCHO.matches); }
 if(_NH_MQ_ANCHO){ const f=()=>{ try{ if(typeof DATA!=="undefined"&&DATA)render(); }catch(e){} }; if(_NH_MQ_ANCHO.addEventListener)_NH_MQ_ANCHO.addEventListener("change",f); else if(_NH_MQ_ANCHO.addListener)_NH_MQ_ANCHO.addListener(f); }
 // v45.87: la letra de las dos apps sigue el tamaño de texto del iPhone (Ajustes › Pantalla y brillo ›
 // Tamaño del texto). Safari no agranda solo las páginas web, así que se lee el tamaño del sistema
-// (-apple-system-body: 17 px con el tamaño normal) y se agranda toda la pantalla en esa proporción,
-// entre 1 (nunca más pequeña que hoy) y 1,4. En Android lo hace ya Chrome. «Texto grande» sigue
+// (-apple-system-body: 17 px con el tamaño normal) y se agranda toda la pantalla la MITAD de lo que
+// crece la letra del iPhone (v45.88, Ángel: entera se veía demasiado grande), entre 1 y 1,2. En Android lo hace ya Chrome. «Texto grande» sigue
 // valiendo en la app del administrador: se usa lo mayor de los dos.
 let _NH_LETRA_SIS=null;
 function nhLetraSistema(){
@@ -241,10 +241,10 @@ function nhLetraSistema(){
       const x=document.createElement("span"); x.textContent="A";
       x.style.cssText="font:-apple-system-body;position:absolute;visibility:hidden;pointer-events:none;left:-99px;top:0";
       document.body.appendChild(x); const fs=parseFloat(getComputedStyle(x).fontSize); x.remove();
-      if(fs>0) e=fs/17;
+      if(fs>0) e=1+(fs/17-1)/2;
     }
   }catch(err){}
-  _NH_LETRA_SIS=Math.round(Math.min(1.4,Math.max(1,e))*100)/100;
+  _NH_LETRA_SIS=Math.round(Math.min(1.2,Math.max(1,e))*100)/100;
   return _NH_LETRA_SIS;
 }
 function nhEscalaLetra(){
@@ -256,7 +256,7 @@ function _nhAplicarLetra(){
   const a=document.getElementById("app"); if(!a)return;
   const e=nhEscalaLetra(), v=e>1?String(e):"";
   if(a.style.zoom!==v)a.style.zoom=v;
-  document.documentElement.classList.toggle("nh-letra-g",e>=1.15);
+  document.documentElement.classList.toggle("nh-letra-g",e>=1.08);
   document.documentElement.classList.toggle("nh-letra-mg",e>=1.3);
 }
 // al volver a la app (por si se cambió el tamaño del texto en Ajustes) se mide otra vez
