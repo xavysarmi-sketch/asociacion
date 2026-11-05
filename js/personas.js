@@ -551,7 +551,8 @@ ${tarjetaBienvenidaHTML(m)}
 function _tbSexoInicial(m){ const n=_normNom(String(m.name||"").split(" ")[0]); return /a$/.test(n)?"f":"m"; }
 function _tbDatos(m,sexo){
   const ref=m.referidoPor?DATA.members.find(x=>x.id===m.referidoPor):null;
-  const n=DATA.members.filter(x=>x.type==="asociado"&&!x.baja).length;
+  // v45.86: «Ya somos N miembros»: asociados sin salida + terceros con alguna ayuda activa (los que tienen app)
+  const n=DATA.members.filter(x=>x.type==="asociado"&&!x.baja).length+DATA.members.filter(x=>x.type==="tercero"&&(x.loans||[]).length&&!(x.baja&&x.baja.pagada)).length;
   return {f:sexo==="f",nombre:String(m.name||"").trim(),ref:ref?ref.name:"",bono:ref?REGLAS.BONO_REFERIDO:0,
     desde:m.joinMonth?MONTHS_FULL[MONTHS.indexOf(m.joinMonth)]+" "+m.joinYear:"",n};
 }
@@ -570,7 +571,7 @@ function tarjetaBienvenidaCanvas(m,sexo){
   x.lineWidth=2; x.strokeStyle="rgba(201,162,39,.5)"; rr(50,50,W-100,H-100,34); x.stroke();
   rr(W/2-60,96,120,120,32); x.fillStyle="#F5F0EB"; x.fill();
   x.font="bold 54px "+SERIF; x.fillStyle="#1B4332"; x.textAlign="center"; x.textBaseline="middle"; x.fillText("NH",W/2,158); x.textBaseline="alphabetic";
-  txt("Asociación Nuevos Horizontes",282,"bold 40px "+SERIF,"#E9C46A");
+  txt("Asociación Nuevos Horizontes",286,"bold 52px "+SERIF,"#E9C46A"); // v45.86: más grande (antes 40px)
   txt("★   ★   ★",368,"60px "+SANS,"#E9C46A");
   txt(d.f?"¡BIENVENIDA!":"¡BIENVENIDO!",446,"900 58px "+SANS,"#FFFFFF",2);
   const ps=d.nombre.toUpperCase().split(/\s+/), lin=[ps[0],ps.slice(1).join(" ")].filter(Boolean); let tam=150;
@@ -583,10 +584,10 @@ function tarjetaBienvenidaCanvas(m,sexo){
   y+=40;
   // v45.71: cuadros en dos filas; el bono dice para quién y por qué
   const caja=(bx,by,bw,bh,l,v,sub)=>{ rr(bx,by,bw,bh,26); x.fillStyle="rgba(255,255,255,.1)"; x.fill(); x.lineWidth=2; x.strokeStyle="rgba(233,196,106,.45)"; x.stroke();
-    x.textAlign="center"; let fl=26; x.font="800 "+fl+"px "+SANS; while(fl>18&&x.measureText(l).width>bw-28){ fl-=1; x.font="800 "+fl+"px "+SANS; }
-    x.fillStyle="#CFE3D7"; x.fillText(l,bx+bw/2,by+44);
+    x.textAlign="center"; let fl=34; x.font="800 "+fl+"px "+SANS; while(fl>28&&x.measureText(l).width>bw-24){ fl-=1; x.font="800 "+fl+"px "+SANS; } // v45.86: etiquetas más grandes (antes 26) y en blanco
+    x.fillStyle="#FFFFFF"; x.fillText(l,bx+bw/2,by+46);
     x.font="900 44px "+SANS; const vl=_tbLineas(x,v,bw-30).slice(0,2); x.fillStyle="#FFFFFF";
-    const y0=by+(sub?90:(vl.length===1?104:92)); vl.forEach((t,k)=>x.fillText(t,bx+bw/2,y0+k*46));
+    const y0=by+(sub?92:(vl.length===1?108:96)); vl.forEach((t,k)=>x.fillText(t,bx+bw/2,y0+k*46));
     if(sub){ x.font="700 28px "+SANS; x.fillStyle="#E9C46A"; x.fillText(sub,bx+bw/2,y0+(vl.length-1)*46+40); } };
   const g=18, X0=W/2-440, bh=140, refN=d.ref?d.ref.split(" ")[0]:"";
   if(d.ref){ const w2=(880-g)/2;
@@ -595,10 +596,10 @@ function tarjetaBienvenidaCanvas(m,sexo){
     y+=bh+g; }
   { const w2=(880-g)/2;
     caja(X0,y,w2,bh,"📅 "+(d.f?"ASOCIADA DESDE":"ASOCIADO DESDE"),d.desde||"—");
-    caja(X0+w2+g,y,w2,bh,"👥 YA SOMOS",d.n+" asociados");
+    caja(X0+w2+g,y,w2,bh,"👥 YA SOMOS",d.n+" miembros");
     y+=bh; }
   y-=8;
-  txt("«Solos avanzamos, juntos construimos.»",y+84,"italic 40px "+SERIF,"#F5F0EB");
+  txt("«Solos avanzamos, juntos construimos.»",y+88,"italic bold 48px "+SERIF,"#F5F0EB"); // v45.86: más grande (antes 40px)
   return c;
 }
 function tbPintar(){ const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)), im=document.getElementById("tb-img"); if(!m||!im)return;
