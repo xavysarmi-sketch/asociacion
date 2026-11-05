@@ -540,7 +540,7 @@ function _renderPantalla(){
             h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px${DESP['cgtodo-'+g.id]?";background:#C75B0E":""}" onclick="cgTodoToque('${g.id}')">${DESP['cgtodo-'+g.id]?"¿Marcar todo pagado? Toca otra vez":"✅ Marcar todo pagado"}</button>`; // v45.43: dos toques, como en la tarjeta
           }
           // Enlace estable del grupo (se auto-actualiza; no hay que reenviarlo al editar el grupo)
-          h+=`<button style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#25D366;color:#fff;font-size:14px;font-weight:700;cursor:pointer" onclick="compartirGrupoCierre('${g.id}')">💬 Compartir enlace del grupo</button>`;
+          h+=`<button style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#25D366;color:#fff;font-size:14px;font-weight:700;cursor:pointer" onclick="openModal('cg_lista',{gid:'${g.id}'})">💬 Enviar lo que toca pagar</button>`; // v45.85: antes «Compartir enlace del grupo» (enlace antiguo)
           // ── Resumen del grupo: aportes, cuotas y total (completo) ──
           const _aportes=items.filter(it=>it.tipo==="aporte");
           const _cuotas=items.filter(it=>it.tipo==="cuota");
@@ -808,6 +808,7 @@ function _renderPantalla(){
     if(MODAL.type==="telefono")h+=telefonoModalHTML(); // v45.22
     if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
     if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
+    if(MODAL.type==="cg_lista")h+=cgListaModalHTML(); // v45.85
     if(MODAL.type==="nombre")h+=nombreModalHTML(); // v45.50
     if(MODAL.type==="app_cola")h+=appColaModalHTML(); // v45.52
     if(MODAL.type==="tel_import")h+=telImportModalHTML(); // v45.73

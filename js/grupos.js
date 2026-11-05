@@ -292,6 +292,10 @@ function cuentaGrupoHTML(g,principal){
       return `<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#E8F3EC;border:1.5px solid #B7D9C3">
         <span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#1B4332">✅ Cuenta de ${mes0} liquidada<span style="display:block;font-size:13px;font-weight:600;color:#2D6A4F">${_cgMovs(_keyDeIdx(idx0),g.id).some(x=>x.tipo==="pago"||x.tipo==="ayuda"||x.tipo==="salida")?"todo apuntado y cuadrado":nom0+" te ha entregado "+fmtEur(tot0)+" €"} · no falta nada</span></span>
         <button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#1B4332;font-size:13.5px;font-weight:800;text-decoration:underline;cursor:pointer;padding:4px;white-space:nowrap">Ver detalle</button></div>`; }
+    // v45.85: «✕ Cerrar» pliega la cuenta en una línea (también cuando ya tiene apuntes); al tocarla se abre otra vez
+    if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id)){ const f0=_cgFalta(g,idx0);
+      return `<button onclick="DESP['cgplegar-${g.id}']=false;DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
+        <span style="font-size:18px">💶</span><span style="flex:1;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${f0>0?"te entrega "+fmtEur(f0)+" €":f0<0?"le pasas "+fmtEur(-f0)+" €":"liquidada"}</span></span><span style="font-size:18px">›</span></button>`; }
     const pf0=_cgMovs(_keyDeIdx(idx0-1),g.id).length?_cgFalta(g,idx0-1):0;
     if(!_cgCerrada(g)&&!_cgMovs(_keyDeIdx(idx0),g.id).length&&!(pf0>0)&&!DESP["cgabrir-"+g.id]&&!usando)
       return `<button onclick="DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
@@ -308,7 +312,7 @@ function cuentaGrupoHTML(g,principal){
   const arr=_r2(movs.filter(x=>x.tipo==="arrastre").reduce((a,x)=>a+x.importe,0));
   const fr=(l,v,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 0;font-size:15px"><span>${l}</span><b style="white-space:nowrap;${c||""}">${v}</b></div>`;
   let h=`<div style="border:1.5px solid #2D6A4F;border-radius:14px;padding:12px 14px;margin-top:12px;background:#F4F9F6">
-    <div style="font-size:16px;font-weight:800;color:#1B4332;margin-bottom:8px">💶 Cuenta con ${nom} · ${mesTxt}</div>`;
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;font-size:16px;font-weight:800;color:#1B4332">💶 Cuenta con ${nom} · ${mesTxt}</div><button onclick="cgPlegar('${g.id}')" style="flex:none;border:1.5px solid #2D6A4F;background:#fff;color:#1B4332;border-radius:9px;padding:6px 10px;font-size:13.5px;font-weight:800;cursor:pointer">✕ Cerrar</button></div>`;
   const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgFalta(g,idx-1):0;
   if(pf>0)h+=`<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:9px;padding:8px 10px;font-size:13px;color:#6B4210;margin-bottom:8px">⚠️ En ${prevTxt} quedaron pendientes <b>${fmtEur(pf)} €</b>.
       <button onclick="cgArrastrar('${g.id}')" style="display:block;margin-top:6px;width:100%;padding:8px;border-radius:8px;border:none;background:#B06A1E;color:#fff;font-size:13px;font-weight:800;cursor:pointer">Pasar a ${mesTxt}</button></div>`;
@@ -371,6 +375,37 @@ function cuentaGrupoHTML(g,principal){
 // Casi todo se cobra a través de los responsables de grupo: Cobros empieza con una tarjeta por grupo.
 // «Cobrado» es la misma cuenta que en Inicio › Dinero del mes (dineroAyudasMes): lo marcado como
 // cobrado o lo apuntado como entregado, lo que sea mayor. Solo calcula y pinta (el render no escribe).
+function cgPlegar(gid){ DESP["cgplegar-"+gid]=true; DESP["cgabrir-"+gid]=false; DESP["cgver-"+gid]=false; if(CG_FORM&&CG_FORM.gid===gid)CG_FORM=null; render(); } // v45.85
+// ══ v45.85 · ENVIAR LO QUE TOCA PAGAR EN EL GRUPO (a quien recoge: el responsable u otra persona del grupo) ══
+function _cgListaTexto(g,dest){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, mes=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
+  const p=DATA.members.find(m=>m.id===g.principalId), cifra=v=>fmtEur(v)+" €", filas=[]; let tot=0, cob=0;
+  [g.principalId,...(g.miembros||[])].forEach(id=>{ const m=DATA.members.find(x=>x.id===id); if(!m)return; const its=itemsDeMiembro(id,rm,ry); if(!its.length)return;
+    filas.push({n:m.name,f:its.map(it=>{ tot+=it.importe; if(it.yaPagado)cob+=it.importe; return [it.tipo==="aporte"?"Aporte":String(it.concepto).replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim(),it.importe,it.yaPagado]; })}); });
+  tot=_r2(tot); cob=_r2(cob);
+  const W=Math.max(cifra(tot).length,...filas.flatMap(x=>x.f.map(y=>cifra(y[1]).length)));
+  const caja=(v,sg)=>"`"+sg+" ".repeat(W-cifra(v).length+1)+cifra(v)+"`";
+  let t=`Hola ${String(dest.name||"").split(" ")[0]} 👋\nLo que toca pagar en *${mes}* en el grupo de *${String(p.name||"").split(" ")[0]}*:\n`;
+  filas.forEach(x=>{ t+=`\n*${x.n}*\n`+x.f.map(y=>caja(y[1],"+")+" "+y[0]+(y[2]?" ✅":"")).join("\n")+"\n"; });
+  t+=`━━━━━━━━\n${caja(tot,"=")} *TOTAL DEL GRUPO*\n`;
+  if(cob>0)t+=`\n✅ Ya cobrado: ${cifra(cob)} · Falta: *${cifra(_r2(tot-cob))}*\n`;
+  return t+`\nNuevos Horizontes · Construyendo un nuevo sistema`;
+}
+function cgListaEnviar(gid,mid){
+  const g=gruposCierre().find(x=>x.id===gid), d=DATA.members.find(m=>m.id===mid); if(!g||!d)return;
+  const t=_cgListaTexto(g,d), tel=_telWA(d.phone); closeModal();
+  if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; }
+  if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
+  else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+}
+function cgListaModalHTML(){
+  const g=gruposCierre().find(x=>x.id===MODAL.gid); if(!g)return "";
+  const ids=[g.principalId,...(g.miembros||[])].filter(id=>DATA.members.some(m=>m.id===id));
+  return `<div class="modal-title">💬 Enviar lo que toca pagar</div>
+    <div style="font-size:13.5px;color:var(--muted);line-height:1.4;margin-bottom:10px">Le llega lo que paga cada persona del grupo este mes y el total. Elige a quién se lo envías (quien recoge el dinero).</div>
+    ${ids.map(id=>{ const m=DATA.members.find(x=>x.id===id); return `<button class="m-sec" style="margin-bottom:8px;text-align:left" onclick="cgListaEnviar('${esc(g.id)}','${esc(id)}')">${escH(m.name)}${id===g.principalId?" <span style=\"font-weight:600;opacity:.75\">(responsable)</span>":""}${_telWA(m.phone)?"":" <span style=\"font-weight:500;font-size:12.5px;opacity:.7\">· sin teléfono: eliges el chat</span>"}</button>`; }).join("")}
+    <button class="m-sec" style="margin-top:4px;opacity:.8" onclick="closeModal()">Cancelar</button>`;
+}
 function abrirGrupoCobros(gid){
   Object.keys(DESP).forEach(k=>{ if(k.indexOf("grupo-")===0)DESP[k]=false; });
   DESP["grupo-"+gid]=true; CG_FORM=null; render(); window.scrollTo(0,0);
