@@ -1006,3 +1006,15 @@ body.nh-admin .tab-mes .mes-title{font-size:var(--nh-l-17)}
 body.nh-admin .cgt{border:1px solid var(--nh-borde);border-radius:var(--nh-r-18);box-shadow:var(--nh-sombra-1);padding:var(--nh-e-16)}
 body.nh-admin .cgt-chip{border-radius:var(--nh-r-full)}
 body.nh-admin .qm-btn:not(.arm){border:1px solid var(--nh-borde);color:var(--nh-texto-3);font-weight:700}
+
+/* v45.94 · Sistema de diseño en Personas: cada grupo es una sola tarjeta con las personas separadas por una línea fina
+   (antes, una tarjeta por persona), filtros con borde fino y pastillas redondas */
+body.nh-admin .pl-sec .pl-fila{margin:0;border-radius:0;border-top:none;box-shadow:none}
+body.nh-admin .pl-sec .pl-tit + .pl-fila{border-top:1px solid var(--nh-borde);border-radius:var(--nh-r-12) var(--nh-r-12) 0 0}
+body.nh-admin .pl-sec .pl-fila:last-child{border-radius:0 0 var(--nh-r-12) var(--nh-r-12)}
+body.nh-admin .pl-sec .pl-tit + .pl-fila:last-child{border-radius:var(--nh-r-12)}
+body.nh-admin .pl-sec{margin-bottom:var(--nh-e-16)}
+body.nh-admin .pl-sec:has(.pl-fila){filter:drop-shadow(0 1px 1px rgba(27,67,50,.05))}
+body.nh-admin .pl-fila{border-color:var(--nh-borde);padding:var(--nh-e-12)}
+body.nh-admin .pl-est.pend{border-radius:var(--nh-r-full)}
+body.nh-admin .rep-filtro{border:1px solid var(--nh-borde)}
