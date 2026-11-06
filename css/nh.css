@@ -1018,3 +1018,10 @@ body.nh-admin .pl-sec:has(.pl-fila){filter:drop-shadow(0 1px 1px rgba(27,67,50,.
 body.nh-admin .pl-fila{border-color:var(--nh-borde);padding:var(--nh-e-12)}
 body.nh-admin .pl-est.pend{border-radius:var(--nh-r-full)}
 body.nh-admin .rep-filtro{border:1px solid var(--nh-borde)}
+
+/* v45.95 · Sistema de diseño en la Ficha: los botones de «Gestión» con un solo estilo (blanco, borde fino, texto verde oscuro),
+   en vez de seis colores distintos; en «Zona delicada», borde rojo suave (Eliminar sigue igual: rojo y dos toques) */
+body.nh-admin .mgmt-grid .mgmt-btn{background:var(--nh-superficie);color:var(--nh-verde-900);border:1px solid var(--nh-borde);box-shadow:var(--nh-sombra-1);border-radius:var(--nh-r-12);font-weight:800}
+body.nh-admin .mgmt-grid .mgmt-btn svg.ic{color:var(--nh-verde-700)}
+body.nh-admin .mgmt-grid .mgmt-btn.peligro{color:#A63A20;border-color:#E3A79B}
+body.nh-admin .mgmt-grid .mgmt-btn.peligro svg.ic{color:#A63A20}

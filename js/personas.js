@@ -1201,32 +1201,32 @@ function _fichaHTMLbase(m,readonly=false){
       <!-- v45.39: acciones agrupadas por tema; salida y eliminar, aparte («Zona delicada») -->
       <div class="acc-grupo-tit">Cobros y aportes</div>
       <div class="mgmt-grid">
-        ${isTerc?"":`<button class="mgmt-btn warn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">💶 Aporte de un mes</button>`}
-        <button class="mgmt-btn" style="background:#1B4332;color:#fff" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte temporal</button>
+        ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('extra',{mid:'${esc(m.id)}'})">💶 Aporte de un mes</button>`}
+        <button class="mgmt-btn" onclick="openModal('puntual',{mid:'${esc(m.id)}'})">🏦 Aporte temporal</button>
       </div>
       <div class="acc-grupo-tit">Ayudas</div>
       <div class="mgmt-grid">
-        <button class="mgmt-btn primary" onclick="solDesdeGestion('${esc(m.id)}')">＋ Nueva solicitud</button>
-        ${isTerc?"":`<button class="mgmt-btn" style="background:#2D6A4F;color:#fff" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 Simuladores</button>`}
-        ${(m.history||[]).length?`<button class="mgmt-btn secondary" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`:""}
+        <button class="mgmt-btn" onclick="solDesdeGestion('${esc(m.id)}')">＋ Nueva solicitud</button>
+        ${isTerc?"":`<button class="mgmt-btn" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 Simuladores</button>`}
+        ${(m.history||[]).length?`<button class="mgmt-btn" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`:""}
       </div>
       <div class="acc-grupo-tit">${isTerc?"Aval":"Permanencia y referidos"}</div>
       <div class="mgmt-grid">
-        ${isTerc?"":`<button class="mgmt-btn secondary" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
-        ${isTerc?"":`<button class="mgmt-btn purple" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>`}<!-- v45.43: el bono por referido es solo de asociados -->
-        ${isTerc?`<button class="mgmt-btn" style="background:var(--terc);color:#fff" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
+        ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
+        ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>`}<!-- v45.43: el bono por referido es solo de asociados -->
+        ${isTerc?`<button class="mgmt-btn" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
       </div>
       <div class="acc-grupo-tit">Mensajes y enlace</div>
       <div class="mgmt-grid">
-        <button class="mgmt-btn" style="background:#25D366;color:#fff" onclick="abrirBienvenida('${esc(m.id)}')">📲 Bienvenida</button>
-        <button class="mgmt-btn secondary" onclick="openModal('telefono',{mid:'${esc(m.id)}'})">📞 ${m.phone?escH(m.phone):"Teléfono"}</button>
-        <button class="mgmt-btn secondary" onclick="openModal('nombre',{mid:'${esc(m.id)}'})">✏️ Nombre</button><!-- v45.50 -->
+        <button class="mgmt-btn" onclick="abrirBienvenida('${esc(m.id)}')">📲 Bienvenida</button>
+        <button class="mgmt-btn" onclick="openModal('telefono',{mid:'${esc(m.id)}'})">📞 ${m.phone?escH(m.phone):"Teléfono"}</button>
+        <button class="mgmt-btn" onclick="openModal('nombre',{mid:'${esc(m.id)}'})">✏️ Nombre</button><!-- v45.50 -->
 
-        <button class="mgmt-btn secondary" onclick="copyLink('${esc(m.id)}')">🔗 Copiar su enlace</button>
+        <button class="mgmt-btn" onclick="copyLink('${esc(m.id)}')">🔗 Copiar su enlace</button>
       </div>
       <div class="zona-delicada"><div class="acc-grupo-tit" style="color:#B5422E;margin-top:0">⚠️ Zona delicada</div>
       <div class="mgmt-grid">
-        ${isTerc?"":`<button class="mgmt-btn" style="background:#FDECE8;color:#A63A20" onclick="openSalida('${esc(m.id)}')">🚪 Salida o pausa</button>`}
+        ${isTerc?"":`<button class="mgmt-btn peligro" onclick="openSalida('${esc(m.id)}')">🚪 Salida o pausa</button>`}
         <button class="mgmt-btn" style="background:${_delMemberArmed===m.id?"#C0492C":"#fff"};color:${_delMemberArmed===m.id?"#fff":"#A63A20"};border:1.5px solid #C0492C" onclick="eliminarDesdeFicha('${esc(m.id)}')">${_delMemberArmed===m.id?"¿Seguro? Toca otra vez":"🗑️ Eliminar ficha"}</button>
       </div></div>
       </div>
