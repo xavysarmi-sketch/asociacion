@@ -361,3 +361,33 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 /* v45.90: foco visible con teclado y «Reducir movimiento» del iPhone (se para el brillo del botón de instalar) */
 :where(button,a,input,select,textarea,summary,[tabindex]:not(.modal-sheet)):focus-visible{outline:2px solid #2D6A4F!important;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important} }
+
+/* ── v46.1 · «Lo que te toca» y Mi grupo como una suma; iconos de línea; aviso de instalar más amable ── */
+.nha-toca .nha-s-f{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 0;font-size:16px;color:#fff}
+.nha-toca .nha-s-f small{display:block;font-size:13.5px;margin-top:2px;color:#fff}
+.nha-toca .nha-s-f b,.nha-toca .nha-s-t b{flex:0 0 auto;min-width:112px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;color:#fff}
+.nha-toca .nha-s-f b{font-size:18px}
+.nha-toca s,.nha-gl2 s{text-decoration:none;font-weight:700;margin-right:8px}
+.nha-toca .nha-s-t{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:2px;color:#fff}
+.nha-toca .nha-s-t span{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding-bottom:4px}
+.nha-toca .nha-s-t b{font-size:32px;font-weight:900;border-top:2px solid #fff;padding-top:6px}
+.nha-s-est{display:flex;justify-content:flex-end;margin-top:12px}
+.nha-s-chip{font-size:14.5px;font-weight:800;padding:4px 12px;border-radius:20px;background:rgba(255,231,168,.18);border:1px solid rgba(255,231,168,.6);color:#FFE7A8;white-space:nowrap}
+.nha-s-chip.ok{background:rgba(155,224,180,.18);border-color:rgba(155,224,180,.6);color:#fff}
+.nha-gl2{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:16px;color:#111}
+.nha-gl2>b,.nha-gsel2{flex:0 0 auto;min-width:100px;box-sizing:border-box;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nha-gl2>b{padding-right:10px}
+.nha-gsel2{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;border:2px solid #1B4332;border-radius:10px;background:#EAF3EE;color:#1B4332;font-size:16px;padding:3px 8px 3px 4px}
+.nha-gsel2 .nha-ap-fl{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#1B4332;color:#fff;align-items:center;justify-content:center;font-size:13px}
+.nha-gt{margin-top:4px}
+.nha-gt span{font-weight:800}
+.nha-gt>b{border-top:2px solid #111;padding-top:5px;font-size:17px}
+.nha-sec-t{display:flex;justify-content:space-between;align-items:center;font-size:18px;font-weight:800;color:#1B4332;margin:8px 0 2px}
+.nha-n{font-size:14.5px;font-weight:800;padding:2px 11px;border-radius:20px}
+.nha-n.pend{background:#FFF3D6;color:#6B4210}
+.nha-n.ok{background:#E3F1E7;color:#1B4332}
+.nha-sec-t+.nha-gf{border-top:none}
+.nha-inst-n{display:flex;gap:12px;align-items:flex-start;background:#fff;border-color:#2D6A4F}
+.nha-inst-n .nha-item-ic{background:#1B4332;color:#fff}
+.nha-inst-n>div{flex:1;min-width:0}
+.nha-inst-n>div>b:first-child{display:block;font-size:17px;color:#1B4332;margin-bottom:3px}

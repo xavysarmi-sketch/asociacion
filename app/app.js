@@ -107,6 +107,7 @@ function nhaPartes(m,tab){
   Array.from(t.content.childNodes).forEach(n=>{
     if(n.nodeType!==1)return;
     if(n.classList.contains("fid-card"))return;
+    if(fase===0&&n.classList.contains("desg-card")){ arriba.push("<!--NHA-TOCA-->"); return; } // v46.1: se pinta con nhaTocaHTML
     if(n.classList.contains("ft-tabs")){ fase=1; return; }
     if(n.classList.contains("ficha-section")){ fase=2; return; }
     if(/Vista personal · Solo lectura/.test(n.textContent))return;
@@ -118,6 +119,32 @@ function nhaFilas(html){ // filas «etiqueta → valor» de una pestaña, tal co
   const t=document.createElement("template"); t.innerHTML=html; const o={};
   t.content.querySelectorAll(".ft-row").forEach(r=>{ const l=r.querySelector(".ft-lbl"), v=r.querySelector(".ft-val"); if(l&&v){ const k=(l.childNodes[0]&&l.childNodes[0].nodeType===3?l.childNodes[0].nodeValue:l.textContent).trim(); if(!(k in o))o[k]={html:v.innerHTML,txt:v.textContent.trim(),lblHtml:l.innerHTML}; } });
   return o;
+}
+// v46.1 (Ángel 06/11/2026): «Lo que te toca este mes» como una suma: los importes en una columna a la derecha,
+// «+» delante de lo que se suma, y el total debajo con su raya. Mismas cifras que totalDelMes (la ficha de siempre).
+function nhaTocaHTML(m){ return _enVistaPersonal(_nhaToca)(m); }
+function _nhaToca(m){
+  const rm=DATA.reportMonth, ry=DATA.reportYear, esTerc=m.type==="tercero", t=totalDelMes(m,rm,ry);
+  const F=[]; // [etiqueta, nota, importe (null = sin importe), texto]
+  if(!esTerc){
+    if(enPausaMes(m,rm,ry))F.push(["Tu aporte","",null,"En pausa"]);
+    else{ const a=aporteMostradoMes(m,rm,ry), dr=descuentoReferidoMes(m.id,rm,ry);
+      F.push(["Tu aporte",t.aportePagado?"Ya pagado":(a.base?AYUDA_ELIGE_APORTE:""),a.importe]);
+      const d=Math.min(dr.descuento,a.importe); if(d>0)F.push([dr.nReferidos===1?"Descuento por tu referido":`Descuento por ${dr.nReferidos} referidos`,"",-d]); }
+  }
+  t.cuotas.forEach(c=>{ const n=(c.loan.pays||[]).length, k=c.idx+1;
+    F.push([c.aplazada?"Cuota aplazada de tu ayuda":n<=1?"Cuota única de tu ayuda":k>=n?"Última cuota de tu ayuda":`Cuota ${k} de ${n} de tu ayuda`,c.paid?"Ya pagada":"",c.inst]); });
+  const nNum=F.filter(f=>f[2]!=null).length;
+  let h=`<div class="desg-card nha-toca"><div class="desg-titulo">Lo que te toca este mes</div><div class="desg-mes">${escH(MONTHS_FULL[MONTHS.indexOf(rm)])} ${ry}</div>`;
+  if(!F.length)h+=`<div class="nha-s-f"><span>Este mes no tienes cuotas</span></div>`;
+  let i=0;
+  F.forEach(([l,nota,imp,txt])=>{ let v;
+    if(imp==null)v=escH(txt);
+    else{ const sg=imp<0?"−":(i>0?"+":""); v=`${sg?`<s>${sg}</s>`:""}${fmtEur(Math.abs(imp))}&nbsp;€`; i++; }
+    h+=`<div class="nha-s-f"><span>${escH(l)}${nota?`<small>${escH(nota)}</small>`:""}</span><b>${v}</b></div>`; });
+  if(nNum>1)h+=`<div class="nha-s-t"><span>Total</span><b>${fmtEur(t.total)}&nbsp;€</b></div>`;
+  if(nNum>0)h+=`<div class="nha-s-est"><span class="nha-s-chip${t.alDia?" ok":""}">${t.alDia?"Al día":t.pendiente<t.total?`Falta ${fmtEur(t.pendiente)}&nbsp;€`:"Falta por pagar"}</span></div>`;
+  return h+pendienteMesAnteriorHTML(m,rm,ry)+`</div>`;
 }
 function nhaGrupo(m){ return (DATA.gruposCierre||[]).find(g=>g&&g.principalId===m.id)||null; }
 function nhaPrimerNombre(m){ return escH(String(m.name||"").trim().split(/\s+/)[0]||""); }
@@ -170,14 +197,14 @@ function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
   let h="";
   // v45.70: abierta desde el navegador (sin el icono NH): aviso para instalarla; desaparece al abrirla desde el icono
-  if(!NHA_ADM&&!nhaInstalada())h+=`<div class="nha-inst-av"><b>⚠️ Aún no tienes la app instalada</b>Así, desde el navegador, dejará de funcionar pronto. Crea el icono <b class="nha-inl">NH</b> en tu móvil para seguir viendo tus cuentas.${_nhaBotonInstalar()}<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div>`;
+  if(!NHA_ADM&&!nhaInstalada())h+=`<div class="nha-inst-av nha-inst-n"><span class="nha-item-ic">${_icSVG("mobile")}</span><div><b>Ponla en tu móvil</b>Crea el icono <b class="nha-inl">NH</b> y ábrela siempre desde ahí. Pronto dejará de abrirse desde el navegador.${_nhaBotonInstalar()}<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div></div>`; // v46.1: más amable
   if(salidaPend)h+=salidaAvisoFichaHTML(m); else if(pausaVigente(m))h+=pausaAvisoFichaHTML(m);
-  if(!salidaPend)h+=p.arriba; // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
+  if(!salidaPend)h+=p.arriba.replace("<!--NHA-TOCA-->",nhaTocaHTML(m)); // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
     const desde=f["Mes de ingreso"]?f["Mes de ingreso"].txt:"";
     h+=`<div class="nha-tiles">
-      <div class="nha-tile"><div class="nha-tile-ic">🏦</div><div class="nha-tile-lbl">Total aportado</div><div class="nha-tile-val">${f["Total aportado al fondo"].html}</div>${desde?`<div class="nha-tile-sub">Desde ${escH(desde.toLowerCase())}</div>`:""}</div>
-      <div class="nha-tile"><div class="nha-tile-ic">📈</div><div class="nha-tile-lbl">Beneficios</div><div class="nha-tile-val nha-verde">${f["Beneficios acumulados"]?f["Beneficios acumulados"].html:"—"}</div><div class="nha-tile-sub">Acumulados hasta hoy</div></div>
+      <div class="nha-tile"><div class="nha-tile-ic">${_icSVG("bank")}</div><div class="nha-tile-lbl">Total aportado</div><div class="nha-tile-val">${f["Total aportado al fondo"].html}</div>${desde?`<div class="nha-tile-sub">Desde ${escH(desde.toLowerCase())}</div>`:""}</div>
+      <div class="nha-tile"><div class="nha-tile-ic">${_icSVG("trend")}</div><div class="nha-tile-lbl">Beneficios</div><div class="nha-tile-val nha-verde">${f["Beneficios acumulados"]?f["Beneficios acumulados"].html:"—"}</div><div class="nha-tile-sub">Acumulados hasta hoy</div></div>
     </div>`;
     const ret=Object.keys(f).find(k=>/^Beneficio ya retirado/.test(k));
     h+=`<div class="nha-card nha-acum">${ret?`<div class="ft-row"><span class="ft-lbl">${f[ret].lblHtml}</span><span class="ft-val" style="color:#B08D3E">${f[ret].html}</span></div>`:""}
@@ -195,11 +222,11 @@ function nhaInicioHTML(m,salidaPend,g){
 function nhaPermanenciaHTML(m,f){
   const meses=memberMonths(m), c=m.ciclo;
   const fin=f["Permanencia"]?((f["Permanencia"].html.match(/<span[^>]*>([^<]*)<\/span>/)||[])[1]||""):"";
-  if(c===0)return `<div class="nha-perm"><div class="nha-perm-top"><span class="nha-perm-ic">🌱</span><b>Tu permanencia</b><span class="nha-perm-n">Indefinida</span></div>
+  if(c===0)return `<div class="nha-perm"><div class="nha-perm-top"><span class="nha-perm-ic">${_icSVG("sprout")}</span><b>Tu permanencia</b><span class="nha-perm-n">Indefinida</span></div>
     <div class="nha-perm-txt">Llevas ${meses} ${meses===1?"mes":"meses"} en el fondo.</div></div>`;
   if(c==null)return "";
   const pct=Math.max(0,Math.min(100,Math.round(meses/c*100)));
-  return `<div class="nha-perm"><div class="nha-perm-top"><span class="nha-perm-ic">🌱</span><b>Tu permanencia</b><span class="nha-perm-n">${Math.min(meses,c)} de ${c} meses</span></div>
+  return `<div class="nha-perm"><div class="nha-perm-top"><span class="nha-perm-ic">${_icSVG("sprout")}</span><b>Tu permanencia</b><span class="nha-perm-n">${Math.min(meses,c)} de ${c} meses</span></div>
     <div class="nha-barra"><div style="width:${pct}%"></div></div>
     <div class="nha-perm-txt">${fin?`Llega ${escH(fin)}.`:""} Puedes ampliarla cuando quieras.</div></div>`;
 }
@@ -207,18 +234,19 @@ function nhaImportanteHTML(m,g){
   const items=[], rep=_idxMes(DATA.reportMonth,DATA.reportYear);
   (m.loans||[]).forEach(l=>{ const i=(l.pays||[]).findIndex(p=>!p.paid); if(i<0)return;
     const p=l.pays[i], pag=l.pays.filter(x=>x.paid).length, ult=esUltimaCuota(l,i);
-    items.push(["📅",`${ult?"Última cuota":"Próxima cuota"} de tu ayuda de ${fmtEur(l.capital)} €`,`${fmtEur(cuotaDe(l,i))} € · ${MONTHS_FULL[MONTHS.indexOf(p.m)].toLowerCase()} ${p.y} · llevas ${pag} de ${l.n} pagadas`,"ayudas"]); });
+    if(p.m===DATA.reportMonth&&p.y===DATA.reportYear)return; // v46.1: la de este mes ya sale en «Lo que te toca»
+    items.push([_icSVG("cal"),`${ult?"Última cuota":"Próxima cuota"} de tu ayuda de ${fmtEur(l.capital)} €`,`${fmtEur(cuotaDe(l,i))} € · ${MONTHS_FULL[MONTHS.indexOf(p.m)].toLowerCase()} ${p.y} · llevas ${pag} de ${l.n} pagadas`,"ayudas"]); });
   (DATA.solicitudes||[]).forEach(s=>{ if(s.mid&&s.mid!==m.id)return; // v45.63: solo las suyas (la ficha ya trae solo las suyas)
     const mi=s.mes&&/^\d{4}-\d{2}$/.test(s.mes)?MONTHS_FULL[parseInt(s.mes.slice(5))-1].toLowerCase():"";
-    if(s.estado==="pendiente")items.push(["📝",`Tu solicitud de ${fmtEur(s.capital)} € está apuntada`,`${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"}${mi?` · para ${mi}`:""}. Te avisaremos cuando se decida.`,"ayudas"]);
-    else if(s.estado==="otorgada"&&s.mesOtorgada===getMesKey(DATA.reportMonth,DATA.reportYear))items.push(["✅",`Tu ayuda de ${fmtEur(s.capital)} € está aprobada`,`Este mes. La verás en «Ayudas».`,"ayudas"]);
+    if(s.estado==="pendiente")items.push([_icSVG("clip"),`Tu solicitud de ${fmtEur(s.capital)} € está apuntada`,`${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"}${mi?` · para ${mi}`:""}. Te avisaremos cuando se decida.`,"ayudas"]);
+    else if(s.estado==="otorgada"&&s.mesOtorgada===getMesKey(DATA.reportMonth,DATA.reportYear))items.push([_icSVG("check"),`Tu ayuda de ${fmtEur(s.capital)} € está aprobada`,`Este mes. La verás en «Ayudas».`,"ayudas"]);
   });
   const pe=nhaPeticionLocal();
   if(pe&&!(DATA.solicitudes||[]).some(s=>s.origen==="app"&&s.estado!=="no"&&Math.abs((s.capital||0)-pe.capital)<0.01))
-    items.push(["📲",`Has pedido una ayuda de ${fmtEur(pe.capital)} €`,`El ${new Date(pe.ts).toLocaleDateString("es-ES",{day:"numeric",month:"long"})}. El administrador lo revisará y te avisará.`,"ayudas"]);
+    items.push([_icSVG("mobile"),`Has pedido una ayuda de ${fmtEur(pe.capital)} €`,`El ${new Date(pe.ts).toLocaleDateString("es-ES",{day:"numeric",month:"long"})}. El administrador lo revisará y te avisará.`,"ayudas"]);
   if(g){ const ms=[g.principalId,...(g.miembros||[])].map(id=>DATA.members.find(x=>x.id===id)).filter(x=>x&&activoEnReporte(x));
     const tot=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).total,0)), pend=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).pendiente,0));
-    items.push(["👥",`Tu grupo este mes: ${fmtEur(tot)} €`,pend>0?`Falta por cobrar ${fmtEur(pend)} €`:"Todo cobrado",`grupo`]); }
+    items.push([_icSVG("users"),`Tu grupo este mes: ${fmtEur(tot)} €`,pend>0?`Falta por cobrar ${fmtEur(pend)} €`:"Todo cobrado",`grupo`]); }
   let h=`<div class="nha-card"><div class="nha-card-tit">Tus avisos</div>`;
   if(!items.length)h+=`<div class="nha-vacio">Todo en orden. No tienes nada pendiente aparte de lo de este mes.</div>`;
   items.forEach(([ic,t,s,ir])=>{ t=t.replace(/ €/g,"&nbsp;€"); s=s.replace(/ €/g,"&nbsp;€"); h+=`<button class="nha-item" onclick="nhaIr('${ir}')"><span class="nha-item-ic">${ic}</span><span class="nha-item-txt"><b>${t}</b><span>${s}</span></span><span class="nha-item-fl">›</span></button>`; });
@@ -255,33 +283,38 @@ function nhaGrupoHTML(m,g){
     <div class="nha-grupo-lbl">Total del grupo este mes</div><div class="nha-grupo-num">${fmtEur(tot)}&nbsp;€${abiertos>0?`<span> + los aportes</span>`:""}</div>
     <div class="nha-grupo-barra"><div style="width:${pct}%"></div></div>
     <div class="nha-grupo-2"><div><small>Cobrado</small><b>${fmtEur(_r2(tot-pend))}&nbsp;€</b></div><div class="${pend>0?"falta":""}"><small>Falta</small><b>${fmtEur(pend)}&nbsp;€</b></div></div>
-    <div class="nha-grupo-res">${nOk===act.length?"✅ Todos al día":`✅ ${nOk} al día · ⏳ ${act.length-nOk} con algo pendiente`}</div></div>`;
+</div>`; // v46.1: sin «N al día · N pendientes» (lo dicen «Quién falta» y «Al día»)
   if(_nBaseG(ms,rm,ry)>0)h+=`<div class="nha-nota">Los aportes aún sin pagar se cuentan con 50 €: cada uno puede aportar 50, 100, 150 o 200 €.</div>`;
   h+=nhaCtlResumenHTML(m,act,rm,ry);
   // Estado de cada persona (una fila); al tocarla se abre su detalle, el mismo del reporte de grupo
-  h+=`<div class="nha-card nha-gest"><div class="nha-card-tit">Grupo de ${nhaPrimerNombre(m)}</div>
+  h+=`<div class="nha-card nha-gest">
     <button class="nha-ctl-info" onclick="DESP['nha-gr-info']=!DESP['nha-gr-info'];render()">ℹ️ ¿Cómo se usa? <span class="nha-fl-c" style="transform:rotate(${DESP["nha-gr-info"]?90:0}deg)">›</span></button>
-    ${DESP["nha-gr-info"]?`<div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> o la <b>flecha</b> para ver todo su detalle.</span></div>${act.some(x=>{const t=totalDelMes(x,rm,ry);return !t.alDia&&nhaCtlAporteLibre(x,t);})?`<div class="nha-leyenda"><span class="nha-ley-fl" style="font-size:13px">▾</span><span>Si alguien pone <b>más de 50 €</b> de aporte, toca su botón <b>«50&nbsp;€&nbsp;▾»</b> y elige cuánto.</span></div>`:""}`:""}`; // v45.66: título con el nombre del responsable; las instrucciones, plegadas
-  const ctl=nhaCtlLeer();
-  act.slice().sort((a,b)=>(totalDelMes(a,rm,ry).alDia?1:0)-(totalDelMes(b,rm,ry).alDia?1:0)).forEach(x=>{ const t=totalDelMes(x,rm,ry), ab=!!DESP["nhag-"+x.id], abierto=x.type!=="tercero"&&aporteMostradoMes(x,rm,ry).abierto;
+    ${DESP["nha-gr-info"]?`<div class="nha-leyenda"><span class="nha-ctl-c nha-ley-c"></span><span>Toca el <b>círculo</b> cuando esa persona te pague: se marca como pagado a ti.</span></div><div class="nha-leyenda"><span class="nha-ley-fl">›</span><span>Toca su <b>nombre</b> o la <b>flecha</b> para ver todo su detalle.</span></div>${act.some(x=>{const t=totalDelMes(x,rm,ry);return !t.alDia&&nhaCtlAporteLibre(x,t);})?`<div class="nha-leyenda"><span class="nha-ley-fl" style="font-size:13px">▾</span><span>Si alguien pone <b>más de 50 €</b> de aporte, toca su botón <b>«▾&nbsp;50&nbsp;€»</b> y elige cuánto.</span></div>`:""}`:""}`; // v45.66: título con el nombre del responsable; las instrucciones, plegadas
+  const ctl=nhaCtlLeer(), falta=[], listos=[];
+  // v46.1 (Ángel 06/11/2026): «Quién falta» y «Al día»; cada persona como una suma (importes a la derecha, total debajo)
+  act.forEach(x=>{ const t=totalDelMes(x,rm,ry), ab=!!DESP["nhag-"+x.id];
     const marca=!t.alDia&&ctl[x.id]!=null?ctl[x.id]:null;
     const lib=nhaCtlAporteLibre(x,t), cls=t.alDia?"ok":marca!=null?"dado":"pend";
     const circ=t.alDia?`<span class="nha-ctl-c ok" title="Al día">✓</span>`
       :`<button class="nha-ctl-c${marca!=null?" on":""}" aria-label="${marca!=null?"Quitar la marca":"Me lo ha dado"}" onclick="nhaCtlToca('${esc(x.id)}')">${marca!=null?"✓":""}</button>`;
     const abrir=`onclick="nhaGFila('${esc(x.id)}')"`;
-    // v45.66: como Cobros del administrador: una línea por cada cosa y cada cifra una sola vez
     const lin=[];
     if(!t.alDia&&marca==null){
-      if(!t.esTerc&&!t.aportePagado&&t.aporteImporte>0)lin.push(`<div class="nha-gl"><span>Aporte</span>${lib?`<button class="nha-gsel" onclick="NHA.ctlPreg=NHA.ctlPreg==='${esc(x.id)}'?null:'${esc(x.id)}';render()">${fmtEur(t.aporteImporte)}&nbsp;€ <span class="nha-ap-fl">▾</span></button>`:`<b>${fmtEur(t.aporteImporte)}&nbsp;€</b>`}</div>`);
+      if(!t.esTerc&&!t.aportePagado&&t.aporteImporte>0)lin.push(`<div class="nha-gl2"><span>Aporte</span>${lib?`<button class="nha-gsel2" onclick="NHA.ctlPreg=NHA.ctlPreg==='${esc(x.id)}'?null:'${esc(x.id)}';render()"><span class="nha-ap-fl">▾</span>${fmtEur(t.aporteImporte)}&nbsp;€</button>`:`<b>${fmtEur(t.aporteImporte)}&nbsp;€</b>`}</div>`);
       t.cuotas.filter(c=>!c.paid).forEach(c=>{ const n=c.loan.pays.length, k=c.idx+1;
         const et=c.aplazada?"Cuota aplazada":k===n?(n===1?"Cuota de su ayuda":"Última cuota"):`Cuota ${k} de ${n}`;
-        lin.push(`<div class="nha-gl"><span>${et}</span><b>${fmtEur(c.inst)}&nbsp;€</b></div>`); });
+        lin.push(`<div class="nha-gl2"><span>${et}</span><b>${lin.length?"<s>+</s>":""}${fmtEur(c.inst)}&nbsp;€</b></div>`); });
+      if(lin.length>1)lin.push(`<div class="nha-gl2 nha-gt"><span>Total</span><b>${fmtEur(t.pendiente)}&nbsp;€</b></div>`);
     }
-    const der=t.alDia?`<span class="nha-gtag">Al día</span>`:marca!=null?`<span class="nha-gtag">Te dio ${fmtEur(marca)}&nbsp;€</span>`:lin.length>1?`<b class="nha-gtot">${fmtEur(t.pendiente)}&nbsp;€</b>`:"";
-    h+=`<div class="nha-gf ${cls}">${circ}<div class="nha-gb"><div class="nha-gtop"><button class="nha-gnom" ${abrir}>${escH(x.name)}</button>${der}</div>${lin.join("")}</div><button class="nha-gfl" ${abrir} aria-label="Ver detalle"><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
-    if(NHA.ctlPreg===x.id)h+=nhaCtlPreguntaHTML(x,t);
-    if(ab)h+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}<button class="nha-gdet-cerrar" onclick="nhaGFila('${esc(x.id)}')">Cerrar ✕</button></div>`; });
-  return h+`</div>`;
+    const der=t.alDia?`<span class="nha-gtag">${t.total>0?`Pagó ${fmtEur(t.total)}&nbsp;€`:"Al día"}</span>`:marca!=null?`<span class="nha-gtag">Te dio ${fmtEur(marca)}&nbsp;€</span>`:"";
+    let f=`<div class="nha-gf ${cls}">${circ}<div class="nha-gb"><div class="nha-gtop"><button class="nha-gnom" ${abrir}>${escH(x.name)}${x.id===m.id?" (tú)":""}</button>${der}</div>${lin.join("")}</div><button class="nha-gfl" ${abrir} aria-label="Ver detalle"><span class="nha-item-fl" style="transform:rotate(${ab?90:0}deg)">›</span></button></div>`;
+    if(NHA.ctlPreg===x.id)f+=nhaCtlPreguntaHTML(x,t);
+    if(ab)f+=`<div class="nha-gdet">${fichaResumenHTML(x)}${t.alDia?"":`<button class="nha-btn nha-wa" onclick="nhaCtlWaPersona('${esc(x.id)}')">💬 Enviar a ${nhaPrimerNombre(x)} lo que le queda</button>`}<button class="nha-gdet-cerrar" onclick="nhaGFila('${esc(x.id)}')">Cerrar ✕</button></div>`;
+    (t.alDia||marca!=null?listos:falta).push(f); });
+  h+=falta.length?`<div class="nha-sec-t">Quién falta <span class="nha-n pend">${falta.length}</span></div>${falta.join("")}`:`<div class="nha-vacio">Todos han pagado este mes.</div>`;
+  h+=`</div>`;
+  if(listos.length)h+=`<div class="nha-card nha-gest"><div class="nha-sec-t">Al día <span class="nha-n ok">${listos.length}</span></div>${listos.join("")}</div>`;
+  return h;
 }
 // ── «Tu control» del responsable (v45.56, decisión de Ángel 30/10/2026) ──
 // Marcas SOLO en el móvil del responsable (localStorage, por código y mes). No se escribe nada en

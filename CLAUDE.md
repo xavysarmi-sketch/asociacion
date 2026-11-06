@@ -56,6 +56,11 @@ lenguaje sencillo antes de aplicarlos.
   mínima 13,5 px (app/app.css sube también los estilos escritos en js/). «¿Cuánto puedo ganar?» usa los números de
   la persona (_simProyeccion). El simulador NO ofrece la permanencia indefinida (decisión de Ángel 25/10/2026: solo
   llega a 36 meses; quien ya es indefinido la sigue viendo como la suya); las preguntas frecuentes, igual.
+- Desde v46.1: en la app de asociados, «Corresponde este mes» se pinta con nhaTocaHTML (app/app.js) como una suma:
+  importes en una columna a la derecha, «+» delante, total debajo con su raya (mismas cifras que totalDelMes en vista
+  personal). Mi grupo: «Quién falta» y «Al día» (los marcados por el responsable van con «Al día»), cada persona como
+  una suma. Iconos de línea (_icSVG) en Inicio; «Tus avisos» no repite la cuota de este mes. La ficha del enlace
+  antiguo y la del administrador no cambian.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
