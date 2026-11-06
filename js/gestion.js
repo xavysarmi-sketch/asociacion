@@ -11,7 +11,7 @@ function gastosGestionHTML(){
   const ab=!!DESP["mg-gas"];
   let h=`<div class="mg-acc-head" onclick="DESP['mg-gas']=!DESP['mg-gas'];render()">
       <span>🧾 Gastos administrativos <span class="mg-acc-num">${fmtEur(delMes)} €</span></span>
-      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   const opts=[]; { let y=2025,i=7; const fin=_idxMes(DATA.reportMonth,DATA.reportYear)+1; while(y*12+i<=fin){ const k=getMesKey(MONTHS[i],y); opts.push(`<option value="${k}"${k===key?" selected":""}>${MONTHS_FULL[i]} ${y}</option>`); i++; if(i>11){i=0;y++;} } opts.reverse(); }
   h+=`<div class="mes-card" style="margin:8px 0 14px">
@@ -47,8 +47,8 @@ function permanenciasGestionHTML(){
   const L=permanenciasLista(), idx=_idxMes(DATA.reportMonth,DATA.reportYear);
   const nProx=L.filter(x=>x.prox).length, nIndef=L.filter(x=>x.tipo==="indef").length, ab=!!DESP["mg-perm"];
   let h=`<div class="mg-acc-head" id="mg-perm-head" onclick="DESP['mg-perm']=!DESP['mg-perm'];render()">
-      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num" style="background:#8A6210">${nProx} en 3 meses</span>`:""}</span>
-      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num aviso">${nProx} en 3 meses</span>`:""}</span>
+      <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   const fil=PERM_FIL;
   const chip=(k,t)=>`<button onclick="PERM_FIL='${k}';render()" style="flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid ${fil===k?"#1B4332":"#E3DDD2"};background:${fil===k?"#1B4332":"#fff"};color:${fil===k?"#fff":"#3B3B3B"};font-size:13px;font-weight:700;cursor:pointer">${t}</button>`;

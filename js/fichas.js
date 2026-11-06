@@ -157,7 +157,7 @@ function abrirAppDe(mid){ const url=enlaceAppDe(DATA.members.find(x=>x.id===mid)
 function appAsociadosGestionHTML(){
   const ab=!!DESP["mg-app"], con=DATA.members.filter(m=>tieneFichaApp(m)&&m.codigoApp), sin=DATA.members.filter(m=>tieneFichaApp(m)&&!m.codigoApp);
   const est=appAsociadosActiva()?(FICHAS_ESTADO.error==="permisos"?`<span style="color:#A93C25">⛔ faltan reglas</span>`:`<span style="color:#1B7A3D">en marcha</span>`):`<span style="color:var(--muted)">en pruebas</span>`;
-  let h=`<div class="mg-acc-head" onclick="DESP['mg-app']=!DESP['mg-app'];render()"><span>📱 App de asociados <span style="font-weight:600">· ${est}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+  let h=`<div class="mg-acc-head" onclick="DESP['mg-app']=!DESP['mg-app'];render()"><span>📱 App de asociados <span style="font-weight:600">· ${est}</span></span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   cargarInstalaciones();
   const ult=FICHAS_ESTADO.ultima?new Date(FICHAS_ESTADO.ultima).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}):null;
@@ -176,7 +176,7 @@ function appAsociadosGestionHTML(){
     <button class="backup-btn" style="background:#fff;color:#1B4332;border:1.5px solid #1B4332" onclick="imprimirTarjetasApp()">🖨️ Imprimir las tarjetas con QR (${con.length})</button>`:""}`;
   if(con.length){
     const abL=!!DESP["mg-app-l"];
-    h+=`<div class="mg-acc-head" style="margin:8px 0 0" onclick="DESP['mg-app-l']=!DESP['mg-app-l'];render()"><span>👥 Enlaces por persona</span><span class="mg-acc-fl">${abL?"▲ ocultar":"▼ mostrar"}</span></div>`;
+    h+=`<div class="mg-acc-head" style="margin:8px 0 0" onclick="DESP['mg-app-l']=!DESP['mg-app-l'];render()"><span>👥 Enlaces por persona</span><span class="mg-acc-fl${abL?" ab":""}" aria-hidden="true"></span></div>`;
     if(abL){ const env=_appEnviados(); con.slice().sort((a,b)=>a.name.localeCompare(b.name,"es")).forEach(m=>{
       const bt=(fn,txt,st)=>`<button onclick="${fn}" style="flex:1;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;${st}">${txt}</button>`;
       h+=`<div style="padding:10px 0;border-bottom:1px solid #EFEAE0"><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><span style="flex:1;min-width:0;font-size:15px;font-weight:700">${escH(m.name)}</span>${_instDe(m)?`<span style="font-size:12px;font-weight:800;color:#1B4332;background:#D8F3DC;border-radius:8px;padding:1px 7px;white-space:nowrap">📲 instalada ${escH(new Date(_instDe(m).t).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}))}</span>`:env[m.id]?`<span style="font-size:12px;font-weight:800;color:#1B7A3D;white-space:nowrap">✓ enviada ${escH(env[m.id].slice(0,5))}</span>`:""}</div>

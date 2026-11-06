@@ -964,3 +964,28 @@ html.nh-letra-g .ft-tab,html.nh-letra-g .ft-tabs.t5 .ft-tab{flex:1 1 auto;paddin
 /* v45.90: foco visible con teclado (contorno verde) y «Reducir movimiento» del iPhone */
 :where(button,a,input,select,textarea,summary,[tabindex]:not(.modal-sheet)):focus-visible{outline:2px solid #2D6A4F!important;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important} }
+
+/* ── v45.91 · Sistema de diseño (bloque 3): la lista fija de colores, letra, espacios y esquinas.
+   Se define una sola vez aquí y las pantallas se pasan a ella una a una (la primera: Gestión). ── */
+:root{
+  --nh-verde-900:#1B4332; --nh-verde-700:#2D6A4F; --nh-verde-100:#D8F3DC; --nh-verde-50:#EDF5EF;
+  --nh-oro-700:#7A5F12; --nh-oro-300:#E9C46A;
+  --nh-naranja-700:#A64B19; --nh-naranja-100:#FFF0E6; --nh-rojo-700:#B42318;
+  --nh-fondo:#F5F0EB; --nh-superficie:#FFFFFF; --nh-texto:#2C2C2C; --nh-texto-2:#5F5A55; --nh-texto-3:#8A847D; --nh-borde:#E8E0D8;
+  --nh-l-12:12px; --nh-l-13:13px; --nh-l-15:15px; --nh-l-17:17px; --nh-l-20:20px; --nh-l-24:24px; --nh-l-30:30px;
+  --nh-e-4:4px; --nh-e-8:8px; --nh-e-12:12px; --nh-e-16:16px; --nh-e-24:24px; --nh-e-32:32px;
+  --nh-r-8:8px; --nh-r-12:12px; --nh-r-18:18px; --nh-r-full:999px;
+  --nh-sombra-1:0 1px 2px rgba(27,67,50,.06); --nh-sombra-2:0 8px 28px rgba(0,0,0,.16);
+  --nh-t-abrir:250ms; --nh-t-cerrar:150ms; --nh-curva:cubic-bezier(.22,1,.36,1);
+}
+/* Gestión: filas limpias, sin raya de color a la izquierda, flecha fina igual en todas, pastillas de un solo estilo */
+body.nh-admin .mas-sec{font-size:var(--nh-l-12);font-weight:800;color:var(--nh-texto-2);letter-spacing:.7px;margin:var(--nh-e-24) var(--nh-e-4) var(--nh-e-8)}
+body.nh-admin .mas-sec svg.ic{display:none}
+body.nh-admin .mg-acc-head{border:1px solid var(--nh-borde);border-radius:var(--nh-r-12);background:var(--nh-superficie);box-shadow:var(--nh-sombra-1);padding:var(--nh-e-16);min-height:56px;margin:0 0 var(--nh-e-8);font-size:var(--nh-l-17);color:var(--nh-verde-900);gap:var(--nh-e-12)}
+body.nh-admin .mg-acc-head .icw{color:var(--nh-verde-700)}
+body.nh-admin .mg-acc-fl{font-size:0!important;flex:0 0 auto;width:9px;height:9px;margin:0 4px 4px 0;border-right:2px solid var(--nh-texto-3);border-bottom:2px solid var(--nh-texto-3);transform:rotate(45deg);transition:transform var(--nh-t-abrir) var(--nh-curva)}
+body.nh-admin .mg-acc-fl::first-letter{font-size:0!important}
+body.nh-admin .mg-acc-fl.ab{transform:rotate(-135deg);margin:4px 4px 0 0}
+body.nh-admin .mg-acc-fl.ir{transform:rotate(-45deg);margin:0 6px 0 0}
+body.nh-admin .mg-acc-num{background:var(--nh-verde-50);color:var(--nh-verde-900);font-size:var(--nh-l-13);font-weight:800;border-radius:var(--nh-r-full);padding:2px 10px;margin-left:var(--nh-e-8)}
+body.nh-admin .mg-acc-num.aviso{background:var(--nh-naranja-100);color:var(--nh-naranja-700)}

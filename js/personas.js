@@ -482,7 +482,7 @@ function telefonosGestionHTML(asoc,terc){
   const todos=[...asoc,...terc], con=todos.filter(m=>m.phone).length, ab=!!DESP["mg-tel"];
   let h=`<div class="mg-acc-head" onclick="DESP['mg-tel']=!DESP['mg-tel'];render()">
       <span>📞 Teléfonos <span class="mg-acc-num">${con}/${todos.length}</span></span>
-      <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   const fila=m=>`<div class="mg-card" data-nombre="${escH(m.name.toLowerCase())}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px">
       <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(m.name)}</div>

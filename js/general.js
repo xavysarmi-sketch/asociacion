@@ -321,7 +321,16 @@ function _nhCampos16(){
   if(!_NH_IOS||!document.body.classList.contains("nh-admin"))return;
   document.querySelectorAll("input:not([type=range]):not([type=checkbox]):not([type=radio]),select,textarea").forEach(el=>{ if(parseFloat(getComputedStyle(el).fontSize)<16) el.style.fontSize="16px"; });
 }
-function _nhAccesible(){ try{ const a=document.getElementById("app")||document.body; _nhNombrarInterruptores(a); _nhEtiquetarCampos(document.body); _nhVentanas(); _nhCampos16(); }catch(e){} }
+// v45.91: las filas de Gestión que se despliegan se anuncian como botón, con «abierto / cerrado», y se abren con el teclado
+function _nhFilasDesplegables(raiz){
+  raiz.querySelectorAll(".mg-acc-head").forEach(h=>{
+    const fl=h.querySelector(".mg-acc-fl"); if(!fl)return;
+    h.setAttribute("role",fl.classList.contains("ir")?"link":"button"); if(!h.hasAttribute("tabindex"))h.tabIndex=0;
+    if(!fl.classList.contains("ir")) h.setAttribute("aria-expanded",fl.classList.contains("ab")?"true":"false");
+    if(!h._nhTecla){ h._nhTecla=1; h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); h.click(); } }); }
+  });
+}
+function _nhAccesible(){ try{ const a=document.getElementById("app")||document.body; _nhNombrarInterruptores(a); _nhFilasDesplegables(a); _nhEtiquetarCampos(document.body); _nhVentanas(); _nhCampos16(); }catch(e){} }
 function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
@@ -838,7 +847,7 @@ function _renderPantalla(){
     h+=`<div class="mas-sec">📂 Consultas</div>`; // v45.43: Más en tres apartados
     h+=`<div class="mg-acc-head" onclick="TAB='historico';render();window.scrollTo(0,0)">
       <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>
-      <span class="mg-acc-fl">›</span></div>`;
+      <span class="mg-acc-fl ir" aria-hidden="true"></span></div>`;
     // ⏳ v45.28: fechas de fin de permanencia de los asociados (solo lectura)
     h+=permanenciasGestionHTML();
     // 📞 v45.22: teléfonos de todos (para tenerlos guardados, sin enviar nada)
@@ -853,7 +862,7 @@ function _renderPantalla(){
     h+=`<div class="mas-sec">⚙️ Datos y ajustes</div>`;
     h+=appAsociadosGestionHTML(); // v45.52: app de asociados (códigos y fichas privadas)
     { const ab=!!DESP["mg-copia"], upd=DATA.updatedAt?new Date(DATA.updatedAt).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
-      h+=`<div class="mg-acc-head" onclick="DESP['mg-copia']=!DESP['mg-copia'];render()"><span>💾 Copia de seguridad <span style="font-weight:600;color:var(--muted)">· subida ${escH(upd)}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      h+=`<div class="mg-acc-head" onclick="DESP['mg-copia']=!DESP['mg-copia'];render()"><span>💾 Copia de seguridad <span style="font-weight:600;color:var(--muted)">· subida ${escH(upd)}</span></span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
       if(ab)h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin:-4px 0 12px;border:1px solid var(--border)">
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Cada noche se guarda una copia en tu ordenador (si está encendido). Aquí puedes guardar o recuperar los datos a mano.</div>
       <button class="backup-btn" style="background:#2D6A4F;color:#fff" onclick="subirAhoraNube()">☁️ Subir ahora a la nube</button>
@@ -862,7 +871,7 @@ function _renderPantalla(){
       <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
     </div>`; }
     { const ab=!!DESP["mg-cfg"];
-      h+=`<div class="mg-acc-head" onclick="DESP['mg-cfg']=!DESP['mg-cfg'];render()"><span>⚙️ Configuración <span style="font-weight:600;color:var(--muted)">· retorno ${DATA.rate} % · mes nuevo el día ${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}</span></span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
+      h+=`<div class="mg-acc-head" onclick="DESP['mg-cfg']=!DESP['mg-cfg'];render()"><span>⚙️ Configuración <span style="font-weight:600;color:var(--muted)">· retorno ${DATA.rate} % · mes nuevo el día ${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}</span></span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
       if(ab)h+=configHTML(); }
     h+=pantallaAjustesHTML(); // v45.39: Texto grande
     h+=sesionHTML(); // v45.27
@@ -1092,10 +1101,10 @@ function auditoriaInternaHTML(){
   const nE=r.errores.length,nA=r.advertencias.length;
   const ok=nE===0;
   const linea=(txt,esError)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin:4px 0;font-size:12.5px"><span>${esError?"❌":"⚠️"}</span><span>${escH(txt)}</span></div>`;
-  return `<div style="background:${ok?"#F0F7F2":"#FDF0EE"};border:2px solid ${ok?"#2D6A4F":"#C0492C"};border-radius:14px;padding:14px;margin-top:16px;margin-bottom:16px;font-size:13px;line-height:1.5;color:${ok?"#1B4332":"#7A2418"}">
-    <button onclick="AUDIT_OPEN=!AUDIT_OPEN;render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left;color:inherit">
-      <span style="font-weight:800;font-size:15px">🔍 Auditoría interna — ${ok?"✅ Todo cuadra":`${nE} error${nE>1?"es":""}`}${nA>0?` · ${nA} aviso${nA>1?"s":""}`:""}</span>
-      <span style="font-size:18px">${AUDIT_OPEN?"▲":"▼"}</span>
+  return `<div class="mg-audit" style="background:${ok?"#F0F7F2":"#FDF0EE"};border:1px solid ${ok?"#9FC9B0":"#E3A79B"};border-radius:12px;padding:16px;margin:0 0 8px;font-size:13px;line-height:1.5;color:${ok?"#1B4332":"#7A2418"}">
+    <button onclick="AUDIT_OPEN=!AUDIT_OPEN;render()" aria-expanded="${AUDIT_OPEN?"true":"false"}" style="width:100%;gap:12px;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left;color:inherit">
+      <span style="font-weight:800;font-size:16px">🔍 Auditoría interna — ${ok?"✅ Todo cuadra":`${nE} error${nE>1?"es":""}`}${nA>0?` · ${nA} aviso${nA>1?"s":""}`:""}</span>
+      <span class="mg-acc-fl${AUDIT_OPEN?" ab":""}" aria-hidden="true"></span>
     </button>
     ${AUDIT_OPEN?`<div style="margin-top:10px">
       ${nE===0&&nA===0?`<div style="font-size:12.5px">Sin errores ni avisos. Los ${(function(){let c=0;DATA.members.forEach(m=>{c+=(m.loans||[]).length+(m.closedLoans||[]).length;});return c;})()} ayudas registradas cuadran.</div>`:""}
@@ -1176,7 +1185,7 @@ function chequeoPlegableHTML(){ // v45.43
   const html=chequeoHTML(), nMal=(html.match(/⚠️/g)||[]).length, nEsp=(html.match(/⏳/g)||[]).length;
   const ab=DESP["mg-chq"]!=null?!!DESP["mg-chq"]:nMal>0; // con un aviso se abre solo
   const est=nMal?`<span style="color:#A93C25">⚠️ ${nMal} ${nMal===1?"aviso":"avisos"}</span>`:nEsp?`<span style="color:var(--muted)">⏳ sin terminar de comprobar</span>`:`<span style="color:#1B7A3D">✅ todo en verde</span>`;
-  return `<div class="mg-acc-head" onclick="DESP['mg-chq']=!${ab};render()"><span>🛡️ Auto-chequeo · ${est}</span><span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`+(ab?html:"");
+  return `<div class="mg-acc-head" onclick="DESP['mg-chq']=!${ab};render()"><span>🛡️ Auto-chequeo · ${est}</span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`+(ab?html:"");
 }
 function configHTML(){
   return `<div style="background:#fff;border-radius:16px;padding:16px;margin:-4px 0 12px;border:1px solid var(--border)">
