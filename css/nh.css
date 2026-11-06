@@ -998,3 +998,11 @@ body.nh-admin .tab-inicio .ini-plegable .mes-title{color:var(--nh-verde-900)!imp
 body.nh-admin .tab-inicio .ini-aviso{border-radius:var(--nh-r-12);padding:var(--nh-e-12) var(--nh-e-16);min-height:48px}
 body.nh-admin .tab-inicio .ini-rapido{border:1px solid var(--nh-borde);border-radius:var(--nh-r-12);box-shadow:var(--nh-sombra-1);min-height:56px;font-size:var(--nh-l-15)}
 body.nh-admin .tab-inicio .ini-rapido svg.ic{color:var(--nh-verde-700)}
+
+/* v45.93 · Sistema de diseño en Cobros: tarjetas con el borde y la sombra del sistema, títulos a 17 px,
+   «Cuentas de meses anteriores» con la flecha fina, y el ✕ de quitar del grupo en gris tranquilo (rojo solo al confirmar) */
+body.nh-admin .tab-mes .mes-card{border-radius:var(--nh-r-18);box-shadow:var(--nh-sombra-1)}
+body.nh-admin .tab-mes .mes-title{font-size:var(--nh-l-17)}
+body.nh-admin .cgt{border:1px solid var(--nh-borde);border-radius:var(--nh-r-18);box-shadow:var(--nh-sombra-1);padding:var(--nh-e-16)}
+body.nh-admin .cgt-chip{border-radius:var(--nh-r-full)}
+body.nh-admin .qm-btn:not(.arm){border:1px solid var(--nh-borde);color:var(--nh-texto-3);font-weight:700}

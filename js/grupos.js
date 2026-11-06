@@ -484,7 +484,7 @@ function cuentasAnterioresHTML(g){
       const movs=_cgMovs(_keyDeIdx(i),g.id), falta=_cgFalta(g,i), resto=_cgResto(g,i);
       return {i,total,falta,resto,movs}; }); if(r)meses.push(r); }
   if(!meses.length)return "";
-  let h=`<button onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;border-radius:11px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit"><span>📜 Cuentas de meses anteriores</span><span>${ab?"▲":"▼"}</span></button>`;
+  let h=`<button class="cg-ant" aria-expanded="${ab?"true":"false"}" onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:12px 16px;min-height:48px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--dark);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit"><span>📜 Cuentas de meses anteriores</span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></button>`;
   if(!ab)return h;
   h+=`<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 11px 11px;padding:4px 12px 10px;margin-top:-6px;background:#fff">`;
   meses.forEach(x=>{ const est=x.falta>0?`<b style="color:#94500F">faltan ${fmtEur(x.falta)} €</b>`:x.falta<0?`<b style="color:#A93C25">faltó pasarle ${fmtEur(-x.falta)} €</b>`:`<b style="color:#1B7A3D">✅ liquidada</b>`;
