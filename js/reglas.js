@@ -827,7 +827,10 @@ function itemsDeMiembro(mid,rm,ry,cuotasPre){ // v45.42: cuotasPre = cuotasDelMe
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return [];
   const items=[];
-  if(m.type==="asociado"&&!enPausaMes(m,rm,ry)&&cuentaComoActivo(m,getMesKey(rm,ry))){ // v45.33: en pausa no hay aporte que cobrar · v45.47: tras su salida, tampoco
+  // v46.0: antes de su mes de alta tampoco (Ángel 06/11/2026: al convertir a Carolina Poveda de tercero a asociada en
+  // noviembre, la cuenta de octubre del grupo de Gabriel le pedía un aporte de octubre y salían «229 € pendientes»)
+  const _antesDeEntrar=!!(m.joinMonth&&m.joinYear&&_idxMes(rm,ry)<_idxMes(m.joinMonth,m.joinYear));
+  if(m.type==="asociado"&&!_antesDeEntrar&&!enPausaMes(m,rm,ry)&&cuentaComoActivo(m,getMesKey(rm,ry))){ // v45.33: en pausa no hay aporte que cobrar · v45.47: tras su salida, tampoco
     const md=getMesData(rm,ry);
     const pagado=!!(md.aportes&&md.aportes[m.id]);
     const {nReferidos,descuento}=descuentoReferidoMes(m.id,rm,ry);
