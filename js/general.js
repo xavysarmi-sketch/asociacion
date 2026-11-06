@@ -614,16 +614,17 @@ function _renderPantalla(){
           const porPersona={};
           items.forEach(it=>{ if(!porPersona[it.mid]){porPersona[it.mid]=[];orden.push(it.mid);} porPersona[it.mid].push(it); });
           let _cuotaIdxGrupo=0;
+          const edG=!!DESP["edgr-"+g.id]; // v46.3: quitar personas, añadir y eliminar el grupo solo en «Editar grupo»
           orden.forEach(pid=>{
             const lista=porPersona[pid];
             const esPrincipal=(pid===g.principalId);
             const nombre=lista[0].nombre;
             const subtotal=Math.round(lista.reduce((s,x)=>s+x.importe,0)*100)/100;
-            h+=`<div style="border-bottom:1px solid var(--border);padding:10px 0 8px">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            h+=`<div class="cob-per" style="border-bottom:1px solid var(--border);padding:8px 0 6px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;min-height:30px">
                 <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:12px;color:var(--muted);font-weight:700">(responsable)</span>':''}</div>
                 <div style="display:flex;align-items:center;gap:8px">
-                  ${!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""}<!-- v45.43: dos toques y más grande -->
+                  ${edG&&!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""}<!-- v45.43: dos toques y más grande -->
                 </div>
               </div>`;
             lista.forEach(it=>{
@@ -631,11 +632,11 @@ function _renderPantalla(){
               const esCuota=it.tipo==="cuota";
               if(esCuota)_cuotaIdxGrupo++;
               h+=`<div class="cob-it" style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
-                ${esCuota?`<span class="cuota-num">${_cuotaIdxGrupo}</span>`:""}
+                
                 <div class="cob-it-c" style="flex:1;min-width:0">
-                  <div style="font-size:13px;color:var(--muted)">${it.concepto}</div>
-                  ${(()=>{ if(it.tipo!=="aporte")return ""; const mm=DATA.members.find(x=>x.id===it.mid), br=mm?aporteBrutoKey(mm,getMesKey(DATA.reportMonth,DATA.reportYear)):0, bo=_r2(br-it.importe); // v46.2: con bono, lo que se suma de verdad
-                    return bo>0?`<div style="font-size:13.5px;font-weight:800;color:var(--dark);margin-top:2px">Paga ${fmtEur(it.importe)}&nbsp;€ <span style="font-weight:600">(${fmtEur(br)} − ${fmtEur(bo)} de bono)</span></div>`:""; })()}
+                  ${(()=>{ if(it.tipo!=="aporte")return `<div class="cob-con">${it.concepto}</div>`; // v46.3: una línea por concepto
+                    const mm=DATA.members.find(x=>x.id===it.mid), br=mm?aporteBrutoKey(mm,getMesKey(DATA.reportMonth,DATA.reportYear)):0, bo=_r2(br-it.importe), nom=bo>0?nombresReferidosMes(it.mid,DATA.reportMonth,DATA.reportYear):[];
+                    return `<div class="cob-con">Aporte</div>${bo>0?`<div class="cob-bono">Paga ${fmtEur(it.importe)}&nbsp;€ (${fmtEur(br)} − ${fmtEur(bo)} de bono${nom.length?` · ${nom.map(escH).join(", ")}`:""})</div>`:""}`; })()}
                   ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
                 </div>
                 <div class="cob-it-d" style="display:flex;align-items:center;gap:10px">
@@ -657,11 +658,12 @@ function _renderPantalla(){
           grupos.forEach(gg=>{enCualquierGrupo.add(gg.principalId);(gg.miembros||[]).forEach(x=>enCualquierGrupo.add(x));});
           // v44.16: fuera quien no tiene nada que pagar — bajas y terceros sin ayuda activa
           const cand=DATA.members.filter(m=>!enCualquierGrupo.has(m.id)&&activoEnReporte(m)&&(m.type==="asociado"||(m.loans||[]).length>0)).sort((a,b)=>a.name.localeCompare(b.name));
-          h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
+          if(edG)h+=`<label class="m-label" style="margin-top:8px">Añadir a este grupo</label>
             <select class="m-select" style="margin-bottom:10px;font-size:14px" onchange="if(this.value)añadirMiembroGrupo('${g.id}',this.value);this.value=''">
               <option value="">— Añadir persona —</option>
               ${cand.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}${m.type==="tercero"?" (tercero)":""}</option>`).join("")}
             </select>`;
+          h+=`<button class="cob-edit${edG?" on":""}" onclick="DESP['edgr-${g.id}']=!DESP['edgr-${g.id}'];DESP['del-${g.id}']=false;render()">${edG?"✓ Terminar de editar":"✏️ Editar grupo · añadir o quitar personas"}</button>`;
           h+=`<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--dark);border-top:1.5px solid var(--border);margin-top:4px;padding-top:10px">
             <span>Sin marcar en la lista</span><span>${fmtEur(totalPend)} €</span>
           </div>
@@ -700,7 +702,8 @@ function _renderPantalla(){
           </div>`;
           // ── Eliminar grupo (confirmación de dos toques) ──
           const delKey="del-"+g.id;
-          if(DESP[delKey]){
+          if(!edG){}
+          else if(DESP[delKey]){
             h+=`<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
               <span style="flex:1;font-size:13px;color:#A63A20;font-weight:700">¿Eliminar este grupo?</span>
               <button onclick="DESP['${delKey}']=false;render()" style="background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;padding:8px 14px">No</button>

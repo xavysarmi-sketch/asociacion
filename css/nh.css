@@ -1056,3 +1056,22 @@ body.nh-admin .mg-acc-num{white-space:nowrap}
 body.nh-admin .sol-bot{flex-wrap:wrap}
 body.nh-admin .sol-bot>button{white-space:nowrap;flex-basis:auto!important;min-width:max-content}
 body.nh-admin .cob-it-d>.aporte-amt,body.nh-admin .cob-tot-amt{display:inline-block;min-width:92px;text-align:right;white-space:nowrap}
+
+/* ── v46.3 · Cobros más corto, «Editar grupo» y menos negrita ── */
+body.nh-admin .cob-it{flex-wrap:nowrap;align-items:center;padding:3px 0 3px 10px!important}
+body.nh-admin .cob-it-c{flex:1 1 auto!important;min-width:0}
+body.nh-admin .cob-con{font-size:15px;color:var(--dark);font-weight:400}
+body.nh-admin .cob-bono{font-size:13px;color:var(--dark);font-weight:600;margin-top:1px}
+body.nh-admin .cob-per .aporte-name{font-weight:700}
+body.nh-admin .cob-edit{display:block;width:100%;margin:10px 0 4px;padding:11px;border-radius:12px;border:1px dashed #B9C9BF;background:#fff;color:#1B4332;font-size:15px;font-weight:700;cursor:pointer}
+body.nh-admin .cob-edit.on{background:#E3F1E7;border-style:solid}
+body.nh-admin .ini-fila span,body.nh-admin .ay-fila>span,body.nh-admin .ini-aviso{font-weight:400}
+body.nh-admin .mg-acc-head span span[style*="font-weight:600"]{font-weight:400!important}
+body.nh-admin .ini-est-cab{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin:0 0 6px;font-size:16px;font-weight:700}
+body.nh-admin .ini-est-pill{font-size:14.5px;font-weight:800;padding:4px 12px;border-radius:20px;white-space:nowrap}
+body.nh-admin .ini-est-pill.falta{background:#F6C76B;color:#3D2A05}
+body.nh-admin .ini-est-pill.ok{background:#CFEBD9;color:#14432A}
+body.nh-admin .ini-est-pill.mal{background:#F3B3A6;color:#5A1609}
+body.nh-admin .sol-ok{font-size:12.5px;margin-top:4px}
+body.nh-admin .sol-falta{font-size:13.5px;line-height:1.4;margin-top:8px;padding:9px 11px;border-radius:10px;background:#FFF3D6;border:1px solid #EBCB85}
+body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding:10px 8px!important;font-size:14px!important}

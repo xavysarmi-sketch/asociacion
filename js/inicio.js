@@ -32,9 +32,8 @@ function inicioHTML(){
   const col={ok:["#1B4332","#2D6A4F"],falta:["#8A4F12","#B06A1E"],mal:["#8E2A1A","#C0492C"]}[estado];
   const tit={ok:"Todo cobrado y cuadrado",falta:`Faltan ${faltan} cobro${faltan>1?"s":""}`,mal:`La auditoría tiene ${nErr} error${nErr>1?"es":""}`}[estado];
   const fila=(txt,val,okF,fn)=>`<button class="ini-fila" onclick="${fn}"><span>${txt}</span><b>${val} ${okF?"✓":"›"}</b></button>`;
-  let h=`<div class="ini-estado" style="background:linear-gradient(135deg,${col[0]},${col[1]})">
-    <div class="ini-est-mes">${mesTxt}</div>
-    <div class="ini-est-tit">${estado==="ok"?"✅ ":estado==="falta"?"⏳ ":"⚠️ "}${tit}</div>
+  let h=`<div class="ini-estado" style="background:linear-gradient(135deg,#1B4332,#2D6A4F)">
+    <div class="ini-est-cab"><span>Estado del mes</span><span class="ini-est-pill ${estado}">${tit}</span></div>
     ${fila("Aportes",aptPag+"/"+asocMes.length,aptPag===asocMes.length,"TAB='mes';render();window.scrollTo(0,0)")}
     ${fila("Cuotas de ayudas",cuoPag+"/"+cuotas.length,cuoPag===cuotas.length,"TAB='mes';render();window.scrollTo(0,0)")}
     ${fila("Auditoría",nErr?nErr+" error"+(nErr>1?"es":""):aud.advertencias.length?"cuadra · "+aud.advertencias.length+" aviso"+(aud.advertencias.length>1?"s":""):"todo cuadra",!nErr&&!aud.advertencias.length,"TAB='manage';AUDIT_OPEN=true;render()")}
@@ -45,7 +44,7 @@ function inicioHTML(){
   const d=dineroAyudasMes(), rojo=v=>v<0?"color:#A63A20":"";
   h+=`<div class="mes-card" style="cursor:pointer" onclick="TAB='ayudas';FICHA_ID=null;render();window.scrollTo(0,0)"><div class="mes-title" style="margin-bottom:4px">💰 Dinero del mes</div>
     <div class="ay-fila"><span>Cobrado hasta hoy</span><b style="color:#2D6A4F">${fmtEur(d.cobrado)} €</b></div>
-    ${d.salido?`<div class="ay-fila"><span>En caja hoy</span><b style="${rojo(d.enCaja)}">${fmtEur(d.enCaja)} €</b></div>`:""}
+    ${d.salido&&_r2(d.enCaja)!==_r2(d.disponible)?`<div class="ay-fila"><span>En caja hoy</span><b style="${rojo(d.enCaja)}">${fmtEur(d.enCaja)} €</b></div>`:""}
     ${d.porPagar?`<div class="ay-fila"><span>Salidas por pagar este mes</span><b>−${fmtEur(d.porPagar)} €</b></div>`:""}
     <div class="ay-fila ay-total"><span>Disponible para ayudas</span><b style="font-size:19px;${rojo(d.disponible)}">${fmtEur(d.disponible)} €</b></div>
     ${d.porCobrar>0?`<div class="ini-sin" style="margin-top:2px">Falta por cobrar ${fmtEur(d.porCobrar)} €.</div>`:""}
