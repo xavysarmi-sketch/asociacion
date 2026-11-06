@@ -508,6 +508,21 @@ function auditarNH(){
     Object.values(vistos).filter(v=>v.meses.length>1).forEach(v=>
       advertencias.push(`Bono por referido duplicado: ${quien} tiene el bono de ${v.nombre} en ${v.meses.sort().map(k=>{const[yy,mm]=k.split("-").map(Number);return MONTHS_FULL[mm-1]+" "+yy;}).join(" y ")} — dejarlo solo en un mes (Ficha → 🎁 Referido)`));
   });
+  // v45.99: solicitudes repetidas (Ángel 06/11/2026: «Genessis Solorzano», apuntada el 24/10 sin ficha, seguía pendiente
+  // cuando a «Génesis Solórzano» ya se le había otorgado la de noviembre). Se comparan los nombres sin tildes, sin
+  // mayúsculas y sin letras repetidas; cuenta como la misma persona si coinciden el nombre y el primer apellido.
+  try{
+    const kN=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-zñ\s]/g," ").split(/\s+/).filter(Boolean).map(w=>w.replace(/(.)\1+/g,"$1"));
+    const par=(a,b)=>{ const x=kN(a), y=kN(b); if(!x.length||!y.length)return false; if(x.join(" ")===y.join(" "))return true; return x.length>=2&&y.length>=2&&x[0]===y[0]&&x[1]===y[1]; };
+    const mesT=k=>{ const[yy,mm]=String(k||"").split("-").map(Number); return yy&&mm?MONTHS_FULL[mm-1].toLowerCase()+" "+yy:"ese mes"; };
+    const S=DATA.solicitudes||[];
+    S.filter(x=>x.estado==="pendiente").forEach(x=>{
+      const ot=S.find(o=>o!==x&&o.estado==="otorgada"&&o.mes===x.mes&&par(o.nombre,x.nombre));
+      if(ot){ advertencias.push(`Solicitud repetida: «${x.nombre}» (${x.fecha||"sin fecha"}, ${fmtEur(x.capital)} €) sigue pendiente, pero «${ot.nombre}» ya tiene otorgada la ayuda de ${mesT(x.mes)}. Si es la misma persona, quítala en Ayudas › Solicitudes (No otorgar)`); return; }
+      const otra=S.find(o=>o!==x&&o.estado==="pendiente"&&o.mes===x.mes&&par(o.nombre,x.nombre)&&String(o.id)<String(x.id));
+      if(otra) advertencias.push(`Dos solicitudes pendientes parecidas para ${mesT(x.mes)}: «${otra.nombre}» (${otra.fecha||"sin fecha"}, ${fmtEur(otra.capital)} €) y «${x.nombre}» (${x.fecha||"sin fecha"}, ${fmtEur(x.capital)} €). Si son la misma persona, deja solo una`);
+    });
+  }catch(e){}
   // v45.79: cuadres del dinero del mes (Ángel 04/11/2026: Inicio y Cobros daban cifras distintas y la auditoría no lo veía)
   try{ const q=cuadresNH(); q.errores.forEach(e=>errores.push(e)); q.pendientes.forEach(a=>advertencias.push(a)); }
   catch(e){ errores.push("Cuadres: no se han podido comprobar ("+(e&&e.message||e)+")"); }
