@@ -57,7 +57,7 @@ function inicioHTML(){
   const avisos=avisosPermanenciaHTML(rm,ry)+salidasPrevistasHTML(rm,ry);
   // v45.46: el mes anterior sigue sin cerrar (desde octubre de 2026, cuando empezó el cierre)
   const _iAnt=_idxMes(rm,ry)-1, _kAnt=_keyDeIdx(_iAnt), _sinCerrarAnt=_iAnt>=_idxMes("Oct",2026)&&!mesCerrado(_kAnt);
-  h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">🔔 Avisos</div>
+  h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">⚠ Avisos</div>
     ${_sinCerrarAnt?`<button class="ini-aviso" style="color:#8A4F12" onclick="irAlMes(${_iAnt})">🔒 ${_txtIdx(_iAnt).split(" ")[0].replace(/^./,c=>c.toUpperCase())} sigue sin cerrar: ciérralo ›</button>`:""}
     <button class="ini-aviso" onclick="TAB='ayudas';render();window.scrollTo(0,0)">📝 Solicitudes de ayuda: <b>${nSol?nSol+" pendiente"+(nSol>1?"s":""):"ninguna pendiente"}</b> ›</button>
     ${banner?`<button class="ini-aviso" style="color:#8A4F12" onclick="TAB='mes';render();window.scrollTo(0,0)">⚠️ El retorno del mes no cuadra: revísalo en Cobros ›</button>`:""}

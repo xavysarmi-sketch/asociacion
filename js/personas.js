@@ -772,10 +772,10 @@ function salidasPrevistasDocHTML(rm,ry){
 function salidasPrevistasHTML(rm,ry){
   const S=salidasPrevistas(rm,ry); if(!S.lista.length)return "";
   const k="salidas-prev", ab=!!DESP[k];
-  let h=`<div class="mes-card" style="border:1.5px solid #E7B9A8;background:#FFF6F2">
-    <button onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+  let h=`<div class="mes-card ini-plegable" style="border:1px solid #E7B9A8;background:#FFF6F2">
+    <button onclick="DESP['${k}']=!DESP['${k}'];render()" aria-expanded="${ab?"true":"false"}" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:0;text-align:left">
       <span class="mes-title" style="margin:0;color:#7A2E18">💸 Salidas previstas — ${fmtEur(S.comprometido)} €${S.posible?` <span style="font-weight:600;font-size:13px;color:#9A5A44">(+ ${fmtEur(S.posible)} € posibles)</span>`:""}</span>
-      <span class="ft-drop-chevron" style="${ab?'transform:rotate(90deg)':''}">›</span>
+      <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span>
     </button>`;
   if(ab){
     h+=`<div style="margin-top:10px">`+S.lista.map(x=>`<div style="padding:9px 0;border-top:1px solid #F3D9CE;font-size:13.5px;line-height:1.45;color:#3B2A22;display:flex;justify-content:space-between;gap:10px">
@@ -788,10 +788,10 @@ function salidasPrevistasHTML(rm,ry){
 function avisosPermanenciaHTML(rm,ry){
   const av=avisosPermanencia(rm,ry); if(!av.length)return "";
   const k="avisos-perm", ab=!!DESP[k];
-  let h=`<div class="mes-card" style="border:1.5px solid #E3C766;background:#FFFBEF">
-    <button onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0;text-align:left">
+  let h=`<div class="mes-card ini-plegable" style="border:1px solid #E3C766;background:#FFFBEF">
+    <button onclick="DESP['${k}']=!DESP['${k}'];render()" aria-expanded="${ab?"true":"false"}" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:0;text-align:left">
       <span class="mes-title" style="margin:0;color:#6B5310">⏰ Permanencias — ${av.length} aviso${av.length>1?"s":""}</span>
-      <span class="ft-drop-chevron" style="${ab?'transform:rotate(90deg)':''}">›</span>
+      <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span>
     </button>`;
   if(ab){
     h+=`<div style="margin-top:10px">`+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">

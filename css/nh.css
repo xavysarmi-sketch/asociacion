@@ -989,3 +989,12 @@ body.nh-admin .mg-acc-fl.ab{transform:rotate(-135deg);margin:4px 4px 0 0}
 body.nh-admin .mg-acc-fl.ir{transform:rotate(-45deg);margin:0 6px 0 0}
 body.nh-admin .mg-acc-num{background:var(--nh-verde-50);color:var(--nh-verde-900);font-size:var(--nh-l-13);font-weight:800;border-radius:var(--nh-r-full);padding:2px 10px;margin-left:var(--nh-e-8)}
 body.nh-admin .mg-acc-num.aviso{background:var(--nh-naranja-100);color:var(--nh-naranja-700)}
+
+/* v45.92 · Sistema de diseño en Inicio: títulos de tarjeta a 17 px, avisos plegables con la misma flecha fina que Gestión, accesos rápidos con el borde y la sombra del sistema */
+body.nh-admin .tab-inicio .mes-card{border-radius:var(--nh-r-18);box-shadow:var(--nh-sombra-1)}
+body.nh-admin .tab-inicio .mes-title{font-size:var(--nh-l-17)}
+body.nh-admin .tab-inicio .ini-plegable{padding:var(--nh-e-16)}
+body.nh-admin .tab-inicio .ini-plegable .mes-title{color:var(--nh-verde-900)!important}
+body.nh-admin .tab-inicio .ini-aviso{border-radius:var(--nh-r-12);padding:var(--nh-e-12) var(--nh-e-16);min-height:48px}
+body.nh-admin .tab-inicio .ini-rapido{border:1px solid var(--nh-borde);border-radius:var(--nh-r-12);box-shadow:var(--nh-sombra-1);min-height:56px;font-size:var(--nh-l-15)}
+body.nh-admin .tab-inicio .ini-rapido svg.ic{color:var(--nh-verde-700)}
