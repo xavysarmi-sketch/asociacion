@@ -42,7 +42,7 @@ function inicioHTML(){
   </div>`;
   // Dinero del mes (la misma cuenta que en Ayudas → Dinero del mes)
   // v45.43: aquí, solo lo esencial; el detalle (ayudas entregadas, salidas, de dónde viene) está en Ayudas
-  const d=dineroAyudasMes(), rojo=v=>v<0?"color:#C0492C":"";
+  const d=dineroAyudasMes(), rojo=v=>v<0?"color:#A63A20":"";
   h+=`<div class="mes-card" style="cursor:pointer" onclick="TAB='ayudas';FICHA_ID=null;render();window.scrollTo(0,0)"><div class="mes-title" style="margin-bottom:4px">💰 Dinero del mes</div>
     <div class="ay-fila"><span>Cobrado hasta hoy</span><b style="color:#2D6A4F">${fmtEur(d.cobrado)} €</b></div>
     ${d.salido?`<div class="ay-fila"><span>En caja hoy</span><b style="${rojo(d.enCaja)}">${fmtEur(d.enCaja)} €</b></div>`:""}

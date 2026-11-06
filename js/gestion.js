@@ -24,7 +24,7 @@ function gastosGestionHTML(){
       return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #EFEAE0">
         <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--dark)">${escH(g.concepto||"Gasto")}</div><div style="font-size:12px;color:var(--muted)">${MONTHS_FULL[mm-1]} ${yy}</div></div>
         <b style="white-space:nowrap">${fmtEur(+g.importe||0)} €</b>
-        <button onclick="gastoBorrar('${esc(g.id)}')" style="padding:6px 9px;border-radius:8px;border:1.5px solid #C0492C;background:${arm?"#C0492C":"#fff"};color:${arm?"#fff":"#C0492C"};font-size:12px;font-weight:700;cursor:pointer">${arm?"¿Seguro?":"✕"}</button></div>`; }).join("")}
+        <button onclick="gastoBorrar('${esc(g.id)}')" style="padding:6px 9px;border-radius:8px;border:1.5px solid #C0492C;background:${arm?"#C0492C":"#fff"};color:${arm?"#fff":"#A63A20"};font-size:12px;font-weight:700;cursor:pointer">${arm?"¿Seguro?":"✕"}</button></div>`; }).join("")}
       <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:800;padding-top:8px"><span>Total anotado</span><span>${fmtEur(_r2(L.reduce((s,g)=>s+(+g.importe||0),0)))} €</span></div></div>`
     :`<div style="margin-top:10px;font-size:13px;color:var(--muted)">Aún no hay gastos anotados.</div>`}
   </div>`;
@@ -47,7 +47,7 @@ function permanenciasGestionHTML(){
   const L=permanenciasLista(), idx=_idxMes(DATA.reportMonth,DATA.reportYear);
   const nProx=L.filter(x=>x.prox).length, nIndef=L.filter(x=>x.tipo==="indef").length, ab=!!DESP["mg-perm"];
   let h=`<div class="mg-acc-head" id="mg-perm-head" onclick="DESP['mg-perm']=!DESP['mg-perm'];render()">
-      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num" style="background:#B07D14">${nProx} en 3 meses</span>`:""}</span>
+      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num" style="background:#8A6210">${nProx} en 3 meses</span>`:""}</span>
       <span class="mg-acc-fl">${ab?"▲ ocultar":"▼ mostrar"}</span></div>`;
   if(!ab)return h;
   const fil=PERM_FIL;
@@ -59,7 +59,7 @@ function permanenciasGestionHTML(){
     const m=x.m, abrir=`data-nombre="${escH((m.name||"").toLowerCase())}" onclick="openFicha('${esc(m.id)}')"`;
     if(x.tipo==="sin")return `<div class="mg-card" ${abrir} style="cursor:pointer;padding:11px 14px;margin-bottom:8px">
       <div style="font-weight:700;font-size:15px;color:var(--dark)">${escH(m.name)}</div>
-      <div style="font-size:12.5px;color:#C0492C;font-weight:700;margin-top:3px">⛔ Sin permanencia guardada: anótala en su ficha (⚙️ Permanencia y aporte)</div></div>`;
+      <div style="font-size:12.5px;color:#A63A20;font-weight:700;margin-top:3px">⛔ Sin permanencia guardada: anótala en su ficha (⚙️ Permanencia y aporte)</div></div>`;
     const e=x.tipo==="fija"?est[x.estado]:(x.prox?[x.fin<=idx?"Aniversario":"Aniversario pronto","#E8F3EC","#1B4332"]:null);
     const M3=MONTHS_FULL[((x.fin%12)+12)%12].slice(0,3).toUpperCase(), Y=Math.floor(x.fin/12);
     const pago=x.tipo==="indef"?(x.ret?"Retirada · se paga en ":"Si retira, se paga en "):"Se le paga en ";

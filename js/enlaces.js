@@ -91,7 +91,7 @@ function grupoLinkModalHTML(){
     ${gMatch&&principalMatch
       ?`<div style="background:#F0F7F2;border:1px solid #2D6A4F;border-radius:10px;padding:10px 12px;font-size:12px;color:#1B4332;margin-bottom:14px">✅ Coincide con el grupo de Cierre de <b>${escH(principalMatch.name)}</b> — se usará el enlace estable (no se rompe si editas a estos asociados).</div>`
       :`<div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:10px;padding:10px 12px;font-size:12px;color:#7A4A1E;margin-bottom:14px">⚠️ Este enlace se romperá si editas a estos asociados. Mejor crea un grupo en la pestaña Cierre.
-        <button style="display:block;margin-top:8px;padding:7px 12px;border:none;border-radius:8px;background:#C75B0E;color:#fff;font-size:11px;font-weight:700;cursor:pointer" onclick="closeModal();TAB='mes';render()">Ir a Cierre</button>
+        <button style="display:block;margin-top:8px;padding:7px 12px;border:none;border-radius:8px;background:#A64B19;color:#fff;font-size:11px;font-weight:700;cursor:pointer" onclick="closeModal();TAB='mes';render()">Ir a Cierre</button>
       </div>`}
     <label class="m-label">👤 Titular del enlace (verá su ficha individual)</label>
     <select class="m-select" style="margin-bottom:14px;font-size:15px" onchange="setGrupoTitular(this.value)">

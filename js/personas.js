@@ -178,7 +178,7 @@ function _altaConvHTML(nombre,tipo){
   return `<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:12px;padding:11px 12px;margin:-4px 0 12px;font-size:13px;color:#6B4210;line-height:1.45">
     ⚠️ Ya existe el tercero <b>${escH(t.name)}</b>${t.ref?` (avalado por ${escH(avalistaNombre(t)||"—")})`:""}${nAy?` con ${nAy} ${nAy===1?"ayuda":"ayudas"}`:""}.
     <div style="margin-top:4px">Si es la misma persona, conviértela en asociado: conserva su historial y sus ayudas. Elige abajo su permanencia y su aporte.</div>
-    <button onclick="addMemberSubmit(true)" style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#C75B0E;color:#fff;font-size:14px;font-weight:800;cursor:pointer">🔄 Convertir en asociado</button>
+    <button onclick="addMemberSubmit(true)" style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#A64B19;color:#fff;font-size:14px;font-weight:800;cursor:pointer">🔄 Convertir en asociado</button>
     <div style="margin-top:6px;font-size:12px;opacity:.85">Si es otra persona, cambia el nombre (por ejemplo, añade el segundo apellido).</div>
   </div>`;
 }
@@ -382,7 +382,7 @@ function salidaOpcionesModalHTML(){
     <button onclick="opcionesEnviarWA('${esc(m.id)}')" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:15px;font-weight:800;cursor:pointer">💬 Enviar opciones a ${nom}</button>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button onclick="openModal('pausa',{mid:'${esc(m.id)}'})" style="${st}border:1.5px solid #2D6A4F;background:#2D6A4F;color:#fff">⏸ Pausa</button>
-      <button onclick="openModal('baja',{mid:'${esc(m.id)}'})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#C0492C">🚪 Salida</button></div>
+      <button onclick="openModal('baja',{mid:'${esc(m.id)}'})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🚪 Salida</button></div>
     <button onclick="closeModal()" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer">Cancelar</button>`;
 }
 // Ventana para anotar la pausa
@@ -467,8 +467,8 @@ function pausaGestionHTML(m){
     <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Vuelve a aportar en ${_txtIdx(p.desde+p.meses)} · permanencia hasta ${finPermanenciaIdx(m)!=null?_txtIdx(finPermanenciaIdx(m)):"indefinida"}</div>
     <div style="display:flex;gap:6px;margin-top:8px">
       <button onclick="pausaEnviarWA('${esc(m.id)}')" style="${st}border:none;background:#25D366;color:#fff">💬 Enviar aviso</button>
-      ${empezada?`<button onclick="salidaDesdePausa('${esc(m.id)}')" style="${st}border:1.5px solid #C0492C;background:#fff;color:#C0492C">🏁 No vuelve</button>`
-        :`<button onclick="${armA?`anularPausa('${esc(m.id)}')`:`DESP['${kA}']=true;render()`}" style="${st}border:1.5px solid #C0492C;background:${armA?"#C0492C":"#fff"};color:${armA?"#fff":"#C0492C"}">${armA?"¿Seguro?":"Anular pausa"}</button>`}</div></div>`;
+      ${empezada?`<button onclick="salidaDesdePausa('${esc(m.id)}')" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🏁 No vuelve</button>`
+        :`<button onclick="${armA?`anularPausa('${esc(m.id)}')`:`DESP['${kA}']=true;render()`}" style="${st}border:1.5px solid #C0492C;background:${armA?"#C0492C":"#fff"};color:${armA?"#fff":"#A63A20"}">${armA?"¿Seguro?":"Anular pausa"}</button>`}</div></div>`;
 }
 function anularPausa(mid){ const m=DATA.members.find(x=>x.id===mid); const p=m&&pausaVigente(m); if(!p)return; p.anulada=true; p.fechaAnulada=_hoyDMA(); delete DESP["pausa-anular-"+mid]; save(); render(); toast("Pausa anulada"); }
 function pausaVuelve(mid){ const m=DATA.members.find(x=>x.id===mid); const p=m&&pausaVigente(m); if(!p)return; p.vuelveOk=true; save(); render(); toast("✓ Anotado: vuelve a aportar en "+_txtIdx(p.desde+p.meses)); }
@@ -486,7 +486,7 @@ function telefonosGestionHTML(asoc,terc){
   if(!ab)return h;
   const fila=m=>`<div class="mg-card" data-nombre="${escH(m.name.toLowerCase())}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px">
       <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(m.name)}</div>
-      <div style="font-size:11.5px;color:${m.type==="tercero"?"#C75B0E":"var(--muted)"}">${m.type==="tercero"?"Tercero":"Asociado"}</div></div>
+      <div style="font-size:11.5px;color:${m.type==="tercero"?"#A64B19":"var(--muted)"}">${m.type==="tercero"?"Tercero":"Asociado"}</div></div>
       <input type="tel" inputmode="tel" placeholder="Sin teléfono" value="${escH(m.phone||"")}" onchange="guardarTelefono('${esc(m.id)}',this.value,this)" style="width:150px;padding:9px 10px;border:1.5px solid ${m.phone?"#8CC5A0":"var(--border)"};border-radius:10px;font-size:15px">
     </div>`;
   const lista=l=>(TEL_SOLO_SIN?l.filter(m=>!m.phone):l);
@@ -780,7 +780,7 @@ function salidasPrevistasHTML(rm,ry){
   if(ab){
     h+=`<div style="margin-top:10px">`+S.lista.map(x=>`<div style="padding:9px 0;border-top:1px solid #F3D9CE;font-size:13.5px;line-height:1.45;color:#3B2A22;display:flex;justify-content:space-between;gap:10px">
       <span><b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(x.m.id)}')">${escH(x.m.name)}</b><br>${x.txt} · del 5 al 10 de ${_txtIdx(x.pagoIdx)}${x.clase==="pos"?`<br><span style="color:#9A5A44">${_salidaDetalle(x)}</span>`:""}</span>
-      <b style="white-space:nowrap;color:${x.clase==="pos"?"#9A5A44":"#C0492C"}">${x.clase==="pos"?"¿":""}${fmtEur(x.importe)} €${x.clase==="pos"?"?":""}</b></div>`).join("")+
+      <b style="white-space:nowrap;color:${x.clase==="pos"?"#9A5A44":"#A63A20"}">${x.clase==="pos"?"¿":""}${fmtEur(x.importe)} €${x.clase==="pos"?"?":""}</b></div>`).join("")+
       `<div style="font-size:12px;color:#7A5A4A;margin-top:8px;line-height:1.4">Antes de aprobar ayudas nuevas, lo que entra estos dos meses debe cubrir lo comprometido (Maestro FO-4). La reserva es solo un dato informativo.</div></div>`;
   }
   return h+`</div>`;
@@ -795,7 +795,7 @@ function avisosPermanenciaHTML(rm,ry){
     </button>`;
   if(ab){
     h+=`<div style="margin-top:10px">`+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">
-      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#C0492C;font-weight:700">· pendiente</span>':""}<br>${a.txt}${avisoBotonesHTML(a)}</div>`).join("")+`<div style="text-align:right;margin-top:8px"><button onclick="irPermanencias()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px 0">Ver todas las permanencias →</button></div></div>`;
+      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#A63A20;font-weight:700">· pendiente</span>':""}<br>${a.txt}${avisoBotonesHTML(a)}</div>`).join("")+`<div style="text-align:right;margin-top:8px"><button onclick="irPermanencias()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px 0">Ver todas las permanencias →</button></div></div>`;
   }
   return h+`</div>`;
 }
@@ -804,7 +804,7 @@ function avisoBotonesHTML(a){
   const st="flex:1;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;";
   if(a.tipo==="pausa")return `<div style="display:flex;gap:6px;margin-top:7px">
     <button onclick="pausaVuelve('${esc(a.m.id)}')" style="${st}border:1.5px solid #2D6A4F;background:#fff;color:#1B4332">✓ Vuelve</button>
-    <button onclick="salidaDesdePausa('${esc(a.m.id)}')" style="${st}border:1.5px solid #C0492C;background:#fff;color:#C0492C">🏁 No vuelve</button></div>`; // v45.33
+    <button onclick="salidaDesdePausa('${esc(a.m.id)}')" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🏁 No vuelve</button></div>`; // v45.33
   if(a.tipo==="aniv"){
     const r=retiradasDe(a.m).find(x=>x.finIdx===a.fin);
     if(r)return `<div style="margin-top:6px;font-size:12.5px;color:#1B7A3D;font-weight:700">✓ Retirada anotada: ${fmtEur(importeRetirada(a.m,r))} € · se paga en ${_txtIdx(a.fin+1)}</div>`;
@@ -812,7 +812,7 @@ function avisoBotonesHTML(a){
   }
   return `<div style="display:flex;gap:6px;margin-top:7px">
     <button onclick="openModal('ciclo',{mid:'${esc(a.m.id)}'})" style="${st}border:1.5px solid #2D6A4F;background:#fff;color:#1B4332">🔁 Amplía</button>
-    <button onclick="openModal('baja',{mid:'${esc(a.m.id)}',bajaUltimoIdx:${a.fin}})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#C0492C">🏁 Termina</button></div>`;
+    <button onclick="openModal('baja',{mid:'${esc(a.m.id)}',bajaUltimoIdx:${a.fin}})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🏁 Termina</button></div>`;
 }
 function avisoSubidaNivelHTML(m,rm,ry){
   const s=subidaNivelReciente(m,rm,ry);
@@ -852,7 +852,7 @@ function avalFichaHTML(m){
     .sort((x,y)=>x.name.localeCompare(y.name));
   if(avalados.length){
     h+=`<div class="ft-row" style="border-bottom:none"><span class="ft-lbl"><b>${vp?"Eres aval de":"Es aval de"}</b></span><span class="ft-val">${avalados.length}</span></div>`;
-    avalados.forEach(o=>{ h+=`<div class="ft-row"><span class="ft-lbl">${escH(o.name)}</span><span class="ft-val" style="font-size:12.5px;color:#B06A1E">${activa(o)?"ayuda en curso":""}</span></div>`; });
+    avalados.forEach(o=>{ h+=`<div class="ft-row"><span class="ft-lbl">${escH(o.name)}</span><span class="ft-val" style="font-size:12.5px;color:#94571A">${activa(o)?"ayuda en curso":""}</span></div>`; });
   }
   return h;
 }
@@ -1048,7 +1048,7 @@ function _fichaHTMLbase(m,readonly=false){
       let cont="";
       benRows.slice().reverse().forEach(r=>{
         const etqExtra = (r.v18&&r.bloques===0)
-          ? `<div style="font-size:12px;color:#C0492C;margin-top:2px">el mes anterior no hubo aporte pagado</div>`
+          ? `<div style="font-size:12px;color:#A63A20;margin-top:2px">el mes anterior no hubo aporte pagado</div>`
           : r.tieneExtra
           ? `<div style="font-size:12px;color:#B08D3E;margin-top:2px">${r.v18?`por ${r.aportado} € aportados (${r.bloques} × 50 €)`:`incluye + ${r.extra} € por aporte de 100 €`}</div>`
           : "";
@@ -1119,7 +1119,7 @@ function _fichaHTMLbase(m,readonly=false){
 
       // Total
       h+=`<div class="ft-card ft-card-soft">
-        <div class="ft-row ft-total"><span class="ft-lbl">Total de ayudas recibidas</span><span class="ft-val" style="color:#C75B0E">${fmtEur(totalAyudasRec)} €</span></div>
+        <div class="ft-row ft-total"><span class="ft-lbl">Total de ayudas recibidas</span><span class="ft-val" style="color:#A64B19">${fmtEur(totalAyudasRec)} €</span></div>
       </div>`;
     }
   }
@@ -1144,7 +1144,7 @@ function _fichaHTMLbase(m,readonly=false){
       claves.forEach(k=>{
         const [yy,mm]=k.split("-"); const mesNom=MF[parseInt(mm)-1]+" "+yy;
         if(refMap[k]&&refMap[k].n>0)
-          h+=`<div class="ft-row"><span class="ft-lbl">🎁 Bono referido · ${mesNom} (${refMap[k].n})${refMap[k].nombres?" — "+escH(refMap[k].nombres):""}</span><span class="ft-val" style="color:#C0492C">− ${refMap[k].n*10} €</span></div>`;
+          h+=`<div class="ft-row"><span class="ft-lbl">🎁 Bono referido · ${mesNom} (${refMap[k].n})${refMap[k].nombres?" — "+escH(refMap[k].nombres):""}</span><span class="ft-val" style="color:#A63A20">− ${refMap[k].n*10} €</span></div>`;
       });
       h+=`</div>`;
     }
@@ -1183,7 +1183,7 @@ function _fichaHTMLbase(m,readonly=false){
         let contH="";
         const nPag=filas.filter(f=>f.pagado).length;
         filas.slice().reverse().forEach(f=>{
-          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#C0492C'}">${f.pagado?f.importe+" € ✅"+(f.fecha&&!vistaPersonal()?` <span class="ft-fecha">· ${_fechaCorta(f.fecha)}</span>`:""):vistaPersonal()?"Pendiente ⏳":"Pendiente ⏳ ("+f.importe+" €)"}</span></div>`;
+          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#A63A20'}">${f.pagado?f.importe+" € ✅"+(f.fecha&&!vistaPersonal()?` <span class="ft-fecha">· ${_fechaCorta(f.fecha)}</span>`:""):vistaPersonal()?"Pendiente ⏳":"Pendiente ⏳ ("+f.importe+" €)"}</span></div>`;
         });
         h+=dropFicha(mid,"apthist","📅 Historial de aportes mensuales",nPag+" de "+filas.length+" pagados",contH,isOpen("apthist"));
       }
@@ -1226,8 +1226,8 @@ function _fichaHTMLbase(m,readonly=false){
       </div>
       <div class="zona-delicada"><div class="acc-grupo-tit" style="color:#B5422E;margin-top:0">⚠️ Zona delicada</div>
       <div class="mgmt-grid">
-        ${isTerc?"":`<button class="mgmt-btn" style="background:#FDECE8;color:#C0492C" onclick="openSalida('${esc(m.id)}')">🚪 Salida o pausa</button>`}
-        <button class="mgmt-btn" style="background:${_delMemberArmed===m.id?"#C0492C":"#fff"};color:${_delMemberArmed===m.id?"#fff":"#C0492C"};border:1.5px solid #C0492C" onclick="eliminarDesdeFicha('${esc(m.id)}')">${_delMemberArmed===m.id?"¿Seguro? Toca otra vez":"🗑️ Eliminar ficha"}</button>
+        ${isTerc?"":`<button class="mgmt-btn" style="background:#FDECE8;color:#A63A20" onclick="openSalida('${esc(m.id)}')">🚪 Salida o pausa</button>`}
+        <button class="mgmt-btn" style="background:${_delMemberArmed===m.id?"#C0492C":"#fff"};color:${_delMemberArmed===m.id?"#fff":"#A63A20"};border:1.5px solid #C0492C" onclick="eliminarDesdeFicha('${esc(m.id)}')">${_delMemberArmed===m.id?"¿Seguro? Toca otra vez":"🗑️ Eliminar ficha"}</button>
       </div></div>
       </div>
     </div>`;
@@ -1318,7 +1318,7 @@ function referidoFormHTML(){
 <label class="m-label">Nombres de los nuevos miembros</label>
 <input id="ref-nombres" class="m-input" placeholder="Ej: Ana García, Luis Pérez" value="${escH(actual.nombres||"")}">
 <button class="m-primary" onclick="saveReferido()">Guardar</button>
-${actual.n>0?`<button style="width:100%;margin-top:10px;padding:12px;border:2px solid #C0492C;border-radius:12px;background:#FDECE8;color:#C0492C;font-size:14px;font-weight:700;cursor:pointer" onclick="borrarReferido()">🗑 Eliminar este bono (${actual.n} · ${selMesKey})</button>`:""}`;
+${actual.n>0?`<button style="width:100%;margin-top:10px;padding:12px;border:2px solid #C0492C;border-radius:12px;background:#FDECE8;color:#A63A20;font-size:14px;font-weight:700;cursor:pointer" onclick="borrarReferido()">🗑 Eliminar este bono (${actual.n} · ${selMesKey})</button>`:""}`;
 }
 function saveReferido(){
   const n=parseInt(document.querySelector(".l-n-opt.active")?.dataset.n||"0");
@@ -1366,7 +1366,7 @@ function cicloFormHTML(){
     <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.4">Es lo que suele poner y lo que propone la hoja de cobro. Cada mes puede poner otra cantidad (se elige en el cierre). Cada 50 € ganan su beneficio.</div>
     <label class="m-label">Recomendado por (es su aval · Maestro GE-1)</label>
     ${esFundador(m)?`<div style="font-size:13px;color:var(--muted);margin-bottom:16px">⭐ Fundador: no tiene aval.</div>`:`<select id="ci-aval" class="m-select" style="margin-bottom:${m.referidoPor?16:6}px"><option value="">— Sin anotar —</option>${DATA.members.filter(x=>x.type==="asociado"&&x.id!==m.id&&x.joinMonth).sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${esc(x.id)}" ${x.id===m.referidoPor?"selected":""}>${escH(x.name)}</option>`).join("")}</select>
-    ${m.referidoPor?"":`<div style="font-size:12px;color:#C0492C;margin-bottom:16px">⚠️ Falta anotar quién lo recomendó${quienRefirio(m)?` (por el bono consta ${escH(quienRefirio(m))})`:""}.</div>`}`}
+    ${m.referidoPor?"":`<div style="font-size:12px;color:#A63A20;margin-bottom:16px">⚠️ Falta anotar quién lo recomendó${quienRefirio(m)?` (por el bono consta ${escH(quienRefirio(m))})`:""}.</div>`}`}
     ${retiraAlAmpliarHTML(m)}
     <button class="m-primary" onclick="saveCicloYAporte('${esc(m.id)}')">Guardar cambios</button>
     ${V?`<button onclick="volverAAyuda(MODAL.volver)" style="width:100%;padding:10px;margin-top:8px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer">← Volver a la ayuda sin cambiar nada</button>`:""}`;
@@ -1573,7 +1573,7 @@ function bajaFormHTML(){
       ${d.perdido>0?fila("Pierde (año a medias, queda en el fondo)",fmtEur(d.perdido)+" €","color:#9A6A4A;font-size:12.5px"):""}
       ${d.retirado>0?fila("Ya retirado antes","−"+fmtEur(d.retirado)+" €"):""}
       ${fila("Beneficio que se le paga",fmtEur(d.aPagar)+" €")}
-      ${d.ayuda.n>0?fila(`Su ayuda pendiente (${d.ayuda.n} cuota${d.ayuda.n>1?"s":""}: capital + 5 %; quedan saldadas)`,"−"+fmtEur(d.ayuda.importe)+" €","color:#C0492C"):""}
+      ${d.ayuda.n>0?fila(`Su ayuda pendiente (${d.ayuda.n} cuota${d.ayuda.n>1?"s":""}: capital + 5 %; quedan saldadas)`,"−"+fmtEur(d.ayuda.importe)+" €","color:#A63A20"):""}
       ${d.ayuda.n>0?(()=>{const cb=Math.min(d.aPagar,d.ayuda.importe), ca=Math.min(d.capital,d.ayuda.importe-cb), falta=_r2(d.ayuda.importe-cb-ca);
         return `<div style="font-size:12.5px;color:#7A2418;margin:2px 0 4px;line-height:1.45">Se cubre primero con su beneficio (${fmtEur(cb)} €), después con sus aportes (${fmtEur(ca)} €)${falta>0?` y faltan <b>${fmtEur(falta)} €</b>: ${destinoFaltaTexto(m)}`:""}.</div>`;})():""}
       ${fila(d.total>=0?"Recibe":"Falta por cubrir",fmtEur(Math.abs(d.total))+" €","border-top:1px solid #F0D2B0;margin-top:4px;padding-top:6px;font-size:15px")}
@@ -1589,7 +1589,7 @@ function bajaFormHTML(){
       2. Si ya cumplió sus primeros 12 meses: cubrir la ayuda con su beneficio guardado, sin salir.<br>
       3. Si no se puede: sale y la ayuda se cancela con sus aportes y su beneficio (estas cifras).<br>
       4. Si aun así no alcanza: lo que falte ${destinoFaltaTexto(m)}.
-      ${negociar?`<button onclick="MODAL.bajaNegociado=true;render()" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1.5px solid #C0492C;background:#fff;color:#C0492C;font-size:13.5px;font-weight:700;cursor:pointer">Ya se negoció: no puede seguir</button>`:`<div style="margin-top:6px;font-weight:700">✓ Negociado: no puede seguir.</div>`}</div>`;
+      ${negociar?`<button onclick="MODAL.bajaNegociado=true;render()" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1.5px solid #C0492C;background:#fff;color:#A63A20;font-size:13.5px;font-weight:700;cursor:pointer">Ya se negoció: no puede seguir</button>`:`<div style="margin-top:6px;font-weight:700">✓ Negociado: no puede seguir.</div>`}</div>`;
   if(ult>=hoyIdx)h+=`<div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.4">Cuenta los aportes ya cobrados. Las cifras se actualizan solas con los que cobres hasta su último mes y se fijan al marcar la devolución como pagada (Histórico).</div>`;
   if(!negociar)h+=`<button class="m-primary" style="${armed?"background:#C0492C":""}" onclick="${armed?`confirmarBaja('${esc(m.id)}')`:"MODAL.bajaArmed=true;render()"}">${armed?"⚠️ Pulsa de nuevo para CONFIRMAR la salida":corto?"Confirmar con aviso más corto":"Anotar la salida"}</button>
 `;
@@ -1698,7 +1698,7 @@ function updateCierreLoanPreview(){
   const vC=validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny});
   el.innerHTML=_avisoApoyoHTML(vC)+(vC.bloqueo?botonAmpliarAyudaHTML(mC,cap,nn,{m:MONTHS[ni],y:ny}):"")+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + retorno (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm)">${cuotaTxt}</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm-txt)">${cuotaTxt}</b></div>
   </div>`;
 }
 function addCierreLoanSubmit(){
@@ -1784,5 +1784,5 @@ function updateLoanPreview(){
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
   const mV=DATA.members.find(x=>x.id===MODAL.mid), cV=_condicionActual(mV);
   const aviso=_avisoApoyoHTML(validarApoyo(mV,cap,nn,cV.tipo,cV.ciclo,{m:document.getElementById("l-sm")?.value,y:parseInt(document.getElementById("l-sy")?.value)}));
-  document.getElementById("l-preview").innerHTML=aviso+`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + retorno (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
+  document.getElementById("l-preview").innerHTML=aviso+`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Capital + retorno (${rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm-txt)">${cuotaTxt}</span></div></div>`;
 }

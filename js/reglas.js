@@ -820,7 +820,7 @@ function itemsDeMiembro(mid,rm,ry,cuotasPre){ // v45.42: cuotasPre = cuotasDelMe
     // v44.20: con bono por referido se muestran también los nombres de los referidos
     const nomRef=descuento>0?nombresReferidosMes(m.id,rm,ry):[];
     const concepto=descuento>0?`Aporte mensual (−${descuento}€ por ${nReferidos} referido${nReferidos>1?"s":""})`
-      +`<div style="font-size:12px;color:#8A6D1E;margin-top:2px">🎁 ${nomRef.map(escH).join(", ")}</div>`:"Aporte mensual";
+      +`<div style="font-size:12px;color:#7A5F12;margin-top:2px">🎁 ${nomRef.map(escH).join(", ")}</div>`:"Aporte mensual";
     items.push({tipo:"aporte",mid:m.id,nombre:m.name,concepto,importe:neto,yaPagado:pagado});
   }
   (cuotasPre||cuotasDelMes(rm,ry)).filter(c=>c.mid===mid).forEach(c=>{

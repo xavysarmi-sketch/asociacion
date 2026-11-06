@@ -28,7 +28,7 @@ body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-txt{font-size:15px;line-height:1.5;color:#1F1F1F}
 .nha-nota{font-size:13.5px;color:#1F1F1F;line-height:1.45;margin:-2px 4px 12px}
 .nha-btn{width:100%;margin-top:12px;padding:14px;border-radius:14px;border:none;background:#1B4332;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
-.nha-btn.arm{background:#C75B0E}
+.nha-btn.arm{background:#A64B19}
 .nha-btn[disabled]{opacity:.6}
 .nha-btn .ic{width:20px;height:20px}
 .nha-verde{color:#2D6A4F}
@@ -48,7 +48,7 @@ body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-perm-top b{font-family:Georgia,"Times New Roman",serif;font-size:18px;flex:1}
 .nha-perm-ic{width:34px;height:34px;border-radius:50%;background:#F1E2B5;display:flex;align-items:center;justify-content:center;color:#7A5C10}
 .nha-perm-ic .ic{width:18px;height:18px}
-.nha-perm-n{font-size:13.5px;font-weight:700;color:#8A6D1E;white-space:nowrap}
+.nha-perm-n{font-size:13.5px;font-weight:700;color:#7A5F12;white-space:nowrap}
 .nha-barra{height:9px;border-radius:9px;background:#EDE3C6;margin:12px 0 8px;overflow:hidden}
 .nha-barra div{height:100%;border-radius:9px;background:#1B4332}
 .nha-perm-txt{font-size:13.5px;color:#6B5A2E;line-height:1.45}
@@ -248,7 +248,7 @@ body.nh-app{--muted:#1F1F1F;--text:#1F1F1F}
 .nha-ctl-2 b{font-size:22px;color:#1B4332}
 .nha-ctl-2 .falta b{color:#6B4210}
 .nha-ctl-2 span{font-size:13.5px;color:#1F1F1F}
-.nha-btn.nha-wa{background:#1F8F4E;margin-top:8px}
+.nha-btn.nha-wa{background:#1A7F45;margin-top:8px}
 .nha-ctl-borrar{display:block;width:100%;margin-top:8px;padding:8px;border:none;background:none;color:#6B4210;font-size:14px;font-weight:700;text-decoration:underline}
 .nha-gfila-w{display:flex;align-items:center;gap:6px;border-top:1px solid #EFEAE0}
 .nha-gfila-w .nha-gfila{border-top:none;flex:1;min-width:0}
@@ -357,3 +357,7 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 
 /* v45.89: «Actualizar» del pie, más alto para el dedo (antes 20 px; mínimo 24, recomendado 44) sin cambiar cómo se ve */
 .nha-pie-b{padding:12px 8px;margin:-10px -4px}
+
+/* v45.90: foco visible con teclado y «Reducir movimiento» del iPhone (se para el brillo del botón de instalar) */
+:where(button,a,input,select,textarea,summary,[tabindex]:not(.modal-sheet)):focus-visible{outline:2px solid #2D6A4F!important;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important} }

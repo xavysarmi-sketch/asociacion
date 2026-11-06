@@ -404,7 +404,7 @@ function _renderPantalla(){
       h+=`<div class="mes-card">
       <div class="mes-title" style="margin-bottom:4px">💶 Cobros de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()} ${ry}</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Para ver otro mes, cámbialo arriba (📅 Mes de trabajo).</div>
-      ${_dm.previsto>0?`<div class="cgt-cifras" style="font-size:15px">Cobrado <b>${fmtEur(_cobM)} €</b> de ${fmtEur(_dm.previsto)} €${_dm.porCobrar>0?` · faltan <b style="color:var(--warm)">${fmtEur(_dm.porCobrar)} €</b>`:" · ✅ todo"}</div>
+      ${_dm.previsto>0?`<div class="cgt-cifras" style="font-size:15px">Cobrado <b>${fmtEur(_cobM)} €</b> de ${fmtEur(_dm.previsto)} €${_dm.porCobrar>0?` · faltan <b style="color:var(--warm-txt)">${fmtEur(_dm.porCobrar)} €</b>`:" · ✅ todo"}</div>
       <div class="reserva-bar-bg" style="margin:6px 0 12px"><div class="reserva-bar-fill" style="width:${_pctM}%"></div></div>`:""}
       ${mesCerrado(getMesKey(rm,ry))?`<div style="margin:0 0 10px;padding:9px 11px;border-radius:10px;background:#1B4332;color:#fff;font-size:14px;font-weight:800">🔒 Este mes está cerrado: no se puede marcar ni desmarcar nada. Para cambiarlo, reábrelo abajo.</div>`:""}
       <input id="cierre-search" type="text" placeholder="Buscar persona…" oninput="filtrarEnVivo(this.value,'#cierre-listas')"
@@ -429,7 +429,7 @@ function _renderPantalla(){
       <div class="mes-title" style="margin-bottom:10px">💰 Las cuentas del mes</div>
       <div id="mes-cuentas">${cuentasMesHTML(md,rm,ry)}</div>
       ${md.recargoManual
-        ?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;margin-top:10px"><span style="color:var(--warm)">✏️ Retorno corregido a mano (calculado: ${fmtEur(recAuto)} €)</span><button onclick="recalcRecargoForzar()" style="background:none;border:none;color:#2D6A4F;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px">↻ Volver al calculado</button></div>`
+        ?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;margin-top:10px"><span style="color:var(--warm-txt)">✏️ Retorno corregido a mano (calculado: ${fmtEur(recAuto)} €)</span><button onclick="recalcRecargoForzar()" style="background:none;border:none;color:#2D6A4F;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px">↻ Volver al calculado</button></div>`
         :`<button onclick="DESP['ret-edit']=!DESP['ret-edit'];render()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0">${DESP["ret-edit"]?"Ocultar":"✏️ Corregir el retorno a mano"}</button>`}
       ${(md.recargoManual||DESP["ret-edit"])?`<div style="display:flex;align-items:center;gap:10px;margin-top:8px">
         <label style="font-size:13px;font-weight:600;color:var(--muted);flex:1">Retorno cobrado este mes (€)</label>
@@ -453,7 +453,7 @@ function _renderPantalla(){
       // Botones de acción rápida
       h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
         <button onclick="marcarTodosAportes()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✅ Marcar todos pagados</button>
-        <button onclick="desmarcarToque()" style="flex:1;padding:11px;border:1.5px solid ${DESP['ap-desm']?"#C0492C":"#D9C9B0"};border-radius:10px;background:${DESP['ap-desm']?"#C0492C":"#fff"};color:${DESP['ap-desm']?"#fff":"#8A7A60"};font-size:13px;font-weight:700;cursor:pointer">${DESP['ap-desm']?"¿Desmarcar todo? Toca otra vez":"Desmarcar todo"}</button><!-- v45.43: dos toques -->
+        <button onclick="desmarcarToque()" style="flex:1;padding:11px;border:1.5px solid ${DESP['ap-desm']?"#C0492C":"#D9C9B0"};border-radius:10px;background:${DESP['ap-desm']?"#C0492C":"#fff"};color:${DESP['ap-desm']?"#fff":"#6E6048"};font-size:13px;font-weight:700;cursor:pointer">${DESP['ap-desm']?"¿Desmarcar todo? Toca otra vez":"Desmarcar todo"}</button><!-- v45.43: dos toques -->
       </div>
       <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">Luego desmarca abajo a quien no haya pagado</div>`;
       // Orden FIJO por ingreso
@@ -467,7 +467,7 @@ function _renderPantalla(){
         h+=`<div class="aporte-row" data-nombre="${escH(m.name)}">
           <div>
             <div class="aporte-name">${escH(m.name)}</div>
-            <div class="aporte-meta">Mes ${months} · <span class="nivel-badge">Año ${lv}</span>${_dRef>0?` · <span style="color:#8A6D1E">🎁 −${_dRef} € bono</span>`:""}</div>
+            <div class="aporte-meta">Mes ${months} · <span class="nivel-badge">Año ${lv}</span>${_dRef>0?` · <span style="color:#7A5F12">🎁 −${_dRef} € bono</span>`:""}</div>
           </div>
           <div class="aporte-toggle">
             <span class="aporte-amt ${paid?"ap-ok":""}">${selectorAporteHTML(m,getMesKey(rm,ry),false)}</span>
@@ -528,7 +528,7 @@ function _renderPantalla(){
                 ${c.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
               </div>
               <div style="display:flex;align-items:center;gap:10px">
-                <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm)"};font-size:14px">${fmtEur(c.inst)} €</span>
+                <span class="aporte-amt" style="color:${c.paid?"#2D6A4F":"var(--warm-txt)"};font-size:14px">${fmtEur(c.inst)} €</span>
                 <button class="toggle-btn ${c.paid?"on":"off"}" onclick="toggleCuotaCierre('${esc(c.mid)}','${esc(c.lid)}',${c.pi})"></button>
               </div>
             </div>`;
@@ -595,7 +595,7 @@ function _renderPantalla(){
                 </div>
               </div>`;
             lista.forEach(it=>{
-              const colorImp=it.yaPagado?"#2D6A4F":"var(--warm)";
+              const colorImp=it.yaPagado?"#2D6A4F":"var(--warm-txt)";
               const esCuota=it.tipo==="cuota";
               if(esCuota)_cuotaIdxGrupo++;
               h+=`<div class="cob-it" style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
@@ -633,7 +633,7 @@ function _renderPantalla(){
           </div>
           ${totalPagado>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#2D6A4F;margin-top:2px"><span>Marcado como cobrado</span><span>${fmtEur(totalPagado)} €</span></div>`:""}`;
           if(totalPend>0){
-            h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px${DESP['cgtodo-'+g.id]?";background:#C75B0E":""}" onclick="cgTodoToque('${g.id}')">${DESP['cgtodo-'+g.id]?"¿Marcar todo pagado? Toca otra vez":"✅ Marcar todo pagado"}</button>`; // v45.43: dos toques, como en la tarjeta
+            h+=`<button class="mgmt-btn primary" style="width:100%;margin-top:10px${DESP['cgtodo-'+g.id]?";background:#A64B19":""}" onclick="cgTodoToque('${g.id}')">${DESP['cgtodo-'+g.id]?"¿Marcar todo pagado? Toca otra vez":"✅ Marcar todo pagado"}</button>`; // v45.43: dos toques, como en la tarjeta
           }
           // Enlace estable del grupo (se auto-actualiza; no hay que reenviarlo al editar el grupo)
           h+=`<button style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#25D366;color:#fff;font-size:14px;font-weight:700;cursor:pointer" onclick="openModal('cg_lista',{gid:'${g.id}'})">💬 Enviar lo que toca pagar</button>`; // v45.85: antes «Compartir enlace del grupo» (enlace antiguo)
@@ -668,12 +668,12 @@ function _renderPantalla(){
           const delKey="del-"+g.id;
           if(DESP[delKey]){
             h+=`<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
-              <span style="flex:1;font-size:13px;color:#C0492C;font-weight:700">¿Eliminar este grupo?</span>
+              <span style="flex:1;font-size:13px;color:#A63A20;font-weight:700">¿Eliminar este grupo?</span>
               <button onclick="DESP['${delKey}']=false;render()" style="background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;padding:8px 14px">No</button>
               <button onclick="DESP['${delKey}']=false;borrarGrupo('${g.id}')" style="background:#C0492C;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;padding:8px 16px">Sí, eliminar</button>
             </div>`;
           } else {
-            h+=`<button onclick="DESP['${delKey}']=true;render()" style="width:100%;background:none;border:1px solid #E8C9BE;border-radius:10px;color:#C0492C;font-size:13px;font-weight:700;cursor:pointer;padding:10px;margin-top:16px">🗑 Eliminar grupo</button>`;
+            h+=`<button onclick="DESP['${delKey}']=true;render()" style="width:100%;background:none;border:1px solid #E8C9BE;border-radius:10px;color:#A63A20;font-size:13px;font-weight:700;cursor:pointer;padding:10px;margin-top:16px">🗑 Eliminar grupo</button>`;
           }
           h+=`</div>`;
         }
@@ -800,12 +800,12 @@ function _renderPantalla(){
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <div><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(m.name)}</div>
               <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Baja: ${escH(MONTHS_FULL[MONTHS.indexOf(b.month)]||b.month)} ${b.year}</div></div>
-            <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${b.pagada?"#E3F1E7":"#FDECE8"};color:${b.pagada?"#1B7A3D":"#C0492C"}">${b.pagada?"✓ Pagado":"Pendiente"}</span>
+            <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${b.pagada?"#E3F1E7":"#FDECE8"};color:${b.pagada?"#1B7A3D":"#A63A20"}">${b.pagada?"✓ Pagado":"Pendiente"}</span>
           </div>
           ${b.v18?`<div style="font-size:12.5px;color:var(--muted);margin-top:2px">${b.tipo==="fin"?"Termina su permanencia":b.tipo==="indefinida"?"Sale de la indefinida":"Sale antes de terminar"} · último aporte: ${escH(MONTHS_FULL[MONTHS.indexOf(b.ultimoMes)]||"")} ${b.ultimoAnio}</div>`:""}
           <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:10px"><span>Capital a devolver</span><b>${fmtEur(b.capitalDevuelto)} €</b></div>
           ${b.v18?`<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:4px"><span>Beneficio que se le paga</span><b>${fmtEur(b.beneficioConservado)} €</b></div>
-          ${b.ayudaDescontada?`<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:4px;color:#C0492C"><span>Ayuda pendiente descontada</span><b>−${fmtEur(b.ayudaDescontada)} €</b></div>`:""}
+          ${b.ayudaDescontada?`<div style="display:flex;justify-content:space-between;font-size:13.5px;margin-top:4px;color:#A63A20"><span>Ayuda pendiente descontada</span><b>−${fmtEur(b.ayudaDescontada)} €</b></div>`:""}
           <div style="display:flex;justify-content:space-between;font-size:14.5px;margin-top:6px;padding-top:6px;border-top:1px solid #ece5da"><span>${b.total>=0?"Recibe":"Falta por cubrir (pasa a su avalista)"}</span><b>${fmtEur(Math.abs(b.total))} €</b></div>`:""}
           <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Beneficio perdido (queda en el fondo)</span><span>${fmtEur(b.beneficioPerdido)} €</span></div>
           ${b.v18&&!b.pagada?`<div style="font-size:11.5px;color:var(--muted);margin-top:3px">Cifras provisionales: se fijan al marcarla como pagada.</div>`:""}
@@ -813,7 +813,7 @@ function _renderPantalla(){
           <div style="margin-top:12px;background:#FAF6F0;border:1px solid #ece5da;border-radius:10px;padding:10px">
             <label class="m-label" style="margin-bottom:6px">${b.v18?"Se paga en (entre el día 5 y el 10)":"Se paga en (día 5)"}</label>
             <select class="m-select" style="font-size:14px;margin-bottom:10px" onchange="setPagoBaja('${esc(m.id)}','mes',this.value)">${optsPago}</select>
-            <button onclick="setPagoBaja('${esc(m.id)}','pagada',${b.pagada?"false":"true"})" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid ${b.pagada?"#D9C9B0":"#2D6A4F"};background:${b.pagada?"#fff":"#2D6A4F"};color:${b.pagada?"#8A7A60":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${b.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
+            <button onclick="setPagoBaja('${esc(m.id)}','pagada',${b.pagada?"false":"true"})" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid ${b.pagada?"#D9C9B0":"#2D6A4F"};background:${b.pagada?"#fff":"#2D6A4F"};color:${b.pagada?"#6E6048":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${b.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
             ${b.v18?`<button onclick="salidaEnviarWA('${esc(m.id)}')" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">💬 Enviar resumen a ${escH(m.name.split(" ")[0])}</button>`:""}
           </div>
         </div>`;
@@ -1216,7 +1216,7 @@ function manageHTML(m,isT){
     h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`;
   }
   if(!isT){ // Dar de baja: solo asociados (los terceros salen del grupo por otro mecanismo — ver TAREA FUTURA)
-    h+=`<button class="add-loan-btn" style="background:#FDECE8;color:#C0492C;margin-top:6px" onclick="openSalida('${esc(m.id)}')">🚪 Salida del fondo</button>`;
+    h+=`<button class="add-loan-btn" style="background:#FDECE8;color:#A63A20;margin-top:6px" onclick="openSalida('${esc(m.id)}')">🚪 Salida del fondo</button>`;
   }
   h+=`</div>`;
   return h;
@@ -1234,13 +1234,13 @@ function historicoRetiradasHTML(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(m.name)}</div>
           <div style="font-size:12.5px;color:var(--muted);margin-top:2px">${r.motivo==="aniv"?"Aniversario de la indefinida":"Al ampliar su permanencia"} · beneficio hasta ${_txtIdx(r.finIdx)}</div></div>
-        <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${r.pagada?"#E3F1E7":"#FDECE8"};color:${r.pagada?"#1B7A3D":"#C0492C"}">${r.pagada?"✓ Pagado":"Pendiente"}</span>
+        <span style="flex-shrink:0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:${r.pagada?"#E3F1E7":"#FDECE8"};color:${r.pagada?"#1B7A3D":"#A63A20"}">${r.pagada?"✓ Pagado":"Pendiente"}</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:14.5px;margin-top:10px"><span>Importe${r.pagada?"":" (provisional)"}</span><b>${fmtEur(imp)} €</b></div>
       <div style="font-size:12.5px;color:var(--muted);margin-top:3px">Se paga del 5 al 10 de ${_txtIdx(pagoRetiradaIdx(r))}${r.pagada&&r.fechaPagada?` · pagado el ${escH(r.fechaPagada)}`:""}</div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="setPagoRetirada('${esc(m.id)}','${esc(r.id)}','pagada',${r.pagada?"false":"true"})" style="flex:2;padding:11px;border-radius:10px;border:1.5px solid ${r.pagada?"#D9C9B0":"#2D6A4F"};background:${r.pagada?"#fff":"#2D6A4F"};color:${r.pagada?"#8A7A60":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${r.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
-        ${r.pagada?"":`<button onclick="${armado?`setPagoRetirada('${esc(m.id)}','${esc(r.id)}','anular',true)`:`DESP['${k}']=true;render()`}" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #D9C9B0;background:${armado?"#C0492C":"#fff"};color:${armado?"#fff":"#8A7A60"};font-size:13px;font-weight:700;cursor:pointer">${armado?"¿Anular?":"Anular"}</button>`}
+        <button onclick="setPagoRetirada('${esc(m.id)}','${esc(r.id)}','pagada',${r.pagada?"false":"true"})" style="flex:2;padding:11px;border-radius:10px;border:1.5px solid ${r.pagada?"#D9C9B0":"#2D6A4F"};background:${r.pagada?"#fff":"#2D6A4F"};color:${r.pagada?"#6E6048":"#fff"};font-size:14px;font-weight:800;cursor:pointer">${r.pagada?"↩ Marcar como pendiente":"✓ Marcar como pagada"}</button>
+        ${r.pagada?"":`<button onclick="${armado?`setPagoRetirada('${esc(m.id)}','${esc(r.id)}','anular',true)`:`DESP['${k}']=true;render()`}" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #D9C9B0;background:${armado?"#C0492C":"#fff"};color:${armado?"#fff":"#6E6048"};font-size:13px;font-weight:700;cursor:pointer">${armado?"¿Anular?":"Anular"}</button>`}
       </div></div>`;
   });
   return h+`</div>`;

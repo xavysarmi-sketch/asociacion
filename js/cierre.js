@@ -257,13 +257,13 @@ function cuentasMesHTML(md,rm,ry){
 function quedaPrevistoHTML(rm,ry,retCobrado){
   const q=quedaAsociacionMes(rm,ry), ab=!!DESP["queda-asoc-meses"];
   let h="";
-  if(q.enCurso&&Math.abs(q.retornos-retCobrado)>0.004)h+=`<div style="margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.45">Si se cobran todas las cuotas del mes: retorno ${fmtEur(q.retornos)} € → ${q.queda>=0?"sobrarían":"faltarían"} <b style="color:${q.queda>=0?"#1B4332":"#C0492C"}">${fmtEur(Math.abs(q.queda))} €</b>.</div>`;
+  if(q.enCurso&&Math.abs(q.retornos-retCobrado)>0.004)h+=`<div style="margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.45">Si se cobran todas las cuotas del mes: retorno ${fmtEur(q.retornos)} € → ${q.queda>=0?"sobrarían":"faltarían"} <b style="color:${q.queda>=0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(q.queda))} €</b>.</div>`;
   h+=`<button onclick="DESP['queda-asoc-meses']=!DESP['queda-asoc-meses'];render()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;cursor:pointer;padding:8px 0 0">${ab?"▾":"▸"} Ver otros meses</button>`;
   if(ab){
     const meses=[]; let y=2025,i=7; const fin=_idxMes(rm,ry);
     while(y*12+i<=fin){ meses.push({rm:MONTHS[i],ry:y}); i++; if(i>11){i=0;y++;} }
     h+=`<div style="margin-top:6px">`+meses.reverse().map(m=>{ const x=quedaAsociacionMes(m.rm,m.ry);
-      return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid #EFEAE0"><span>${MONTHS_FULL[MONTHS.indexOf(m.rm)]} ${m.ry}${x.enCurso?" <small style=\"color:var(--muted)\">(previsto)</small>":""}</span><b style="color:${x.queda<0?"#C0492C":"#1B4332"}">${x.queda<0?"faltan ":"sobran "}${fmtEur(Math.abs(x.queda))} €</b></div>`; }).join("")+
+      return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid #EFEAE0"><span>${MONTHS_FULL[MONTHS.indexOf(m.rm)]} ${m.ry}${x.enCurso?" <small style=\"color:var(--muted)\">(previsto)</small>":""}</span><b style="color:${x.queda<0?"#A63A20":"#1B4332"}">${x.queda<0?"faltan ":"sobran "}${fmtEur(Math.abs(x.queda))} €</b></div>`; }).join("")+
       `<div style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.35">Cada mes por separado: retornos − beneficio − bonos. No se acumula de un mes a otro.</div></div>`;
   }
   return h;

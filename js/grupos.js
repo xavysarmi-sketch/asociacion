@@ -278,7 +278,7 @@ function _cgFormHTML(g,idx,key,nom,mesTxt){
         :`<div style="margin-top:10px;font-size:13px;color:#6B4210;background:#FFF4E5;border-radius:9px;padding:8px 10px">No hay ayudas de ${mesTxt} sin apuntar. Primero registra la ayuda como siempre y después la eliges aquí.</div>`;
     }
     h+=`<div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="CG_FORM=null;render()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#8A7A60;font-size:13.5px;font-weight:700;cursor:pointer">Cancelar</button>
+        <button onclick="CG_FORM=null;render()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#6E6048;font-size:13.5px;font-weight:700;cursor:pointer">Cancelar</button>
         <button onclick="${CG_FORM.tipo==="sim"?`cgSimAdd('${g.id}')`:`cgGuardar('${g.id}')`}" style="flex:2;padding:10px;border-radius:9px;border:none;background:${CG_FORM.tipo==="sim"?"#B06A1E":"#1B4332"};color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">${CG_FORM.tipo==="sim"?"Añadir al plan":"Guardar"}</button></div>`;
   }
   return h;
@@ -315,7 +315,7 @@ function cuentaGrupoHTML(g,principal){
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;font-size:16px;font-weight:800;color:#1B4332">💶 Cuenta con ${nom} · ${mesTxt}</div><button onclick="cgPlegar('${g.id}')" style="flex:none;border:1.5px solid #2D6A4F;background:#fff;color:#1B4332;border-radius:9px;padding:6px 10px;font-size:13.5px;font-weight:800;cursor:pointer">✕ Cerrar</button></div>`;
   const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgFalta(g,idx-1):0;
   if(pf>0)h+=`<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:9px;padding:8px 10px;font-size:13px;color:#6B4210;margin-bottom:8px">⚠️ En ${prevTxt} quedaron pendientes <b>${fmtEur(pf)} €</b>.
-      <button onclick="cgArrastrar('${g.id}')" style="display:block;margin-top:6px;width:100%;padding:8px;border-radius:8px;border:none;background:#B06A1E;color:#fff;font-size:13px;font-weight:800;cursor:pointer">Pasar a ${mesTxt}</button></div>`;
+      <button onclick="cgArrastrar('${g.id}')" style="display:block;margin-top:6px;width:100%;padding:8px;border-radius:8px;border:none;background:#94571A;color:#fff;font-size:13px;font-weight:800;cursor:pointer">Pasar a ${mesTxt}</button></div>`;
   // 1 · La cuenta real
   h+=`<div style="background:#fff;border-radius:12px;padding:10px 14px">`+fr("Recoge de su grupo",fmtEur(total)+" €");
   if(arr)h+=fr("Pendiente del mes anterior","+"+fmtEur(arr)+" €");
@@ -323,7 +323,7 @@ function cuentaGrupoHTML(g,principal){
   if(ent+resto>0)h+=fr("Ya te ha entregado","−"+fmtEur(_r2(ent+resto))+" €");
   if(pagoAs)h+=fr("Le has pasado tú","+"+fmtEur(pagoAs)+" €");
   const lab=falta>0?(ent+resto>0?"Falta por entregarte":"Te entrega"):falta<0?(pagosEl.length?"Le pasas tú (la asociación)":"Te ha dado de más: se lo devuelves"):"✅ Liquidado";
-  h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">${lab}</b>${falta!==0?`<b style="font-size:21px;white-space:nowrap;color:${falta>0?"#1B4332":"#C0492C"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div></div>`;
+  h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">${lab}</b>${falta!==0?`<b style="font-size:21px;white-space:nowrap;color:${falta>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div></div>`;
   if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pasado los ${fmtEur(-falta)} €</button>`;
   h+=`<button onclick="cgEnviarCuenta('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar su cuenta a ${nom}</button>`;
   // 2 · Plan del mes
@@ -332,15 +332,15 @@ function cuentaGrupoHTML(g,principal){
   if(formTipo==="sim")h+=`<div style="margin-top:12px;border:2px dashed #B06A1E;background:#FFF8EE;border-radius:14px;padding:12px"><div style="font-size:16px;font-weight:800;color:#8A4F12">🧮 Plan del mes</div>${_cgFormHTML(g,idx,key,nom,mesTxt)}</div>`;
   else if(!hayPlan){ if(!cerrada)h+=`<button onclick="cgAbrir('${g.id}','sim')" style="width:100%;margin-top:12px;padding:11px;border-radius:12px;border:2px dashed #B06A1E;background:#FFF8EE;color:#8A4F12;font-size:14.5px;font-weight:800;cursor:pointer">🧮 ＋ Hacer un plan</button>`; }
   else {
-    const it=(ic,txt,sub,v,quitar)=>`<div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:9px 11px;margin-top:7px"><span style="flex:1;min-width:0;font-size:15px">${ic} ${txt}<small style="display:block;color:var(--muted);font-size:12.5px">${sub}</small></span><b style="white-space:nowrap;font-size:15px">−${fmtEur(v)} €</b><button onclick="${quitar}" aria-label="Quitar del plan" style="border:none;background:none;color:#C0492C;font-size:17px;cursor:pointer;padding:0 2px">✕</button></div>`;
+    const it=(ic,txt,sub,v,quitar)=>`<div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:9px 11px;margin-top:7px"><span style="flex:1;min-width:0;font-size:15px">${ic} ${txt}<small style="display:block;color:var(--muted);font-size:12.5px">${sub}</small></span><b style="white-space:nowrap;font-size:15px">−${fmtEur(v)} €</b><button onclick="${quitar}" aria-label="Quitar del plan" style="border:none;background:none;color:#A63A20;font-size:17px;cursor:pointer;padding:0 2px">✕</button></div>`;
     const mesP=_txtIdx(d.idx).split(" ")[0];
     h+=`<div style="margin-top:12px;border:2px dashed #B06A1E;background:#FFF8EE;border-radius:14px;padding:12px">
-      <div style="font-size:16px;font-weight:800;color:#8A4F12">🧮 Plan del mes${d.idx!==idx?" de "+mesP:""} <span style="display:inline-block;background:#B06A1E;color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:20px;vertical-align:middle">PROPUESTA</span></div>
+      <div style="font-size:16px;font-weight:800;color:#8A4F12">🧮 Plan del mes${d.idx!==idx?" de "+mesP:""} <span style="display:inline-block;background:#94571A;color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:20px;vertical-align:middle">PROPUESTA</span></div>
       <div style="font-size:13px;color:#6B4210;margin-top:4px">Ahora: ${d.resto+d.simTot+d.solTot+d.salTot>=0?"te entrega "+fmtEur(_r2(d.resto+d.simTot+d.solTot+d.salTot))+" €":"le pasas "+fmtEur(-_r2(d.resto+d.simTot+d.solTot+d.salTot))+" €"}</div>`;
     sim.forEach((x,i)=>{ h+=it("🤝",x.nombre?"Ayuda a "+escH(x.nombre):"Ayuda"+(sim.length>1?" "+(i+1):""),"la pones tú",x.v,`cgSimQuitar('${g.id}',${i})`); });
     d.sols.forEach(x=>{ h+=it("📝","Ayuda a "+escH(x.nombre),"solicitud pendiente",x.v,`cgSimQuitarSol('${g.id}','${esc(x.id)}')`); });
     d.sal.forEach(x=>{ h+=it("🚪","Salida de "+escH(x.nombre),"pendiente de pagar",x.v,`cgSimQuitarSal('${g.id}','${esc(x.mid)}')`); });
-    h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px 2px"><b style="color:#8A4F12;font-size:15.5px">${d.resto>0?"Te entregaría":d.resto<0?"Le pasa la asociación":"Justo: no sobra ni falta"}</b>${d.resto!==0?`<b style="font-size:21px;white-space:nowrap;color:${d.resto>0?"#1B4332":"#C0492C"}">${fmtEur(Math.abs(d.resto))} €</b>`:""}</div>
+    h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px 2px"><b style="color:#8A4F12;font-size:15.5px">${d.resto>0?"Te entregaría":d.resto<0?"Le pasa la asociación":"Justo: no sobra ni falta"}</b>${d.resto!==0?`<b style="font-size:21px;white-space:nowrap;color:${d.resto>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(d.resto))} €</b>`:""}</div>
       ${CG_SIM_REAL[g.id]?"":`<button onclick="cgAbrir('${g.id}','sim')" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #8A4F12;background:#fff;color:#8A4F12;font-size:14px;font-weight:800;cursor:pointer">＋ Añadir otra ayuda</button>
       <button onclick="cgSimEnviar('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar el plan a ${nom}</button>`}
       ${_cgRealHTML(g,d,nom)}
@@ -356,7 +356,7 @@ function cuentaGrupoHTML(g,principal){
       const signo=(x.tipo==="arrastre"||x.tipo==="pago")?"+":"−", k="cgdel-"+x.id, arm=!!DESP[k];
       h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #EEF3EF;padding:7px 0;font-size:14px">
         <span style="flex:1;min-width:0">${txt}</span><b style="white-space:nowrap">${signo}${fmtEur(x.importe)} €</b>
-        ${x.tipo==="pasado"?"":`<button onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#C0492C"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;min-width:38px;min-height:34px;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Borrar?":"✕"}</button>`}</div>`;
+        ${x.tipo==="pasado"?"":`<button onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#A63A20"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;min-width:38px;min-height:34px;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Borrar?":"✕"}</button>`}</div>`;
     });
     if(resto>0)h+=`<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;font-size:14px"><span>✅ Entregado sin apuntar <span style="font-size:12px;color:var(--muted)">(todo marcado como cobrado)</span></span><b style="white-space:nowrap">−${fmtEur(resto)} €</b></div>`;
     if(!nM)h+=`<div style="font-size:13.5px;color:var(--muted);padding:4px 0">Todavía no hay apuntes este mes.</div>`;

@@ -137,7 +137,7 @@ function dineroMesCuerpoHTML(d){
     if(abS)h+=lista(porPagarL.map(x=>[`${escH(x.m.name)} · ${escH(x.txt.toLowerCase())}`,fmtEur(x.importe)+" €"])); }
   h+=fila("=","Disponible para ayudas",d.disponible,{total:true,color:d.disponible>=0?"#1B4332":"#C0492C"});
   if(d.porCobrar>0)h+=`<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:var(--bg);font-size:13px;color:var(--dark);line-height:1.45">
-      Falta por cobrar <b>${fmtEur(d.porCobrar)} €</b>. Si se cobra todo, al cerrar el mes quedarán <b style="color:${d.alCierre>=0?"#1B4332":"#C0492C"}">${fmtEur(d.alCierre)} €</b>.</div>`;
+      Falta por cobrar <b>${fmtEur(d.porCobrar)} €</b>. Si se cobra todo, al cerrar el mes quedarán <b style="color:${d.alCierre>=0?"#1B4332":"#A63A20"}">${fmtEur(d.alCierre)} €</b>.</div>`;
   else h+=`<div style="margin-top:8px;font-size:12.5px;color:#1B7A3D;font-weight:700">✓ Ya está todo cobrado este mes.</div>`;
   if(d.alCierre<0)h+=`<div style="margin-top:6px;padding:9px 11px;border-radius:10px;background:#FFF4E5;border:1px solid #E0A040;color:#8A4F12;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Aunque se cobre todo, este mes faltan ${fmtEur(-d.alCierre)} €.</div>`;
   return h;
@@ -173,18 +173,18 @@ function ayudasTabHTML(){
   pend.forEach((so,i)=>{
     const m=so.mid&&DATA.members.find(x=>x.id===so.mid), {cuotas}=ayudaCuotas(so.capital,so.cuotas,DATA.rate);
     const kno="solno-"+so.id, armNo=!!DESP[kno];
-    if(_solTipo(so)===1&&(i===0||_solTipo(pend[i-1])===0))h+=`<div style="font-size:12.5px;font-weight:800;color:#B06A1E;margin-top:12px">🤝 Terceros <span style="font-weight:600;color:var(--muted)">· después de los asociados</span></div>`;
+    if(_solTipo(so)===1&&(i===0||_solTipo(pend[i-1])===0))h+=`<div style="font-size:12.5px;font-weight:800;color:#94571A;margin-top:12px">🤝 Terceros <span style="font-weight:600;color:var(--muted)">· después de los asociados</span></div>`;
     h+=`<div style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:8px;background:#fff">
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:50%;background:#1B4332;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center">${i+1}</span>${_solFlechas(so,pend.filter(x=>_solTipo(x)===_solTipo(so)))}</div>
       <div style="flex:1;min-width:0">
-        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">${escH(so.nombre)}</b><b style="font-size:15.5px;color:#B06A1E;white-space:nowrap">${fmtEur(so.capital)} €</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">${escH(so.nombre)}</b><b style="font-size:15.5px;color:#94571A;white-space:nowrap">${fmtEur(so.capital)} €</b></div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${_solEtqTipo(so,m)} · ${escH(so.fecha||"")} · ${so.cuotas} ${so.cuotas===1?"cuota":"cuotas"} de ${fmtEur(cuotas[0])} €</div>
         ${(()=>{ const av=so.avalId&&DATA.members.find(x=>x.id===so.avalId), gg=so.grupoGid&&gruposCierre().find(x=>x.id===so.grupoGid), gp=gg&&DATA.members.find(x=>x.id===gg.principalId);
           return (av||gp)?`<div style="font-size:12px;color:#1B4332;margin-top:2px">${av?`🛡️ Aval: ${escH(av.name.split(" ")[0])}`:""}${av&&gp?" · ":""}${gp?`👥 Grupo de ${escH(gp.name.split(" ")[0])}`:""}</div>`:""; })()}
         <div style="font-size:12.5px;margin-top:4px">${_solAlcanzaHTML(repA[so.id])}</div>
         <div style="display:flex;gap:6px;margin-top:8px">
           <button onclick="solOtorgar('${so.id}')" style="flex:2;padding:9px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13px;font-weight:800;cursor:pointer">✅ Otorgar</button>
-          <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:9px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#C0492C"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button>
+          <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:9px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button>
         </div></div></div>`;
   });
   // v45.17: solicitudes para meses siguientes (se ven, pero se otorgan en el cierre de su mes)
@@ -197,23 +197,23 @@ function ayudasTabHTML(){
       ${fl(`Aportes y cuotas de ${mt} (previsto)`,fmtEur(pv.ent)+" €","color:#2D6A4F")}
       ${pv.sal?fl("Salidas comprometidas","−"+fmtEur(pv.sal)+" €"):""}
       ${fl("<b>Previsto para ayudas</b>",fmtEur(pv.prev)+" €","color:#1B4332")}
-      ${fl("Te han pedido",fmtEur(tot)+" €","color:#B06A1E")}
+      ${fl("Te han pedido",fmtEur(tot)+" €","color:#94571A")}
       <div style="margin-top:4px;font-size:13px;font-weight:800;color:${dfF>=0?"#1B7A3D":"#8A4F12"}">${dfF>=0?"✅ Alcanzaría para todas":`Faltarían ${fmtEur(-dfF)} € para darlas todas`}</div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Es una previsión: en ${mt} se calcula con lo cobrado de verdad.</div></div></div>`;
     lista.forEach((so,i)=>{
-      if(_solTipo(so)===1&&(i===0||_solTipo(lista[i-1])===0))h+=`<div style="font-size:12.5px;font-weight:800;color:#B06A1E;margin-top:10px">🤝 Terceros <span style="font-weight:600;color:var(--muted)">· después de los asociados</span></div>`;
+      if(_solTipo(so)===1&&(i===0||_solTipo(lista[i-1])===0))h+=`<div style="font-size:12.5px;font-weight:800;color:#94571A;margin-top:10px">🤝 Terceros <span style="font-weight:600;color:var(--muted)">· después de los asociados</span></div>`;
       const m=so.mid&&DATA.members.find(x=>x.id===so.mid), {cuotas}=ayudaCuotas(so.capital,so.cuotas,DATA.rate), kno="solno-"+so.id, armNo=!!DESP[kno];
       const av=so.avalId&&DATA.members.find(x=>x.id===so.avalId), gg=so.grupoGid&&gruposCierre().find(x=>x.id===so.grupoGid), gp=gg&&DATA.members.find(x=>x.id===gg.principalId);
       h+=`<div style="display:flex;gap:10px;align-items:flex-start;border:1px dashed #C9D9CE;border-radius:12px;padding:10px;margin-top:8px;background:#FBFDFB">
         <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:50%;background:#7FA48D;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center">${i+1}</span>${_solFlechas(so,lista.filter(x=>_solTipo(x)===_solTipo(so)))}</div>
         <div style="flex:1;min-width:0">
-        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">${escH(so.nombre)}</b><b style="font-size:15.5px;color:#B06A1E;white-space:nowrap">${fmtEur(so.capital)} €</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">${escH(so.nombre)}</b><b style="font-size:15.5px;color:#94571A;white-space:nowrap">${fmtEur(so.capital)} €</b></div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${_solEtqTipo(so,m)} · ${escH(so.fecha||"")} · ${so.cuotas} ${so.cuotas===1?"cuota":"cuotas"} de ${fmtEur(cuotas[0])} €</div>
         ${(av||gp)?`<div style="font-size:12px;color:#1B4332;margin-top:2px">${av?`🛡️ Aval: ${escH(av.name.split(" ")[0])}`:""}${av&&gp?" · ":""}${gp?`👥 Grupo de ${escH(gp.name.split(" ")[0])}`:""}</div>`:""}
         <div style="font-size:12.5px;margin-top:4px">${_solAlcanzaHTML(repF[so.id])}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
           <span style="flex:2;font-size:12.5px;color:#1B4332;font-weight:700">Se otorga en el cierre de ${mt}</span>
-          <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:8px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#C0492C"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button></div></div></div>`;
+          <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:8px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button></div></div></div>`;
     });
   });
   { // v45.47: avisar al responsable del grupo de que sus solicitudes están apuntadas
@@ -244,7 +244,7 @@ function ayudasTabHTML(){
       <label class="m-label">¿Para qué mes? <span style="font-weight:600;color:var(--muted)">(se otorga en el cierre de ese mes)</span></label>
       <select id="so-mes" class="m-select" style="font-size:15px">${_mesesSolOpts(getMesKey(DATA.reportMonth,DATA.reportYear))}</select>
       <div id="so-prev"></div>
-      <div style="display:flex;gap:6px"><button onclick="SOL_FORM=false;SOL_PREFILL=null;render()" style="flex:1;padding:11px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#8A7A60;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>
+      <div style="display:flex;gap:6px"><button onclick="SOL_FORM=false;SOL_PREFILL=null;render()" style="flex:1;padding:11px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#6E6048;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>
       <button onclick="solGuardar()" style="flex:2;padding:11px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14px;font-weight:800;cursor:pointer">Guardar en la lista</button></div>
       <button onclick="solGuardar(true)" style="width:100%;margin-top:8px;min-height:48px;padding:11px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:15px;font-weight:800;cursor:pointer">✅ Guardar y otorgar ya</button>
       <div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.4">Se otorga en el momento si es para este mes, no hay otras solicitudes delante y el dinero alcanza. Si no, queda en la lista.</div></div>`; // v45.45
@@ -256,7 +256,7 @@ function ayudasTabHTML(){
   h+=desp("ay-no","No otorgadas",noOt,so=>{ const kb="solbor-"+so.id, arm=!!DESP[kb];
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;padding:6px 0;border-bottom:1px solid #EFEAE0"><span>${escH(so.nombre)} · ${fmtEur(so.capital)} €</span><span style="white-space:nowrap">
       <button onclick="solEstado('${so.id}','pendiente')" style="border:1px solid #2D6A4F;background:#fff;color:#1B4332;border-radius:8px;font-size:12px;font-weight:700;padding:5px 8px;cursor:pointer">Volver a la lista</button>
-      <button onclick="${arm?`solBorrar('${so.id}')`:`DESP['${kb}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#C0492C"};border-radius:7px;font-size:${arm?12:15}px;font-weight:800;padding:${arm?"4px 8px":"0 4px"};cursor:pointer">${arm?"¿Borrar?":"✕"}</button></span></div>`; });
+      <button onclick="${arm?`solBorrar('${so.id}')`:`DESP['${kb}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#A63A20"};border-radius:7px;font-size:${arm?12:15}px;font-weight:800;padding:${arm?"4px 8px":"0 4px"};cursor:pointer">${arm?"¿Borrar?":"✕"}</button></span></div>`; });
   return h+`</div>`;
 }
 function cuotaToque(mid,lid,pi){
@@ -422,14 +422,14 @@ function histLoanFormHTML(){
   let filas=hist.map((x,i)=>{
     const armed=(_delHistArmed===(m.id+"|"+i));
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
-      <div><div style="font-weight:600;font-size:14px;color:var(--dark)">${escH(x.gMonth||"?")} ${x.gYear||""}</div><div style="font-size:12px;color:var(--muted)">${fmtEur(x.capital||0)} € de capital${x.lid?"":' · <span style="color:#C0492C">sin vincular</span>'}</div></div>
+      <div><div style="font-weight:600;font-size:14px;color:var(--dark)">${escH(x.gMonth||"?")} ${x.gYear||""}</div><div style="font-size:12px;color:var(--muted)">${fmtEur(x.capital||0)} € de capital${x.lid?"":' · <span style="color:#A63A20">sin vincular</span>'}</div></div>
       <button class="del-btn ${armed?"armed":""}" style="padding:6px 10px;font-size:12px" onclick="delHistEntry('${esc(m.id)}',${i})">${armed?"¿Seguro?":"✕"}</button>
     </div>`;
   }).join("");
   if(hist.length===0)filas=`<p style="color:var(--muted);font-size:13px">Sin entradas en el historial.</p>`;
   return `<div class="modal-title">📋 Historial de ayudas — ${escH(m.name)}</div>
   <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Cada entrada es una ayuda registrada. Elimina las que sobren (por ejemplo, registros de prueba). Esto solo corrige el historial acumulado; no afecta a las ayudas activas.</p>
-  <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:12px"><span style="font-weight:700;color:var(--dark)">Total historial</span><span style="font-weight:700;color:var(--warm)">${fmtEur(total)} €</span></div>
+  <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:12px"><span style="font-weight:700;color:var(--dark)">Total historial</span><span style="font-weight:700;color:var(--warm-txt)">${fmtEur(total)} €</span></div>
   ${filas}
   <button class="m-primary" onclick="closeModal()" style="margin-top:6px">Cerrar</button>`;
 }
@@ -477,7 +477,7 @@ function editLoanFormHTML(){
       <option value="">— Elegir mes a aplazar —</option>
       ${pend.map(o=>`<option value="${o.i}">${o.p.m} ${o.p.y} · ${o.i+1}/${l.pays.length}</option>`).join("")}
     </select>
-    <div style="font-size:12px;color:var(--warm);font-weight:600;margin-bottom:8px">Se cobrará solo ${retorno} € este mes · el capital se recupera en una cuota extra al final.</div>
+    <div style="font-size:12px;color:var(--warm-txt);font-weight:600;margin-bottom:8px">Se cobrará solo ${retorno} € este mes · el capital se recupera en una cuota extra al final.</div>
     <button class="edit-btn" style="width:100%;padding:11px;font-size:13px;background:#E8A04B;color:#fff;font-weight:700" onclick="aplazarDesdeEditor()">Aplicar aplazamiento</button>`;
   })()}
   ${l.pays.some(p=>p.aplazada)?`<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--muted)"><div style="font-weight:700;font-size:13px;color:var(--dark);margin-bottom:6px">Cuotas aplazadas</div>${l.pays.map((p,i)=>p.aplazada?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><span style="font-size:13px;color:var(--dark)">${escH(p.m)} ${p.y} · ${(p.instAplazada||recargoPorCuota(l))}€ (solo retorno)</span><button class="edit-btn" style="padding:5px 9px;font-size:11px;background:#D9C7A8" onclick="quitarAplazamiento(${i})">↩︓ Quitar</button></div>`:"").join("")}<p style="font-size:11px;color:var(--muted);margin-top:2px">Al quitar un aplazamiento, esa cuota vuelve a normal y el plazo se reduce en un mes.</p></div>`:""}
@@ -491,7 +491,7 @@ function updateEditPreview(){
   const{total,cuotas}=ayudaCuotas(cap,nn,DATA.rate);
   const base=cuotas[0],ultima=cuotas[cuotas.length-1];
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
-  document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm)">${cuotaTxt}</span></div></div>`;
+  document.getElementById("el-preview").innerHTML=`<div class="m-summary"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Resumen</div><div style="display:flex;justify-content:space-between;font-size:15px"><span>Total (${DATA.rate}% × ${nn})</span><span style="font-weight:700">${fmtEur(total)} €</span></div><div style="display:flex;justify-content:space-between;font-size:15px;margin-top:4px"><span>Cuota mensual</span><span style="font-weight:700;color:var(--warm-txt)">${cuotaTxt}</span></div></div>`;
 }
 function quitarAplazamiento(idx){
   const m=DATA.members.find(x=>x.id===MODAL.mid);
@@ -766,7 +766,7 @@ function simBenResHTML(m){
   if(ab3){
     // v45.10: línea de tiempo (decisión de Ángel 04/10/2026)
     const parada=(tit,cuerpo,ult)=>`<div style="position:relative;margin-bottom:${ult?0:12}px"><span style="position:absolute;left:-23px;top:2px;width:14px;height:14px;border-radius:50%;background:#1B4332"></span>
-      <div style="font-size:12px;font-weight:800;color:#B06A1E;text-transform:uppercase;letter-spacing:.2px">${tit}</div>
+      <div style="font-size:12px;font-weight:800;color:#94571A;text-transform:uppercase;letter-spacing:.2px">${tit}</div>
       <div style="background:#F4F9F6;border-radius:10px;padding:8px 10px;margin-top:4px">${cuerpo}</div></div>`;
     const lin=(l,v,c)=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>${l}</span><b style="${c?"color:#2D6A4F":""}">${v}</b></div>`;
     h+=`<div style="border:1.5px solid #2D6A4F;border-top:none;border-radius:0 0 12px 12px;padding:10px 14px 14px;margin-bottom:12px;font-size:13.5px;color:#2B2B2B;line-height:1.45;background:#fff">
