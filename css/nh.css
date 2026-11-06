@@ -1025,3 +1025,11 @@ body.nh-admin .mgmt-grid .mgmt-btn{background:var(--nh-superficie);color:var(--n
 body.nh-admin .mgmt-grid .mgmt-btn svg.ic{color:var(--nh-verde-700)}
 body.nh-admin .mgmt-grid .mgmt-btn.peligro{color:#A63A20;border-color:#E3A79B}
 body.nh-admin .mgmt-grid .mgmt-btn.peligro svg.ic{color:#A63A20}
+
+/* v45.96 · Sistema de diseño en Ayudas: tarjetas con el borde, la sombra y las esquinas del sistema, títulos a 17 px,
+   y los desplegables («Otorgadas», «No otorgadas», «¿De dónde viene lo cobrado?», «Ayudas entregadas») con la flecha fina */
+body.nh-admin .tab-ayudas .mes-card{border-radius:var(--nh-r-18);box-shadow:var(--nh-sombra-1)}
+body.nh-admin .tab-ayudas .mes-title{font-size:var(--nh-l-17)}
+body.nh-admin .ay-fl-in{display:inline-block;width:7px;height:7px;margin:0 0 3px 6px;vertical-align:middle}
+body.nh-admin .ay-fl-in.ab{margin:3px 0 0 6px}
+body.nh-admin .ay-desp .mg-acc-fl{border-color:#2D6A4F}

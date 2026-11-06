@@ -128,7 +128,7 @@ function dineroMesCuerpoHTML(d){
   const otras=_r2(d.salido-d.ayudasDadas-(d.gastos||0)), abA=!!DESP["dm-ay"], abS=!!DESP["dm-sal"];
   const lista=(arr)=>`<div style="margin:0 0 6px 16px;font-size:12.5px;color:var(--muted)">${arr.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span>${x[0]}</span><span>${x[1]}</span></div>`).join("")}</div>`;
   let h=fila("","Cobrado hasta hoy",d.cobrado,{color:"#2D6A4F"});
-  if(d.ayudasDadas){ h+=`<div style="cursor:pointer" onclick="DESP['dm-ay']=!DESP['dm-ay'];render()">${fila("−",`Ayudas entregadas (${ayN.length}) <span style="font-size:11.5px;color:var(--muted)">${abA?"▲":"▼"}</span>`,d.ayudasDadas)}</div>`;
+  if(d.ayudasDadas){ h+=`<div style="cursor:pointer" onclick="DESP['dm-ay']=!DESP['dm-ay'];render()">${fila("−",`Ayudas entregadas (${ayN.length}) <span class="mg-acc-fl ay-fl-in${abA?" ab":""}" aria-hidden="true"></span>`,d.ayudasDadas)}</div>`;
     if(abA)h+=lista(ayN.map(x=>[escH(x.n),fmtEur(x.c)+" €"])); }
   if(d.gastos)h+=fila("−","Gastos administrativos",d.gastos);
   if(otras>0)h+=fila("−","Otras salidas ya pagadas",otras);
@@ -144,7 +144,7 @@ function dineroMesCuerpoHTML(d){
 }
 function origenCobradoHTML(d){
   const ab=!!DESP["ay-origen"];
-  let h=`<button onclick="DESP['ay-origen']=!DESP['ay-origen'];render()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;cursor:pointer;padding:8px 0 0">${ab?"▾":"▸"} ¿De dónde viene lo cobrado?</button>`;
+  let h=`<button class="ay-desp" aria-expanded="${ab?"true":"false"}" onclick="DESP['ay-origen']=!DESP['ay-origen'];render()" style="display:flex;align-items:center;gap:10px;min-height:44px;background:none;border:none;color:#2D6A4F;font-size:14.5px;font-weight:700;cursor:pointer;padding:8px 0 0">¿De dónde viene lo cobrado? <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></button>`;
   if(ab){
     h+=`<div style="margin-top:6px">`;
     d.grupos.forEach(x=>{ const ok=x.cobrado>=x.total&&x.total>0; h+=`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:5px 0;border-bottom:1px solid #EFEAE0"><span>Grupo de ${escH(x.p.name.split(" ")[0])}</span><span style="white-space:nowrap"><b style="color:${ok?"#2D6A4F":"var(--dark)"}">${fmtEur(x.cobrado)} €</b> <span style="color:var(--muted);font-size:12px">de ${fmtEur(x.total)} €</span></span></div>`; });
@@ -250,7 +250,7 @@ function ayudasTabHTML(){
       <div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.4">Se otorga en el momento si es para este mes, no hay otras solicitudes delante y el dinero alcanza. Si no, queda en la lista.</div></div>`; // v45.45
   } else h+=`<button onclick="SOL_FORM=true;render()" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1.5px dashed #2D6A4F;background:#fff;color:#1B4332;font-size:14px;font-weight:800;cursor:pointer">＋ Nueva solicitud</button>`;
   // Otorgadas este mes y no otorgadas
-  const desp=(k,t,lista,fn)=>{ if(!lista.length)return ""; const o=!!DESP[k]; let x=`<button onclick="DESP['${k}']=!DESP['${k}'];render()" style="display:block;background:none;border:none;color:#2D6A4F;font-size:13.5px;font-weight:700;cursor:pointer;padding:10px 0 0">${o?"▾":"▸"} ${t} (${lista.length})</button>`; if(o)x+=lista.map(fn).join(""); return x; };
+  const desp=(k,t,lista,fn)=>{ if(!lista.length)return ""; const o=!!DESP[k]; let x=`<button class="ay-desp" aria-expanded="${o?"true":"false"}" onclick="DESP['${k}']=!DESP['${k}'];render()" style="display:flex;align-items:center;gap:10px;min-height:44px;background:none;border:none;color:#2D6A4F;font-size:14.5px;font-weight:700;cursor:pointer;padding:8px 0 0">${t} (${lista.length}) <span class="mg-acc-fl${o?" ab":""}" aria-hidden="true"></span></button>`; if(o)x+=lista.map(fn).join(""); return x; };
   h+=desp("ay-otor",`Otorgadas en ${mesTxt}`,otor,so=>{ const gp=so.entregaGid&&gruposCierre().find(g=>g.id===so.entregaGid), pp=gp&&DATA.members.find(m=>m.id===gp.principalId);
     return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:6px 0;border-bottom:1px solid #EFEAE0"><span>✅ ${escH(so.nombre)} <span style="color:var(--muted);font-size:12px">· ${so.cuotasOtorgadas||so.cuotas} cuotas${pp?` · la entrega ${escH(pp.name.split(" ")[0])}`:""}</span></span><b style="white-space:nowrap">${fmtEur(so.capitalOtorgado||so.capital)} €</b></div>`; });
   h+=desp("ay-no","No otorgadas",noOt,so=>{ const kb="solbor-"+so.id, arm=!!DESP[kb];
