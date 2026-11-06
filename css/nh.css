@@ -1033,3 +1033,20 @@ body.nh-admin .tab-ayudas .mes-title{font-size:var(--nh-l-17)}
 body.nh-admin .ay-fl-in{display:inline-block;width:7px;height:7px;margin:0 0 3px 6px;vertical-align:middle}
 body.nh-admin .ay-fl-in.ab{margin:3px 0 0 6px}
 body.nh-admin .ay-desp .mg-acc-fl{border-color:#2D6A4F}
+
+/* v45.97 · Movimientos suaves (bloque 4): ventana que sube al abrirse (250 ms) y baja al cerrarse (150 ms),
+   lo que se despliega aparece deslizándose y la flecha gira. Las dos apps. Con «Reducir movimiento», nada (regla de v45.90). */
+@keyframes nhFondoEntra{from{opacity:0}to{opacity:1}}
+@keyframes nhHojaEntra{from{transform:translateY(48px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes nhFondoSale{from{opacity:1}to{opacity:0}}
+@keyframes nhHojaSale{from{transform:none;opacity:1}to{transform:translateY(48px);opacity:0}}
+@keyframes nhDespliega{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes nhGiraAb{from{transform:rotate(45deg)}to{transform:rotate(-135deg)}}
+@keyframes nhGiraCe{from{transform:rotate(-135deg)}to{transform:rotate(45deg)}}
+.modal-bg.nh-entra{animation:nhFondoEntra 250ms cubic-bezier(.22,1,.36,1)}
+.modal-bg.nh-entra .modal-sheet{animation:nhHojaEntra 250ms cubic-bezier(.22,1,.36,1)}
+.modal-bg.nh-sale{animation:nhFondoSale 150ms ease-in forwards;pointer-events:none}
+.modal-bg.nh-sale .modal-sheet{animation:nhHojaSale 150ms ease-in forwards}
+.nh-despliega{animation:nhDespliega 250ms cubic-bezier(.22,1,.36,1)}
+body.nh-admin .mg-acc-fl.nh-gira-ab{animation:nhGiraAb 250ms cubic-bezier(.22,1,.36,1)}
+body.nh-admin .mg-acc-fl.nh-gira-ce{animation:nhGiraCe 250ms cubic-bezier(.22,1,.36,1)}

@@ -307,7 +307,7 @@ function _nhVentanas(){
   if(s){
     s.setAttribute("role","dialog"); s.setAttribute("aria-modal","true"); s.tabIndex=-1;
     const t=s.querySelector(".modal-title,h2,h3"); if(t){ if(!t.id)t.id="nh-vent-tit"; s.setAttribute("aria-labelledby",t.id); }
-    if(!_NH_VENT_ABIERTA){ _NH_VENT_ABIERTA=true; _NH_VENT_ORIGEN=_NH_TOQUE; if(!s.contains(document.activeElement)){ try{ s.focus({preventScroll:true}); }catch(e){} } }
+    if(!_NH_VENT_ABIERTA){ _NH_VENT_ABIERTA=true; _NH_VENT_ORIGEN=_NH_TOQUE; if(!_nhSinMovimiento()) bg.classList.add("nh-entra"); if(!s.contains(document.activeElement)){ try{ s.focus({preventScroll:true}); }catch(e){} } }
   } else if(_NH_VENT_ABIERTA){
     _NH_VENT_ABIERTA=false;
     if(_NH_VENT_ORIGEN){ const o=[...document.querySelectorAll("[onclick]")].find(x=>x.getAttribute("onclick")===_NH_VENT_ORIGEN); if(o){ try{ o.focus({preventScroll:true}); }catch(e){} } }
@@ -330,8 +330,31 @@ function _nhFilasDesplegables(raiz){
     if(!h._nhTecla){ h._nhTecla=1; h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); h.click(); } }); }
   });
 }
-function _nhAccesible(){ try{ const a=document.getElementById("app")||document.body; _nhNombrarInterruptores(a); _nhFilasDesplegables(a); _nhEtiquetarCampos(document.body); _nhVentanas(); _nhCampos16(); }catch(e){} }
-function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); } }
+// v45.97 · movimientos suaves (bloque 4). La app se vuelve a pintar entera en cada cambio, así que el movimiento
+// se pone solo a lo que acaba de cambiar: la ventana que se abre sube desde abajo (250 ms) y al cerrarse baja (150 ms);
+// lo que se despliega aparece deslizándose y su flecha gira. Con «Reducir movimiento» del iPhone no se mueve nada.
+let _NH_ABIERTOS=null;
+function _nhSinMovimiento(){ try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+function _nhMovimientos(){
+  const ahora=new Set(), quieto=_nhSinMovimiento()||_NH_ABIERTOS===null;
+  document.querySelectorAll('[aria-expanded][onclick]').forEach(h=>{
+    const k=h.getAttribute("onclick"), ab=h.getAttribute("aria-expanded")==="true", fl=h.querySelector(".mg-acc-fl");
+    if(ab) ahora.add(k);
+    if(quieto) return;
+    if(ab&&!_NH_ABIERTOS.has(k)){ const c=h.nextElementSibling; if(c&&!c.hasAttribute("aria-expanded")) c.classList.add("nh-despliega"); if(fl) fl.classList.add("nh-gira-ab"); }
+    else if(!ab&&_NH_ABIERTOS.has(k)&&fl) fl.classList.add("nh-gira-ce");
+  });
+  _NH_ABIERTOS=ahora;
+}
+function _nhVentanaSale(prev){
+  // la ventana que se acaba de cerrar: se vuelve a poner un momento, solo para verla bajar (no se puede tocar)
+  if(!prev||_nhSinMovimiento()||document.querySelector(".modal-bg"))return;
+  const a=document.getElementById("app")||document.body;
+  prev.classList.remove("nh-entra"); prev.classList.add("nh-sale"); prev.removeAttribute("onclick"); prev.setAttribute("aria-hidden","true");
+  a.appendChild(prev); setTimeout(()=>{ try{ prev.remove(); }catch(e){} },170);
+}
+function _nhAccesible(){ try{ const a=document.getElementById("app")||document.body; _nhNombrarInterruptores(a); _nhFilasDesplegables(a); _nhEtiquetarCampos(document.body); _nhVentanas(); _nhCampos16(); _nhMovimientos(); }catch(e){} }
+function render(){ _MEMO_RENDER={}; const _vPrev=document.querySelector(".modal-bg:not(.nh-sale)"); try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); try{ _nhVentanaSale(_vPrev&&!_vPrev.isConnected?_vPrev:null); }catch(e){} } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
   // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)
