@@ -47,7 +47,7 @@ function permanenciasGestionHTML(){
   const L=permanenciasLista(), idx=_idxMes(DATA.reportMonth,DATA.reportYear);
   const nProx=L.filter(x=>x.prox).length, nIndef=L.filter(x=>x.tipo==="indef").length, ab=!!DESP["mg-perm"];
   let h=`<div class="mg-acc-head" id="mg-perm-head" onclick="DESP['mg-perm']=!DESP['mg-perm'];render()">
-      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num aviso">${nProx} en 3 meses</span>`:""}</span>
+      <span>⏳ Permanencias${nProx?` <span class="mg-acc-num aviso">${nProx} en los próximos 3 meses</span>`:""}</span>
       <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   const fil=PERM_FIL;

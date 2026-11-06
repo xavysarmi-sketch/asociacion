@@ -634,6 +634,8 @@ function _renderPantalla(){
                 ${esCuota?`<span class="cuota-num">${_cuotaIdxGrupo}</span>`:""}
                 <div class="cob-it-c" style="flex:1;min-width:0">
                   <div style="font-size:13px;color:var(--muted)">${it.concepto}</div>
+                  ${(()=>{ if(it.tipo!=="aporte")return ""; const mm=DATA.members.find(x=>x.id===it.mid), br=mm?aporteBrutoKey(mm,getMesKey(DATA.reportMonth,DATA.reportYear)):0, bo=_r2(br-it.importe); // v46.2: con bono, lo que se suma de verdad
+                    return bo>0?`<div style="font-size:13.5px;font-weight:800;color:var(--dark);margin-top:2px">Paga ${fmtEur(it.importe)}&nbsp;€ <span style="font-weight:600">(${fmtEur(br)} − ${fmtEur(bo)} de bono)</span></div>`:""; })()}
                   ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
                 </div>
                 <div class="cob-it-d" style="display:flex;align-items:center;gap:10px">
@@ -646,7 +648,7 @@ function _renderPantalla(){
             if(lista.length>1){ const pag=lista.every(x=>x.yaPagado);
               h+=`<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin:4px 0 0 10px;padding-top:6px;border-top:1.5px dashed #CFC6BA">
                 <span style="font-size:14px;font-weight:800;color:var(--dark)">Total</span>
-                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:800;color:${pag?"#2D6A4F":"var(--dark)"}">${fmtEur(subtotal)} €</span><span class="toggle-btn" style="visibility:hidden"></span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span class="cob-tot-amt" style="font-size:15px;font-weight:800;color:${pag?"#2D6A4F":"var(--dark)"}">${fmtEur(subtotal)} €</span><span class="toggle-btn" style="visibility:hidden"></span></div>
               </div>`; }
             h+=`</div>`;
           });
@@ -682,18 +684,18 @@ function _renderPantalla(){
           if(_nAportes>0){
             h+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
               <span style="font-size:13px;color:var(--dark)">Aportes <span style="color:var(--muted)">· ${_nAportes} ${_nAportes===1?"asociado":"asociados"}</span></span>
-              <span style="font-size:14px;font-weight:700;color:var(--dark)">${fmtEur(_totAportes)} €</span>
+              <span style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap">${fmtEur(_totAportes)} €</span>
             </div>`;
           }
           if(_nCuotas>0){
             h+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
               <span style="font-size:13px;color:var(--dark)">Cuotas de ayudas <span style="color:var(--muted)">· ${_nCuotas} ${_nCuotas===1?"cuota":"cuotas"}</span></span>
-              <span style="font-size:14px;font-weight:700;color:var(--dark)">${fmtEur(_totCuotas)} €</span>
+              <span style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap">${fmtEur(_totCuotas)} €</span>
             </div>`;
           }
           h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding-top:9px;margin-top:2px">
               <span style="font-size:13px;font-weight:800;color:var(--dark)">Total de todo</span>
-              <span style="font-size:20px;font-weight:900;color:var(--brand,#1B4332)">${fmtEur(_totTodo)} €</span>
+              <span style="font-size:20px;font-weight:900;color:var(--brand,#1B4332);white-space:nowrap">${fmtEur(_totTodo)} €</span>
             </div>
           </div>`;
           // ── Eliminar grupo (confirmación de dos toques) ──
@@ -775,7 +777,7 @@ function _renderPantalla(){
       // v45.39: Personas — la lista se ve siempre, con buscador arriba y filtros
       const nTerc=ordered.length-nAsociados;
       {
-        h+=`<div class="mes-title" style="margin:6px 2px 10px">👥 Personas <span style="font-weight:600;color:var(--muted)">· ${nAsociados} asociados${nTerc>0?` + ${nTerc} terceros`:""}</span></div>`;
+        h+=`<div class="mes-title" style="margin:6px 2px 10px">👥 <span>Personas <span style="font-weight:600;color:var(--muted)">· ${nAsociados} asociados${nTerc>0?` + ${nTerc} terceros`:""}</span></span></div>`; // v46.2: título y cifras en un solo bloque (antes se descolocaba)
         // Buscador de miembros
         h+=`<input id="asoc-search" type="text" placeholder="Buscar por nombre…" oninput="filtrarEnVivo(this.value,'#asoc-listas')"
           style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;box-sizing:border-box;margin-bottom:10px">`;
@@ -894,7 +896,7 @@ function _renderPantalla(){
       <button style="width:100%;padding:8px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer" onclick="openModal('restaurar_backups',{})">Restaurar copia de seguridad local</button>
     </div>`; }
     { const ab=!!DESP["mg-cfg"];
-      h+=`<div class="mg-acc-head" onclick="DESP['mg-cfg']=!DESP['mg-cfg'];render()"><span>⚙️ Configuración <span style="font-weight:600;color:var(--muted)">· retorno ${DATA.rate} % · mes nuevo el día ${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}</span></span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
+      h+=`<div class="mg-acc-head" onclick="DESP['mg-cfg']=!DESP['mg-cfg'];render()"><span>⚙️ Configuración <span style="font-weight:600;color:var(--muted)">· retorno ${DATA.rate}&nbsp;% · mes nuevo el día ${DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25}</span></span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
       if(ab)h+=configHTML(); }
     h+=pantallaAjustesHTML(); // v45.39: Texto grande
     h+=sesionHTML(); // v45.27

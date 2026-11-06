@@ -1050,3 +1050,9 @@ body.nh-admin .ay-desp .mg-acc-fl{border-color:#2D6A4F}
 .nh-despliega{animation:nhDespliega 250ms cubic-bezier(.22,1,.36,1)}
 body.nh-admin .mg-acc-fl.nh-gira-ab{animation:nhGiraAb 250ms cubic-bezier(.22,1,.36,1)}
 body.nh-admin .mg-acc-fl.nh-gira-ce{animation:nhGiraCe 250ms cubic-bezier(.22,1,.36,1)}
+
+/* ── v46.2 · revisión de la app del administrador: nada partido ni salido de su sitio ── */
+body.nh-admin .mg-acc-num{white-space:nowrap}
+body.nh-admin .sol-bot{flex-wrap:wrap}
+body.nh-admin .sol-bot>button{white-space:nowrap;flex-basis:auto!important;min-width:max-content}
+body.nh-admin .cob-it-d>.aporte-amt,body.nh-admin .cob-tot-amt{display:inline-block;min-width:92px;text-align:right;white-space:nowrap}

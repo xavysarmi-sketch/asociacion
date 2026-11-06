@@ -790,7 +790,7 @@ function avisosPermanenciaHTML(rm,ry){
   const k="avisos-perm", ab=!!DESP[k];
   let h=`<div class="mes-card ini-plegable" style="border:1px solid #E3C766;background:#FFFBEF">
     <button onclick="DESP['${k}']=!DESP['${k}'];render()" aria-expanded="${ab?"true":"false"}" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:0;text-align:left">
-      <span class="mes-title" style="margin:0;color:#6B5310">⏰ Permanencias — ${av.length} aviso${av.length>1?"s":""}</span>
+      <span class="mes-title" style="margin:0;color:#6B5310">⏰ Permanencias — ${av.length} aviso${av.length>1?"s":""} este mes</span>
       <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span>
     </button>`;
   if(ab){

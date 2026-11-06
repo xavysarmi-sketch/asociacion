@@ -188,7 +188,7 @@ function ayudasTabHTML(){
   h+=`</div>`;
   h+=peticionesAppHTML(); // v45.52: pedidas desde la app de asociados
   // Solicitudes
-  h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">📝 Solicitudes de ayuda ${pend.length?`<span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#FFF4E5;color:#8A4F12;vertical-align:middle">${pend.length} pendiente${pend.length>1?"s":""}</span>`:""}</div>`;
+  h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">📝 Solicitudes de ayuda ${pend.length?`<span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#FFF4E5;color:#8A4F12;vertical-align:middle;white-space:nowrap">${pend.length} pendiente${pend.length>1?"s":""}</span>`:""}</div>`;
   if(!pend.length&&!SOL_FORM)h+=`<div style="color:var(--muted);font-size:13px;padding:6px 0">No hay solicitudes pendientes para ${mesTxt}.</div>`;
   const repA=_solReparto(pend,d.disponible); // v45.17: el dinero de la asociación, en orden de preferencia
   pend.forEach((so,i)=>{
@@ -203,7 +203,7 @@ function ayudasTabHTML(){
         ${(()=>{ const av=so.avalId&&DATA.members.find(x=>x.id===so.avalId), gg=so.grupoGid&&gruposCierre().find(x=>x.id===so.grupoGid), gp=gg&&DATA.members.find(x=>x.id===gg.principalId);
           return (av||gp)?`<div style="font-size:12px;color:#1B4332;margin-top:2px">${av?`🛡️ Aval: ${escH(av.name.split(" ")[0])}`:""}${av&&gp?" · ":""}${gp?`👥 Grupo de ${escH(gp.name.split(" ")[0])}`:""}</div>`:""; })()}
         <div style="font-size:12.5px;margin-top:4px">${_solAlcanzaHTML(repA[so.id])}</div>
-        <div style="display:flex;gap:6px;margin-top:8px">
+        <div class="sol-bot" style="display:flex;gap:6px;margin-top:8px">
           <button onclick="solOtorgar('${so.id}')" style="flex:2;padding:9px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13px;font-weight:800;cursor:pointer">✅ Otorgar</button>
           <button onclick="DESP['soled-${so.id}']=!DESP['soled-${so.id}'];render()" aria-expanded="${DESP['soled-'+so.id]?"true":"false"}" style="flex:1;padding:9px;border-radius:9px;border:1px solid var(--border);background:#fff;color:#1B4332;font-size:12.5px;font-weight:800;cursor:pointer">✏️ Importe</button>
           <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:9px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button>
@@ -233,7 +233,7 @@ function ayudasTabHTML(){
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${_solEtqTipo(so,m)} · ${escH(so.fecha||"")} · ${so.cuotas} ${so.cuotas===1?"cuota":"cuotas"} de ${fmtEur(cuotas[0])} €</div>
         ${(av||gp)?`<div style="font-size:12px;color:#1B4332;margin-top:2px">${av?`🛡️ Aval: ${escH(av.name.split(" ")[0])}`:""}${av&&gp?" · ":""}${gp?`👥 Grupo de ${escH(gp.name.split(" ")[0])}`:""}</div>`:""}
         <div style="font-size:12.5px;margin-top:4px">${_solAlcanzaHTML(repF[so.id])}</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+        <div class="sol-bot" style="display:flex;gap:6px;align-items:center;margin-top:8px">
           <span style="flex:2;font-size:12.5px;color:#1B4332;font-weight:700">Se otorga en el cierre de ${mt}</span>
           <button onclick="DESP['soled-${so.id}']=!DESP['soled-${so.id}'];render()" aria-expanded="${DESP['soled-'+so.id]?"true":"false"}" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:#fff;color:#1B4332;font-size:12.5px;font-weight:800;cursor:pointer">✏️ Importe</button>
           <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:8px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button></div>${_solEditarHTML(so)}</div></div>`;
