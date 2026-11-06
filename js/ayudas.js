@@ -114,6 +114,27 @@ function solDesdeSim(gid,i){
 }
 // v45.16: desde Cierre se va a Solicitudes (una sola puerta para las ayudas nuevas)
 function irSolicitudes(){ TAB="ayudas"; FICHA_ID=null; render(); window.scrollTo(0,0); } // v45.39: Solicitudes en la pestaña «Ayudas»
+// v45.98: cambiar el importe (y las cuotas) de una solicitud pendiente sin tener que «no otorgarla» y apuntarla otra vez.
+// Mantiene su fecha y su sitio en la cola; la cuenta con el responsable del grupo toma el importe nuevo.
+function _solEditarHTML(so){
+  const k="soled-"+so.id; if(!DESP[k])return "";
+  return `<div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#F7F5F1">
+    <label class="m-label" for="soed-cap-${so.id}" style="margin-top:0">Importe que pide (€)</label>
+    <input id="soed-cap-${so.id}" type="number" inputmode="decimal" class="m-input" value="${so.capital}" style="font-size:16px;margin-bottom:8px">
+    <label class="m-label" for="soed-n-${so.id}">Cuotas para devolverla</label>
+    <select id="soed-n-${so.id}" class="m-select" style="font-size:16px">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===so.cuotas?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button onclick="DESP['${k}']=false;render()" style="flex:1;padding:10px;border-radius:9px;border:1px solid #D9C9B0;background:#fff;color:#6E6048;font-size:13.5px;font-weight:700;cursor:pointer">Cancelar</button>
+      <button onclick="solCambiarImporte('${so.id}')" style="flex:2;padding:10px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">Guardar</button>
+    </div></div>`;
+}
+function solCambiarImporte(id){
+  const so=_sols().find(x=>x.id===id); if(!so||so.estado!=="pendiente")return;
+  const cap=numES((document.getElementById("soed-cap-"+id)||{}).value), n=parseInt((document.getElementById("soed-n-"+id)||{}).value||so.cuotas||"5");
+  if(!(cap>0)){toast("Escribe el importe");return;}
+  const antes=so.capital; so.capital=_r2(cap); so.cuotas=n; delete DESP["soled-"+id];
+  save(); render(); toast(`Solicitud de ${so.nombre.split(" ")[0]}: ${fmtEur(antes)} € → ${fmtEur(so.capital)} € ✓`);
+}
 function solEstado(id,estado){ const so=_sols().find(x=>x.id===id); if(!so)return; so.estado=estado; if(estado==="pendiente"){delete so.lid;delete so.mesOtorgada;} delete DESP["solno-"+id]; save(); render(); }
 function solBorrar(id){ DATA.solicitudes=_sols().filter(x=>x.id!==id); delete DESP["solbor-"+id]; save(); render(); }
 // v45.23: «💰 Dinero del mes» — la MISMA cuenta en Asociados y en Solicitudes. Fase de crecimiento:
@@ -184,8 +205,9 @@ function ayudasTabHTML(){
         <div style="font-size:12.5px;margin-top:4px">${_solAlcanzaHTML(repA[so.id])}</div>
         <div style="display:flex;gap:6px;margin-top:8px">
           <button onclick="solOtorgar('${so.id}')" style="flex:2;padding:9px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13px;font-weight:800;cursor:pointer">✅ Otorgar</button>
+          <button onclick="DESP['soled-${so.id}']=!DESP['soled-${so.id}'];render()" aria-expanded="${DESP['soled-'+so.id]?"true":"false"}" style="flex:1;padding:9px;border-radius:9px;border:1px solid var(--border);background:#fff;color:#1B4332;font-size:12.5px;font-weight:800;cursor:pointer">✏️ Importe</button>
           <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:9px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button>
-        </div></div></div>`;
+        </div>${_solEditarHTML(so)}</div></div>`;
   });
   // v45.17: solicitudes para meses siguientes (se ven, pero se otorgan en el cierre de su mes)
   [...new Set(fut.map(_solMesIdx))].sort((a,b)=>a-b).forEach(mi=>{
@@ -213,7 +235,8 @@ function ayudasTabHTML(){
         <div style="font-size:12.5px;margin-top:4px">${_solAlcanzaHTML(repF[so.id])}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
           <span style="flex:2;font-size:12.5px;color:#1B4332;font-weight:700">Se otorga en el cierre de ${mt}</span>
-          <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:8px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button></div></div></div>`;
+          <button onclick="DESP['soled-${so.id}']=!DESP['soled-${so.id}'];render()" aria-expanded="${DESP['soled-'+so.id]?"true":"false"}" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:#fff;color:#1B4332;font-size:12.5px;font-weight:800;cursor:pointer">✏️ Importe</button>
+          <button onclick="${armNo?`solEstado('${so.id}','no')`:`DESP['${kno}']=true;render()`}" style="flex:1;padding:8px;border-radius:9px;border:1px solid #E8C9BE;background:${armNo?"#C0492C":"#fff"};color:${armNo?"#fff":"#A63A20"};font-size:12.5px;font-weight:800;cursor:pointer">${armNo?"¿Seguro?":"No otorgar"}</button></div>${_solEditarHTML(so)}</div></div>`;
     });
   });
   { // v45.47: avisar al responsable del grupo de que sus solicitudes están apuntadas

@@ -341,7 +341,7 @@ function _nhMovimientos(){
     const k=h.getAttribute("onclick"), ab=h.getAttribute("aria-expanded")==="true", fl=h.querySelector(".mg-acc-fl");
     if(ab) ahora.add(k);
     if(quieto) return;
-    if(ab&&!_NH_ABIERTOS.has(k)){ const c=h.nextElementSibling; if(c&&!c.hasAttribute("aria-expanded")) c.classList.add("nh-despliega"); if(fl) fl.classList.add("nh-gira-ab"); }
+    if(ab&&!_NH_ABIERTOS.has(k)){ const c=h.nextElementSibling; if(c&&!c.hasAttribute("aria-expanded")&&c.tagName!=="BUTTON") c.classList.add("nh-despliega"); if(fl) fl.classList.add("nh-gira-ab"); }
     else if(!ab&&_NH_ABIERTOS.has(k)&&fl) fl.classList.add("nh-gira-ce");
   });
   _NH_ABIERTOS=ahora;
