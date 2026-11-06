@@ -354,3 +354,6 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 /* ── v45.87 · con la letra grande del iPhone los dos cuadros de Inicio van uno debajo del otro ── */
 .nha-tiles{flex-wrap:wrap}
 .nha-tile{flex:1 1 170px}
+
+/* v45.89: «Actualizar» del pie, más alto para el dedo (antes 20 px; mínimo 24, recomendado 44) sin cambiar cómo se ve */
+.nha-pie-b{padding:12px 8px;margin:-10px -4px}

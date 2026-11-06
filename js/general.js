@@ -261,7 +261,68 @@ function _nhAplicarLetra(){
 }
 // al volver a la app (por si se cambió el tamaño del texto en Ajustes) se mide otra vez
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState!=="visible")return; const antes=_NH_LETRA_SIS; _NH_LETRA_SIS=null; if(nhLetraSistema()!==antes){ try{ if(typeof DATA!=="undefined"&&DATA)render(); }catch(e){} } });
-function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); } }
+// v45.89: accesibilidad básica (WCAG 2.2 AA) sin cambiar el aspecto. Tras cada pintado:
+//  · los interruptores de «pagado» dicen qué marcan («Marcar pagado: Aporte · Karla España») y si están marcados;
+//  · los campos sin nombre toman el de su etiqueta de encima (selectores, deslizadores del simulador…);
+//  · las ventanas que suben desde abajo se anuncian como ventana, reciben el foco al abrirse,
+//    se cierran con Esc (si se pueden cerrar tocando fuera) y al cerrarse el foco vuelve al botón que las abrió.
+let _NH_TOQUE=null, _NH_VENT_ABIERTA=false, _NH_VENT_ORIGEN=null;
+document.addEventListener("click",e=>{ const t=e.target&&e.target.closest?e.target.closest("button,a,[onclick]"):null; if(t&&!t.classList.contains("modal-bg")) _NH_TOQUE=t.getAttribute("onclick"); },true);
+document.addEventListener("keydown",e=>{ if(e.key!=="Escape")return; const bg=document.querySelector(".modal-bg[onclick]"); if(bg){ e.preventDefault(); bg.click(); } });
+function _nhTxtEtiqueta(el){
+  if(!el)return "";
+  let t="";
+  if(el.tagName==="LABEL"||el.classList.contains("m-label")){ const c=el.cloneNode(true); c.querySelectorAll("b,span,small,select,input").forEach(x=>x.remove()); t=c.textContent; }
+  else t=el.textContent;
+  t=(t||"").replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,"").replace(/\s+/g," ").replace(/^[·•\s]+|[·•\s]+$/g,"").trim();
+  return t.length>1&&t.length<=80?t:"";
+}
+function _nhEtiquetarCampos(raiz){
+  raiz.querySelectorAll('select,textarea,input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=button])').forEach(el=>{
+    if(el.hasAttribute("aria-label")||el.hasAttribute("aria-labelledby")||el.closest("label"))return;
+    if(el.id){ try{ if(document.querySelector('label[for="'+CSS.escape(el.id)+'"]'))return; }catch(e){} }
+    // orden: título del campo › etiqueta de encima › texto de ayuda dentro › texto de encima › primera opción
+    let n=el.getAttribute("title")||"", p=el.previousElementSibling, cerca="";
+    for(let i=0;i<3&&p&&!n;i++,p=p.previousElementSibling){ if(p.matches("select,input,textarea,button"))break; if(p.tagName==="LABEL"||p.classList.contains("m-label")){ n=_nhTxtEtiqueta(p); break; } if(i===0&&!p.classList.contains("modal-title")) cerca=_nhTxtEtiqueta(p); }
+    if(!n) n=el.getAttribute("placeholder")||cerca;
+    if(!n&&el.parentElement) n=_nhTxtEtiqueta(el.parentElement.previousElementSibling);
+    if(!n&&el.tagName==="SELECT"&&el.options.length) n=(el.options[0].textContent||"").replace(/[—–-]/g," ").trim();
+    if(n) el.setAttribute("aria-label",n);
+  });
+}
+function _nhNombrarInterruptores(raiz){
+  raiz.querySelectorAll("button.toggle-btn").forEach(b=>{
+    b.setAttribute("aria-pressed",b.classList.contains("on")?"true":"false");
+    if(b.hasAttribute("aria-label"))return;
+    let txt="";
+    const fila=b.closest(".cob-it");
+    if(fila){ const c=fila.querySelector(".cob-it-c div"), per=fila.parentElement&&fila.parentElement.querySelector(".aporte-name");
+      txt=(c?c.textContent.trim():"")+(per&&per.firstChild?" · "+per.firstChild.textContent.trim():""); }
+    else { let q=b.parentElement; for(let i=0;i<5&&q&&!txt;i++,q=q.parentElement){ const n=q.querySelector(".aporte-name,.cc-name,.cuota-name"); if(n) txt=n.textContent.replace(/\s+/g," ").trim(); } }
+    b.setAttribute("aria-label","Marcar pagado"+(txt?": "+txt.slice(0,90):""));
+  });
+}
+function _nhVentanas(){
+  const bg=document.querySelector(".modal-bg"), s=bg&&bg.querySelector(".modal-sheet");
+  if(s){
+    s.setAttribute("role","dialog"); s.setAttribute("aria-modal","true"); s.tabIndex=-1;
+    const t=s.querySelector(".modal-title,h2,h3"); if(t){ if(!t.id)t.id="nh-vent-tit"; s.setAttribute("aria-labelledby",t.id); }
+    if(!_NH_VENT_ABIERTA){ _NH_VENT_ABIERTA=true; _NH_VENT_ORIGEN=_NH_TOQUE; if(!s.contains(document.activeElement)){ try{ s.focus({preventScroll:true}); }catch(e){} } }
+  } else if(_NH_VENT_ABIERTA){
+    _NH_VENT_ABIERTA=false;
+    if(_NH_VENT_ORIGEN){ const o=[...document.querySelectorAll("[onclick]")].find(x=>x.getAttribute("onclick")===_NH_VENT_ORIGEN); if(o){ try{ o.focus({preventScroll:true}); }catch(e){} } }
+    _NH_VENT_ORIGEN=null;
+  }
+}
+// Ahora tu app deja ampliar con dos dedos. El iPhone, además, amplía solo al tocar un campo con letra de menos
+// de 16 px; para que no lo haga, en iPhone esos campos (solo los menores de 16 px) pasan a 16 px.
+const _NH_IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function _nhCampos16(){
+  if(!_NH_IOS||!document.body.classList.contains("nh-admin"))return;
+  document.querySelectorAll("input:not([type=range]):not([type=checkbox]):not([type=radio]),select,textarea").forEach(el=>{ if(parseFloat(getComputedStyle(el).fontSize)<16) el.style.fontSize="16px"; });
+}
+function _nhAccesible(){ try{ const a=document.getElementById("app")||document.body; _nhNombrarInterruptores(a); _nhEtiquetarCampos(document.body); _nhVentanas(); _nhCampos16(); }catch(e){} }
+function render(){ _MEMO_RENDER={}; try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
   // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)

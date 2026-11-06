@@ -958,3 +958,5 @@ html.nh-letra-g .pl-nom,html.nh-letra-g .pl-meta{white-space:normal;overflow:vis
 html.nh-letra-g .h-mes-txt{display:none}
 html.nh-letra-g .ft-tabs{flex-wrap:wrap}
 html.nh-letra-g .ft-tab,html.nh-letra-g .ft-tabs.t5 .ft-tab{flex:1 1 auto;padding:9px 10px;overflow:visible;text-overflow:clip}
+
+.modal-sheet:focus{outline:none}
