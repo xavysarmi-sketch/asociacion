@@ -102,9 +102,8 @@ function _seccionesReunion(R,rm,ry,cerrado){
   const kAp=`<div class="doc-kpi"><div class="k">Aportaciones</div><div class="v">${_eur(cerrado?R.apCob:R.apPrev)}</div><div class="s">${cerrado?`${R.nApPag} de ${R.nAp} asociados`:`${R.nAp} asociados`}</div></div>`;
   const kCu=`<div class="doc-kpi"><div class="k">Cuotas de ayudas</div><div class="v">${_eur(cerrado?R.cuCob:R.cuPrev)}</div><div class="s">${cerrado?`${R.nCuPag} de ${R.nCu} cuotas`:`${R.nCu} cuotas`}</div></div>`;
   // v46.15 (Ángel 07/11/2026): en la hoja de cobro, aportaciones + cuotas = total previsto, y sin la tabla de retornos/excedente (sigue en el acta)
-  // los signos van junto a las cifras: 1.640 € · + 3.817 € · = 5.457 €
-  const kq=(k,t,sg)=>k.replace(/<div class="k">[^<]*<\/div>/,`<div class="k">${t}</div>`).replace('<div class="v">',`<div class="v">${sg?`<span class="doc-kpi-sg">${sg}</span>`:""}`);
-  let h=`<div class="doc-kpis">${cerrado?kTot+kAp+kCu:kq(kAp,"Total de aportes")+kq(kCu,"Total cuotas de ayudas","+")+kq(kTot,"Total previsto","=")}</div>
+  const sg=t=>`<div class="doc-kpi-sg">${t}</div>`, kq=(k,t)=>k.replace(/<div class="k">[^<]*<\/div>/,`<div class="k">${t}</div>`);
+  let h=`<div class="doc-kpis">${cerrado?kTot+kAp+kCu:kq(kAp,"Total de aportes")+sg("+")+kq(kCu,"Total cuotas de ayudas")+sg("=")+kq(kTot,"Total previsto")}</div>
   ${cerrado?`<table class="doc-t doc-mini"><tbody>
     <tr><td>Retornos compartidos ${cerrado?"del mes":"previstos"} (5 % de cada cuota)</td><td class="n">${_eur(cerrado?R.recargoMes:R.recPrev)}</td></tr>
     <tr><td>Beneficio para los asociados según su permanencia y aporte (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>
@@ -178,7 +177,7 @@ function docCobroHTML(rm,ry){
     });
     const gTot=Math.round((gAp+gCu)*100)/100;
     totPend+=gTot; totYa+=subYa;
-    h+=`<tr class="doc-subt"><td>Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gTot)}</td><td></td></tr></tbody></table></div>`;
+    h+=`<tr class="doc-subt"><td>Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">+ ${_eur(gCu)}</td><td class="n">= ${_eur(gTot)}</td><td></td></tr></tbody></table></div>`; // v46.17: como una suma
   });
   // v45.3: huecos para apuntar a mano en la reunión los nuevos asociados y las ayudas nuevas
   const filasVacias=(n,cols)=>Array.from({length:n},()=>`<tr class="doc-hueco">${cols.map(c=>`<td class="${c}">${c==="perm"?`<span class="doc-sub">12 · 24 · 36 · ∞</span>`:c==="c"?`<span class="doc-check"></span>`:""}</td>`).join("")}</tr>`).join("");

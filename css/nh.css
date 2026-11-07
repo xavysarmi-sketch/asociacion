@@ -1087,7 +1087,7 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 .doc-cobro2 td.n .doc-sub{font-size:.85em;color:#666}
 .doc-ayuda{font-size:.95em;color:#444;background:#fff}
 @media screen and (max-width:700px){ .doc-cobro2 th{font-size:9.5px;white-space:normal} }
-.doc-kpi-sg{margin-right:5px;font-weight:800}
+.doc-kpi-sg{flex:0 0 auto;align-self:center;font-size:20px;font-weight:800;color:#1B4332;padding:0 1px}
 .doc-baja{border-collapse:collapse;margin:3px 0 2px;max-width:340px;width:100%}
 .doc-baja td{padding:1px 4px;border:none;font-size:.95em}.doc-baja td.n{text-align:right;white-space:nowrap}
 .doc-baja tr.doc-baja-t td{border-top:1.5px solid #1B4332;padding-top:3px}
@@ -1096,3 +1096,6 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 /* v46.16 · columnas del resumen siempre a partes iguales; en el móvil, una debajo de otra */
 .doc-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 @media screen and (max-width:700px){ .doc-cols{grid-template-columns:1fr} }
+/* v46.17 · cifras de los tres cuadros a la misma altura y apartados del resumen con borde fino */
+.doc-kpi .k{min-height:2.5em}
+.doc-cols>div{border:1px solid #D5DED8;border-radius:8px;padding:6px 9px}
