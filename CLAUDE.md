@@ -85,6 +85,9 @@ lenguaje sencillo antes de aplicarlos.
   terceros ven su ayuda con barra (nhaTerceroAyudaHTML); accesos a simuladores en fila baja. Simulador de pedir:
   calendario plegado (DESP sim-cal) y aviso si ya paga otra ayuda. Ficha: «1 de 2 pagadas», sin «,00», «activa/cerrada»,
   aportes temporales en palabras.
+- Desde v46.10: simulador «¿Cuánto puedo ganar?»: arriba «Lo que tienes hoy» (sus datos); debajo ejemplos GENERALES de
+  12/24/36 meses empezando de cero (BE-2: 10/12/15 € por cada 50 € según el año; la suya marcada «LA TUYA»); al final
+  «Si sales ahora» con salidaV18 (sus aportes, beneficio que conserva, ayuda pendiente, lo que pierde).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
