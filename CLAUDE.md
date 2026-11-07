@@ -61,6 +61,10 @@ lenguaje sencillo antes de aplicarlos.
   personal). Mi grupo: «Quién falta» y «Al día» (los marcados por el responsable van con «Al día»), cada persona como
   una suma. Iconos de línea (_icSVG) en Inicio; «Tus avisos» no repite la cuota de este mes. La ficha del enlace
   antiguo y la del administrador no cambian.
+- Desde v46.4: los enlaces antiguos (?socio=, ?grupo=, ?grupoppal=) en producción solo pintan «Este enlace ya no se usa»
+  (pintarEnlaceRetirado, js/datos.js) y no leen la nube; en modo desarrollo siguen funcionando porque las pruebas
+  (verificar_app.js, revisor) los usan. buildMemberUrl devuelve el enlace de la app nueva; los enlaces de grupo ya no se
+  envían. Con esto, nh/data puede quedar en lectura solo para el administrador (reglas v46.4).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

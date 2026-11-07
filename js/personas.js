@@ -518,11 +518,11 @@ function telefonoModalHTML(){
 // ══ v45.21 · BIENVENIDA POR WHATSAPP ══════════════════════════════════════════════════════
 function _textoBienvenida(m){
   const nom=m.name.split(" ")[0], url=buildMemberUrl(m.id);
-  if(m.type==="tercero")return `¡Hola ${nom}! 👋 Te escribo de Nuevos Horizontes.\n\nEn este enlace puedes ver siempre tu ficha: lo que te toca pagar cada mes y tu calendario de cuotas:\n${url}\n\nGuárdalo en favoritos 📌. Cualquier duda, escríbeme.`;
+  if(m.type==="tercero")return `¡Hola ${nom}! 👋 Te escribo de Nuevos Horizontes.\n\nEn tu app NH puedes ver siempre tu ficha: lo que te toca pagar cada mes y tu calendario de cuotas:\n${url}\n\nÁbrelo y sigue los pasos para ponerla en tu móvil 📲. Cualquier duda, escríbeme.`;
   const fin=finPermanenciaIdx(m);
   const perm=m.ciclo===0?"indefinida":m.ciclo!=null?`${m.ciclo} meses${fin!=null?` (hasta ${_txtIdx(fin)})`:""}`:"—";
   const ini=m.joinMonth?MONTHS_FULL[MONTHS.indexOf(m.joinMonth)].toLowerCase()+" "+m.joinYear:"";
-  return `¡Hola ${nom}! 👋 Te damos la bienvenida a Nuevos Horizontes 🌱\n\nYa formas parte del fondo. Tus datos:\n• Aporte mensual: ${m.aporte||50} € (cada mes puedes elegir 50, 100, 150 o 200 €)\n• Permanencia: ${perm}${ini?`\n• Primer aporte: ${ini}`:""}\n\nEn este enlace puedes ver siempre tu ficha: lo que te toca cada mes, tus aportes y tu beneficio. También tienes simuladores para ver cuánto podrías pedir y cuánto puedes ganar:\n${url}\n\nGuárdalo en favoritos 📌. Cualquier duda, escríbeme.`;
+  return `¡Hola ${nom}! 👋 Te damos la bienvenida a Nuevos Horizontes 🌱\n\nYa formas parte del fondo. Tus datos:\n• Aporte mensual: ${m.aporte||50} € (cada mes puedes elegir 50, 100, 150 o 200 €)\n• Permanencia: ${perm}${ini?`\n• Primer aporte: ${ini}`:""}\n\nEn tu app NH puedes ver siempre tu ficha: lo que te toca cada mes, tus aportes y tu beneficio. También tienes simuladores para ver cuánto podrías pedir y cuánto puedes ganar:\n${url}\n\nÁbrelo y sigue los pasos para ponerla en tu móvil 📲. Cualquier duda, escríbeme.`;
 }
 function abrirBienvenida(mid,trasAlta){ const m=DATA.members.find(x=>x.id===mid); if(!m)return; setTimeout(()=>openModal('bienvenida',{mid,trasAlta:!!trasAlta}),trasAlta?60:0); }
 function bienvenidaModalHTML(){

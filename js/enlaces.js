@@ -19,10 +19,12 @@ function sendGroupLink(){
   const allVisible=DATA.members;
   const ids=[...SEND_SELECTED].filter(id=>allVisible.some(m=>m.id===id));
   if(ids.length<2){toast("Selecciona al menos 2 fichas");return;}
+  toast("Los enlaces de grupo ya no se usan: cada persona tiene su app (Más › App de asociados)",5000); return; // v46.4
   MODAL={type:"grupo_link",ids,grupoMatch:grupoQueCoincide(ids)};
   render();
 }
 function buildGrupoUrl(ids,yo){
+  return ""; // v46.4: los enlaces de grupo ya no se usan (compartirían datos de varias personas)
   let u=baseUrl()+"?grupo="+ids.map(id=>encodeURIComponent(id)).join(",");
   if(yo)u+="&yo="+encodeURIComponent(yo);
   return u;
@@ -30,6 +32,7 @@ function buildGrupoUrl(ids,yo){
 // Enlace ESTABLE de un grupo de cierre: apunta al asociado principal.
 // No congela la lista; el asociado siempre verá los miembros actuales del grupo.
 function buildGrupoUrlEstable(principalId,yo){
+  return ""; // v46.4
   let u=baseUrl()+"?grupoppal="+encodeURIComponent(principalId);
   if(yo)u+="&yo="+encodeURIComponent(yo);
   return u;
@@ -43,6 +46,7 @@ function urlDelModalGrupo(){
 }
 // Compartir por WhatsApp el enlace estable de un grupo de cierre (desde la pestaña Cierre)
 function compartirGrupoCierre(gid){
+  toast("Los enlaces de grupo ya no se usan: cada persona tiene su app (Más › App de asociados)",5000); return; // v46.4
   const g=(DATA.gruposCierre||[]).find(x=>x.id===gid);
   if(!g){toast("Grupo no encontrado");return;}
   const ppal=DATA.members.find(m=>m.id===g.principalId);
@@ -106,13 +110,16 @@ function grupoLinkModalHTML(){
     </div>
     ${esLocal?`<div style="background:#FFF8F0;border:1px solid #F5D5B0;border-radius:10px;padding:10px 12px;font-size:12px;color:#7A4A1E">⚠️ Estás abriendo desde local. Sube a GitHub Pages para que el enlace funcione al enviarlo.</div>`:""}`;
 }
-function buildMemberUrl(mid){
-  return baseUrl()+"?socio="+encodeURIComponent(mid);
+function buildMemberUrl(mid){ // v46.4: siempre el enlace de la app nueva (el ?socio= ya no muestra datos)
+  const m=DATA.members.find(x=>x.id===mid); return m?enlaceAppDe(m):"";
 }
+function _sinEnlaceApp(){ toast("Esta persona aún no tiene la app: créale el código en Más › App de asociados",5000); }
 
 function sendLinkWA(mid){
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
+  if(!m.codigoApp){ _sinEnlaceApp(); return; }
+  appEnviarA(mid); return; // v46.4: el mensaje de la app nueva (enlace y pasos para instalarla)
   const url=buildMemberUrl(mid);
   const msg=`Hola ${m.name.split(" ")[0]} 👋, aquí puedes consultar tu reporte de ${DATA.reportMonth} ${DATA.reportYear} en Nuevos Horizontes:\n${url}`;
   openWA(msg);
@@ -120,7 +127,7 @@ function sendLinkWA(mid){
 
 function copyLink(mid){
   const url=buildMemberUrl(mid);
-  if(!url)return;
+  if(!url){ _sinEnlaceApp(); return; }
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>toast("🔗 Enlace copiado ✓")).catch(()=>_copyFallback(url));
   }else{_copyFallback(url);}
@@ -139,7 +146,7 @@ function linkModalHTML(){
   return`<div class="modal-title">🔗 Enlace para ${escH(m.name.split(" ")[0])}</div>
 <p style="font-size:13px;color:var(--muted);margin-bottom:8px">Así verá el asociado su ficha cuando abra el enlace.</p>
 <div style="display:flex;gap:8px;margin-bottom:14px">
-  <button class="m-primary" style="flex:1" onclick="window.open('${url}','_blank')">👁️ Previsualizar</button>
+  <button class="m-primary" style="flex:1" onclick="window.open('${url}&adm=1','_blank')">👁️ Previsualizar</button>
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="copyLink('${esc(m.id)}')">📋 Copiar enlace</button>
 </div>
 <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:11px;color:var(--muted);word-break:break-all;margin-bottom:12px">${escH(url)}</div>
