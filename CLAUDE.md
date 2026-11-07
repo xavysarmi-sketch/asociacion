@@ -93,6 +93,8 @@ lenguaje sencillo antes de aplicarlos.
 - Desde v46.13: volver al mismo sitio: documentos (_Y_DOC en abrir/cerrarDocImp), grupo («← Todos los grupos», _Y_GRUPOS),
   Histórico («← Más», _Y_MAS) y ficha (closeFicha vuelve a la pestaña desde la que se abrió, _TAB_LISTA; el botón
   dice «← Inicio/Cobros/Más…»; la barra de abajo lo borra).
+- Desde v46.14: tarjeta de grupo con cuenta cuadrada = como las demás («Faltan X €» y «Cobrado» con lo marcado, d.pagado);
+  tocar el nombre o la flecha del grupo abierto (cgDetToggle) también vuelve a la lista a la misma altura.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

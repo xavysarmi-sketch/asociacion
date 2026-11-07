@@ -456,6 +456,8 @@ function abrirGrupoCobros(gid){
   Object.keys(DESP).forEach(k=>{ if(k.indexOf("grupo-")===0)DESP[k]=false; });
   DESP["grupo-"+gid]=true; CG_FORM=null; render(); window.scrollTo(0,0);
 }
+// v46.14: tocar el nombre o la flecha del grupo abierto también vuelve a la lista, a la misma altura
+function cgDetToggle(gid){ if(DESP["grupo-"+gid]){ DESP["grupo-"+gid]=false; CG_FORM=null; render(); window.scrollTo(0,_Y_GRUPOS||0); } else abrirGrupoCobros(gid); }
 // «✓ Todo cobrado»: dos toques (sin confirm), como eliminar
 function cgTodoToque(gid){
   const k="cgtodo-"+gid;
@@ -468,7 +470,7 @@ function _cgTarjetaDatos(g,pre,key){
   const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0)-_cgMovs(key,g.id).filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0)); // v45.77: lo que puso la asociación («pago») no es dinero cobrado al grupo
   const cobrado=Math.min(total,Math.max(pagado,ent));
   const movs=_cgMovs(key,g.id), deMas=movs.length?Math.max(0,-_cgFalta(g,_idxMes(DATA.reportMonth,DATA.reportYear))):0; // v45.45
-  return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),cuadrada:_cgCuadrada(g)&&!_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};
+  return {items,total,cobrado,pagado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),cuadrada:_cgCuadrada(g)&&!_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};
 }
 function cobrosGruposHTML(){
   const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
@@ -481,10 +483,10 @@ function cobrosGruposHTML(){
   datos.forEach(({g,p,d})=>{
     const nom=escH(p.name.split(" ")[0]), ids=[g.principalId,...(g.miembros||[])];
     const nombres=ids.map(id=>(DATA.members.find(m=>m.id===id)||{}).name||"").join(" | ");
-    const pct=d.total>0?Math.round(d.cobrado/d.total*100):100;
+    const pct=d.total>0?Math.round((d.cuadrada?d.pagado:d.cobrado)/d.total*100):100;
     const chip=!d.items.length?`<span class="cgt-chip">Nada este mes</span>`
       :d.cerrada?`<span class="cgt-chip ok">✅ Liquidado</span>`
-      :d.cuadrada?`<span class="cgt-chip pend">Faltan ${d.sinMarcar} por cobrar</span>`
+      :d.cuadrada?`<span class="cgt-chip pend">Faltan ${fmtEur(_r2(d.total-d.pagado))} €</span>` // v46.14: como los demás grupos
       :d.falta>0?`<span class="cgt-chip pend">Faltan ${fmtEur(d.falta)} €</span>`
       :d.deMas>0?`<span class="cgt-chip rev">${_cgMovs(key,g.id).some(x=>x.tipo==="ayuda"||x.tipo==="salida")?"Le pasas "+fmtEur(d.deMas)+" €":"Dio "+fmtEur(d.deMas)+" € de más"}</span>`
       :d.entTodo&&d.sinMarcar?`<span class="cgt-chip ok">Entregado todo</span>`
@@ -494,7 +496,7 @@ function cobrosGruposHTML(){
       <button class="cgt-cab" onclick="abrirGrupoCobros('${g.id}')">
         <span class="cgt-nom">${escH(p.name)}<span class="cgt-sub">${ids.length} ${ids.length===1?"persona":"personas"} · ${d.items.length} ${d.items.length===1?"cobro":"cobros"}</span></span>${chip}</button>`;
     if(d.items.length)h+=`<div class="reserva-bar-bg" style="margin:8px 0 4px"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
-      <div class="cgt-cifras">${d.cuadrada?`Cuenta cuadrada · marcados <b>${d.items.length-d.sinMarcar} de ${d.items.length}</b>`:`Cobrado <b>${fmtEur(d.cobrado)} €</b> de ${fmtEur(d.total)} €`}</div>`; // v46.12
+      <div class="cgt-cifras">Cobrado <b>${fmtEur(d.cuadrada?d.pagado:d.cobrado)} €</b> de ${fmtEur(d.total)} €</div>`; // v46.14: cuenta cuadrada → lo marcado, como los demás
     if(d.entTodo&&d.sinMarcar>0&&!formEnt) // v45.45: ya entregó todo → un toque para marcar sus cobros
       h+=`<div class="cgt-sug">✅ ${d.cuadrada?"La cuenta está cuadrada. Cuando te hayan pagado todos, márcalos aquí:":`${nom} ya te entregó todo. ¿Marcamos sus ${d.sinMarcar} ${d.sinMarcar===1?"cobro":"cobros"} como cobrados?`}
         <button class="cgt-b pri" style="width:100%;margin-top:8px" onclick="marcarTodoGrupo('${g.id}')">✓ Marcar ${d.sinMarcar===1?"su cobro":"sus "+d.sinMarcar+" cobros"}</button></div>`;
