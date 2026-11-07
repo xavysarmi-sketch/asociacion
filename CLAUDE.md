@@ -88,6 +88,8 @@ lenguaje sencillo antes de aplicarlos.
 - Desde v46.10: simulador «¿Cuánto puedo ganar?»: arriba «Lo que tienes hoy» (sus datos); debajo ejemplos GENERALES de
   12/24/36 meses empezando de cero (BE-2: 10/12/15 € por cada 50 € según el año; la suya marcada «LA TUYA»); al final
   «Si sales ahora» con salidaV18 (sus aportes, beneficio que conserva, ayuda pendiente, lo que pierde).
+- Desde v46.12: _cgCerrada («Liquidado») = cuenta a 0 Y todo el grupo marcado; cuenta a 0 con gente sin marcar =
+  «Cuenta cuadrada» (_cgCuadrada; d.cuadrada excluye las liquidadas): chip «Faltan N por cobrar», no entra en «Los que deben».
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

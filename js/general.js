@@ -605,7 +605,7 @@ function _renderPantalla(){
           <div style="display:flex;align-items:center;justify-content:space-between">
             <button onclick="DESP['${gKey}']=!DESP['${gKey}'];render()" style="flex:1;background:none;border:none;text-align:left;cursor:pointer;padding:0">
               <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}${_cgCerrada(g)?' <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap;vertical-align:middle">✅ Liquidado</span>':""}</div>
-              <div style="font-size:12px;color:var(--muted)">${(()=>{const d=_cgTarjetaDatos(g,cuotasDelMes(rm,ry),getMesKey(rm,ry));return `${items.length} ${items.length===1?"cobro":"cobros"} · ${d.falta>0?"faltan "+fmtEur(d.falta)+" €":"nada pendiente"}`;})()}</div><!-- v45.42: la misma cuenta que su tarjeta -->
+              <div style="font-size:12px;color:var(--muted)">${(()=>{const d=_cgTarjetaDatos(g,cuotasDelMes(rm,ry),getMesKey(rm,ry));return `${items.length} ${items.length===1?"cobro":"cobros"} · ${d.cuadrada?"cuenta cuadrada · faltan "+d.sinMarcar+" por marcar":d.falta>0?"faltan "+fmtEur(d.falta)+" €":"nada pendiente"}`;})()}</div><!-- v45.42: la misma cuenta que su tarjeta -->
             </button>
             <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="DESP['${gKey}']=!DESP['${gKey}'];render()">›</span>
           </div>`;

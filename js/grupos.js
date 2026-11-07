@@ -186,7 +186,7 @@ function _cgColaLista(todos){
   const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
   return gruposCierre().map(g=>({g,p:DATA.members.find(m=>m.id===g.principalId)})).filter(x=>x.p)
     .map(x=>Object.assign(x,{d:_cgTarjetaDatos(x.g,pre,key)}))
-    .filter(x=>x.d.items.length&&(todos||(!x.d.cerrada&&x.d.falta>0)));
+    .filter(x=>x.d.items.length&&(todos||(!x.d.cerrada&&!x.d.cuadrada&&x.d.falta>0)));
 }
 function abrirColaCuentas(){ const deben=_cgColaLista(false).length; openModal('cg_cola',{todos:deben===0,hechos:[]}); }
 function cgColaEnviar(gid){
@@ -205,7 +205,7 @@ function cgColaModalHTML(){
   lista.forEach(({g,p,d})=>{ const ok=MODAL.hechos.includes(g.id);
     h+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(p.name)}</div>
-      <div style="font-size:13px;color:var(--muted)">${d.cerrada?"✅ Liquidado":d.falta>0?"Faltan "+fmtEur(d.falta)+" €":"Revisar"}</div></div>
+      <div style="font-size:13px;color:var(--muted)">${d.cerrada?"✅ Liquidado":d.cuadrada?"Cuenta cuadrada · faltan "+d.sinMarcar+" por cobrar":d.falta>0?"Faltan "+fmtEur(d.falta)+" €":"Revisar"}</div></div>
       ${ok?`<span style="font-size:13.5px;font-weight:800;color:#1B7A3D;white-space:nowrap">✓ Enviada</span>`:""}
       <button class="cgt-b ${ok?"":"sec"}" style="flex:0 0 auto;min-width:84px" onclick="cgColaEnviar('${g.id}')">${ok?"Otra vez":"Enviar"}</button></div>`; });
   h+=sig?`<button class="cgt-b pri" style="width:100%;min-height:52px;margin-top:14px;font-size:16px;background:#15803D;border-color:#15803D" onclick="cgColaEnviar('${sig.g.id}')">💬 ${MODAL.hechos.length?"Siguiente: ":"Enviar a "}${escH(sig.p.name.split(" ")[0])} (${pos} de ${lista.length})</button>`
@@ -283,9 +283,12 @@ function _cgCerrada(g,pre){ // v45.46: pre = cuotasDelMes del mes (opcional, par
   // v45.26: si hay apuntes en la cuenta del grupo, manda la cuenta (liquidada = no falta nada).
   // Sin apuntes, basta con que todo esté marcado como cobrado en el Cierre.
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), items=itemsDeGrupo(g,undefined,undefined,pre);
-  if(_cgMovs(_keyDeIdx(idx),g.id).length>0)return _cgFalta(g,idx)===0;
-  return items.length>0&&items.every(it=>it.yaPagado);
+  // v46.12 (Ángel 07/11/2026): «Liquidado» = cuenta a 0 Y todo el grupo marcado como cobrado. Si la cuenta está a 0
+  // pero falta gente por marcar, es «Cuenta cuadrada» (_cgCuadrada), no liquidado.
+  if(!(items.length>0&&items.every(it=>it.yaPagado)))return false;
+  return _cgMovs(_keyDeIdx(idx),g.id).length>0?_cgFalta(g,idx)===0:true;
 }
+function _cgCuadrada(g){ const idx=_idxMes(DATA.reportMonth,DATA.reportYear); return _cgMovs(_keyDeIdx(idx),g.id).length>0&&_cgFalta(g,idx)===0; }
 // v45.26: en el Cierre está todo cobrado pero la cuenta del responsable no llega → lo que falta por apuntar
 function _cgFormHTML(g,idx,key,nom,mesTxt){
   let h=""; if(CG_FORM&&CG_FORM.gid===g.id){
@@ -334,7 +337,7 @@ function cuentaGrupoHTML(g,principal){
     // v45.85: «✕ Cerrar» pliega la cuenta en una línea (también cuando ya tiene apuntes); al tocarla se abre otra vez
     if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id)){ const f0=_cgFalta(g,idx0);
       return `<button onclick="DESP['cgplegar-${g.id}']=false;DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
-        <span style="font-size:18px">💶</span><span style="flex:1;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${f0>0?"te entrega "+fmtEur(f0)+" €":f0<0?"le pasas "+fmtEur(-f0)+" €":"liquidada"}</span></span><span style="font-size:18px">›</span></button>`; }
+        <span style="font-size:18px">💶</span><span style="flex:1;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${f0>0?"te entrega "+fmtEur(f0)+" €":f0<0?"le pasas "+fmtEur(-f0)+" €":_cgCerrada(g)?"liquidada":"cuenta cuadrada"}</span></span><span style="font-size:18px">›</span></button>`; }
     const pf0=_cgMovs(_keyDeIdx(idx0-1),g.id).length?_cgFalta(g,idx0-1):0;
     if(!_cgCerrada(g)&&!_cgMovs(_keyDeIdx(idx0),g.id).length&&!(pf0>0)&&!DESP["cgabrir-"+g.id]&&!usando)
       return `<button onclick="DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
@@ -361,8 +364,9 @@ function cuentaGrupoHTML(g,principal){
   pagosEl.forEach(x=>{ h+=fr(`${x.tipo==="ayuda"?"Ayuda a":"Salida de"} ${escH(String(x.nombre||"").split(" ")[0])} <span style="color:var(--muted);font-size:13px">(la paga ${nom})</span>`,"−"+fmtEur(x.importe)+" €"); });
   if(ent+resto>0)h+=fr("Ya te ha entregado","−"+fmtEur(_r2(ent+resto))+" €");
   if(pagoAs)h+=fr("Le has pasado tú","+"+fmtEur(pagoAs)+" €");
-  const lab=falta>0?(ent+resto>0?"Falta por entregarte":"Te entrega"):falta<0?(pagosEl.length?"Le pasas tú (la asociación)":"Te ha dado de más: se lo devuelves"):"✅ Liquidado";
+  const lab=falta>0?(ent+resto>0?"Falta por entregarte":"Te entrega"):falta<0?(pagosEl.length?"Le pasas tú (la asociación)":"Te ha dado de más: se lo devuelves"):cerrada?"✅ Liquidado":"✅ Cuenta cuadrada";
   h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">${lab}</b>${falta!==0?`<b style="font-size:21px;white-space:nowrap;color:${falta>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div></div>`;
+  if(falta===0&&!cerrada){ const sm=itemsDeGrupo(g).filter(it=>!it.yaPagado).length; if(sm)h+=`<div style="font-size:13px;color:#8A4F12;margin-top:4px">Faltan ${sm} por marcar como cobrados: cuando estén todos, quedará liquidado.</div>`; } // v46.12
   if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pasado los ${fmtEur(-falta)} €</button>`;
   h+=`<button onclick="cgEnvioAbrir('${g.id}','cuenta')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar su cuenta a ${nom}</button>`;
   // 2 · Propuesta del mes (v46.8, Ángel 07/11/2026: sin «Hacer un plan»; las ayudas entran solo por Solicitudes y aquí se ven solas)
@@ -461,7 +465,7 @@ function _cgTarjetaDatos(g,pre,key){
   const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0)-_cgMovs(key,g.id).filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0)); // v45.77: lo que puso la asociación («pago») no es dinero cobrado al grupo
   const cobrado=Math.min(total,Math.max(pagado,ent));
   const movs=_cgMovs(key,g.id), deMas=movs.length?Math.max(0,-_cgFalta(g,_idxMes(DATA.reportMonth,DATA.reportYear))):0; // v45.45
-  return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};
+  return {items,total,cobrado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),cuadrada:_cgCuadrada(g)&&!_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};
 }
 function cobrosGruposHTML(){
   const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
@@ -477,6 +481,7 @@ function cobrosGruposHTML(){
     const pct=d.total>0?Math.round(d.cobrado/d.total*100):100;
     const chip=!d.items.length?`<span class="cgt-chip">Nada este mes</span>`
       :d.cerrada?`<span class="cgt-chip ok">✅ Liquidado</span>`
+      :d.cuadrada?`<span class="cgt-chip pend">Faltan ${d.sinMarcar} por cobrar</span>`
       :d.falta>0?`<span class="cgt-chip pend">Faltan ${fmtEur(d.falta)} €</span>`
       :d.deMas>0?`<span class="cgt-chip rev">${_cgMovs(key,g.id).some(x=>x.tipo==="ayuda"||x.tipo==="salida")?"Le pasas "+fmtEur(d.deMas)+" €":"Dio "+fmtEur(d.deMas)+" € de más"}</span>`
       :d.entTodo&&d.sinMarcar?`<span class="cgt-chip ok">Entregado todo</span>`
@@ -486,9 +491,9 @@ function cobrosGruposHTML(){
       <button class="cgt-cab" onclick="abrirGrupoCobros('${g.id}')">
         <span class="cgt-nom">${escH(p.name)}<span class="cgt-sub">${ids.length} ${ids.length===1?"persona":"personas"} · ${d.items.length} ${d.items.length===1?"cobro":"cobros"}</span></span>${chip}</button>`;
     if(d.items.length)h+=`<div class="reserva-bar-bg" style="margin:8px 0 4px"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
-      <div class="cgt-cifras">Cobrado <b>${fmtEur(d.cobrado)} €</b> de ${fmtEur(d.total)} €</div>`;
+      <div class="cgt-cifras">${d.cuadrada?`Cuenta cuadrada · marcados <b>${d.items.length-d.sinMarcar} de ${d.items.length}</b>`:`Cobrado <b>${fmtEur(d.cobrado)} €</b> de ${fmtEur(d.total)} €`}</div>`; // v46.12
     if(d.entTodo&&d.sinMarcar>0&&!formEnt) // v45.45: ya entregó todo → un toque para marcar sus cobros
-      h+=`<div class="cgt-sug">✅ ${nom} ya te entregó todo. ¿Marcamos sus ${d.sinMarcar} ${d.sinMarcar===1?"cobro":"cobros"} como cobrados?
+      h+=`<div class="cgt-sug">✅ ${d.cuadrada?"La cuenta está cuadrada. Cuando te hayan pagado todos, márcalos aquí:":`${nom} ya te entregó todo. ¿Marcamos sus ${d.sinMarcar} ${d.sinMarcar===1?"cobro":"cobros"} como cobrados?`}
         <button class="cgt-b pri" style="width:100%;margin-top:8px" onclick="marcarTodoGrupo('${g.id}')">✓ Marcar ${d.sinMarcar===1?"su cobro":"sus "+d.sinMarcar+" cobros"}</button></div>`;
     if(formEnt){
       h+=`<label class="m-label" style="margin-top:10px">¿Cuánto te ha entregado ${nom}?</label>
