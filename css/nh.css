@@ -1079,3 +1079,17 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 /* ── v46.5 · revisión del 07/11/2026 ── */
 .ini-aviso b{white-space:nowrap}
 @media screen and (max-width:700px){ body.doc-abierto .doc-t.doc-mini{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch} }
+
+/* v46.15 · hoja de cobro: una fila por persona y casilla centrada */
+.doc-cobro2 td{vertical-align:middle}
+.doc-cobro2 td.c,.doc-cobro2 th.c{text-align:center;padding-left:2px;padding-right:2px}
+.doc-cobro2 .doc-check{width:16px;height:16px;margin:0 auto;display:block}
+.doc-cobro2 td.n .doc-sub{font-size:.85em;color:#666}
+.doc-ayuda{font-size:.95em;color:#444;background:#fff}
+@media screen and (max-width:700px){ .doc-cobro2 th{font-size:9.5px;white-space:normal} }
+.doc-kpi-sg{margin-right:5px;font-weight:800}
+.doc-baja{border-collapse:collapse;margin:3px 0 2px;min-width:250px;max-width:340px;width:100%}
+.doc-baja td{padding:1px 4px;border:none;font-size:.95em}.doc-baja td.n{text-align:right;white-space:nowrap}
+.doc-baja tr.doc-baja-t td{border-top:1.5px solid #1B4332;padding-top:3px}
+.doc-baja-pag{display:flex;align-items:center;gap:6px;margin:3px 0 1px;font-weight:700}
+.doc-check-ok{text-align:center;line-height:13px;font-size:12px;font-weight:800;color:#1B4332}

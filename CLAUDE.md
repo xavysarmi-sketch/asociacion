@@ -95,6 +95,10 @@ lenguaje sencillo antes de aplicarlos.
   dice «← Inicio/Cobros/Más…»; la barra de abajo lo borra).
 - Desde v46.14: tarjeta de grupo con cuenta cuadrada = como las demás («Faltan X €» y «Cobrado» con lo marcado, d.pagado);
   tocar el nombre o la flecha del grupo abierto (cgDetToggle) también vuelve a la lista a la misma altura.
+- Desde v46.15: hoja de cobro sin «Reunión del» ni tabla de retornos/excedente (sigue en el acta); cuadros «Total de aportes
+  + Total cuotas = Total previsto»; grupos en una fila por persona (doc-cobro2: Aporte · Cuota de su ayuda «cuota N de M» /
+  «última cuota» · Paga en total · Pagó), «cobra X», terceros «tercero · aval de X» y «no aporta». Bonos y bajas explicados
+  (también en acta y carpeta). El acta reparte grupos por páginas según su alto: si cambia el alto, cambia el orden.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
