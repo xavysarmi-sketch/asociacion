@@ -7,7 +7,7 @@
 // ── Barra de abajo ──────────────────────────────────────────────────────────
 function navInferiorHTML(){
   const act=TAB==="historico"?"manage":TAB;
-  const b=(tab,ic,txt,fn)=>`<button class="nav-btn${act===tab?" on":""}" onclick="${fn||`TAB='${tab}';FICHA_ID=null;render();window.scrollTo(0,0)`}">${_icSVG(ic)}<span>${txt}</span></button>`;
+  const b=(tab,ic,txt,fn)=>`<button class="nav-btn${act===tab?" on":""}" onclick="_TAB_LISTA=null;${fn||`TAB='${tab}';FICHA_ID=null;render();window.scrollTo(0,0)`}">${_icSVG(ic)}<span>${txt}</span></button>`;
   return `<nav class="nav-inf">${b("inicio","home","Inicio")}${b("mes","cash","Cobros")}${b("asociados","users","Personas")}${b("ayudas","hand","Ayudas")}${b("manage","settings","Más","irGestion();window.scrollTo(0,0)")}</nav>`;
 }
 

@@ -2,8 +2,10 @@
 // Papeles del mes: hoja de cobro, acta, carpeta, libro de caja y PDF
 // Parte de la app (versión en APP_VERSION, js/utilidades… se cargan en el orden de index.html).
 // Solo declaraciones: no ejecuta nada al cargarse (el arranque está en js/arranque.js).
-function abrirDocImp(tipo){ DOC_IMP={tipo,rm:DATA.reportMonth,ry:DATA.reportYear}; PDF_LISTO=null; window.scrollTo(0,0); render(); }
-function cerrarDocImp(){ DOC_IMP=null; PDF_LISTO=null; document.body.classList.remove("doc-abierto"); render(); }
+// v46.13 (Ángel 07/11/2026): al cerrar el documento se vuelve al mismo sitio desde el que se abrió
+let _Y_DOC=0;
+function abrirDocImp(tipo){ if(!DOC_IMP)_Y_DOC=window.scrollY||0; DOC_IMP={tipo,rm:DATA.reportMonth,ry:DATA.reportYear}; PDF_LISTO=null; window.scrollTo(0,0); render(); }
+function cerrarDocImp(){ DOC_IMP=null; PDF_LISTO=null; document.body.classList.remove("doc-abierto"); render(); window.scrollTo(0,_Y_DOC||0); }
 function _mdSoloLectura(rm,ry){ return (DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)])||{aportes:{}}; }
 // Personas del documento agrupadas por grupos de cierre (principal primero) y, al final,
 // quien no esté en ningún grupo. Solo quien tiene algo que pagar ese mes.

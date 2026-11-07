@@ -449,7 +449,10 @@ function cgListaModalHTML(){
     ${ids.map(id=>{ const m=DATA.members.find(x=>x.id===id); return `<button class="m-sec" style="margin-bottom:8px;text-align:left" onclick="cgListaEnviar('${esc(g.id)}','${esc(id)}')">${escH(m.name)}${id===g.principalId?" <span style=\"font-weight:600;opacity:.75\">(responsable)</span>":""}${_telWA(m.phone)?"":" <span style=\"font-weight:500;font-size:12.5px;opacity:.7\">· sin teléfono: eliges el chat</span>"}</button>`; }).join("")}
     <button class="m-sec" style="margin-top:4px;opacity:.8" onclick="closeModal()">Cancelar</button>`;
 }
+// v46.13: «← Todos los grupos» vuelve al sitio de la lista desde el que se abrió el grupo
+let _Y_GRUPOS=0;
 function abrirGrupoCobros(gid){
+  if(!Object.keys(DESP).some(k=>k.indexOf("grupo-")===0&&DESP[k]))_Y_GRUPOS=window.scrollY||0;
   Object.keys(DESP).forEach(k=>{ if(k.indexOf("grupo-")===0)DESP[k]=false; });
   DESP["grupo-"+gid]=true; CG_FORM=null; render(); window.scrollTo(0,0);
 }

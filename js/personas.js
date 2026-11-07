@@ -290,7 +290,7 @@ function salidaAdminFichaHTML(m){
     <div style="font-size:16px;font-weight:800;color:#7A4A10;margin-bottom:4px">${tit}</div>
     <div style="font-size:14px;color:#4A3A20;line-height:1.5">${t.join("<br>")}</div>
     <div style="display:flex;gap:6px;margin-top:10px">
-      <button class="cgt-b sec" style="border-color:#B06A1E;color:#8A4F12" onclick="FICHA_ID=null;TAB='historico';render();window.scrollTo(0,0)">📜 Ver en Histórico</button>
+      <button class="cgt-b sec" style="border-color:#B06A1E;color:#8A4F12" onclick="FICHA_ID=null;_Y_MAS=0;TAB='historico';render();window.scrollTo(0,0)">📜 Ver en Histórico</button>
       ${b.v18&&!b.pagada?`<button class="cgt-b sec" style="border-color:#B06A1E;color:#8A4F12" onclick="salidaEnviarWA('${esc(m.id)}')">💬 Enviarle el resumen</button>`:""}</div></div>`;
 }
 // v45.32: aviso en su ficha (enlace personal) mientras la salida está pendiente de pago
@@ -670,8 +670,9 @@ function listaPersonasHTML(lista){
 }
 // ── FICHA COMPLETA ASOCIADO ─────────────────────────────────────────────────
 let _Y_LISTA=0; // v46.5: dónde estaba la lista al abrir una ficha
-function openFicha(mid){ if(!FICHA_ID)_Y_LISTA=window.scrollY||0; FICHA_ID=mid;FICHA_TAB="resumen";TAB="asociados";render(); window.scrollTo(0,0); } // v45.23: se abre en «Resumen» · v46.5: arriba
-function closeFicha(){FICHA_ID=null;render(); window.scrollTo(0,_Y_LISTA||0);}
+let _TAB_LISTA=null; // v46.13: pestaña desde la que se abrió la ficha (Inicio, Cobros, Más…) para volver a ella
+function openFicha(mid){ if(!FICHA_ID){_Y_LISTA=window.scrollY||0;_TAB_LISTA=TAB;} FICHA_ID=mid;FICHA_TAB="resumen";TAB="asociados";render(); window.scrollTo(0,0); } // v45.23: se abre en «Resumen» · v46.5: arriba
+function closeFicha(){FICHA_ID=null; if(_TAB_LISTA)TAB=_TAB_LISTA; _TAB_LISTA=null; render(); window.scrollTo(0,_Y_LISTA||0);}
 function _fichaResumenHTMLbase(m){
   const rm=DATA.reportMonth,ry=DATA.reportYear;
   const isTerc=m.type==="tercero";
@@ -884,7 +885,7 @@ function _fichaHTMLbase(m,readonly=false){
   const isOpen=(k)=>!!(DESP[mid+"-"+k]);
   const tog=(k)=>`DESP['${mid}-${k}']=!DESP['${mid}-${k}'];render()`;
 
-  let h=readonly?"":`<div style="display:flex;gap:8px;align-items:center"><button class="btn-back" style="flex:1" onclick="closeFicha()">← Personas</button><button class="btn-back" style="flex:0 0 auto;width:auto;color:#3D4080" onclick="verAppDe('${esc(m.id)}')">👁️ Ver como lo ve</button></div>`;
+  let h=readonly?"":`<div style="display:flex;gap:8px;align-items:center"><button class="btn-back" style="flex:1" onclick="closeFicha()">← ${({inicio:"Inicio",mes:"Cobros",ayudas:"Ayudas",manage:"Más",historico:"Histórico"})[_TAB_LISTA]||"Personas"}</button><button class="btn-back" style="flex:0 0 auto;width:auto;color:#3D4080" onclick="verAppDe('${esc(m.id)}')">👁️ Ver como lo ve</button></div>`;
 
   /* ────────────────────────────────────────────────
      1. TARJETA DE IDENTIDAD

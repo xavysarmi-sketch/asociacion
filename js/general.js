@@ -585,7 +585,7 @@ function _renderPantalla(){
     // ── BLOQUE: CIERRE GRUPAL ── v45.42: aquí solo se ve el grupo abierto desde su tarjeta
     const grupos=gruposCierre();
     if(grAbierto){
-    h+=`<button class="btn-back" style="margin:6px 0 10px;width:auto" onclick="DESP['grupo-${_grDet.id}']=false;CG_FORM=null;render();window.scrollTo(0,0)">← Todos los grupos</button>`;
+    h+=`<button class="btn-back" style="margin:6px 0 10px;width:auto" onclick="DESP['grupo-${_grDet.id}']=false;CG_FORM=null;render();window.scrollTo(0,_Y_GRUPOS||0)">← Todos los grupos</button>`;
     h+=`<div class="mes-card" style="padding-bottom:18px">`;
     {
       h+=`<div>`;
@@ -828,7 +828,7 @@ function _renderPantalla(){
       const ka=a.baja.year*12+MONTHS.indexOf(a.baja.month), kb=b.baja.year*12+MONTHS.indexOf(b.baja.month);
       return kb-ka || a.name.localeCompare(b.name);
     });
-    h+=`<button class="btn-back" style="margin:6px 0 10px" onclick="irGestion();window.scrollTo(0,0)">← Más</button>`; // v45.39: el Histórico está dentro de «Más»
+    h+=`<button class="btn-back" style="margin:6px 0 10px" onclick="irGestion();window.scrollTo(0,_Y_MAS||0)">← Más</button>`; // v45.39: el Histórico está dentro de «Más»
     h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:10px">📜 Histórico — Bajas de asociados</div>`;
     if(bajas.length===0){
       h+=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Aún no hay bajas registradas.</div>`;
@@ -877,7 +877,7 @@ function _renderPantalla(){
     // v45.39: las Solicitudes están en la pestaña «Ayudas». Aquí, lo de consultar y los ajustes.
     h+=nombresPorCorregirHTML(); // v45.49: solo sale si hay nombres con las mayúsculas mal puestas
     h+=`<div class="mas-sec">📂 Consultas</div>`; // v45.43: Más en tres apartados
-    h+=`<div class="mg-acc-head" onclick="TAB='historico';render();window.scrollTo(0,0)">
+    h+=`<div class="mg-acc-head" onclick="_Y_MAS=window.scrollY||0;TAB='historico';render();window.scrollTo(0,0)">
       <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>
       <span class="mg-acc-fl ir" aria-hidden="true"></span></div>`;
     // ⏳ v45.28: fechas de fin de permanencia de los asociados (solo lectura)
@@ -1052,6 +1052,7 @@ function cardHTML(m,isT,tappable){
 }
 
 // Abre la pestaña Gestión y lanza el auto-chequeo de código la primera vez.
+let _Y_MAS=0; // v46.13: volver de Histórico al mismo sitio de «Más»
 function irGestion(){
   TAB="manage";
   if(!CODE_CHECKS.ran && !CODE_CHECKS.running) runCodeChecks();
