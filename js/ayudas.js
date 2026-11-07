@@ -146,7 +146,7 @@ function dineroMesCuerpoHTML(d){
       <b style="font-size:${o.total?19:15}px;white-space:nowrap;${o.color?"color:"+o.color:""}">${fmtEur(v)} €</b></div>`;
   const ayN=[]; DATA.members.forEach(m=>[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{ if(l.gMonth===rm&&l.gYear===ry)ayN.push({n:m.name,c:l.capital}); }));
   const porPagarL=salidasPrevistas(rm,ry).lista.filter(x=>x.clase==="comp"&&x.pagoIdx<=idx);
-  const otras=_r2(d.salido-d.ayudasDadas-(d.gastos||0)), abS=!!DESP["dm-sal"];
+  const otras=_r2(d.salido-d.ayudasDadas-(d.gastos||0)), abA=!!DESP["dm-ay"], abS=!!DESP["dm-sal"];
   // v46.6: cada salida ya pagada con su nombre (antes «Otras salidas ya pagadas», sin detalle)
   const bajL=[],retL=[],devL=[];
   if(otras>0){
@@ -156,7 +156,8 @@ function dineroMesCuerpoHTML(d){
   }
   const lista=(arr)=>`<div style="margin:0 0 6px 16px;font-size:12.5px;color:var(--muted)">${arr.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span>${x[0]}</span><span>${x[1]}</span></div>`).join("")}</div>`;
   let h=fila("","Cobrado hasta hoy",d.cobrado,{color:"#2D6A4F"});
-  if(d.ayudasDadas)h+=fila("−",`Ayudas entregadas (${ayN.length})`,d.ayudasDadas); // v46.6: el detalle está en «Otorgadas en …»
+  if(d.ayudasDadas){ h+=`<div style="cursor:pointer" onclick="DESP['dm-ay']=!DESP['dm-ay'];render()">${fila("−",`Ayudas entregadas (${ayN.length}) <span class="mg-acc-fl ay-fl-in${abA?" ab":""}" aria-hidden="true"></span>`,d.ayudasDadas)}</div>`;
+    if(abA)h+=lista(ayN.map(x=>[escH(x.n),fmtEur(x.c)+" €"])); } // v46.11 (Ángel 07/11/2026): vuelve a desplegarse con a quién y cuánto
   if(d.gastos)h+=fila("−","Gastos administrativos",d.gastos);
   const salD=(k,txt,arr)=>{ if(!arr.length)return ""; const ab=!!DESP[k], tot=_r2(arr.reduce((a,x)=>a+x[1],0));
     return `<div style="cursor:pointer" onclick="DESP['${k}']=!DESP['${k}'];render()">${fila("−",`${txt} (${arr.length}) <span class="mg-acc-fl ay-fl-in${ab?" ab":""}" aria-hidden="true"></span>`,tot)}</div>`+(ab?lista(arr.map(x=>[x[0],fmtEur(x[1])+" €"])):""); };
