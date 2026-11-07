@@ -73,7 +73,7 @@ function totalMesBloqueHTML(m,rm,ry,tot,isTerc,MF,MS){
       <div class="tot-final-lbl">${vistaPersonal()?"Total":`Total ${mesN} ${ry}`}</div>
       <div class="tot-final-row">
         <span class="tot-final-num">${fmtEur(tot.total)} €</span>
-        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
+        <span class="tot-chip ${tot.alDia?"":"pend"}">${tot.alDia?"✅ Al día":tot.pendiente>=tot.total-0.005?"⏳ Pendiente":`⏳ Falta ${fmtEur(tot.pendiente)} €`}</span>
       </div>
       ${pendienteMesAnteriorHTML(m,rm,ry)}
     </div>`;

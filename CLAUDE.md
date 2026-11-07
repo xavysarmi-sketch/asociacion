@@ -69,6 +69,10 @@ lenguaje sencillo antes de aplicarlos.
   día de aviso Inicio avisa si el mes de hoy sigue sin cerrar; «Ver como lo ve» abre la app nueva (verAppDe → abrirAppDe);
   openFicha sube arriba y closeFicha vuelve al sitio de la lista; _nhSinPartir (render) une número y «€»/«%» con un
   espacio que no se parte (solo pantalla; las pruebas ven esas diferencias invisibles).
+- Desde v46.6 (revisión lógica 07/11): la ficha del ADMINISTRADOR quita «Mes de ingreso» y dice «Aportes» / «los
+  beneficios» solo si !vistaPersonal(): la app de asociados LEE esas filas (nhaFilas) — no tocar la vista personal.
+  Dinero del mes (Ayudas) nombra cada salida pagada (Bajas, Beneficios retirados, Aportes temporales devueltos);
+  «En caja hoy» solo si ≠ Disponible. «Historial de ayudas» es una herramienta de corrección → Zona delicada.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

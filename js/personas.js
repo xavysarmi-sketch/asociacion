@@ -479,6 +479,7 @@ function salidaDesdePausa(mid){
   openModal('baja',{mid,bajaUltimoIdx:ult,bajaAvisoIdx:ult-d.avisoMeses+1,bajaStep:2,desdePausa:p.id});
 }
 function telefonosGestionHTML(asoc,terc){
+  asoc=asoc.filter(tieneFichaApp); terc=terc.filter(tieneFichaApp); // v46.6: las mismas personas que la App de asociados
   const todos=[...asoc,...terc], con=todos.filter(m=>m.phone).length, ab=!!DESP["mg-tel"];
   let h=`<div class="mg-acc-head" onclick="DESP['mg-tel']=!DESP['mg-tel'];render()">
       <span>📞 Teléfonos <span class="mg-acc-num">${con}/${todos.length}</span></span>
@@ -795,8 +796,10 @@ function avisosPermanenciaHTML(rm,ry){
       <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span>
     </button>`;
   if(ab){
-    h+=`<div style="margin-top:10px">`+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">
-      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#A63A20;font-weight:700">· pendiente</span>':""}<br>${a.txt}${avisoBotonesHTML(a)}</div>`).join("")+`<div style="text-align:right;margin-top:8px"><button onclick="irPermanencias()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px 0">Ver todas las permanencias →</button></div></div>`;
+    const nFin=av.filter(a=>a.tipo==="fin").length; // v46.6: la explicación una vez; por persona, solo sus datos
+    const txtAv=a=>a.tipo==="fin"&&nFin>1?`Termina en ${_txtIdx(a.fin)} · beneficio guardado hoy ${fmtEur(beneficioGuardado(a.m))} € · si termina, cobra en ${_txtIdx(a.fin+1)}.`:a.txt;
+    h+=`<div style="margin-top:10px">`+(nFin>1?`<div style="font-size:12.5px;color:#6B5310;margin-bottom:6px;line-height:1.4">Acordad con cada uno si amplía (puede retirar su beneficio guardado) o termina.</div>`:"")+av.map(a=>`<div style="padding:9px 0;border-top:1px solid #F0E3B8;font-size:13.5px;line-height:1.45;color:#3B3320">
+      <b style="cursor:pointer;color:var(--dark)" onclick="openFicha('${esc(a.m.id)}')">${escH(a.m.name)}</b>${a.tipo==="pasada"?' <span style="color:#A63A20;font-weight:700">· pendiente</span>':""}<br>${txtAv(a)}${avisoBotonesHTML(a)}</div>`).join("")+`<div style="text-align:right;margin-top:8px"><button onclick="irPermanencias()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px 0">Ver todas las permanencias →</button></div></div>`;
   }
   return h+`</div>`;
 }
@@ -1009,7 +1012,7 @@ function _fichaHTMLbase(m,readonly=false){
     if(!isTerc){
       // Bloque 1: información del asociado (fondo gris muy sutil)
       h+=`<div style="background:#F7F5F0;border-radius:10px;padding:2px 12px;margin-bottom:10px">
-        <div class="ft-row"><span class="ft-lbl">Mes de ingreso</span><span class="ft-val">${escH(MF[MS.indexOf(m.joinMonth)]||"")} ${m.joinYear||""}</span></div>
+        ${vistaPersonal()?`<div class="ft-row"><span class="ft-lbl">Mes de ingreso</span><span class="ft-val">${escH(MF[MS.indexOf(m.joinMonth)]||"")} ${m.joinYear||""}</span></div>`:""}
         <div class="ft-row"><span class="ft-lbl">Meses activo</span><span class="ft-val">${months} ${months===1?"mes":"meses"}</span></div>
         <div class="ft-row"><span class="ft-lbl">Permanencia</span><span class="ft-val">${m.ciclo===0?"Indefinida":m.ciclo!=null?m.ciclo+" meses":"⛔ sin guardar"}${finPermanenciaIdx(m)!=null?`<span style="display:block;font-size:11.5px;font-weight:600;color:var(--muted)">hasta ${_txtIdx(finPermanenciaIdx(m))}</span>`:""}</span></div>
         <div class="ft-row" style="border-bottom:none"><span class="ft-lbl">${vistaPersonal()?"Aporte mínimo al mes":"Aporte habitual"}</span><span class="ft-val">${vistaPersonal()?APORTE_MINIMO:aporteBase} €</span></div>
@@ -1063,10 +1066,12 @@ function _fichaHTMLbase(m,readonly=false){
     {
       const mesIng=MF[MS.indexOf(m.joinMonth)||0]||m.joinMonth;
       const mesSig=MF[(MS.indexOf(m.joinMonth)+1)%12];
-      const notaCont=`Los beneficios se generan <b>a mes vencido</b>, igual que para todos los asociados. El mes en que ingresaste cuenta como tu primer mes de permanencia, y su beneficio se refleja al mes siguiente.<br><br>
+      const notaCont=!vistaPersonal()?`Los beneficios se generan <b>a mes vencido</b>, igual que para todos los asociados. El mes de ingreso cuenta como su primer mes de permanencia, y su beneficio se refleja al mes siguiente.<br><br>
+        <b>Ejemplo:</b> entró en <b>${mesIng}</b>: su permanencia empieza a contar ese mes y su primer beneficio aparece en <b>${mesSig}</b>.<br><br>
+        El importe de cada mes sale del retorno de las ayudas cobrado por el fondo y se reparte entre los asociados con derecho. Por eso puede variar de un mes a otro y siempre depende del dinero real del fondo.`:`Los beneficios se generan <b>a mes vencido</b>, igual que para todos los asociados. El mes en que ingresaste cuenta como tu primer mes de permanencia, y su beneficio se refleja al mes siguiente.<br><br>
         <b>Ejemplo:</b> si ingresaste en <b>${mesIng}</b>, tu permanencia empieza a contar ese mes y tu primer beneficio aparece en <b>${mesSig}</b>.<br><br>
-        El importe de cada mes proviene de los recargos efectivamente recaudados por el fondo y se reparte entre los asociados con derecho. Por eso puede variar de un mes a otro y siempre está sujeto a la disponibilidad real del fondo.`;
-      h+=dropFicha(mid,"nota","ℹ️ ¿Cómo se calculan tus beneficios?","",notaCont,isOpen("nota"));
+        El importe de cada mes sale del retorno de las ayudas cobrado por el fondo y se reparte entre los asociados con derecho. Por eso puede variar de un mes a otro y siempre está sujeto a la disponibilidad real del fondo.`;
+      h+=dropFicha(mid,"nota",vistaPersonal()?"ℹ️ ¿Cómo se calculan tus beneficios?":"ℹ️ ¿Cómo se calculan los beneficios?","",notaCont,isOpen("nota"));
     }
   }
 
@@ -1130,7 +1135,7 @@ function _fichaHTMLbase(m,readonly=false){
     // Resumen de aportes (regulares + extra)
     const permTxt=m.ciclo===0?"Indefinida":m.ciclo!=null?`${m.ciclo} meses`:"⛔ sin guardar";
     h+=`<div class="ft-card">
-      <div class="ft-card-title">💰 Tus aportes</div>
+      <div class="ft-card-title">💰 ${vistaPersonal()?"Tus aportes":"Aportes"}</div>
       <div class="ft-row"><span class="ft-lbl">Meses aportados</span><span class="ft-val">${cuotasPagadas}</span></div>`; // v45.23: ingreso, permanencia y aporte están en «Resumen»
     h+=`<div class="ft-row ft-total"><span class="ft-lbl">Total aportado al fondo</span><span class="ft-val" style="color:#2D6A4F">${fmtEur(totalAportado)} €</span></div>
     </div>`;
@@ -1153,7 +1158,7 @@ function _fichaHTMLbase(m,readonly=false){
     // Aportaciones puntuales al fondo
     if(puntuales.length>0){
       h+=`<div class="ft-card">
-        <div class="ft-card-title">🏦 Aportaciones puntuales al fondo</div>`;
+        <div class="ft-card-title">🏦 Aportes temporales</div>`;
       puntuales.forEach((ap,api)=>{
         h+=`<div class="ft-row" style="align-items:flex-start">
           <span class="ft-lbl">${fmtEur(ap.capital)} € · ${escH(ap.mes)} ${ap.anio} · plazo ${ap.plazo}m<br><span style="font-size:11px;color:var(--muted)">Recupera ${fmtEur(ap.total)} € (capital +5%) en ${escH(ap.mesDev)} ${ap.anioDev}</span></span>
@@ -1184,7 +1189,7 @@ function _fichaHTMLbase(m,readonly=false){
         let contH="";
         const nPag=filas.filter(f=>f.pagado).length;
         filas.slice().reverse().forEach(f=>{
-          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#A63A20'}">${f.pagado?f.importe+" € ✅"+(f.fecha&&!vistaPersonal()?` <span class="ft-fecha">· ${_fechaCorta(f.fecha)}</span>`:""):vistaPersonal()?"Pendiente ⏳":"Pendiente ⏳ ("+f.importe+" €)"}</span></div>`;
+          contH+=`<div class="ft-row"><span class="ft-lbl">${escH(f.mes)} ${f.anio}</span><span class="ft-val" style="color:${f.pagado?'#1B4332':'#A63A20'}">${f.pagado?f.importe+" € ✅"+(f.fecha&&!vistaPersonal()?` <span class="ft-fecha">· ${_fechaCorta(f.fecha)}</span>`:""):vistaPersonal()?"Pendiente ⏳":f.importe+" € ⏳"}</span></div>`;
         });
         h+=dropFicha(mid,"apthist","📅 Historial de aportes mensuales",nPag+" de "+filas.length+" pagados",contH,isOpen("apthist"));
       }
@@ -1209,7 +1214,6 @@ function _fichaHTMLbase(m,readonly=false){
       <div class="mgmt-grid">
         <button class="mgmt-btn" onclick="solDesdeGestion('${esc(m.id)}')">＋ Nueva solicitud</button>
         ${isTerc?"":`<button class="mgmt-btn" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 Simuladores</button>`}
-        ${(m.history||[]).length?`<button class="mgmt-btn" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`:""}
       </div>
       <div class="acc-grupo-tit">${isTerc?"Aval":"Permanencia y referidos"}</div>
       <div class="mgmt-grid">
@@ -1228,6 +1232,7 @@ function _fichaHTMLbase(m,readonly=false){
       <div class="zona-delicada"><div class="acc-grupo-tit" style="color:#B5422E;margin-top:0">⚠️ Zona delicada</div>
       <div class="mgmt-grid">
         ${isTerc?"":`<button class="mgmt-btn peligro" onclick="openSalida('${esc(m.id)}')">🚪 Salida o pausa</button>`}
+        ${(m.history||[]).length?`<button class="mgmt-btn" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">🧹 Corregir historial de ayudas</button>`:""}
         <button class="mgmt-btn" style="background:${_delMemberArmed===m.id?"#C0492C":"#fff"};color:${_delMemberArmed===m.id?"#fff":"#A63A20"};border:1.5px solid #C0492C" onclick="eliminarDesdeFicha('${esc(m.id)}')">${_delMemberArmed===m.id?"¿Seguro? Toca otra vez":"🗑️ Eliminar ficha"}</button>
       </div></div>
       </div>

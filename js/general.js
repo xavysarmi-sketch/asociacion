@@ -485,7 +485,7 @@ function _renderPantalla(){
       // Barra de progreso
       const pct=asocMes.length>0?Math.round(aptPagados/asocMes.length*100):0;
       h+=`<div class="reserva-bar-bg"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
-        <div style="text-align:right;font-size:12px;color:var(--muted);margin-bottom:12px">${pct}% cobrado</div>`;
+        <div style="margin-bottom:12px"></div>`;
       // Botones de acción rápida
       h+=`<div style="display:flex;gap:8px;margin-bottom:14px">
         <button onclick="marcarTodosAportes()" style="flex:2;padding:11px;border:none;border-radius:10px;background:#2D6A4F;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✅ Marcar todos pagados</button>
@@ -1254,7 +1254,7 @@ function manageHTML(m,isT){
   });
   h+=`<button class="add-loan-btn" onclick="solDesdeGestion('${esc(m.id)}')">+ Nueva solicitud</button>`; // v45.16: las ayudas nuevas entran por Solicitudes
   if((m.history||[]).length>0){
-    h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">📋 Historial de ayudas (${(m.history||[]).length})</button>`;
+    h+=`<button class="add-loan-btn" style="background:#EFE7DC;color:#7A6A55;margin-top:6px" onclick="openModal('histloan',{mid:'${esc(m.id)}'})">🧹 Corregir historial de ayudas</button>`;
   }
   if(!isT){ // Dar de baja: solo asociados (los terceros salen del grupo por otro mecanismo — ver TAREA FUTURA)
     h+=`<button class="add-loan-btn" style="background:#FDECE8;color:#A63A20;margin-top:6px" onclick="openSalida('${esc(m.id)}')">🚪 Salida del fondo</button>`;

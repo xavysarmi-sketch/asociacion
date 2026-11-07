@@ -146,14 +146,23 @@ function dineroMesCuerpoHTML(d){
       <b style="font-size:${o.total?19:15}px;white-space:nowrap;${o.color?"color:"+o.color:""}">${fmtEur(v)} €</b></div>`;
   const ayN=[]; DATA.members.forEach(m=>[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{ if(l.gMonth===rm&&l.gYear===ry)ayN.push({n:m.name,c:l.capital}); }));
   const porPagarL=salidasPrevistas(rm,ry).lista.filter(x=>x.clase==="comp"&&x.pagoIdx<=idx);
-  const otras=_r2(d.salido-d.ayudasDadas-(d.gastos||0)), abA=!!DESP["dm-ay"], abS=!!DESP["dm-sal"];
+  const otras=_r2(d.salido-d.ayudasDadas-(d.gastos||0)), abS=!!DESP["dm-sal"];
+  // v46.6: cada salida ya pagada con su nombre (antes «Otras salidas ya pagadas», sin detalle)
+  const bajL=[],retL=[],devL=[];
+  if(otras>0){
+    DATA.members.forEach(m=>{ if(m.baja&&m.baja.pagada){ const p=mesPagoBaja(m.baja); if(p.mes===rm&&p.anio===ry)bajL.push([escH(m.name),m.baja.total||0]); }
+      retiradasDe(m).forEach(r=>{ if(r.pagada&&pagoRetiradaIdx(r)===idx)retL.push([escH(m.name),importeRetirada(m,r)]); }); });
+    Object.entries(DATA.aportesPuntuales||{}).forEach(([mid,arr])=>(arr||[]).forEach(a=>{ if(a.devuelto&&a.mesDev===rm&&a.anioDev===ry){ const m=DATA.members.find(x=>x.id===mid); devL.push([escH(m?m.name:"—"),a.total||0]); } }));
+  }
   const lista=(arr)=>`<div style="margin:0 0 6px 16px;font-size:12.5px;color:var(--muted)">${arr.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span>${x[0]}</span><span>${x[1]}</span></div>`).join("")}</div>`;
   let h=fila("","Cobrado hasta hoy",d.cobrado,{color:"#2D6A4F"});
-  if(d.ayudasDadas){ h+=`<div style="cursor:pointer" onclick="DESP['dm-ay']=!DESP['dm-ay'];render()">${fila("−",`Ayudas entregadas (${ayN.length}) <span class="mg-acc-fl ay-fl-in${abA?" ab":""}" aria-hidden="true"></span>`,d.ayudasDadas)}</div>`;
-    if(abA)h+=lista(ayN.map(x=>[escH(x.n),fmtEur(x.c)+" €"])); }
+  if(d.ayudasDadas)h+=fila("−",`Ayudas entregadas (${ayN.length})`,d.ayudasDadas); // v46.6: el detalle está en «Otorgadas en …»
   if(d.gastos)h+=fila("−","Gastos administrativos",d.gastos);
-  if(otras>0)h+=fila("−","Otras salidas ya pagadas",otras);
-  if(d.salido)h+=fila("=","En caja hoy",d.enCaja,{total:true,color:d.enCaja>=0?"#1B4332":"#C0492C"});
+  const salD=(k,txt,arr)=>{ if(!arr.length)return ""; const ab=!!DESP[k], tot=_r2(arr.reduce((a,x)=>a+x[1],0));
+    return `<div style="cursor:pointer" onclick="DESP['${k}']=!DESP['${k}'];render()">${fila("−",`${txt} (${arr.length}) <span class="mg-acc-fl ay-fl-in${ab?" ab":""}" aria-hidden="true"></span>`,tot)}</div>`+(ab?lista(arr.map(x=>[x[0],fmtEur(x[1])+" €"])):""); };
+  h+=salD("dm-baj","Bajas pagadas",bajL)+salD("dm-ret","Beneficios retirados",retL)+salD("dm-dev","Aportes temporales devueltos",devL);
+  { const resto=_r2(otras-[...bajL,...retL,...devL].reduce((a,x)=>a+x[1],0)); if(resto>0.005)h+=fila("−","Otras salidas ya pagadas",resto); }
+  if(d.salido&&Math.abs(d.enCaja-d.disponible)>0.005)h+=fila("=","En caja hoy",d.enCaja,{total:true,color:d.enCaja>=0?"#1B4332":"#C0492C"});
   if(d.porPagar){ h+=`<div style="cursor:pointer" onclick="DESP['dm-sal']=!DESP['dm-sal'];render()">${fila("−",`Salidas por pagar este mes (${porPagarL.length}) <span style="font-size:11.5px;color:var(--muted)">${abS?"▲":"▼"}</span>`,d.porPagar)}</div>`;
     if(abS)h+=lista(porPagarL.map(x=>[`${escH(x.m.name)} · ${escH(x.txt.toLowerCase())}`,fmtEur(x.importe)+" €"])); }
   h+=fila("=","Disponible para ayudas",d.disponible,{total:true,color:d.disponible>=0?"#1B4332":"#C0492C"});
@@ -183,7 +192,7 @@ function ayudasTabHTML(){
   let h=`<div class="mes-card"><div class="mes-title" style="margin-bottom:8px">💰 Dinero del mes · ${mesTxt}</div>
     ${dineroMesCuerpoHTML(d)}
     ${pend.length?`${fila("Te han pedido en total",fmtEur(pedido)+" €")}
-    <div style="margin-top:6px;padding:9px 11px;border-radius:10px;font-size:14px;font-weight:800;background:${dif>=0?"#E3F1E7":"#FFF4E5"};color:${dif>=0?"#1B7A3D":"#8A4F12"}">${dif>=0?"✅ Te alcanza para todas":`Te faltan ${fmtEur(-dif)} € para darlas todas`}</div>`:""}`;
+    <div style="margin-top:6px;padding:9px 11px;border-radius:10px;font-size:14px;font-weight:800;background:${dif>=0?"#E3F1E7":"#FFF4E5"};color:${dif>=0?"#1B7A3D":"#8A4F12"}">${dif>=0?"✅ Te alcanza para todas":"⚠️ No alcanza para todas: mira cada solicitud"}</div>`:""}`;
   h+=origenCobradoHTML(d); // v45.23
   h+=`</div>`;
   h+=peticionesAppHTML(); // v45.52: pedidas desde la app de asociados

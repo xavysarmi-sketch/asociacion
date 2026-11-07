@@ -10,7 +10,7 @@ function gastosGestionHTML(){
   const key=getMesKey(DATA.reportMonth,DATA.reportYear), delMes=_r2(L.filter(g=>g.mes===key).reduce((s,g)=>s+(+g.importe||0),0));
   const ab=!!DESP["mg-gas"];
   let h=`<div class="mg-acc-head" onclick="DESP['mg-gas']=!DESP['mg-gas'];render()">
-      <span>🧾 Gastos administrativos <span class="mg-acc-num">${fmtEur(delMes)} €</span></span>
+      <span>🧾 Gastos administrativos <span class="mg-acc-num">${fmtEur(delMes)} € en ${MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase()}</span></span>
       <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   const opts=[]; { let y=2025,i=7; const fin=_idxMes(DATA.reportMonth,DATA.reportYear)+1; while(y*12+i<=fin){ const k=getMesKey(MONTHS[i],y); opts.push(`<option value="${k}"${k===key?" selected":""}>${MONTHS_FULL[i]} ${y}</option>`); i++; if(i>11){i=0;y++;} } opts.reverse(); }
@@ -22,7 +22,7 @@ function gastosGestionHTML(){
     <button class="m-primary" onclick="gastoAnadir()">＋ Anotar gasto</button>
     ${L.length?`<div style="margin-top:14px">${L.map(g=>{ const [yy,mm]=g.mes.split("-").map(Number), k="gasdel-"+g.id, arm=!!DESP[k];
       return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #EFEAE0">
-        <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--dark)">${escH(g.concepto||"Gasto")}</div><div style="font-size:12px;color:var(--muted)">${MONTHS_FULL[mm-1]} ${yy}</div></div>
+        <div style="flex:1;min-width:0">${/^gastos? (administrativos?)?$|^gasto$/i.test((g.concepto||"Gasto").trim())?`<div style="font-size:14px;font-weight:700;color:var(--dark)">${MONTHS_FULL[mm-1]} ${yy}</div>`:`<div style="font-size:14px;font-weight:700;color:var(--dark)">${escH(g.concepto)}</div><div style="font-size:12px;color:var(--muted)">${MONTHS_FULL[mm-1]} ${yy}</div>`}</div>
         <b style="white-space:nowrap">${fmtEur(+g.importe||0)} €</b>
         <button onclick="gastoBorrar('${esc(g.id)}')" style="padding:6px 9px;border-radius:8px;border:1.5px solid #C0492C;background:${arm?"#C0492C":"#fff"};color:${arm?"#fff":"#A63A20"};font-size:12px;font-weight:700;cursor:pointer">${arm?"¿Seguro?":"✕"}</button></div>`; }).join("")}
       <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:800;padding-top:8px"><span>Total anotado</span><span>${fmtEur(_r2(L.reduce((s,g)=>s+(+g.importe||0),0)))} €</span></div></div>`
