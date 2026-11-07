@@ -354,7 +354,11 @@ function _nhVentanaSale(prev){
   a.appendChild(prev); setTimeout(()=>{ try{ prev.remove(); }catch(e){} },170);
 }
 function _nhAccesible(){ try{ const a=document.getElementById("app")||document.body; _nhNombrarInterruptores(a); _nhFilasDesplegables(a); _nhEtiquetarCampos(document.body); _nhVentanas(); _nhCampos16(); _nhMovimientos(); }catch(e){} }
-function render(){ if(window.NH_ENLACE_RETIRADO)return; /* v46.4 */ _MEMO_RENDER={}; const _vPrev=document.querySelector(".modal-bg:not(.nh-sale)"); try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); try{ _nhVentanaSale(_vPrev&&!_vPrev.isConnected?_vPrev:null); }catch(e){} } }
+// v46.5: en lo pintado, el número y su «€» o «%» van siempre juntos (espacio que no se parte). Solo cambia cómo se ve.
+function _nhSinPartir(){ try{ const app=document.getElementById("app"); if(!app)return; const w=document.createTreeWalker(app,NodeFilter.SHOW_TEXT); let n;
+  while((n=w.nextNode())){ const v=n.nodeValue; if(v.indexOf(" €")<0&&v.indexOf(" %")<0)continue; const p=n.parentNode; if(p&&/^(TEXTAREA|SCRIPT|STYLE|OPTION)$/.test(p.nodeName))continue;
+    const nv=v.replace(/(\d) (€|%)/g,"$1\u00A0$2"); if(nv!==v)n.nodeValue=nv; } }catch(e){} }
+function render(){ if(window.NH_ENLACE_RETIRADO)return; /* v46.4 */ _MEMO_RENDER={}; const _vPrev=document.querySelector(".modal-bg:not(.nh-sale)"); try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); _nhSinPartir(); try{ _nhVentanaSale(_vPrev&&!_vPrev.isConnected?_vPrev:null); }catch(e){} } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
   // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)

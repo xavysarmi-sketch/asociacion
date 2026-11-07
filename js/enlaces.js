@@ -154,7 +154,9 @@ function linkModalHTML(){
 }
 
 // ── MODO SOLO LECTURA ──
-function previewMiembro(mid){ verComoAsociado(mid); }
+function previewMiembro(mid){ verAppDe(mid); }
+// v46.5: «👁️ Ver como lo ve» enseña la app nueva de la persona (lo que ve de verdad desde v46.4), en modo vista
+function verAppDe(mid){ const m=DATA.members.find(x=>x.id===mid); if(!m||!m.codigoApp){ toast("Esta persona aún no tiene la app: créale el código en Más › App de asociados",5000); return; } abrirAppDe(mid); }
 
 // ══ v45.21 · «👁️ VER COMO LO VE» ══════════════════════════════════════════════════════════
 // Pinta EXACTAMENTE lo que ve la persona al abrir su enlace: usa las mismas funciones que el

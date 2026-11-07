@@ -1075,3 +1075,7 @@ body.nh-admin .ini-est-pill.mal{background:#F3B3A6;color:#5A1609}
 body.nh-admin .sol-ok{font-size:12.5px;margin-top:4px}
 body.nh-admin .sol-falta{font-size:13.5px;line-height:1.4;margin-top:8px;padding:9px 11px;border-radius:10px;background:#FFF3D6;border:1px solid #EBCB85}
 body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding:10px 8px!important;font-size:14px!important}
+
+/* ── v46.5 · revisión del 07/11/2026 ── */
+.ini-aviso b{white-space:nowrap}
+@media screen and (max-width:700px){ body.doc-abierto .doc-t.doc-mini{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch} }

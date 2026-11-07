@@ -541,7 +541,7 @@ ${MODAL.trasAlta?(()=>{ const gid=_grupoDe(m.id), g=gid&&gruposCierre().find(x=>
 <button style="width:100%;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:15px;font-weight:800;border:none;cursor:pointer;margin-bottom:8px" onclick="enviarBienvenida()">💬 Enviar por WhatsApp</button>
 <div style="display:flex;gap:8px">
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="_copyFallback(document.getElementById('bv-txt').value)">📋 Copiar mensaje</button>
-  <button class="link-copy-btn" style="flex:1;margin:0" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver su enlace</button>
+  <button class="link-copy-btn" style="flex:1;margin:0" onclick="verAppDe('${esc(m.id)}')">👁️ Ver su app</button>
 </div>
 ${tarjetaBienvenidaHTML(m)}
 <button style="width:100%;margin-top:10px;padding:10px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer" onclick="closeModal()">Ahora no</button>`;
@@ -668,8 +668,9 @@ function listaPersonasHTML(lista){
   return h;
 }
 // ── FICHA COMPLETA ASOCIADO ─────────────────────────────────────────────────
-function openFicha(mid){FICHA_ID=mid;FICHA_TAB="resumen";TAB="asociados";render();} // v45.23: se abre en «Resumen»
-function closeFicha(){FICHA_ID=null;render();}
+let _Y_LISTA=0; // v46.5: dónde estaba la lista al abrir una ficha
+function openFicha(mid){ if(!FICHA_ID)_Y_LISTA=window.scrollY||0; FICHA_ID=mid;FICHA_TAB="resumen";TAB="asociados";render(); window.scrollTo(0,0); } // v45.23: se abre en «Resumen» · v46.5: arriba
+function closeFicha(){FICHA_ID=null;render(); window.scrollTo(0,_Y_LISTA||0);}
 function _fichaResumenHTMLbase(m){
   const rm=DATA.reportMonth,ry=DATA.reportYear;
   const isTerc=m.type==="tercero";
@@ -880,7 +881,7 @@ function _fichaHTMLbase(m,readonly=false){
   const isOpen=(k)=>!!(DESP[mid+"-"+k]);
   const tog=(k)=>`DESP['${mid}-${k}']=!DESP['${mid}-${k}'];render()`;
 
-  let h=readonly?"":`<div style="display:flex;gap:8px;align-items:center"><button class="btn-back" style="flex:1" onclick="closeFicha()">← Personas</button><button class="btn-back" style="flex:0 0 auto;width:auto;color:#3D4080" onclick="verComoAsociado('${esc(m.id)}')">👁️ Ver como lo ve</button></div>`;
+  let h=readonly?"":`<div style="display:flex;gap:8px;align-items:center"><button class="btn-back" style="flex:1" onclick="closeFicha()">← Personas</button><button class="btn-back" style="flex:0 0 auto;width:auto;color:#3D4080" onclick="verAppDe('${esc(m.id)}')">👁️ Ver como lo ve</button></div>`;
 
   /* ────────────────────────────────────────────────
      1. TARJETA DE IDENTIDAD

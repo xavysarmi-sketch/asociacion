@@ -56,7 +56,11 @@ function inicioHTML(){
   const avisos=avisosPermanenciaHTML(rm,ry)+salidasPrevistasHTML(rm,ry);
   // v45.46: el mes anterior sigue sin cerrar (desde octubre de 2026, cuando empezó el cierre)
   const _iAnt=_idxMes(rm,ry)-1, _kAnt=_keyDeIdx(_iAnt), _sinCerrarAnt=_iAnt>=_idxMes("Oct",2026)&&!mesCerrado(_kAnt);
+  // v46.5 (Ángel 07/11/2026): el día antes del día de aviso (por defecto el 24) avisa si el mes de hoy sigue sin cerrar
+  const _hoyD=new Date(), _diaAv=(DATA.diaAvisoProximo!=null?DATA.diaAvisoProximo:25), _iHoy=_idxMes(MONTHS[_hoyD.getMonth()],_hoyD.getFullYear());
+  const _avisoManana=_hoyD.getDate()===_diaAv-1&&!mesCerrado(_keyDeIdx(_iHoy)), _mesNom=i=>_txtIdx(i).split(" ")[0];
   h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">⚠ Avisos</div>
+    ${_avisoManana?`<button class="ini-aviso" style="color:#8A4F12" onclick="irAlMes(${_iHoy})">⏰ Mañana, día ${_diaAv}, la app pasa a ${_mesNom(_iHoy+1)}. Cierra ${_mesNom(_iHoy)} hoy ›</button>`:""}
     ${_sinCerrarAnt?`<button class="ini-aviso" style="color:#8A4F12" onclick="irAlMes(${_iAnt})">🔒 ${_txtIdx(_iAnt).split(" ")[0].replace(/^./,c=>c.toUpperCase())} sigue sin cerrar: ciérralo ›</button>`:""}
     <button class="ini-aviso" onclick="TAB='ayudas';render();window.scrollTo(0,0)">📝 Solicitudes de ayuda: <b>${nSol?nSol+" pendiente"+(nSol>1?"s":""):"ninguna pendiente"}</b> ›</button>
     ${banner?`<button class="ini-aviso" style="color:#8A4F12" onclick="TAB='mes';render();window.scrollTo(0,0)">⚠️ El retorno del mes no cuadra: revísalo en Cobros ›</button>`:""}

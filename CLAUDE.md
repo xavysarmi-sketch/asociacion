@@ -65,6 +65,10 @@ lenguaje sencillo antes de aplicarlos.
   (pintarEnlaceRetirado, js/datos.js) y no leen la nube; en modo desarrollo siguen funcionando porque las pruebas
   (verificar_app.js, revisor) los usan. buildMemberUrl devuelve el enlace de la app nueva; los enlaces de grupo ya no se
   envían. Con esto, nh/data puede quedar en lectura solo para el administrador (reglas v46.4).
+- Desde v46.5: no se puede cerrar el mes con errores en la auditoría (cerrarMesToque y cierreMesHTML); el día antes del
+  día de aviso Inicio avisa si el mes de hoy sigue sin cerrar; «Ver como lo ve» abre la app nueva (verAppDe → abrirAppDe);
+  openFicha sube arriba y closeFicha vuelve al sitio de la lista; _nhSinPartir (render) une número y «€»/«%» con un
+  espacio que no se parte (solo pantalla; las pruebas ven esas diferencias invisibles).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

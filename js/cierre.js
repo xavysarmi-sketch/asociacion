@@ -378,15 +378,16 @@ function cierreMesHTML(){
       ${papeles}
       <button onclick="reabrirMesToque()" class="cgt-b ${armR?"arm":""}" style="width:100%;margin-top:12px;min-height:44px;${armR?"":"border-color:#C9BFAF;color:#5F5A55"}">${armR?"¿Reabrir "+mesTxt+"? Toca otra vez":"🔓 Reabrir el mes"}</button></div>`;
   }
-  const k=comprobacionCierre(), malos=k.lista.filter(x=>!x.ok).length, arm=!!DESP["cerrar-mes"];
+  const k=comprobacionCierre(), malos=k.lista.filter(x=>!x.ok).length, arm=!!DESP["cerrar-mes"], nErrA=auditarNHCached().errores.length; // v46.5: con errores no se cierra
   return `<div class="mes-card" id="cierre-mes"><div class="mes-title" style="margin-bottom:8px">🔒 Cierre de ${mesTxt}</div>
     ${k.lista.map(x=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;font-size:14.5px;line-height:1.35;color:${x.ok?"var(--dark)":"#8A4F12"}"><span>${x.ok?"✅":"⚠️"}</span><span>${escH(x.txt)}</span></div>`).join("")}
     ${papeles}
-    <button onclick="cerrarMesToque()" class="cgt-b ${arm?"arm":"pri"}" style="width:100%;margin-top:12px;min-height:50px;font-size:15.5px">${arm?(malos?`¿Cerrar con ${malos} ${malos===1?"aviso":"avisos"}? Toca otra vez`:`¿Cerrar ${mesTxt}? Toca otra vez`):`🔒 Cerrar ${mesTxt}`}</button>
-    <div class="ini-sin" style="margin-top:6px">Al cerrar se guarda una copia en este teléfono y el mes queda bloqueado. Se puede reabrir.</div></div>`;
+    ${nErrA?`<button onclick="TAB='manage';AUDIT_OPEN=true;FICHA_ID=null;render();window.scrollTo(0,0)" class="cgt-b" style="width:100%;margin-top:12px;min-height:50px;font-size:15.5px;border-color:#C0492C;color:#A63A20">🔒 No se puede cerrar: la auditoría tiene ${nErrA} ${nErrA===1?"error":"errores"} · Ver ›</button>`:`<button onclick="cerrarMesToque()" class="cgt-b ${arm?"arm":"pri"}" style="width:100%;margin-top:12px;min-height:50px;font-size:15.5px">${arm?(malos?`¿Cerrar con ${malos} ${malos===1?"aviso":"avisos"}? Toca otra vez`:`¿Cerrar ${mesTxt}? Toca otra vez`):`🔒 Cerrar ${mesTxt}`}</button>
+    `}<div class="ini-sin" style="margin-top:6px">Al cerrar se guarda una copia en este teléfono y el mes queda bloqueado. Se puede reabrir.</div></div>`;
 }
 function cerrarMesToque(){
   if(_mesBloqueado())return;
+  { const ne=auditarNHCached().errores.length; if(ne){ DESP["cerrar-mes"]=false; toast(`🔒 No se puede cerrar: la auditoría tiene ${ne} ${ne===1?"error":"errores"}. Arréglalos en Más › Auditoría`,5500); render(); return; } } // v46.5 (Ángel 07/11/2026)
   if(!DESP["cerrar-mes"]){ DESP["cerrar-mes"]=true; render(); setTimeout(()=>{ if(DESP["cerrar-mes"]){DESP["cerrar-mes"]=false;render();} },5000); return; }
   DESP["cerrar-mes"]=false;
   const rm=DATA.reportMonth, ry=DATA.reportYear, k=comprobacionCierre(), d=k.d, ahora=new Date();
