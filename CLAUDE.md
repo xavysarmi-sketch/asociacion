@@ -76,6 +76,10 @@ lenguaje sencillo antes de aplicarlos.
 - Desde v46.7: «Enviar su cuenta» y «Enviar el plan» abren primero una ventana (cg_envio) con el mensaje tal como llega,
   y botones: a él, a otro chat (wa.me sin número: WhatsApp deja elegir, también el propio) o copiar. El resultado
   positivo de la cuenta dice «FALTA POR ENTREGAR». La cola de envíos (uno tras otro) sigue enviando directo.
+- Desde v46.8: sin «Hacer un plan». Las ayudas entran SOLO por Ayudas › Solicitudes; la cuenta del grupo muestra sola
+  «Propuesta del mes» (solicitudes pendientes del grupo en el mes de trabajo, con cuotas, + salidas pendientes) con Quitar /
+  Aprobar y «Enviar la propuesta». Si falta dinero para ayudas o salidas el mensaje dice «LO PONE LA ASOCIACIÓN» y
+  «Para completar la ayuda de X faltan N €» (_cgParaQue); «A TU FAVOR» solo si entregó de más. Sin «en mano o por Bizum».
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
