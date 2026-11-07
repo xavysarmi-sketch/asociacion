@@ -53,7 +53,7 @@ function _cgTicket(filas,resultado){
   const todas=[...filas.map(f=>f[1]),resultado], W=Math.max(...todas.map(v=>cifra(v).length));
   const caja=(v,s)=>"`"+(s||sig(v))+" ".repeat(W-cifra(v).length+1)+cifra(v)+"`";
   // v45.76: el resultado sin signo menos y dicho en palabras (Ángel 01/11/2026: el «-475 RESULTADO» confundía)
-  const txt=resultado<0?"A TU FAVOR":resultado>0?"ME ENTREGAS":"CUADRADO";
+  const txt=resultado<0?"A TU FAVOR":resultado>0?"FALTA POR ENTREGAR":"CUADRADO"; // v46.7: «ME ENTREGAS» parecía que ya lo había entregado
   return filas.map(([l,v])=>caja(v)+" "+l).join("\n")+"\n━━━━━━━━\n"+caja(resultado,"=")+" *"+txt+"*\n";
 }
 // v45.72: «Está de acuerdo: hacerlo real»: lista de lo que hay que hacer, cada cosa con su botón (Ángel 01/11/2026)
@@ -84,16 +84,17 @@ function cgPagoAsociacion(gid){
   _cgW(getMesKey(DATA.reportMonth,DATA.reportYear),gid).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"pago",importe:_r2(-f),fecha:_cgHoy()});
   delete CG_SIM_REAL[gid]; save(); render(); toast("✅ Apuntado: le has pasado "+fmtEur(-f)+" €");
 }
-function cgSimEnviar(gid){
-  const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
-  const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+function cgSimEnviar(gid){ const t=_cgPlanTexto(gid); if(t)_cgAbrirWA(t,null); }
+function _cgPlanTexto(gid){
+  const g=gruposCierre().find(x=>x.id===gid); if(!g)return "";
+  const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return "";
   const d=_cgDatosSim(g), nom=p.name.split(" ")[0], mes=_txtIdx(d.idx).split(" ")[0], e=v=>fmtEur(v)+" €";
   // v45.68: en palabras del responsable, no las cuentas internas del administrador (revisión de Ángel 31/10/2026)
   const lista=a=>a.length===1?`*${a[0]}*`:`*${a.slice(0,-1).join(", ")}* y *${a[a.length-1]}*`;
   const ays=[...d.sols,...d.sim], quien=ays.map(x=>x.nombre).filter(Boolean), partes=[];
   if(ays.length)partes.push(`damos ${ays.length>1?(quien.length===ays.length?"las ayudas":"estas ayudas"):"la ayuda"}${quien.length?" a "+lista(quien):""}`);
   if(d.sal.length)partes.push(`le pagamos a ${lista(d.sal.map(x=>x.nombre))} ${d.sal.length>1?"sus salidas":"su salida"}`);
-  let t=`Hola ${nom} 👋\nAsí quedaría *${mes}* si ${partes.join(" y ")} con el dinero que recoges de tu grupo:\n\n`;
+  let t=partes.length?`Hola ${nom} 👋\nAsí quedaría *${mes}* si ${partes.join(" y ")} con el dinero que recoges de tu grupo:\n\n`:`Hola ${nom} 👋\nAsí va *${mes}* con el dinero que recoges de tu grupo:\n\n`; // v46.7: sin plan, la frase quedaba a medias
   // v45.72: la cuenta como un ticket (columnas alineadas, letra de ancho fijo de WhatsApp) y el resultado al final
   const fil=[["Total del mes",d.total]];
   if(d.arrastre)fil.push(["Del mes pasado",d.arrastre]);
@@ -106,17 +107,45 @@ function cgSimEnviar(gid){
   d.sim.forEach((x,i)=>fil.push([x.nombre?"Ayuda a "+pn(x.nombre):"Ayuda"+(d.sim.length>1?" "+(i+1):""),-x.v]));
   d.sal.forEach(x=>fil.push(["Salida de "+pn(x.nombre),-x.v]));
   t+=_cgTicket(fil,d.resto);
-  t+= d.resto>0?"" /* v45.76: «ME ENTREGAS» ya lo dice la tabla */:d.resto===0?`\n👉 *No me tienes que entregar nada más*`:`\n💚 *Los ${e(-d.resto)} que faltan los pone la asociación: te los paso yo* (en mano o por Bizum).`; // v45.76
+  t+= d.resto>0?"" /* v45.76: «FALTA POR ENTREGAR» ya lo dice la tabla */:d.resto===0?`\n👉 *No me tienes que entregar nada más*`:`\n💚 *Los ${e(-d.resto)} que faltan los pone la asociación: te los paso yo* (en mano o por Bizum).`; // v45.76
   t+=`\n\nEs una propuesta. Dime si estás de acuerdo y lo hacemos.`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
-  t=t.replace(/\n{3,}/g,"\n\n"); // v45.76: sin líneas vacías de más
+  return t.replace(/\n{3,}/g,"\n\n"); // v45.76: sin líneas vacías de más
+}
+// v46.7: abre WhatsApp con el texto; con teléfono va directo a su chat, sin teléfono WhatsApp deja elegir el chat
+function _cgAbrirWA(t,tel){
+  if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; }
   if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
   else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
 }
+// v46.7 (Ángel 07/11/2026): antes de enviar, ver el mensaje y poder mandarlo a otro chat (el suyo) para comprobarlo
+function cgEnvioAbrir(gid,tipo){ openModal('cg_envio',{gid,tipo}); }
+function _cgEnvioTexto(){ return MODAL.tipo==="plan"?_cgPlanTexto(MODAL.gid):_cgCuentaTexto(MODAL.gid); }
+function _waVista(t){ return escH(t).replace(/`([^`]*)`/g,'<span style="font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre">$1</span>').replace(/\*([^*\n]+)\*/g,"<b>$1</b>").replace(/\n/g,"<br>"); }
+function cgEnvioModalHTML(){
+  const g=gruposCierre().find(x=>x.id===MODAL.gid), p=g&&DATA.members.find(m=>m.id===g.principalId); if(!p)return "";
+  const nom=p.name.split(" ")[0], t=_cgEnvioTexto(), tel=_telWA(p.phone);
+  return `<div class="modal-title">💬 ${MODAL.tipo==="plan"?"Plan para":"Cuenta de"} ${escH(nom)}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Así le llegará:</div>
+    <div style="background:#DCF8C6;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.45;color:#111;margin-bottom:12px;overflow-x:auto">${_waVista(t)}</div>
+    <button class="m-primary" style="background:#25D366" onclick="cgEnvioEnviar('resp')">💬 Enviar a ${escH(nom)}${tel?"":" (eliges su chat)"}</button>
+    <button class="m-sec" style="margin-top:8px" onclick="cgEnvioEnviar('otro')">📲 Enviar a otro chat (por ejemplo, el tuyo)</button>
+    <button class="m-sec" style="margin-top:8px" onclick="cgEnvioEnviar('copiar')">📋 Copiar el texto</button>
+    <button class="m-sec" style="margin-top:8px;opacity:.8" onclick="closeModal()">Cancelar</button>`;
+}
+function cgEnvioEnviar(modo){
+  const g=gruposCierre().find(x=>x.id===MODAL.gid), p=g&&DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+  const t=_cgEnvioTexto();
+  if(modo==="copiar"){ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>toast("📋 Texto copiado ✓")).catch(()=>toast("No se pudo copiar")); else toast("No se pudo copiar"); return; }
+  if(modo==="otro")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank"); // WhatsApp deja elegir cualquier chat
+  else _cgAbrirWA(t,MODAL.tipo==="plan"?null:_telWA(p.phone));
+  closeModal();
+}
 // v45.15: enviar el estado real de la cuenta del grupo por WhatsApp
-function cgEnviarCuenta(gid){
-  const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
-  const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
+function cgEnviarCuenta(gid){ const g=gruposCierre().find(x=>x.id===gid), p=g&&DATA.members.find(m=>m.id===g.principalId); const t=_cgCuentaTexto(gid); if(t)_cgAbrirWA(t,p?_telWA(p.phone):null); }
+function _cgCuentaTexto(gid){
+  const g=gruposCierre().find(x=>x.id===gid); if(!g)return "";
+  const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return "";
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), movs=_cgMovs(_keyDeIdx(idx),gid), falta=_cgFalta(g,idx);
   const nom=p.name.split(" ")[0], mes=MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase(), e=v=>fmtEur(v)+" €";
   const mesDe=k=>MONTHS_FULL[+k.slice(5)-1].toLowerCase();
@@ -133,12 +162,9 @@ function cgEnviarCuenta(gid){
   const conPago=movs.some(x=>x.tipo==="pago"), conPagos=movs.some(x=>x.tipo==="ayuda"||x.tipo==="salida");
   const cab=falta<0?`✅ Hecho. Tus cuentas de *${mes}*:`:falta===0&&(conPago||conPagos)?`✅ Cuenta de *${mes}* cerrada:`:`Tus cuentas de *${mes}*:`;
   let t=`Hola ${nom} 👋\n${cab}\n\n`+_cgTicket(fil,falta);
-  t+= falta>0?"" /* v45.76: «ME ENTREGAS» ya lo dice la tabla */:falta<0?(conPagos?`\n💚 *Los ${e(-falta)} que faltan los pone la asociación: te los paso yo* (en mano o por Bizum).`:`\n👉 *Me has entregado ${e(-falta)} de más: te los devuelvo*`):`\n✅ *Todo cuadrado. ¡Gracias!*`;
+  t+= falta>0?"" /* v45.76: «FALTA POR ENTREGAR» ya lo dice la tabla */:falta<0?(conPagos?`\n💚 *Los ${e(-falta)} que faltan los pone la asociación: te los paso yo* (en mano o por Bizum).`:`\n👉 *Me has entregado ${e(-falta)} de más: te los devuelvo*`):`\n✅ *Todo cuadrado. ¡Gracias!*`;
   t+=`\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
-  t=t.replace(/\n{3,}/g,"\n\n"); // v45.76: sin líneas vacías de más
-  const tel=_telWA(p.phone); if(tel){ window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(t),"_blank"); return; } // v45.43: con su teléfono, se abre directamente su chat
-  if(navigator.share){ navigator.share({text:t}).then(()=>toast("Compartido ✓")).catch(x=>{if(x.name!=="AbortError")window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");}); }
-  else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+  return t.replace(/\n{3,}/g,"\n\n"); // v45.76: sin líneas vacías de más
 }
 // ══ v45.43 · ENVIAR LAS CUENTAS A LOS RESPONSABLES, UNA TRAS OTRA ══════════════════════════════
 // Un botón en Cobros abre esta ventana: WhatsApp se abre con la cuenta del primero; al volver a la
@@ -325,7 +351,7 @@ function cuentaGrupoHTML(g,principal){
   const lab=falta>0?(ent+resto>0?"Falta por entregarte":"Te entrega"):falta<0?(pagosEl.length?"Le pasas tú (la asociación)":"Te ha dado de más: se lo devuelves"):"✅ Liquidado";
   h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">${lab}</b>${falta!==0?`<b style="font-size:21px;white-space:nowrap;color:${falta>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div></div>`;
   if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pasado los ${fmtEur(-falta)} €</button>`;
-  h+=`<button onclick="cgEnviarCuenta('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar su cuenta a ${nom}</button>`;
+  h+=`<button onclick="cgEnvioAbrir('${g.id}','cuenta')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar su cuenta a ${nom}</button>`;
   // 2 · Plan del mes
   const formTipo=CG_FORM&&CG_FORM.gid===g.id?CG_FORM.tipo:null;
   const d=_cgDatosSim(g), sim=CG_SIM[g.id]||[], hayPlan=sim.length||d.sols.length||d.sal.length; // v45.73: cuando ya está todo hecho, el plan desaparece (lo real está arriba)
@@ -342,7 +368,7 @@ function cuentaGrupoHTML(g,principal){
     d.sal.forEach(x=>{ h+=it("🚪","Salida de "+escH(x.nombre),"pendiente de pagar",x.v,`cgSimQuitarSal('${g.id}','${esc(x.mid)}')`); });
     h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px 2px"><b style="color:#8A4F12;font-size:15.5px">${d.resto>0?"Te entregaría":d.resto<0?"Le pasa la asociación":"Justo: no sobra ni falta"}</b>${d.resto!==0?`<b style="font-size:21px;white-space:nowrap;color:${d.resto>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(d.resto))} €</b>`:""}</div>
       ${CG_SIM_REAL[g.id]?"":`<button onclick="cgAbrir('${g.id}','sim')" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #8A4F12;background:#fff;color:#8A4F12;font-size:14px;font-weight:800;cursor:pointer">＋ Añadir otra ayuda</button>
-      <button onclick="cgSimEnviar('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar el plan a ${nom}</button>`}
+      <button onclick="cgEnvioAbrir('${g.id}','plan')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar el plan a ${nom}</button>`}
       ${_cgRealHTML(g,d,nom)}
       <button onclick="cgSimQuitar('${g.id}')" style="width:100%;margin-top:8px;padding:6px;border:none;background:none;color:#8A4F12;font-size:13px;text-decoration:underline;cursor:pointer">Quitar el plan</button></div>`;
   }

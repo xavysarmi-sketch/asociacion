@@ -73,6 +73,9 @@ lenguaje sencillo antes de aplicarlos.
   beneficios» solo si !vistaPersonal(): la app de asociados LEE esas filas (nhaFilas) — no tocar la vista personal.
   Dinero del mes (Ayudas) nombra cada salida pagada (Bajas, Beneficios retirados, Aportes temporales devueltos);
   «En caja hoy» solo si ≠ Disponible. «Historial de ayudas» es una herramienta de corrección → Zona delicada.
+- Desde v46.7: «Enviar su cuenta» y «Enviar el plan» abren primero una ventana (cg_envio) con el mensaje tal como llega,
+  y botones: a él, a otro chat (wa.me sin número: WhatsApp deja elegir, también el propio) o copiar. El resultado
+  positivo de la cuenta dice «FALTA POR ENTREGAR». La cola de envíos (uno tras otro) sigue enviando directo.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

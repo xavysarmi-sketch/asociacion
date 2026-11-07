@@ -946,6 +946,7 @@ function _renderPantalla(){
     if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
     if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
     if(MODAL.type==="cg_lista")h+=cgListaModalHTML(); // v45.85
+    if(MODAL.type==="cg_envio")h+=cgEnvioModalHTML(); // v46.7
     if(MODAL.type==="nombre")h+=nombreModalHTML(); // v45.50
     if(MODAL.type==="app_cola")h+=appColaModalHTML(); // v45.52
     if(MODAL.type==="tel_import")h+=telImportModalHTML(); // v45.73
