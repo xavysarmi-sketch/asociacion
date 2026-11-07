@@ -80,6 +80,11 @@ lenguaje sencillo antes de aplicarlos.
   «Propuesta del mes» (solicitudes pendientes del grupo en el mes de trabajo, con cuotas, + salidas pendientes) con Quitar /
   Aprobar y «Enviar la propuesta». Si falta dinero para ayudas o salidas el mensaje dice «LO PONE LA ASOCIACIÓN» y
   «Para completar la ayuda de X faltan N €» (_cgParaQue); «A TU FAVOR» solo si entregó de más. Sin «en mano o por Bizum».
+- Desde v46.9 (app de asociados): Inicio con «Lo que llevas» como suma (nhaLlevasHTML; a quien empieza, una frase),
+  sin caja de avisos si no hay; aviso de permanencia que acaba (avisosPermanencia → abre el simulador de ganar);
+  terceros ven su ayuda con barra (nhaTerceroAyudaHTML); accesos a simuladores en fila baja. Simulador de pedir:
+  calendario plegado (DESP sim-cal) y aviso si ya paga otra ayuda. Ficha: «1 de 2 pagadas», sin «,00», «activa/cerrada»,
+  aportes temporales en palabras.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

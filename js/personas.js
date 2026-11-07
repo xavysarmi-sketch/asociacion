@@ -702,7 +702,7 @@ function _fichaResumenHTMLbase(m){
   allLoans.forEach((loan,li)=>{
     const activeIdx=activePayIndex(loan,rm,ry);
     h+=`<div class="loan"${li>0?' style="border-top:1px dashed #E8E0D8"':""}>`;
-    h+=`<div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)},00 €</div></div></div>`;
+    h+=`<div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)} €</div></div></div>`;
     h+=`<div class="timeline">`;
     loan.pays.forEach((p,pi)=>{
       const isActive=(pi===activeIdx);
@@ -1026,7 +1026,7 @@ function _fichaHTMLbase(m,readonly=false){
       h+=`<div class="ft-row"><span class="ft-lbl">Tipo</span><span class="ft-val">Tercero avalado</span></div>
       <div class="ft-row"><span class="ft-lbl">Avalista</span><span class="ft-val">${escH(avalistaNombre(m)||"—")}</span></div>`;
       const activasN=(m.loans||[]).length, cerradasN=(m.closedLoans||[]).length;
-      h+=`<div class="ft-row"><span class="ft-lbl">Ayudas</span><span class="ft-val">${activasN} activo${activasN!==1?"s":""} · ${cerradasN} cerrado${cerradasN!==1?"s":""}</span></div>`;
+      h+=`<div class="ft-row"><span class="ft-lbl">Ayudas</span><span class="ft-val">${activasN} activa${activasN!==1?"s":""} · ${cerradasN} cerrada${cerradasN!==1?"s":""}</span></div>`;
     }
     h+=`</div>`;
   }
@@ -1087,8 +1087,8 @@ function _fichaHTMLbase(m,readonly=false){
         const activeIdx=activePayIndex(loan,rm,ry);
         const pagadas=loan.pays.filter(p=>p.paid).length;
         let c=`<div class="ft-card ${esCerrada?"ayuda-pagada":""}">
-          <div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)},00 €</div></div>
-            <div style="text-align:right"><div class="ayuda-progreso">${pagadas} / ${loan.n} pagadas</div><div class="ayuda-rest">${esCerrada?"✅ Cerrada":(loan.n-pagadas)+" por pagar"}</div></div>
+          <div class="loan-row"><div><div class="loan-lbl">Ayuda ${escH(loan.gMonth)} ${loan.gYear}</div><div class="loan-amt">${fmtEur(loan.capital)} €</div></div>
+            <div style="text-align:right"><div class="ayuda-progreso">${pagadas} de ${loan.n} pagadas</div>${esCerrada?`<div class="ayuda-rest">✅ Cerrada</div>`:""}</div>
           </div>
           <div class="timeline">`;
         loan.pays.forEach((p,pi)=>{
@@ -1161,7 +1161,7 @@ function _fichaHTMLbase(m,readonly=false){
         <div class="ft-card-title">🏦 Aportes temporales</div>`;
       puntuales.forEach((ap,api)=>{
         h+=`<div class="ft-row" style="align-items:flex-start">
-          <span class="ft-lbl">${fmtEur(ap.capital)} € · ${escH(ap.mes)} ${ap.anio} · plazo ${ap.plazo}m<br><span style="font-size:11px;color:var(--muted)">Recupera ${fmtEur(ap.total)} € (capital +5%) en ${escH(ap.mesDev)} ${ap.anioDev}</span></span>
+          <span class="ft-lbl">${fmtEur(ap.capital)} € · ${escH((MONTHS_FULL[MONTHS.indexOf(ap.mes)]||ap.mes).toLowerCase())} ${ap.anio} · ${ap.plazo} ${ap.plazo==1?"mes":"meses"}<br><span style="font-size:11px;color:var(--muted)">${vistaPersonal()?(ap.devuelto?"Te devolvimos":"Te devolvemos"):(ap.devuelto?"Se le devolvieron":"Se le devuelven")} ${fmtEur(ap.total)} € (${fmtEur(ap.capital)} € + 5 %) en ${escH((MONTHS_FULL[MONTHS.indexOf(ap.mesDev)]||ap.mesDev).toLowerCase())} ${ap.anioDev}</span></span>
           <span style="text-align:right;white-space:nowrap">
             <span class="ft-val" style="color:${ap.devuelto?'#2D6A4F':'#B08D3E'};display:block">${ap.devuelto?"Devuelto ✅":"Activo ⏳"}</span>
             ${readonly?"":`<button class="ap-toggle-btn" onclick="togglePuntualDevuelto('${esc(m.id)}',${api});render()">${ap.devuelto?"Marcar activo":"Marcar devuelto"}</button>`}

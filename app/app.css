@@ -391,3 +391,22 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 .nha-inst-n .nha-item-ic{background:#1B4332;color:#fff}
 .nha-inst-n>div{flex:1;min-width:0}
 .nha-inst-n>div>b:first-child{display:block;font-size:17px;color:#1B4332;margin-bottom:3px}
+
+/* v46.9 · Inicio más compacto: «Lo que llevas» como una suma, accesos en fila baja, ayuda del tercero */
+.nha-llevas{padding:14px 16px}
+.nha-llevas .nha-card-tit{margin-bottom:6px}
+.nha-l-f{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:6px 0;font-size:16px;color:#1F1F1F}
+.nha-l-f small{display:block;font-size:13px;color:#5E6B62;margin-top:1px}
+.nha-l-f b,.nha-l-t b{flex:0 0 auto;min-width:112px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:18px;color:#1B4332}
+.nha-l-f b s,.nha-l-t b s{text-decoration:none;margin-right:4px}
+.nha-l-t{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:2px}
+.nha-l-t span{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#1B4332;padding-bottom:4px}
+.nha-l-t b{font-size:26px;font-weight:900;border-top:2px solid #1B4332;padding-top:6px}
+.nha-acc-fila button{flex-direction:row;align-items:center;gap:10px;padding:11px 12px}
+.nha-acc-fila button small{display:none}
+.nha-acc-fila b{font-size:15px}
+.nha-terc{margin-top:12px}
+.nha-l-c{align-items:center}
+.nha-llevas .nha-l-f b,.nha-llevas .nha-l-t b{min-width:0}
+.nha-l-c span{font-size:14.5px;letter-spacing:-.1px}
+.nha-l-c b{font-size:17px!important}

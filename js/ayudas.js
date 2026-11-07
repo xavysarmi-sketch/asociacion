@@ -707,8 +707,12 @@ function simAyudaResHTML(m){
   let h=_simCaja("",_simFila(`Recibes en ${_txtIdx(rep)}`,fmtEur(cap)+" €",true)
     +_simFila(`Devuelves en ${n} ${n===1?"cuota":"cuotas"}`,`${fmtEur(Math.max(...cuotas))} € al mes`) // v45.55: una sola cifra (la mayor); el importe exacto de cada mes está en el calendario
     +`<div style="font-size:12.5px;opacity:.85;margin-top:4px">La primera cuota se paga en ${_txtIdx(L.ini)}.</div>`);
-  h+=`<div style="margin-top:12px;font-size:13.5px;font-weight:800;color:var(--dark)">Calendario de cuotas</div>
-    <div style="margin-top:4px">${cuotas.map((c,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #EFEAE0;font-size:13.5px"><span>${MONTHS_FULL[((L.ini+i)%12+12)%12]} ${Math.floor((L.ini+i)/12)}${i===n-1&&n>1?" · 🏁 última":""}</span><b>${fmtEur(c)} €</b></div>`).join("")}</div>`;
+  // v46.9: si ya paga otra ayuda, lo que pagaría en total ese mes (dos ayudas a la vez están permitidas)
+  { let ya=0, hasta=-1; (m&&m.loans||[]).forEach(l=>(l.pays||[]).forEach((p,i)=>{ const pi=_idxMes(p.m,p.y); if(!p.paid&&pi===L.ini)ya+=cuotaDe(l,i); if(!p.paid&&pi>hasta)hasta=pi; }));
+    ya=_r2(ya); if(ya>0)h+=`<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#FFF4E5;border:1.5px solid #E0A040;color:#6B4210;font-size:13.5px;line-height:1.45">Ya pagas <b>${fmtEur(ya)} €</b> al mes de tu ayuda en curso (hasta ${_txtIdx(hasta)}). Con esta, en ${_txtIdx(L.ini)} pagarías <b>${fmtEur(_r2(ya+cuotas[0]))} €</b>.</div>`; }
+  const igu=cuotas.every(c=>c===cuotas[0]), abC=!!DESP["sim-cal"];
+  h+=`<button onclick="DESP['sim-cal']=!DESP['sim-cal'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid #E3DDD2;background:#fff;color:var(--dark);font-size:13.5px;text-align:left;cursor:pointer"><span><b>${n} ${n===1?"cuota":"cuotas"}${igu?` de ${fmtEur(cuotas[0])} €`:""}</b> · ${_txtIdx(L.ini)}${n>1?" → "+_txtIdx(L.ini+n-1):""}</span><span style="white-space:nowrap;font-weight:700;color:#2D6A4F">${abC?"Ocultar":"Ver calendario"} ›</span></button>`; // v46.9: plegado
+  if(abC)h+=`<div style="margin-top:4px">${cuotas.map((c,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #EFEAE0;font-size:13.5px"><span>${MONTHS_FULL[((L.ini+i)%12+12)%12]} ${Math.floor((L.ini+i)/12)}${i===n-1&&n>1?" · 🏁 última":""}</span><b>${fmtEur(c)} €</b></div>`).join("")}</div>`;
   return h;
 }
 // Beneficio: lo que ya tiene + lo que ganaría aportando SIM.ap € cada mes hasta el final de la permanencia simulada.
