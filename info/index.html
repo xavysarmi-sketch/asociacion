@@ -71,7 +71,8 @@ td.n,th.n{text-align:right;white-space:nowrap}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:6px;padding:0;border:none;margin:12px 0 6px;background:linear-gradient(to right,var(--v2) var(--p,0%),#DCE3DD var(--p,0%));outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--v);border:4px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--v);border:4px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
-.sim.quieto input[type=range]::-webkit-slider-thumb{animation:lat2 1.6s ease-in-out infinite}
+.sim.quieto input[type=range]::-webkit-slider-thumb,input.quieto::-webkit-slider-thumb{animation:lat2 1.6s ease-in-out infinite}
+input.quieto::-moz-range-thumb{animation:lat2 1.6s ease-in-out infinite}
 @keyframes lat2{0%,100%{box-shadow:0 0 0 0 rgba(45,106,79,.45)}50%{box-shadow:0 0 0 9px rgba(45,106,79,0)}}
 .bar b{font-size:17px}
 #s-res{font-size:17px;transition:transform .15s}
@@ -208,8 +209,8 @@ details.card[open]>summary{margin-bottom:4px}
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.24"></script>
-<script src="../js/iconos.js?v=46.24"></script>
+<script src="../js/maestro.js?v=46.25"></script>
+<script src="../js/iconos.js?v=46.25"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
 const COORD="34685633486";
@@ -257,7 +258,8 @@ $("f-apc").innerHTML=R.APORTE_OPCIONES.map(a=>`<button data-v="${a}">${a} €</b
 document.querySelector('#f-apc button').classList.add("on");
 $("f-im").min=R.AYUDA_MIN; $("f-im").max=R.AYUDA_MAX_SIN_APROBACION; $("f-im").value=R.AYUDA_MIN; $("f-cu").max=R.CUOTAS_MAX; $("f-cu").value=1;
 $("f-imn").textContent=eur(R.AYUDA_MIN); $("f-imx").textContent=eur(R.AYUDA_MAX_SIN_APROBACION); $("f-cux").textContent=R.CUOTAS_MAX+" cuotas";
-$("f-im").oninput=$("f-cu").oninput=pintar;
+$("f-im").classList.add("quieto"); $("f-cu").classList.add("quieto"); // v46.25: late suave hasta que se toca, como «Calcula tu ayuda»
+$("f-im").oninput=$("f-cu").oninput=function(){ this.classList.remove("quieto"); pintar(); };
 function opts(sel,arr,fmt){ const v=+sel.value; sel.innerHTML=arr.map(x=>`<option value="${x}">${fmt(x)}</option>`).join(""); if(arr.includes(v))sel.value=v; }
 // v46.22: barras como el simulador de la app; el aviso solo sale si la ayuda pasa del límite de lo elegido
 function excede(){ const c=+$("f-im").value, n=+$("f-cu").value, largo=F.como==="aso"&&F.pm>=24;

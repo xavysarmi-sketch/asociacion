@@ -236,3 +236,4 @@ push solo tras su «SÍ».
 - v46.22 (08/11/2026): info/ Quiero entrar - barras de importe (100-1.000) y cuotas (1-12) como el simulador; aviso naranja solo si pasa del limite (aval 500/5; asociandome 12 m 500/5; 24-36 m 1.000/12) con enlace que corrige; no deja enviar fuera de limite; ayuda asociandome pide permanencia (sin aporte); permanencia y aporte en botones.
 - v46.23 (08/11/2026): info/ Quiero entrar - avisos de limite en una frase ('Para esta ayuda debes...'); en Ahorrar, resumen verde Aportas + Beneficios = Al terminar recibes segun permanencia y aporte.
 - v46.24 (08/11/2026): info/ - cuadro de ayudas en dos cajas (verde Asociandote 12 / 24-36; naranja Con aval) con maximo y cuotas en cifras grandes (de REGLAS); barras del formulario 'Elige tu ayuda' y 'Elige tu cuota'.
+- v46.25 (08/11/2026): info/ Quiero entrar - cada barra late suave (clase quieto) hasta que se toca, como Calcula tu ayuda.
