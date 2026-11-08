@@ -45,6 +45,12 @@ video{display:block;width:auto;max-width:100%;max-height:70vh;margin:8px auto 0;
 .dos .fl:after{content:"Ver ›"}
 .dos button.on .fl:after{content:"Cerrar ˄"}
 .dos button.on{box-shadow:0 0 0 3px rgba(27,67,50,.25)}
+.fb{border:1.5px solid var(--v2);border-radius:14px;overflow:hidden;margin:10px 0}
+.fb2{border-color:#E0A040} .fb2 .fbh{background:#FFF4E5;color:#7A4A12}
+.fbh{background:var(--vc);color:var(--v);font-weight:800;padding:8px 12px;font-size:15.5px}
+.fbr{display:grid;grid-template-columns:1.3fr 1fr .8fr;align-items:center;padding:9px 12px;border-top:1px solid #EEE7DC}
+.fbp{font-weight:700;font-size:15px;line-height:1.2} .fbp small{font-weight:400;color:var(--gris);font-size:12.5px}
+.fbn{text-align:center} .fbn b{display:block;font-size:19px;color:var(--v)} .fbn small{font-size:11.5px;color:var(--gris)}
 .blq{background:#F7F9F7;border:1px solid #E6ECE7;border-radius:12px;padding:4px 10px;margin:8px 0}
 .formas{table-layout:fixed;margin:0;font-size:14px}
 .formas col.c2{width:32%} .formas col.c3{width:21%}
@@ -124,16 +130,13 @@ details.card[open]>summary{margin-bottom:4px}
   <div class="card oculto" id="c-ayuda">
     <h2 class="h2c">💶 Las ayudas<button class="cerrar" onclick="ver('ayuda')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button></h2>
     <p style="margin:0 0 6px">Hay dos formas de pedir una ayuda:</p>
-    <div class="blq"><table class="formas">
-      <colgroup><col><col class="c2"><col class="c3"></colgroup>
-      <tr class="gr"><td>1. Asociándote</td><th class="n">Cuánto</th><th class="n">Cuotas</th></tr>
-      <tr><td class="sub">con 12 meses de permanencia</td><td class="n" id="t-a12"></td><td class="n" id="t-c12"></td></tr>
-      <tr><td class="sub">con 24 o 36 meses de permanencia</td><td class="n" id="t-a24"></td><td class="n" id="t-c24"></td></tr>
-    </table></div>
-    <div class="blq"><table class="formas">
-      <colgroup><col><col class="c2"><col class="c3"></colgroup>
-      <tr class="gr"><td>2. Sin asociarte, con aval</td><td class="n" id="t-aav"></td><td class="n" id="t-cav"></td></tr>
-    </table></div>
+    <div class="fb"><div class="fbh">1. Asociándote</div>
+      <div class="fbr"><div class="fbp">12 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a12"></b><small>máximo</small></div><div class="fbn"><b id="t-c12"></b><small>cuotas máx.</small></div></div>
+      <div class="fbr"><div class="fbp">24 o 36 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a24"></b><small>máximo</small></div><div class="fbn"><b id="t-c24"></b><small>cuotas máx.</small></div></div>
+    </div>
+    <div class="fb fb2"><div class="fbh">2. Sin asociarte, con aval</div>
+      <div class="fbr"><div class="fbp">Te avala<br><small>un asociado</small></div><div class="fbn"><b id="t-aav"></b><small>máximo</small></div><div class="fbn"><b id="t-cav"></b><small>cuotas máx.</small></div></div>
+    </div>
     <div class="ej sim"><b>Calcula tu ayuda</b>
       <div class="bar"><span>Recibes</span><b id="s-imv"></b></div><input type="range" id="s-im" step="50" value="500">
       <div class="bar"><span>Lo devuelves en</span><b id="s-cuv"></b></div><input type="range" id="s-cu" min="1" step="1" value="5">
@@ -192,11 +195,11 @@ details.card[open]>summary{margin-bottom:4px}
       <div class="sum" id="f-sum"></div>
     </div>
     <div id="f-imp" class="oculto">
-      <div class="bar"><span>Importe de la ayuda</span><b id="f-imv"></b></div>
+      <div class="bar"><span>Elige tu ayuda</span><b id="f-imv"></b></div>
       <div id="f-av" class="lim oculto"></div>
       <input type="range" id="f-im" step="50">
       <div class="ext"><span id="f-imn"></span><span id="f-imx"></span></div>
-      <div class="bar"><span>Número de cuotas</span><b id="f-cuv"></b></div>
+      <div class="bar"><span>Elige tu cuota</span><b id="f-cuv"></b></div>
       <input type="range" id="f-cu" min="1" step="1">
       <div class="ext"><span>1 cuota</span><span id="f-cux"></span></div>
     </div>
@@ -205,8 +208,8 @@ details.card[open]>summary{margin-bottom:4px}
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.23"></script>
-<script src="../js/iconos.js?v=46.23"></script>
+<script src="../js/maestro.js?v=46.24"></script>
+<script src="../js/iconos.js?v=46.24"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
 const COORD="34685633486";
@@ -218,9 +221,9 @@ const DE=(Q.get("de")||"").trim().slice(0,60), W=(Q.get("w")||"").replace(/\D/g,
 function cuotas(cap,n){ const tot=Math.ceil(cap+cap*RETORNO/100*n-1e-9), b=Math.floor(tot/n), r=tot-b*n; return {tot,primera:r?b+1:b}; }
 function total(ap,meses){ const t=[R.BENEFICIO_ANIO1,R.BENEFICIO_ANIO2,R.BENEFICIO_ANIO3]; let ben=0; for(let a=0;a<meses/12;a++)ben+=12*(ap/R.BLOQUE_APORTE)*t[a]; return {aportado:ap*meses,ben,tot:ap*meses+ben}; }
 // Textos con las cifras del Maestro
-$("t-a12").textContent=`${R.AYUDA_MIN}–${R.AYUDA_MAX_CORTA} €`; $("t-c12").textContent=`1 a ${R.CUOTAS_MAX_CORTA}`;
-$("t-a24").textContent=`hasta ${eur(R.AYUDA_MAX_SIN_APROBACION)}`; $("t-c24").textContent=`hasta ${R.CUOTAS_MAX}`;
-$("t-aav").textContent=`${R.AYUDA_MIN}–${R.AYUDA_MAX_CORTA} €`; $("t-cav").textContent=`1 a ${R.CUOTAS_MAX_CORTA}`;
+$("t-a12").textContent=eur(R.AYUDA_MAX_CORTA); $("t-c12").textContent=R.CUOTAS_MAX_CORTA;
+$("t-a24").textContent=eur(R.AYUDA_MAX_SIN_APROBACION); $("t-c24").textContent=R.CUOTAS_MAX;
+$("t-aav").textContent=eur(R.AYUDA_MAX_CORTA); $("t-cav").textContent=R.CUOTAS_MAX_CORTA;
 $("s-im").min=R.AYUDA_MIN; $("s-im").max=R.AYUDA_MAX_SIN_APROBACION; $("s-cu").max=R.CUOTAS_MAX; $("s-im").value=R.AYUDA_MIN; $("s-cu").value=1; // v46.19: barras en vez de ejemplos
 function relleno(e){ e.style.setProperty("--p",((e.value-e.min)/(e.max-e.min)*100)+"%"); }
 function tocado(){ document.querySelector(".sim").classList.remove("quieto"); }
