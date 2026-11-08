@@ -230,3 +230,4 @@ push solo tras su «SÍ».
 
 - Criterio profesional honesto: si algo es mala idea o falta un dato, decirlo, no asumir.
 - El "Documento Maestro Interno" manda: si algo lo contradice, es un error a corregir.
+- v46.19 (08/11/2026): info/ - las partes Ayudas y Ahorrar salen cerradas (cada boton abre/cierra; ?p= solo marca 'Me interesa'); tabla de ayudas en dos bloques (Asociandote 12 / 24-36, Con aval); barras de importe y cuotas en vez de ejemplos; FAQ 'En cuantas cuotas la devuelvo?'.
