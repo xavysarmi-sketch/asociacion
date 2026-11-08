@@ -87,6 +87,10 @@ input,select{width:100%;padding:12px;border:1.5px solid #CFC6B8;border-radius:12
 .res{background:var(--vc);color:var(--v);border-radius:12px;padding:10px 12px;margin-top:10px;font-weight:700;font-size:15px}
 .lim{background:#FFF4E5;border:1.5px solid #E0A040;color:#6B4210;border-radius:12px;padding:10px 12px;margin:6px 0 2px;font-size:14px;line-height:1.45}
 .lim a{color:#6B4210;font-weight:800;text-decoration:underline;cursor:pointer}
+.sum{background:linear-gradient(135deg,var(--v),var(--v2));color:#fff;border-radius:14px;padding:12px 14px;margin-top:12px}
+.sum .fi{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;font-size:15px}
+.sum .fi span{opacity:.85}
+.sum .tot{border-top:1px solid rgba(255,255,255,.3);margin-top:4px;padding-top:7px;font-size:17px}
 .ext{display:flex;justify-content:space-between;font-size:12.5px;color:var(--gris);margin-top:-2px}
 .err{color:#A63A20;font-size:14px;margin-top:8px;display:none}
 .pie{text-align:center;color:var(--gris);font-size:12.5px;margin-top:20px}
@@ -185,6 +189,7 @@ details.card[open]>summary{margin-bottom:4px}
     </div>
     <div id="f-apw" class="oculto">
       <label>Aporte de cada mes</label><div class="chips" id="f-apc"></div>
+      <div class="sum" id="f-sum"></div>
     </div>
     <div id="f-imp" class="oculto">
       <div class="bar"><span>Importe de la ayuda</span><b id="f-imv"></b></div>
@@ -200,8 +205,8 @@ details.card[open]>summary{margin-bottom:4px}
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.22"></script>
-<script src="../js/iconos.js?v=46.22"></script>
+<script src="../js/maestro.js?v=46.23"></script>
+<script src="../js/iconos.js?v=46.23"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
 const COORD="34685633486";
@@ -264,9 +269,10 @@ function pintar(){
   $("f-imv").textContent=eur(c); $("f-cuv").textContent=n+(n===1?" cuota":" cuotas");
   let av="";
   if(ay&&F.como&&excede()){
-    if(F.como==="aval")av=`⚠️ Con aval puedes pedir hasta ${R.AYUDA_MAX_CORTA} € en ${R.CUOTAS_MAX_CORTA} cuotas.<br><b>Para esta ayuda tienes que <a onclick="elegir('f-como','aso');elegir('f-pmc',24)">asociarte con permanencia de 24 o 36 meses</a>.</b>`;
-    else av=`⚠️ Con permanencia de 12 meses puedes pedir hasta ${R.AYUDA_MAX_CORTA} € en ${R.CUOTAS_MAX_CORTA} cuotas.<br><b>Para esta ayuda tienes que <a onclick="elegir('f-pmc',24)">elegir 24 o 36 meses</a>.</b>`;
+    if(F.como==="aval")av=`⚠️ <b>Para esta ayuda debes <a onclick="elegir('f-como','aso');elegir('f-pmc',24)">asociarte con permanencia de 24 o 36 meses</a>.</b>`;
+    else av=`⚠️ <b>Para esta ayuda debes cambiar tu permanencia a <a onclick="elegir('f-pmc',24)">24 o 36 meses</a>.</b>`;
   }
+  if(ah){ const t=total(F.ap,F.pm); $("f-sum").innerHTML=`<div class="fi"><span>Aportas en ${F.pm} meses</span><b>${eur(t.aportado)}</b></div><div class="fi"><span>+ Beneficios</span><b>${eur(t.ben)}</b></div><div class="fi tot"><span>= Al terminar recibes</span><b>${eur(t.tot)}</b></div>`; }
   $("f-err").style.display="none";
   $("f-av").innerHTML=av; $("f-av").classList.toggle("oculto",!av); if(av&&window.iconizar)iconizar($("f-av"));
 }
