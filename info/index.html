@@ -25,6 +25,9 @@ body{margin:0;background:var(--crema);color:var(--txt);font:16px/1.5 -apple-syst
 .card{background:#fff;border:1px solid var(--borde);border-radius:16px;padding:16px;margin:12px 0}
 h1{font-size:23px;line-height:1.25;color:var(--v);margin:0 0 10px}
 h2{font-size:19px;color:var(--v);margin:0 0 8px}
+.h2c{display:flex;justify-content:space-between;align-items:center}
+.cerrar{border:1.5px solid var(--borde);background:#fff;color:var(--v);width:36px;height:36px;border-radius:50%;font-size:20px;font-weight:800;line-height:1;cursor:pointer;padding:0}
+.cerrar-pie{display:block;margin:14px auto 0;border:none;background:none;color:var(--gris);font-weight:700;font-size:15px;cursor:pointer;padding:8px 16px}
 .p3 p{margin:0 0 8px;display:flex;gap:10px}.p3 p span:first-child{flex:none}.p3 p span:last-child{flex:1;min-width:0}
 video{display:block;width:auto;max-width:100%;max-height:70vh;margin:8px auto 0;border-radius:12px;background:#000}
 .vt{font-size:13px;color:var(--gris);margin-top:4px;text-align:center}
@@ -36,15 +39,30 @@ video{display:block;width:auto;max-width:100%;max-height:70vh;margin:8px auto 0;
 .dos .fl:after{content:"Ver ›"}
 .dos button.on .fl:after{content:"Cerrar ˄"}
 .dos button.on{box-shadow:0 0 0 3px rgba(27,67,50,.25)}
-.formas tr.gr td{font-weight:800;color:var(--v);padding-top:10px}
-.formas td.sub{padding-left:16px;color:#444}
-.formas tr.gr:has(+tr:not(.gr)) td{border-bottom:none}
+.blq{background:#F7F9F7;border:1px solid #E6ECE7;border-radius:12px;padding:4px 10px;margin:8px 0}
+.formas{table-layout:fixed;margin:0;font-size:14px}
+.formas col.c2{width:32%} .formas col.c3{width:21%}
+.formas td.n,.formas th.n{padding-left:2px;padding-right:4px}
+.formas td,.formas th{border-bottom:1px solid #E6ECE7}
+.formas tr:last-child td,.formas tr:last-child th{border-bottom:none}
+.formas tr.gr td{font-weight:800;color:var(--v)}
+.formas tr.gr th{vertical-align:middle}
+.formas td.sub{padding-left:10px;color:#444}
+.formas td.n{white-space:nowrap}
 table{width:100%;border-collapse:collapse;font-size:14.5px;margin:6px 0}
 th,td{padding:7px 6px;border-bottom:1px solid #EEE7DC;text-align:left;vertical-align:top}
 th{font-size:12.5px;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 td.n,th.n{text-align:right;white-space:nowrap}
 .bar{display:flex;justify-content:space-between;margin-top:10px;font-size:15px}
-input[type=range]{padding:0;border:none;background:none;accent-color:var(--v);height:30px}
+.mueve{font-size:14px;color:#7A4A12;background:#FFF4E5;border-radius:10px;padding:6px 10px;margin-top:8px;display:inline-block;animation:lat 1.6s ease-in-out infinite}
+@keyframes lat{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:6px;padding:0;border:none;margin:12px 0 6px;background:linear-gradient(to right,var(--v2) var(--p,0%),#DCE3DD var(--p,0%));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--v);border:4px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--v);border:4px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.sim.quieto input[type=range]::-webkit-slider-thumb{animation:lat2 1.6s ease-in-out infinite}
+@keyframes lat2{0%,100%{box-shadow:0 0 0 0 rgba(45,106,79,.45)}50%{box-shadow:0 0 0 9px rgba(45,106,79,0)}}
+.bar b{font-size:17px}
+#s-res{font-size:17px;transition:transform .15s}
 .ej{background:#F7F9F7;border-radius:12px;padding:10px 12px;margin:8px 0;font-size:15px}
 details{border-top:1px solid #EEE7DC;padding:9px 0}
 summary{cursor:pointer;font-weight:700;color:var(--v);list-style:none}
@@ -76,8 +94,8 @@ details.card[open]>summary{margin-bottom:4px}
 
   <!-- Capa 1 · para todos -->
   <div class="card p3">
-    <h1>Personas de confianza que se apoyan entre sí</h1>
-    <p><span>🤝</span><span>Somos un grupo de asociados que aportamos dinero cada mes a un fondo común.</span></p>
+    <h1>Un fondo común entre personas de confianza</h1>
+    <p><span>🤝</span><span>Somos un grupo de asociados que aportamos dinero cada mes.</span></p>
     <p><span>💶</span><span>Cuando alguien necesita dinero, el fondo le da una <b>ayuda</b> que devuelve poco a poco, en cuotas.</span></p>
     <p><span>🌱</span><span>Quien aporta gana <b>beneficios</b> cada mes por su dinero.</span></p>
     <video src="NH_presentacion.mp4#t=0.5" controls playsinline preload="metadata"></video>
@@ -91,16 +109,19 @@ details.card[open]>summary{margin-bottom:4px}
 
   <!-- Capa 2 · ayudas -->
   <div class="card oculto" id="c-ayuda">
-    <h2>💶 Las ayudas</h2>
+    <h2 class="h2c">💶 Las ayudas<button class="cerrar" onclick="ver('ayuda')" aria-label="Cerrar">˄</button></h2>
     <p style="margin:0 0 6px">Hay dos formas de pedir una ayuda:</p>
-    <table class="formas">
-      <tr><th></th><th class="n">Cuánto</th><th class="n">Cuotas</th></tr>
-      <tr class="gr"><td colspan="3">1. Asociándote</td></tr>
-      <tr><td class="sub">con permanencia de 12 meses</td><td class="n" id="t-a12"></td><td class="n" id="t-c12"></td></tr>
-      <tr><td class="sub">con permanencia de 24 o 36 meses</td><td class="n" id="t-a24"></td><td class="n" id="t-c24"></td></tr>
+    <div class="blq"><table class="formas">
+      <colgroup><col><col class="c2"><col class="c3"></colgroup>
+      <tr class="gr"><td>1. Asociándote</td><th class="n">Cuánto</th><th class="n">Cuotas</th></tr>
+      <tr><td class="sub">con 12 meses de permanencia</td><td class="n" id="t-a12"></td><td class="n" id="t-c12"></td></tr>
+      <tr><td class="sub">con 24 o 36 meses de permanencia</td><td class="n" id="t-a24"></td><td class="n" id="t-c24"></td></tr>
+    </table></div>
+    <div class="blq"><table class="formas">
+      <colgroup><col><col class="c2"><col class="c3"></colgroup>
       <tr class="gr"><td>2. Sin asociarte, con aval</td><td class="n" id="t-aav"></td><td class="n" id="t-cav"></td></tr>
-    </table>
-    <div class="ej"><b>¿Cuánto necesitas?</b>
+    </table></div>
+    <div class="ej sim"><b>Calcula tu ayuda</b>
       <div class="bar"><span>Recibes</span><b id="s-imv"></b></div><input type="range" id="s-im" step="50" value="500">
       <div class="bar"><span>Lo devuelves en</span><b id="s-cuv"></b></div><input type="range" id="s-cu" min="1" step="1" value="5">
       <div class="res" id="s-res"></div>
@@ -112,12 +133,13 @@ details.card[open]>summary{margin-bottom:4px}
     <details><summary>¿Qué es el aval?</summary><p>Es el asociado que te recomienda. Si no devuelves tu ayuda, él responde por ti. Por eso solo entran personas de confianza.</p></details>
     <details><summary>¿Me la dan seguro?</summary><p>Cada solicitud se revisa según las condiciones y el dinero que tenga el fondo ese mes.</p></details>
     <details><summary>¿En cuántas cuotas la devuelvo?</summary><p id="t-faqcu"></p></details>
+    <button class="cerrar-pie" onclick="ver('ayuda')">Cerrar ˄</button>
   </div>
 
   <!-- Capa 2 · beneficios -->
   <div class="card oculto" id="c-ahorro">
-    <h2>🌱 Ahorrar y ganar</h2>
-    <p style="margin:0 0 6px">Aportas cada mes <b id="t-aps"></b> (puedes cambiarlo de un mes a otro) y eliges cuánto tiempo te quedas: <b>12, 24 o 36 meses</b>.</p>
+    <h2 class="h2c">🌱 Ahorrar y ganar<button class="cerrar" onclick="ver('ahorro')" aria-label="Cerrar">˄</button></h2>
+    <p style="margin:0 0 6px">Aportas cada mes <b id="t-aps"></b> y eliges tu permanencia: <b>12, 24 o 36 meses</b>.</p>
     <div class="ej" style="margin-top:4px">Por cada 50 € que aportas ganas <b id="t-tar"></b></div>
     <table id="t-ben"></table>
     <video src="NH_beneficios.mp4#t=0.5" controls playsinline preload="metadata"></video>
@@ -125,6 +147,7 @@ details.card[open]>summary{margin-bottom:4px}
     <details><summary>¿Cuándo empiezo a ganar?</summary><p>El mes siguiente a tu primer aporte.</p></details>
     <details><summary>¿Y cuando termino?</summary><p>Puedes cobrar tus beneficios o seguir más tiempo y ganar más.</p></details>
     <details><summary>¿Y si tengo que salir antes?</summary><p>Avisas con un mes y recibes todo lo que has aportado y el beneficio de los años completos.</p></details>
+    <button class="cerrar-pie" onclick="ver('ahorro')">Cerrar ˄</button>
   </div>
 
   <!-- Capa 3 · hablar o apuntarse -->
@@ -161,7 +184,7 @@ details.card[open]>summary{margin-bottom:4px}
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.19"></script>
+<script src="../js/maestro.js?v=46.20"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
 const COORD="34685633486";
@@ -177,12 +200,14 @@ function lim(como,pm){ return como==="aso"&&pm>=24?{max:R.AYUDA_MAX_SIN_APROBACI
 $("t-a12").textContent=`${R.AYUDA_MIN}–${R.AYUDA_MAX_CORTA} €`; $("t-c12").textContent=`1 a ${R.CUOTAS_MAX_CORTA}`;
 $("t-a24").textContent=`hasta ${eur(R.AYUDA_MAX_SIN_APROBACION)}`; $("t-c24").textContent=`hasta ${R.CUOTAS_MAX}`;
 $("t-aav").textContent=`${R.AYUDA_MIN}–${R.AYUDA_MAX_CORTA} €`; $("t-cav").textContent=`1 a ${R.CUOTAS_MAX_CORTA}`;
-$("s-im").min=R.AYUDA_MIN; $("s-im").max=R.AYUDA_MAX_SIN_APROBACION; $("s-cu").max=R.CUOTAS_MAX; $("s-im").value=500; $("s-cu").value=5; // v46.19: barras en vez de ejemplos
-function barras(){ const c=+$("s-im").value, n=+$("s-cu").value, corta=c<=R.AYUDA_MAX_CORTA&&n<=R.CUOTAS_MAX_CORTA;
+$("s-im").min=R.AYUDA_MIN; $("s-im").max=R.AYUDA_MAX_SIN_APROBACION; $("s-cu").max=R.CUOTAS_MAX; $("s-im").value=R.AYUDA_MIN; $("s-cu").value=1; // v46.19: barras en vez de ejemplos
+function relleno(e){ e.style.setProperty("--p",((e.value-e.min)/(e.max-e.min)*100)+"%"); }
+function tocado(){ document.querySelector(".sim").classList.remove("quieto"); }
+function barras(){ relleno($("s-im")); relleno($("s-cu")); const c=+$("s-im").value, n=+$("s-cu").value, corta=c<=R.AYUDA_MAX_CORTA&&n<=R.CUOTAS_MAX_CORTA;
   $("s-imv").textContent=eur(c); $("s-cuv").textContent=n+(n===1?" cuota":" cuotas");
   $("s-res").innerHTML=`Pagarías ${n===1?"1 cuota":n+" cuotas"} de <b>${eur(cuotas(c,n).primera)}</b>`;
   $("s-quien").textContent=corta?"Puedes pedirla con aval o asociándote.":"Solo asociándote con permanencia de 24 o 36 meses."; }
-$("s-im").oninput=barras; $("s-cu").oninput=barras; barras();
+$("s-im").oninput=$("s-cu").oninput=()=>{tocado();barras();}; document.querySelector(".sim").classList.add("quieto"); barras();
 $("t-aps").textContent=R.APORTE_OPCIONES.slice(0,-1).join(", ")+" o "+R.APORTE_OPCIONES.slice(-1)+" €";
 $("t-tar").textContent=`${R.BENEFICIO_ANIO1} € al mes el 1.er año, ${R.BENEFICIO_ANIO2} € el 2.º y ${R.BENEFICIO_ANIO3} € el 3.º.`;
 $("t-ben").innerHTML=`<tr><th>Aportando 50 € al mes</th><th class="n">Aportas</th><th class="n">Ganas</th><th class="n">Recibes</th></tr>`+[12,24,36].map(m=>{const t=total(50,m);return `<tr><td>${m} meses</td><td class="n">${eur(t.aportado)}</td><td class="n" style="color:var(--v2)">+ ${eur(t.ben)}</td><td class="n"><b>${eur(t.tot)}</b></td></tr>`;}).join("");
@@ -193,10 +218,12 @@ const hola=q=>encodeURIComponent(`Hola, ${q}. He visto la información de Nuevos
 if(W&&NOM){ const a=$("h-ref"); a.href=`https://wa.me/${W}?text=${hola(NOM)}`; a.textContent=`💬 Hablar con ${NOM}`; a.classList.remove("oculto"); }
 $("h-coo").href=`https://wa.me/${COORD}?text=${hola("coordinador")}`;
 // Capa 2 según lo que interese
-function ver(q){ // v46.19: cada botón abre o cierra su parte (al abrir la página, las dos cerradas)
-  const c=$(q==="ayuda"?"c-ayuda":"c-ahorro"), b=$(q==="ayuda"?"b-ay":"b-ah"), abrir=c.classList.contains("oculto");
-  c.classList.toggle("oculto",!abrir); b.classList.toggle("on",abrir);
-  if(abrir){ elegir("f-int",q); c.scrollIntoView({behavior:"smooth",block:"start"}); } }
+function ver(q){ // v46.20: solo una parte abierta a la vez; el mismo botón (o la flecha) la cierra
+  const c=$(q==="ayuda"?"c-ayuda":"c-ahorro"), otra=$(q==="ayuda"?"c-ahorro":"c-ayuda"), abrir=c.classList.contains("oculto");
+  c.classList.toggle("oculto",!abrir); otra.classList.add("oculto");
+  $("b-ay").classList.toggle("on",abrir&&q==="ayuda"); $("b-ah").classList.toggle("on",abrir&&q==="ahorro");
+  if(abrir){ elegir("f-int",q); c.scrollIntoView({behavior:"smooth",block:"start"}); }
+  else document.querySelector(".dos").scrollIntoView({behavior:"smooth",block:"center"}); }
 // Formulario
 const F={int:"",como:""};
 function elegir(id,v){ F[id==="f-int"?"int":"como"]=v; document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle("on",b.dataset.v===v)); pintar(); }
