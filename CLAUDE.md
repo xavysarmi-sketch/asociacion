@@ -237,3 +237,4 @@ push solo tras su «SÍ».
 - v46.23 (08/11/2026): info/ Quiero entrar - avisos de limite en una frase ('Para esta ayuda debes...'); en Ahorrar, resumen verde Aportas + Beneficios = Al terminar recibes segun permanencia y aporte.
 - v46.24 (08/11/2026): info/ - cuadro de ayudas en dos cajas (verde Asociandote 12 / 24-36; naranja Con aval) con maximo y cuotas en cifras grandes (de REGLAS); barras del formulario 'Elige tu ayuda' y 'Elige tu cuota'.
 - v46.25 (08/11/2026): info/ Quiero entrar - cada barra late suave (clase quieto) hasta que se toca, como Calcula tu ayuda.
+- v46.26 (08/11/2026): app/ - NHA_PRUEBA_INV=true: Invitar a alguien (Inicio y Mas) y aviso del bono para todos los asociados (terceros no); chip 'Las dos cosas' con icono de linea.

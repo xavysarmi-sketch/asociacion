@@ -219,7 +219,7 @@ function nhaInicioHTML(m,salidaPend,g){
 // «Hablar con …» de la página.
 // v46.18: EN PRUEBA. «Invitar a alguien» y el aviso del bono solo se ven abriendo la app con &prueba=1
 // (se recuerda en ese móvil; &prueba=0 lo quita). Cuando Ángel lo apruebe, se quita esta condición.
-const NHA_PRUEBA_INV=(()=>{ try{ const q=new URLSearchParams(location.search).get("prueba"); if(q==="1")localStorage.setItem("nha-prueba","1"); if(q==="0")localStorage.removeItem("nha-prueba"); return localStorage.getItem("nha-prueba")==="1"; }catch(e){ return false; } })();
+const NHA_PRUEBA_INV=true; // v46.26 (Ángel 08/11/2026): «Invitar a alguien» y el aviso del bono, para todos (antes solo con &prueba=1)
 function _nhaMiWA(v){ try{ if(v!=null){ localStorage.setItem("nha-mi-wa",v); return v; } return localStorage.getItem("nha-mi-wa")||""; }catch(e){ return v||""; } }
 function _nhaInvTexto(m){
   const q=NHA.inv||"todo", nom=m.name.split(" ")[0], tel=String(_nhaMiWA()).replace(/\D/g,""), w=tel.length===9?"34"+tel:tel;
@@ -234,7 +234,7 @@ function nhaInvitarHTML(m){
   const q=NHA.inv||"todo", t=_nhaInvTexto(m), ch=(v,txt)=>`<button class="${q===v?"on":""}" onclick="NHA.inv='${v}';render()">${txt}</button>`;
   const vista=escH(t).replace(/\*([^*\n]+)\*/g,"<b>$1</b>").replace(/\n/g,"<br>").replace(/(https?:\/\/\S+)/,'<span style="color:#1A6FB5;word-break:break-all">$1</span>');
   return nhaTitulo(m,"Invitar a alguien","Mándale la información por WhatsApp.","share")+
-  `<div class="nha-card"><div class="nha-card-tit">¿Qué le interesa?</div><div class="nha-chips">${ch("ayuda","💶 Necesita una ayuda")}${ch("ahorro","🌱 Quiere ahorrar")}${ch("todo","🤷 Las dos / no sé")}</div></div>
+  `<div class="nha-card"><div class="nha-card-tit">¿Qué le interesa?</div><div class="nha-chips">${ch("ayuda","💶 Necesita una ayuda")}${ch("ahorro","🌱 Quiere ahorrar")}${ch("todo","🤝 Las dos cosas")}</div></div>
   <div class="nha-card"><div class="nha-card-tit">Tu WhatsApp <span style="font-weight:600;font-size:13px;color:#5E6B62">· opcional</span></div>
     <input class="nha-input" type="tel" inputmode="tel" placeholder="Ej.: 612 345 678" value="${escH(_nhaMiWA())}" onchange="_nhaMiWA(this.value.trim());render()">
     <div class="nha-txt" style="font-size:13px;margin-top:6px">Si lo pones, podrá escribirte desde la página con un botón. Solo se guarda en tu móvil.</div></div>
