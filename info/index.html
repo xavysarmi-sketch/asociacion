@@ -85,6 +85,9 @@ input,select{width:100%;padding:12px;border:1.5px solid #CFC6B8;border-radius:12
 .chips button{flex:1 1 auto;border:1.5px solid #CFC6B8;background:#fff;border-radius:22px;padding:10px 12px;font-size:15px;font-weight:700;color:#333;cursor:pointer}
 .chips button.on{background:var(--v);border-color:var(--v);color:#fff}
 .res{background:var(--vc);color:var(--v);border-radius:12px;padding:10px 12px;margin-top:10px;font-weight:700;font-size:15px}
+.lim{background:#FFF4E5;border:1.5px solid #E0A040;color:#6B4210;border-radius:12px;padding:10px 12px;margin:6px 0 2px;font-size:14px;line-height:1.45}
+.lim a{color:#6B4210;font-weight:800;text-decoration:underline;cursor:pointer}
+.ext{display:flex;justify-content:space-between;font-size:12.5px;color:var(--gris);margin-top:-2px}
 .err{color:#A63A20;font-size:14px;margin-top:8px;display:none}
 .pie{text-align:center;color:var(--gris);font-size:12.5px;margin-top:20px}
 .oculto{display:none}
@@ -177,20 +180,28 @@ details.card[open]>summary{margin-bottom:4px}
       <div class="chips" id="f-como"><button data-v="aso">Asociándome</button><button data-v="aval">Con aval, sin asociarme</button></div>
     </div>
     <div id="f-perm" class="oculto">
-      <label for="f-pm">Permanencia</label><select id="f-pm"><option value="12">12 meses</option><option value="24">24 meses</option><option value="36">36 meses</option></select>
-      <label for="f-ap">Aporte de cada mes</label><select id="f-ap"></select>
+      <label>Permanencia</label>
+      <div class="chips" id="f-pmc"><button data-v="12" class="on">12 meses</button><button data-v="24">24 meses</button><button data-v="36">36 meses</button></div>
+    </div>
+    <div id="f-apw" class="oculto">
+      <label>Aporte de cada mes</label><div class="chips" id="f-apc"></div>
     </div>
     <div id="f-imp" class="oculto">
-      <label for="f-im">Importe de la ayuda</label><select id="f-im"></select>
-      <label for="f-cu">Número de cuotas</label><select id="f-cu"></select>
+      <div class="bar"><span>Importe de la ayuda</span><b id="f-imv"></b></div>
+      <div id="f-av" class="lim oculto"></div>
+      <input type="range" id="f-im" step="50">
+      <div class="ext"><span id="f-imn"></span><span id="f-imx"></span></div>
+      <div class="bar"><span>Número de cuotas</span><b id="f-cuv"></b></div>
+      <input type="range" id="f-cu" min="1" step="1">
+      <div class="ext"><span>1 cuota</span><span id="f-cux"></span></div>
     </div>
     <div id="f-err" class="err"></div>
     <button class="btn b-wa" onclick="enviar()">💬 Enviar al coordinador</button>
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.21"></script>
-<script src="../js/iconos.js?v=46.21"></script>
+<script src="../js/maestro.js?v=46.22"></script>
+<script src="../js/iconos.js?v=46.22"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
 const COORD="34685633486";
@@ -230,28 +241,43 @@ function ver(q){ // v46.20: solo una parte abierta a la vez; el mismo botón (o 
   if(abrir){ elegir("f-int",q); c.scrollIntoView({behavior:"smooth",block:"start"}); }
   else document.querySelector(".dos").scrollIntoView({behavior:"smooth",block:"center"}); }
 // Formulario
-const F={int:"",como:""};
-function elegir(id,v){ F[id==="f-int"?"int":"como"]=v; document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle("on",b.dataset.v===v)); pintar(); }
-["f-int","f-como"].forEach(id=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>elegir(id,b.dataset.v)));
-$("f-ap").innerHTML=R.APORTE_OPCIONES.map(a=>`<option value="${a}">${a} €</option>`).join("");
-["f-pm","f-ap","f-im","f-cu"].forEach(id=>$(id).onchange=pintar);
+const F={int:"",como:"",pm:12,ap:0};
+function elegir(id,v){ if(id==="f-pmc")F.pm=+v; else if(id==="f-apc")F.ap=+v; else F[id==="f-int"?"int":"como"]=v;
+  document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle("on",b.dataset.v===String(v))); pintar(); }
+$("f-apc").innerHTML=R.APORTE_OPCIONES.map(a=>`<button data-v="${a}">${a} €</button>`).join(""); F.ap=R.APORTE_OPCIONES[0];
+["f-int","f-como","f-pmc","f-apc"].forEach(id=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>elegir(id,b.dataset.v)));
+document.querySelector('#f-apc button').classList.add("on");
+$("f-im").min=R.AYUDA_MIN; $("f-im").max=R.AYUDA_MAX_SIN_APROBACION; $("f-im").value=R.AYUDA_MIN; $("f-cu").max=R.CUOTAS_MAX; $("f-cu").value=1;
+$("f-imn").textContent=eur(R.AYUDA_MIN); $("f-imx").textContent=eur(R.AYUDA_MAX_SIN_APROBACION); $("f-cux").textContent=R.CUOTAS_MAX+" cuotas";
+$("f-im").oninput=$("f-cu").oninput=pintar;
 function opts(sel,arr,fmt){ const v=+sel.value; sel.innerHTML=arr.map(x=>`<option value="${x}">${fmt(x)}</option>`).join(""); if(arr.includes(v))sel.value=v; }
-function pintar(){ // v46.21: la ayuda y el ahorro no se mezclan; sin cuadro de resumen
-  const ay=F.int==="ayuda", ah=F.int==="ahorro";
+// v46.22: barras como el simulador de la app; el aviso solo sale si la ayuda pasa del límite de lo elegido
+function excede(){ const c=+$("f-im").value, n=+$("f-cu").value, largo=F.como==="aso"&&F.pm>=24;
+  return largo?(c>R.AYUDA_MAX_SIN_APROBACION||n>R.CUOTAS_MAX):(c>R.AYUDA_MAX_CORTA||n>R.CUOTAS_MAX_CORTA); }
+function pintar(){
+  const ay=F.int==="ayuda", ah=F.int==="ahorro", aso=ay&&F.como==="aso";
   $("f-ay").classList.toggle("oculto",!ay); $("f-nota").classList.toggle("oculto",!ah);
-  $("f-perm").classList.toggle("oculto",!ah);
+  $("f-perm").classList.toggle("oculto",!(ah||aso)); $("f-apw").classList.toggle("oculto",!ah);
   $("f-imp").classList.toggle("oculto",!(ay&&F.como));
-  const L=F.como==="aso"?{max:R.AYUDA_MAX_SIN_APROBACION,cu:R.CUOTAS_MAX}:{max:R.AYUDA_MAX_CORTA,cu:R.CUOTAS_MAX_CORTA}, imps=[], cus=[];
-  for(let x=R.AYUDA_MIN;x<=L.max;x+=50)imps.push(x); for(let n=1;n<=L.cu;n++)cus.push(n);
-  opts($("f-im"),imps,eur); opts($("f-cu"),cus,n=>n+(n===1?" cuota":" cuotas"));
+  relleno($("f-im")); relleno($("f-cu"));
+  const c=+$("f-im").value, n=+$("f-cu").value;
+  $("f-imv").textContent=eur(c); $("f-cuv").textContent=n+(n===1?" cuota":" cuotas");
+  let av="";
+  if(ay&&F.como&&excede()){
+    if(F.como==="aval")av=`⚠️ Con aval puedes pedir hasta ${R.AYUDA_MAX_CORTA} € en ${R.CUOTAS_MAX_CORTA} cuotas.<br><b>Para esta ayuda tienes que <a onclick="elegir('f-como','aso');elegir('f-pmc',24)">asociarte con permanencia de 24 o 36 meses</a>.</b>`;
+    else av=`⚠️ Con permanencia de 12 meses puedes pedir hasta ${R.AYUDA_MAX_CORTA} € en ${R.CUOTAS_MAX_CORTA} cuotas.<br><b>Para esta ayuda tienes que <a onclick="elegir('f-pmc',24)">elegir 24 o 36 meses</a>.</b>`;
+  }
+  $("f-err").style.display="none";
+  $("f-av").innerHTML=av; $("f-av").classList.toggle("oculto",!av); if(av&&window.iconizar)iconizar($("f-av"));
 }
 function enviar(){
   const nom=$("f-nom").value.trim(), tel=$("f-tel").value.trim(), e=$("f-err");
-  const fallo=!nom?"Escribe tu nombre.":tel.replace(/\D/g,"").length<9?"Escribe tu teléfono.":!F.int?"Elige qué te interesa.":(F.int==="ayuda"&&!F.como)?"Elige cómo quieres la ayuda.":"";
+  const fallo=!nom?"Escribe tu nombre.":tel.replace(/\D/g,"").length<9?"Escribe tu teléfono.":!F.int?"Elige qué te interesa.":(F.int==="ayuda"&&!F.como)?"Elige cómo quieres la ayuda.":(F.int==="ayuda"&&excede())?"La ayuda pasa del límite: mira el aviso naranja.":"";
   if(fallo){ e.textContent=fallo; e.style.display="block"; return; } e.style.display="none";
-  const ay=F.int==="ayuda", ah=F.int==="ahorro", pm=+$("f-pm").value, ap=+$("f-ap").value;
+  const ay=F.int==="ayuda", ah=F.int==="ahorro", pm=F.pm, ap=F.ap;
   let t=`Hola, soy *${nom}* (tel. ${tel}).`+(DE?` Me ha recomendado *${DE}*.`:"")+`\nQuiero entrar en Nuevos Horizontes.`;
   if(ay){ const c=+$("f-im").value,n=+$("f-cu").value; t+=`\n💶 Una ayuda de *${eur(c)}* en ${n} ${n===1?"cuota":"cuotas"} de ${eur(cuotas(c,n).primera)}`+(F.como==="aval"?" (con aval, sin asociarme)":" (asociándome)"); }
+  if(ay&&F.como==="aso")t+=`, permanencia de *${pm} meses*`;
   if(ah)t+=`\n🌱 Asociarme: aporte de *${eur(ap)}* al mes, permanencia de *${pm} meses*`;
   window.open(`https://wa.me/${COORD}?text=${encodeURIComponent(t)}`,"_blank");
 }
