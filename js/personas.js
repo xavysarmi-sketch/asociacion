@@ -526,6 +526,13 @@ function _textoBienvenida(m){
   return `¡Hola ${nom}! 👋 Te damos la bienvenida a Nuevos Horizontes 🌱\n\nYa formas parte del fondo. Tus datos:\n• Aporte mensual: ${m.aporte||50} € (cada mes puedes elegir 50, 100, 150 o 200 €)\n• Permanencia: ${perm}${ini?`\n• Primer aporte: ${ini}`:""}\n\nEn tu app NH puedes ver siempre tu ficha: lo que te toca cada mes, tus aportes y tu beneficio. También tienes simuladores para ver cuánto podrías pedir y cuánto puedes ganar:\n${url}\n\nÁbrelo y sigue los pasos para ponerla en tu móvil 📲. Cualquier duda, escríbeme.`;
 }
 function abrirBienvenida(mid,trasAlta){ const m=DATA.members.find(x=>x.id===mid); if(!m)return; setTimeout(()=>openModal('bienvenida',{mid,trasAlta:!!trasAlta}),trasAlta?60:0); }
+// v46.18: mensaje a quien trajo al nuevo asociado (su bono y que será su avalista). En su app sale además solo, como aviso.
+function avisarReferidor(mid){
+  const m=DATA.members.find(x=>x.id===mid), r=m&&DATA.members.find(x=>x.id===m.referidoPor), k=r&&mesBonoDe(r.id,m.name); if(!k)return;
+  const mes=MONTHS_FULL[parseInt(k.slice(5))-1].toLowerCase()+" "+k.slice(0,4);
+  const t=`Hola ${r.name.split(" ")[0]} 👋 ¡*${m.name}* ya es asociado de Nuevos Horizontes gracias a ti! 🎉\nRecibirás tu *bono de ${REGLAS.BONO_REFERIDO} €* en el aporte de ${mes}.\nRecuerda que serás su avalista para las ayudas que pida. ¡Gracias por confiar en nosotros!`;
+  const tel=_telWA(r.phone); window.open(tel?`https://wa.me/${tel}?text=${encodeURIComponent(t)}`:`https://wa.me/?text=${encodeURIComponent(t)}`,"_blank");
+}
 function bienvenidaModalHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid); if(!m)return "";
   const txt=_textoBienvenida(m);
@@ -540,6 +547,8 @@ ${MODAL.trasAlta?(()=>{ const gid=_grupoDe(m.id), g=gid&&gruposCierre().find(x=>
 <textarea id="bv-txt" class="m-input" style="height:230px;font-size:13.5px;line-height:1.4;resize:vertical">${escH(txt)}</textarea>
 <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px">Con teléfono se abre directamente su chat; sin teléfono, WhatsApp te deja elegir a quién.</div>
 <button style="width:100%;padding:13px;border-radius:14px;background:#25D366;color:#fff;font-size:15px;font-weight:800;border:none;cursor:pointer;margin-bottom:8px" onclick="enviarBienvenida()">💬 Enviar por WhatsApp</button>
+${(()=>{ const r=m.referidoPor&&DATA.members.find(x=>x.id===m.referidoPor), k=r&&mesBonoDe(r.id,m.name); if(!r||!k)return ""; // v46.18: avisar a quien lo trajo de su bono
+  return `<button style="width:100%;padding:12px;border-radius:14px;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;border:1.5px solid #1B4332;cursor:pointer;margin-bottom:8px" onclick="avisarReferidor('${esc(m.id)}')">🎁 Avisar a ${escH(r.name.split(" ")[0])} de su bono</button>`; })()}
 <div style="display:flex;gap:8px">
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="_copyFallback(document.getElementById('bv-txt').value)">📋 Copiar mensaje</button>
   <button class="link-copy-btn" style="flex:1;margin:0" onclick="verAppDe('${esc(m.id)}')">👁️ Ver su app</button>

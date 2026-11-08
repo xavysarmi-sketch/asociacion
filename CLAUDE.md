@@ -99,6 +99,13 @@ lenguaje sencillo antes de aplicarlos.
   + Total cuotas = Total previsto»; grupos en una fila por persona (doc-cobro2: Aporte · Cuota de su ayuda «cuota N de M» /
   «última cuota» · Paga en total · Pagó), «cobra X», terceros «tercero · aval de X» y «no aporta». Bonos y bajas explicados
   (también en acta y carpeta). El acta reparte grupos por páginas según su alto: si cambia el alto, cambia el orden.
+- v46.16–17: .doc-cols a partes iguales (en el móvil una columna) y con borde fino; .doc-kpi .k con alto de dos líneas
+  (cifras alineadas); signos + y = entre cuadros; en la baja y en «Total del grupo» los signos van junto a las cifras.
+- Desde v46.18: «Invitar a alguien» (app de asociados, solo asociados): mensaje de WhatsApp + enlace a info/ (página
+  pública SIN datos de nadie, cifras de js/maestro.js; retorno 5 % fijo en la página = DATA.rate; WhatsApp del coordinador
+  en COORD). Formulario «Quiero entrar» → WhatsApp al coordinador. Aviso del bono por referido en la app (DATA.referidos)
+  y botón «Avisar a X de su bono» en la bienvenida tras el alta. EN PRUEBA: el botón y el aviso solo con &prueba=1
+  (NHA_PRUEBA_INV, se recuerda en el móvil); quitar la condición cuando Ángel lo apruebe. Vídeos en info/*.mp4.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

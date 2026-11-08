@@ -169,7 +169,7 @@ function nhaPantalla(){
   // Barra de abajo. El responsable de un grupo tiene además «Mi grupo». v45.56: los simuladores ya no van aquí:
   // están en Inicio (los dos), en Ayudas («¿Cuánto puedo pedir?») y en Aportes («¿Cuánto puedo ganar?»).
   const pants=[["inicio","home","Inicio"]].concat(esTerc?[]:[["aportes","wallet","Aportes"]],[["ayudas","hand","Ayudas"]],g?[["grupo","users","Mi grupo"]]:[],[["mas","","Más"]]);
-  const validas=pants.map(p=>p[0]).concat(puedeSim?["simular"]:[]);
+  const validas=pants.map(p=>p[0]).concat(puedeSim?["simular"]:[],puedeSim&&NHA_PRUEBA_INV?["invitar"]:[]);
   if(!validas.includes(NHA.pant))NHA.pant="inicio";
   let h=`<header class="nha-top">${NHA.pant!=="inicio"?`<button class="nha-atras" onclick="nhaAtras()" aria-label="Atrás">‹</button>`:""}<div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-top-txt"><div class="nha-top-hola">Hola, ${nhaPrimerNombre(m)}</div><div class="nha-top-sub">Asociación Nuevos Horizontes</div></div></header><main class="nha-main">`;
   if(NHA.pant==="inicio")h+=nhaInicioHTML(m,salidaPend,g);
@@ -177,6 +177,7 @@ function nhaPantalla(){
   else if(NHA.pant==="ayudas")h+=nhaAyudasHTML(m);
   else if(NHA.pant==="grupo")h+=nhaGrupoHTML(m,g);
   else if(NHA.pant==="simular")h+=nhaSimularHTML(m);
+  else if(NHA.pant==="invitar")h+=nhaInvitarHTML(m);
   else h+=nhaMasHTML(m);
   h+=`<div class="nha-pie">Datos al ${escH(nhaFecha(NHA.publicada))} · <button class="nha-pie-b" onclick="location.reload()">🔄 Actualizar</button><br>Solo consulta: los pagos los anota el administrador · ${escH(APP_VERSION)}</div></main>`;
   h+=`<nav class="nha-nav">${pants.map(([id,ic,txt])=>`<button class="nha-nav-btn${NHA.pant===id?" on":""}" onclick="nhaIr('${id}')">${ic?_icSVG(ic):_nhaDots}<span>${txt}</span></button>`).join("")}</nav>`;
@@ -210,7 +211,37 @@ function nhaInicioHTML(m,salidaPend,g){
   h+=nhaImportanteHTML(m,g);
   if(!esTerc&&m.joinMonth)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span><b>¿Cuánto puedo pedir?</b><small>Simula una ayuda</small></button>
     <button onclick="abrirSimulador('${esc(m.id)}','ben')"><span class="nha-acc-ic">${_icSVG("sprout")}</span><b>¿Cuánto puedo ganar?</b><small>Simula tus beneficios</small></button></div>`;
+  if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
   return h;
+}
+// ── v46.18 (Ángel 08/11/2026): invitar a un familiar o amigo. Mensaje de WhatsApp + enlace a la página pública
+// info/ (sin datos de nadie). Su WhatsApp, si lo pone, se guarda solo en su móvil y va en el enlace para el botón
+// «Hablar con …» de la página.
+// v46.18: EN PRUEBA. «Invitar a alguien» y el aviso del bono solo se ven abriendo la app con &prueba=1
+// (se recuerda en ese móvil; &prueba=0 lo quita). Cuando Ángel lo apruebe, se quita esta condición.
+const NHA_PRUEBA_INV=(()=>{ try{ const q=new URLSearchParams(location.search).get("prueba"); if(q==="1")localStorage.setItem("nha-prueba","1"); if(q==="0")localStorage.removeItem("nha-prueba"); return localStorage.getItem("nha-prueba")==="1"; }catch(e){ return false; } })();
+function _nhaMiWA(v){ try{ if(v!=null){ localStorage.setItem("nha-mi-wa",v); return v; } return localStorage.getItem("nha-mi-wa")||""; }catch(e){ return v||""; } }
+function _nhaInvTexto(m){
+  const q=NHA.inv||"todo", nom=m.name.split(" ")[0], tel=String(_nhaMiWA()).replace(/\D/g,""), w=tel.length===9?"34"+tel:tel;
+  const url=new URL("../info/",location.href); url.search=""; url.searchParams.set("p",q); url.searchParams.set("de",m.name); if(w.length>=9)url.searchParams.set("w",w);
+  const ej=12*REGLAS.APORTE_MINIMO+12*REGLAS.BENEFICIO_ANIO1;
+  const lin=q==="ayuda"?`💶 Ayudas de ${fmtEur(REGLAS.AYUDA_MIN)} a ${fmtEur(REGLAS.AYUDA_MAX_SIN_APROBACION)} €, que se devuelven poco a poco, en cuotas.`
+    :q==="ahorro"?`🌱 Aportas desde ${REGLAS.APORTE_MINIMO} € al mes y ganas beneficios: con ${REGLAS.APORTE_MINIMO} € al mes, en 12 meses recibes ${fmtEur(ej)} €.`
+    :`💶 Ayudas cuando las necesitas y 🌱 beneficios por lo que aportas.`;
+  return `Hola 👋 Te paso información de *Nuevos Horizontes*, el fondo de apoyo mutuo del que formo parte. Somos personas de confianza que aportamos cada mes y nos apoyamos cuando alguien lo necesita.\n${lin}\nMíralo aquí, son 2 minutos: ${url.href}\n— ${nom}`;
+}
+function nhaInvitarHTML(m){
+  const q=NHA.inv||"todo", t=_nhaInvTexto(m), ch=(v,txt)=>`<button class="${q===v?"on":""}" onclick="NHA.inv='${v}';render()">${txt}</button>`;
+  const vista=escH(t).replace(/\*([^*\n]+)\*/g,"<b>$1</b>").replace(/\n/g,"<br>").replace(/(https?:\/\/\S+)/,'<span style="color:#1A6FB5;word-break:break-all">$1</span>');
+  return nhaTitulo(m,"Invitar a alguien","Mándale la información por WhatsApp.","share")+
+  `<div class="nha-card"><div class="nha-card-tit">¿Qué le interesa?</div><div class="nha-chips">${ch("ayuda","💶 Necesita una ayuda")}${ch("ahorro","🌱 Quiere ahorrar")}${ch("todo","🤷 Las dos / no sé")}</div></div>
+  <div class="nha-card"><div class="nha-card-tit">Tu WhatsApp <span style="font-weight:600;font-size:13px;color:#5E6B62">· opcional</span></div>
+    <input class="nha-input" type="tel" inputmode="tel" placeholder="Ej.: 612 345 678" value="${escH(_nhaMiWA())}" onchange="_nhaMiWA(this.value.trim());render()">
+    <div class="nha-txt" style="font-size:13px;margin-top:6px">Si lo pones, podrá escribirte desde la página con un botón. Solo se guarda en tu móvil.</div></div>
+  <div class="nha-card"><div class="nha-card-tit">Así le llegará</div><div style="background:#DCF8C6;border-radius:12px;padding:10px 12px;font-size:14.5px;line-height:1.45;color:#111">${vista}</div>
+    <button class="nha-btn-wa" onclick="window.open('https://wa.me/?text='+encodeURIComponent(_nhaInvTexto(NHA.m)),'_blank')">💬 Enviar por WhatsApp</button>
+    <button class="nha-btn-sec" onclick="_copyFallback(_nhaInvTexto(NHA.m))">📋 Copiar el mensaje</button></div>
+  <div class="nha-card nha-txt" style="font-size:14px">🤝 Si se asocia, tú serás su <b>avalista</b> para las ayudas que pida y recibirás un <b>bono de ${REGLAS.BONO_REFERIDO} €</b> en tu aporte.</div>`;
 }
 function nhaPermanenciaHTML(m,f){
   const meses=memberMonths(m), c=m.ciclo;
@@ -257,6 +288,11 @@ function nhaImportanteHTML(m,g){
     if(s.estado==="pendiente")items.push([_icSVG("clip"),`Tu solicitud de ${fmtEur(s.capital)} € está apuntada`,`${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"}${mi?` · para ${mi}`:""}. Te avisaremos cuando se decida.`,"ayudas"]);
     else if(s.estado==="otorgada"&&s.mesOtorgada===getMesKey(DATA.reportMonth,DATA.reportYear))items.push([_icSVG("check"),`Tu ayuda de ${fmtEur(s.capital)} € está aprobada`,`Este mes. La verás en «Ayudas».`,"ayudas"]);
   });
+  // v46.18: bono por referido (lo apunta el administrador al dar de alta a la persona que trajo)
+  if(NHA_PRUEBA_INV){ const r=(DATA.referidos&&DATA.referidos[m.id])||{}, kRep=getMesKey(DATA.reportMonth,DATA.reportYear);
+    Object.keys(r).sort().forEach(k=>{ if(k<kRep)return; const v=r[k]||{}, ns=String(v.nombres||"").split(",").map(x=>x.trim()).filter(Boolean), n=v.n||ns.length||1;
+      const mes=MONTHS_FULL[parseInt(k.slice(5))-1].toLowerCase()+" "+k.slice(0,4), y=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" y "+a[a.length-1];
+      items.push([_icSVG("gift"),`${escH(y(ns))} ${ns.length>1?"se han dado":"se ha dado"} de alta gracias a ti`,k===kRep?`Tu bono de ${fmtEur(REGLAS.BONO_REFERIDO*n)} € ya está en «Lo que te toca» de este mes.`:`Recibirás tu bono de ${fmtEur(REGLAS.BONO_REFERIDO*n)} € en el aporte de ${mes}.`,"inicio"]); }); }
   const pe=nhaPeticionLocal();
   if(pe&&!(DATA.solicitudes||[]).some(s=>s.origen==="app"&&s.estado!=="no"&&Math.abs((s.capital||0)-pe.capital)<0.01))
     items.push([_icSVG("mobile"),`Has pedido una ayuda de ${fmtEur(pe.capital)} €`,`El ${new Date(pe.ts).toLocaleDateString("es-ES",{day:"numeric",month:"long"})}. El administrador lo revisará y te avisará.`,"ayudas"]);
@@ -403,6 +439,7 @@ function nhaMasHTML(m){
   const esTerc=m.type==="tercero", aval=esTerc?"":avalFichaHTML(m);
   let h=nhaTitulo(m,"Más","Tu aval, preguntas frecuentes y cómo instalarla.","settings");
   if(aval)h+=`<div class="ft-card"><div class="ft-card-title">🤝 Aval</div>${aval}</div>`;
+  if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
   h+=`<div class="nha-sec">Preguntas frecuentes</div>`+nhaFaqHTML();
   h+=`<div class="nha-sec">Tu enlace es privado</div><div class="nha-card nha-txt">Con tu enlace se ve tu cuenta: <b>no lo compartas</b>. Si crees que alguien más lo tiene, pídele al administrador uno nuevo y el antiguo dejará de funcionar.</div>`;
   return h;
