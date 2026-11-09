@@ -112,6 +112,7 @@ lenguaje sencillo antes de aplicarlos.
 - Desde v46.28: aviso «Hay una versión nueva» en la app de asociados (nhaComprobarVersion, final de app/app.js): compara
   NH_APP_V de app/index.html publicado con el del móvil (al abrir, al volver a la app y cada 3 min); «Actualizar» recarga con
   _v= sin perder ?c=; ✕ lo oculta mientras siga abierta. Al versionar, NH_APP_V de app/index.html debe subir con el ?v=.
+- Desde v46.29: en «Falta tu código» / «No encontramos tu cuenta» el botón dice «💬 Pedir mi enlace» (antes «… a Angel»).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

@@ -55,7 +55,7 @@ function nhaError(tipo){
   document.getElementById("app").innerHTML=NHA_ADM_BAR+`<div class="nha-error"><div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-error-ic">${T[0]}</div>
     <div class="nha-error-tit">${T[1]}</div><div class="nha-error-txt">${T[2]}</div>
     ${tipo==="conexion"?`<button class="nha-btn" onclick="location.reload()">Volver a intentarlo</button>`:""}
-    ${tipo==="sin-codigo"||tipo==="no-existe"?`<button class="nha-btn nha-wa" onclick="nhaPedirEnlace('${tipo}')">💬 Pedir mi enlace a Angel</button><div class="nha-error-txt" style="font-size:14px;margin-top:10px">Se abre WhatsApp con el mensaje ya escrito: elige a Angel y envíalo.</div>`:""}</div>`;
+    ${tipo==="sin-codigo"||tipo==="no-existe"?`<button class="nha-btn nha-wa" onclick="nhaPedirEnlace('${tipo}')">💬 Pedir mi enlace</button><div class="nha-error-txt" style="font-size:14px;margin-top:10px">Se abre WhatsApp con el mensaje ya escrito: elige a Angel y envíalo.</div>`:""}</div>`;
 }
 // v45.72: quien abre la app sin su código (o con uno que no vale) lo pide con un toque
 function nhaPedirEnlace(tipo){
