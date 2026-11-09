@@ -106,6 +106,9 @@ lenguaje sencillo antes de aplicarlos.
   en COORD). Formulario «Quiero entrar» → WhatsApp al coordinador. Aviso del bono por referido en la app (DATA.referidos)
   y botón «Avisar a X de su bono» en la bienvenida tras el alta. EN PRUEBA: el botón y el aviso solo con &prueba=1
   (NHA_PRUEBA_INV, se recuerda en el móvil); quitar la condición cuando Ángel lo apruebe. Vídeos en info/*.mp4.
+- Desde v46.27: «Invitar a alguien» más sencillo: «Elige qué le interesa a tu amigo o familiar» (Pedir una ayuda · Ahorrar
+  cada mes · Las dos cosas) y «Enviar por WhatsApp» en la misma tarjeta; fuera «Tu WhatsApp», «Así le llegará» y «Copiar el
+  mensaje»; el bono en una tarjeta verde, en positivo, sin lo del avalista. El enlace ya no lleva &w= (info/ lo sigue leyendo).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

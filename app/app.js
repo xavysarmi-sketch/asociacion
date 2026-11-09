@@ -215,15 +215,16 @@ function nhaInicioHTML(m,salidaPend,g){
   return h;
 }
 // ── v46.18 (Ángel 08/11/2026): invitar a un familiar o amigo. Mensaje de WhatsApp + enlace a la página pública
-// info/ (sin datos de nadie). Su WhatsApp, si lo pone, se guarda solo en su móvil y va en el enlace para el botón
-// «Hablar con …» de la página.
+// info/ (sin datos de nadie).
+// v46.27 (Ángel 09/11/2026): sin «Tu WhatsApp» (el amigo contesta en el mismo chat), sin «Así le llegará» ni «Copiar
+// el mensaje»: solo elegir qué le interesa y «Enviar por WhatsApp». El bono, en positivo. El enlace ya no lleva &w=
+// (info/ lo sigue leyendo para los mensajes enviados antes).
 // v46.18: EN PRUEBA. «Invitar a alguien» y el aviso del bono solo se ven abriendo la app con &prueba=1
 // (se recuerda en ese móvil; &prueba=0 lo quita). Cuando Ángel lo apruebe, se quita esta condición.
 const NHA_PRUEBA_INV=true; // v46.26 (Ángel 08/11/2026): «Invitar a alguien» y el aviso del bono, para todos (antes solo con &prueba=1)
-function _nhaMiWA(v){ try{ if(v!=null){ localStorage.setItem("nha-mi-wa",v); return v; } return localStorage.getItem("nha-mi-wa")||""; }catch(e){ return v||""; } }
 function _nhaInvTexto(m){
-  const q=NHA.inv||"todo", nom=m.name.split(" ")[0], tel=String(_nhaMiWA()).replace(/\D/g,""), w=tel.length===9?"34"+tel:tel;
-  const url=new URL("../info/",location.href); url.search=""; url.searchParams.set("p",q); url.searchParams.set("de",m.name); if(w.length>=9)url.searchParams.set("w",w);
+  const q=NHA.inv||"todo", nom=m.name.split(" ")[0];
+  const url=new URL("../info/",location.href); url.search=""; url.searchParams.set("p",q); url.searchParams.set("de",m.name);
   const ej=12*REGLAS.APORTE_MINIMO+12*REGLAS.BENEFICIO_ANIO1;
   const lin=q==="ayuda"?`💶 Ayudas de ${fmtEur(REGLAS.AYUDA_MIN)} a ${fmtEur(REGLAS.AYUDA_MAX_SIN_APROBACION)} €, que se devuelven poco a poco, en cuotas.`
     :q==="ahorro"?`🌱 Aportas desde ${REGLAS.APORTE_MINIMO} € al mes y ganas beneficios: con ${REGLAS.APORTE_MINIMO} € al mes, en 12 meses recibes ${fmtEur(ej)} €.`
@@ -231,17 +232,12 @@ function _nhaInvTexto(m){
   return `Hola 👋 Te paso información de *Nuevos Horizontes*, el fondo de apoyo mutuo del que formo parte. Somos personas de confianza que aportamos cada mes y nos apoyamos cuando alguien lo necesita.\n${lin}\nMíralo aquí, son 2 minutos: ${url.href}\n— ${nom}`;
 }
 function nhaInvitarHTML(m){
-  const q=NHA.inv||"todo", t=_nhaInvTexto(m), ch=(v,txt)=>`<button class="${q===v?"on":""}" onclick="NHA.inv='${v}';render()">${txt}</button>`;
-  const vista=escH(t).replace(/\*([^*\n]+)\*/g,"<b>$1</b>").replace(/\n/g,"<br>").replace(/(https?:\/\/\S+)/,'<span style="color:#1A6FB5;word-break:break-all">$1</span>');
+  const q=NHA.inv||"todo", ch=(v,txt)=>`<button class="${q===v?"on":""}" onclick="NHA.inv='${v}';render()">${txt}</button>`;
   return nhaTitulo(m,"Invitar a alguien","Mándale la información por WhatsApp.","share")+
-  `<div class="nha-card"><div class="nha-card-tit">¿Qué le interesa?</div><div class="nha-chips">${ch("ayuda","💶 Necesita una ayuda")}${ch("ahorro","🌱 Quiere ahorrar")}${ch("todo","🤝 Las dos cosas")}</div></div>
-  <div class="nha-card"><div class="nha-card-tit">Tu WhatsApp <span style="font-weight:600;font-size:13px;color:#5E6B62">· opcional</span></div>
-    <input class="nha-input" type="tel" inputmode="tel" placeholder="Ej.: 612 345 678" value="${escH(_nhaMiWA())}" onchange="_nhaMiWA(this.value.trim());render()">
-    <div class="nha-txt" style="font-size:13px;margin-top:6px">Si lo pones, podrá escribirte desde la página con un botón. Solo se guarda en tu móvil.</div></div>
-  <div class="nha-card"><div class="nha-card-tit">Así le llegará</div><div style="background:#DCF8C6;border-radius:12px;padding:10px 12px;font-size:14.5px;line-height:1.45;color:#111">${vista}</div>
+  `<div class="nha-card"><div class="nha-card-tit">Elige qué le interesa a tu amigo o familiar</div><div class="nha-chips">${ch("ayuda","💶 Pedir una ayuda")}${ch("ahorro","🌱 Ahorrar cada mes")}${ch("todo","🤝 Las dos cosas")}</div>
     <button class="nha-btn-wa" onclick="window.open('https://wa.me/?text='+encodeURIComponent(_nhaInvTexto(NHA.m)),'_blank')">💬 Enviar por WhatsApp</button>
-    <button class="nha-btn-sec" onclick="_copyFallback(_nhaInvTexto(NHA.m))">📋 Copiar el mensaje</button></div>
-  <div class="nha-card nha-txt" style="font-size:14px">🤝 Si se asocia, tú serás su <b>avalista</b> para las ayudas que pida y recibirás un <b>bono de ${REGLAS.BONO_REFERIDO} €</b> en tu aporte.</div>`;
+  </div>
+  <div class="nha-card nha-txt" style="font-size:15px;background:#E3F1E7;border-color:#CFE6D6">🤝 Cada persona que invitas hace el fondo <b>más fuerte para todos</b>. Y si se asocia, tú recibes un <b>bono de ${REGLAS.BONO_REFERIDO} €</b> en tu aporte.</div>`;
 }
 function nhaPermanenciaHTML(m,f){
   const meses=memberMonths(m), c=m.ciclo;
