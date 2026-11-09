@@ -63,6 +63,7 @@ function cajaMesHTML(rm,ry,num){ // v46.31: num = número del apartado; sin fila
   const c=cajaMensual()[getMesKey(rm,ry)]; if(!c)return "";
   const mesF=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
   const neto=Math.round((c.entradas-c.salidas)*100)/100;
+  const tf=Math.round((c.cartera+c.fin)*100)/100; // v46.32: total del fondo = prestado + caja = asociados + excedente (o − déficit)
   const f=(t,v,b)=>v?`<tr><td>${b?`<b>${t}</b>`:t}</td><td class="n">${b?`<b>${_eur(v)}</b>`:_eur(v)}</td></tr>`:"";
   return `<h3>${num||4}. Caja del mes</h3>
   <div class="doc-caja2">
@@ -82,13 +83,16 @@ function cajaMesHTML(rm,ry,num){ // v46.31: num = número del apartado; sin fila
     <tr class="doc-subt"><td>Queda del mes (entró − salió)</td><td class="n">${neto>0?"+":""}${_eur(neto)}</td></tr>
   </tbody></table>
   <table class="doc-t doc-caja"><tbody>
-    <tr class="doc-subt"><td colspan="2">Dinero del fondo al cerrar ${mesF}</td></tr>
+    <tr class="doc-subt"><td colspan="2">Dónde está el dinero del fondo al cerrar ${mesF}</td></tr>
     ${f(`Prestado en ayudas <span class="doc-sub">(falta que lo devuelvan)</span>`,c.cartera)}
-    <tr class="doc-subt"><td colspan="2">De los asociados</td></tr>
-    ${f("Sus aportes",c.acAp)}
+    ${f(c.fin<0?'En caja <span class="doc-sub">(en negativo: lo adelantó el coordinador)</span>':"En caja",c.fin)}
+    <tr><td><b>Total del fondo</b></td><td class="n"><b>${_eur(tf)}</b></td></tr>
+    <tr class="doc-subt"><td colspan="2">De quién es</td></tr>
+    ${f("Aportes de los asociados",c.acAp)}
     ${f("Su beneficio guardado",c.acBen)}
-    ${c.puntPend?`<tr><td>Aportes temporales por devolver</td><td class="n">${_eur(c.puntPend)}</td></tr>`:""}
-    <tr><td><b>Total de los asociados</b></td><td class="n"><b>${_eur(c.acAp+c.acBen+c.puntPend)}</b></td></tr>
+    ${f("Aportes temporales por devolver",c.puntPend)}
+    ${c.reserva>0?`<tr><td>Excedente del fondo</td><td class="n">${_eur(c.reserva)}</td></tr>`:c.reserva<0?`<tr><td>Déficit del fondo <span class="doc-sub">(gastos administrativos por encima del excedente; se recupera con el excedente · FO-2)</span></td><td class="n">− ${_eur(-c.reserva)}</td></tr>`:""}
+    <tr><td><b>Total</b></td><td class="n"><b>${_eur(tf)}</b></td></tr>
   </tbody></table></div>`;
 }
 function _lista(items){ return items.length?`<ul class="doc-ul">${items.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="doc-vacio">— Ninguno este mes</div>`; }
@@ -112,7 +116,8 @@ function _seccionesReunion(R,rm,ry,cerrado){
   ${(()=>{ // v44.17: solo los apartados con contenido; los vacíos en una línea (ahorra papel)
     const secs=[];
     // v45.4: las ayudas que terminan y las cuotas cobradas se ven en el detalle por persona del acta
-    secs.push(["🤝 Ayudas concedidas en "+mesF,"ayudas concedidas",R.concedidos.map(x=>`${escH(x.m.name)}${x.m.type==="tercero"?" (tercero)":""} — ${_eur(x.l.capital)} a ${x.l.n} meses`)]);
+    // v46.32 (Ángel 09/11/2026): en tabla (persona · importe · cuotas) para que las cifras queden en columna
+    secs.push(["🤝 Ayudas concedidas en "+mesF,"ayudas concedidas",R.concedidos.length?[`<table class="doc-ayc"><tbody>${R.concedidos.map(x=>`<tr><td>${escH(x.m.name)}${x.m.type==="tercero"?' <span class="doc-sub">(tercero)</span>':""}</td><td class="n">${_eur(x.l.capital)}</td><td class="n">${x.l.n} ${x.l.n===1?"cuota":"cuotas"}</td></tr>`).join("")}</tbody></table>`]:[],true]);
     // v45.4: solo el resumen (cuántos y de qué tarifa a cuál), sin la lista de nombres
     if(cerrado)secs.push(["🎉 Empiezan un nuevo año de permanencia","nuevos años de permanencia",(()=>{const g={};R.niveles.forEach(x=>{const k=x.s.antes+"→"+x.s.ahora;g[k]=(g[k]||0)+1;});
       return Object.entries(g).map(([k,n])=>{const [a,b]=k.split("→");return `${n} asociado${n>1?"s":""} — de ${a} € a ${b} € por cada 50 €`;});})()]);
@@ -137,7 +142,7 @@ function _seccionesReunion(R,rm,ry,cerrado){
     secs.push(["⏸️ Aplazamientos","aplazamientos",R.aplazadas.map(c=>`${escH(c.nombre)} — ayuda ${c.gMonth} ${c.gYear} (paga ${_eur(c.inst)} de retorno)`)]);
     secs.push(["⚠️ Pendiente del mes anterior","pendientes del mes anterior",R.pendAnt.map(x=>`${escH(x.m.name)} — ${_eur(x.p.pendiente)} de ${MONTHS_FULL[MONTHS.indexOf(x.p.mes)].toLowerCase()}`)]);
     const llenas=secs.filter(x=>x[2].length), vacias=secs.filter(x=>!x[2].length).map(x=>x[1]);
-    return (llenas.length?`<div class="doc-cols">${llenas.map(x=>`<div><h4>${x[0]}</h4>${_lista(x[2])}</div>`).join("")}</div>`:"")
+    return (llenas.length?`<div class="doc-cols">${llenas.map(x=>`<div><h4>${x[0]}</h4>${x[3]?x[2][0]:_lista(x[2])}</div>`).join("")}</div>`:"")
       +""; // v45.4: ni en la hoja de cobro ni en el acta se lista lo que no hay («Este mes sin…»)
   })()}`;
   return h;
@@ -218,7 +223,7 @@ function docActaHTML(rm,ry){
       const apl=f.items.some(i=>i.aplazada);
       if(falta>0)pend.push({m:f.m,falta,items:f.items.filter(i=>!i.pagado&&!i.noCobrable)});
       const bajaTxt=f.m.baja?` · causó baja en ${MONTHS_FULL[MONTHS.indexOf(f.m.baja.month)].toLowerCase()} (no se reclama)`:"";
-      const estado=(falta>0?`⏳ Pendiente ${_eur(falta)}`:nc>0?`— No cobrado ${_eur(nc)}${bajaTxt}`:"✓ Pagado")+(apl?" · ⏸️ aplazamiento":"")+(f.items.some(i=>i.ultima&&i.pagado)?" · 🏁 ayuda terminada":"");
+      const estado=(falta>0?`⏳ Pendiente ${_eur(falta)}`:nc>0?`— No cobrado ${_eur(nc)}${bajaTxt}`:"✓ Pagado")+(apl?" · ⏸️ aplazamiento":"");  // v46.32: «terminada» va en la línea de su cuota (si tenía otra ayuda se mezclaba)
       const n=f.items.length; gCob+=cob;
       f.items.forEach((i,k)=>{
         let txt;
@@ -228,7 +233,7 @@ function docActaHTML(rm,ry){
           gAp+=i.importe;
         }else{
           const base=i.aplazada?"Cuota aplazada (solo retorno)":i.de<=1?"Cuota única":i.ultima?`🏁 <b>Última cuota</b> ${i.num}/${i.de}`:`Cuota ${i.num}/${i.de}`;
-          txt=`${base} · ayuda de ${mesLA(i.gMonth,i.gYear)}`; gCu+=i.importe;
+          txt=`${base} · ayuda de ${mesLA(i.gMonth,i.gYear)}${i.ultima&&i.pagado?" <b>terminada</b>":""}`; gCu+=i.importe;
         }
         if(!i.pagado)txt+=i.noCobrable?` <span class="doc-sub">· no se reclama</span>`:` <b>· pendiente</b>`;
         h+=`<tr class="${falta>0?"doc-pend":""}${k>0?" doc-cont":""}${i.tipo==="aporte"?" doc-fila-ap":""}">`

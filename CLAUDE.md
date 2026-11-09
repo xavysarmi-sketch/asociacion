@@ -122,6 +122,10 @@ lenguaje sencillo antes de aplicarlos.
   «Pendientes de cobro» solo si hay; «Caja del mes» sin «Efectivo contado / Diferencia» (eso queda en la hoja de cobro); agosto 2025
   «Asociados fundadores». Al imprimir, .doc-final ya no lleva break-inside:avoid y .doc-caja2 es flex: Chrome perdía la caja en
   las actas de una hoja. En pantalla ≥700 px el documento ocupa 860 px (antes las tablas se salían del folio).
+- Desde v46.32: acta - «🏁 Última cuota … terminada» en la línea de su cuota (no en Estado: con otra ayuda se mezclaba);
+  «Ayudas concedidas» en tabla .doc-ayc (persona · importe · cuotas); «Caja del mes», derecha: «Dónde está el dinero» (prestado +
+  en caja; caja negativa = lo adelantó el coordinador, oct–nov 2025) = «De quién es» (aportes + beneficio + excedente, o − déficit
+  por gastos administrativos, FO-2). Total del fondo = c.cartera + c.fin = acAp + acBen + puntPend + reserva.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

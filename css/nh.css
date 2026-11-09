@@ -1110,3 +1110,8 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 /* v46.31: al imprimir desde el ordenador, la parte final del acta («Caja del mes») desaparecía en las actas de una sola hoja
    (Chrome la perdía por estar marcada como «no partir» y en rejilla). Ahora en dos columnas con flex y sin esa marca */
 @media print{ .doc-final{break-inside:auto!important} .doc-caja2{display:flex!important;gap:10px;align-items:flex-start} .doc-caja2>.doc-t{flex:1;min-width:0} }
+/* v46.32: «Ayudas concedidas» en tabla: importe y cuotas en columna */
+.doc-ayc{width:100%;border-collapse:collapse;margin-top:2px}
+.doc-ayc td{padding:2px 4px;border-bottom:1px solid #EEE7DC;vertical-align:top}
+.doc-ayc tr:last-child td{border-bottom:none}
+.doc-ayc td.n{text-align:right;white-space:nowrap;width:1%}
