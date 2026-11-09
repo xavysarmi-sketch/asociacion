@@ -47,20 +47,22 @@ function nhaEsperarFirebase(){
 }
 function nhaError(tipo){
   const T={
-    "sin-codigo":["🔗","Falta tu código","Vuelve al mensaje de WhatsApp en el que te llegó la app y toca <b>tu enlace</b> (el que va después de «👇 Tu enlace»)."],
-    "no-existe":["🔍","No encontramos tu cuenta","El enlace no es correcto o ya no está en uso. Pide uno nuevo al administrador."],
+    "sin-codigo":["🔗","No podemos abrir tu cuenta","Pide tu enlace al coordinador. Te lo manda por WhatsApp y con él se abre tu cuenta."],
+    "no-existe":["🔍","No encontramos tu cuenta","El enlace no es correcto o ya no está en uso. Pide uno nuevo al coordinador."],
     "cerrada":["🚪","Tu cuenta ya está cerrada","Ya no tienes nada pendiente con Nuevos Horizontes. Gracias por haber formado parte."],
     "conexion":["📶","No se ha podido cargar","Comprueba tu conexión a internet y vuelve a abrir la app."]
-  }[tipo]||["⚠️","Algo no ha ido bien","Vuelve a abrir la app. Si sigue igual, avisa al administrador."];
+  }[tipo]||["⚠️","Algo no ha ido bien","Vuelve a abrir la app. Si sigue igual, avisa al coordinador."];
   document.getElementById("app").innerHTML=NHA_ADM_BAR+`<div class="nha-error"><div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-error-ic">${T[0]}</div>
     <div class="nha-error-tit">${T[1]}</div><div class="nha-error-txt">${T[2]}</div>
     ${tipo==="conexion"?`<button class="nha-btn" onclick="location.reload()">Volver a intentarlo</button>`:""}
-    ${tipo==="sin-codigo"||tipo==="no-existe"?`<button class="nha-btn nha-wa" onclick="nhaPedirEnlace('${tipo}')">💬 Pedir mi enlace</button><div class="nha-error-txt" style="font-size:14px;margin-top:10px">Se abre WhatsApp con el mensaje ya escrito: elige a Angel y envíalo.</div>`:""}</div>`;
+    ${tipo==="sin-codigo"||tipo==="no-existe"?`<button class="nha-btn nha-wa" onclick="nhaPedirEnlace('${tipo}')">💬 Pedir mi enlace</button><div class="nha-error-txt" style="font-size:14px;margin-top:10px">Se abre WhatsApp con el mensaje ya escrito. Solo tienes que enviarlo.</div>`:""}</div>`;
 }
 // v45.72: quien abre la app sin su código (o con uno que no vale) lo pide con un toque
+// v46.30 (Ángel 09/11/2026): va directo al WhatsApp del coordinador (mismo número que COORD de info/index.html).
+const NHA_COORD_WA="34685633486";
 function nhaPedirEnlace(tipo){
-  const t=tipo==="sin-codigo"?"«Falta tu código»":"«No encontramos tu cuenta»";
-  window.open("https://wa.me/?text="+encodeURIComponent("Hola Angel 👋 No me abre la app de Nuevos Horizontes: me sale "+t+". ¿Me vuelves a mandar mi enlace? Gracias."),"_blank");
+  const t=tipo==="sin-codigo"?"«No podemos abrir tu cuenta»":"«No encontramos tu cuenta»";
+  window.open("https://wa.me/"+NHA_COORD_WA+"?text="+encodeURIComponent("Hola Angel 👋 No me abre la app de Nuevos Horizontes: me sale "+t+". ¿Me vuelves a mandar mi enlace? Gracias."),"_blank");
 }
 async function nhaArrancar(){
   const c=nhaCodigo(); if(!c)return nhaError("sin-codigo");
@@ -179,7 +181,7 @@ function nhaPantalla(){
   else if(NHA.pant==="simular")h+=nhaSimularHTML(m);
   else if(NHA.pant==="invitar")h+=nhaInvitarHTML(m);
   else h+=nhaMasHTML(m);
-  h+=`<div class="nha-pie">Datos al ${escH(nhaFecha(NHA.publicada))} · <button class="nha-pie-b" onclick="location.reload()">🔄 Actualizar</button><br>Solo consulta: los pagos los anota el administrador · ${escH(APP_VERSION)}</div></main>`;
+  h+=`<div class="nha-pie">Datos al ${escH(nhaFecha(NHA.publicada))} · <button class="nha-pie-b" onclick="location.reload()">🔄 Actualizar</button><br>Solo consulta: los pagos los anota el coordinador · ${escH(APP_VERSION)}</div></main>`;
   h+=`<nav class="nha-nav">${pants.map(([id,ic,txt])=>`<button class="nha-nav-btn${NHA.pant===id?" on":""}" onclick="nhaIr('${id}')">${ic?_icSVG(ic):_nhaDots}<span>${txt}</span></button>`).join("")}</nav>`;
   if(MODAL){
     let c="";
@@ -291,7 +293,7 @@ function nhaImportanteHTML(m,g){
       items.push([_icSVG("gift"),`${escH(y(ns))} ${ns.length>1?"se han dado":"se ha dado"} de alta gracias a ti`,k===kRep?`Tu bono de ${fmtEur(REGLAS.BONO_REFERIDO*n)} € ya está en «Lo que te toca» de este mes.`:`Recibirás tu bono de ${fmtEur(REGLAS.BONO_REFERIDO*n)} € en el aporte de ${mes}.`,"inicio"]); }); }
   const pe=nhaPeticionLocal();
   if(pe&&!(DATA.solicitudes||[]).some(s=>s.origen==="app"&&s.estado!=="no"&&Math.abs((s.capital||0)-pe.capital)<0.01))
-    items.push([_icSVG("mobile"),`Has pedido una ayuda de ${fmtEur(pe.capital)} €`,`El ${new Date(pe.ts).toLocaleDateString("es-ES",{day:"numeric",month:"long"})}. El administrador lo revisará y te avisará.`,"ayudas"]);
+    items.push([_icSVG("mobile"),`Has pedido una ayuda de ${fmtEur(pe.capital)} €`,`El ${new Date(pe.ts).toLocaleDateString("es-ES",{day:"numeric",month:"long"})}. El coordinador lo revisará y te avisará.`,"ayudas"]);
   if(g){ const ms=[g.principalId,...(g.miembros||[])].map(id=>DATA.members.find(x=>x.id===id)).filter(x=>x&&activoEnReporte(x));
     const tot=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).total,0)), pend=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).pendiente,0));
     items.push([_icSVG("users"),pend>0?`Tu grupo: cobrado ${fmtEur(_r2(tot-pend))} de ${fmtEur(tot)} €`:`Tu grupo: todo cobrado (${fmtEur(tot)} €)`,pend>0?"Toca para ver quién falta":"Toca para verlo",`grupo`]); } // v46.9: la cifra una sola vez
@@ -317,9 +319,9 @@ function nhaAyudasHTML(m){
   h+=a.cuerpo;
   if(sal)return h;
   if(!esTerc&&m.joinMonth)h+=`<div class="nha-card nha-pedir"><div class="nha-card-tit">¿Necesitas una ayuda?</div>
-    <div class="nha-txt">Mira cuánto puedes pedir y en cuántos meses devolverlo. Si te encaja, desde ahí mismo se lo pides al administrador.</div>
+    <div class="nha-txt">Mira cuánto puedes pedir y en cuántos meses devolverlo. Si te encaja, desde ahí mismo se lo pides al coordinador.</div>
     <button class="nha-btn" onclick="abrirSimulador('${esc(m.id)}','ayuda')">💡 ¿Cuánto puedo pedir?</button></div>`;
-  else if(esTerc)h+=`<div class="nha-card"><div class="nha-txt">Para pedir una ayuda, habla con tu aval o con el administrador.</div></div>`;
+  else if(esTerc)h+=`<div class="nha-card"><div class="nha-txt">Para pedir una ayuda, habla con tu aval o con el coordinador.</div></div>`;
   return h;
 }
 // ── Mi grupo (solo el responsable) ──
@@ -403,12 +405,12 @@ function nhaCtlResumenHTML(m,act,rm,ry){
   return `<div class="nha-card nha-ctl"><div class="nha-card-tit">Tu control <span style="font-weight:600;font-size:13px;color:#5E6B62">· solo en tu móvil</span></div>
     <div class="nha-ctl-2"><div><small>Has recogido</small><b>${fmtEur(rec)}&nbsp;€</b><span>${nRec} ${nRec===1?"persona":"personas"}</span></div><div class="${falta>0?"falta":""}"><small>Te falta recoger</small><b>${fmtEur(falta)}&nbsp;€</b><span>${nFalta} ${nFalta===1?"persona":"personas"}</span></div></div>
     <button class="nha-ctl-info" onclick="DESP['nha-ctl-info']=!DESP['nha-ctl-info'];render()">ℹ️ ¿Cómo funciona? <span class="nha-fl-c" style="transform:rotate(${DESP["nha-ctl-info"]?90:0}deg)">›</span></button>
-    ${DESP["nha-ctl-info"]?`<div class="nha-ctl-info-t">Toca el <b>círculo</b> de cada persona cuando te pague; si ha puesto más de 50 € de aporte, toca su «▾ 50 €» y elige cuánto. Toca su <b>nombre</b> para ver todo su detalle. <b>Solo se guarda en este móvil</b> y no cambia los datos de nadie: lo que cuenta es lo que anota el administrador. Las marcas se borran solas al empezar el mes.</div>`:""}
-    <button class="nha-btn nha-wa" onclick="nhaCtlWaAdmin()">💬 Enviar al administrador</button>
+    ${DESP["nha-ctl-info"]?`<div class="nha-ctl-info-t">Toca el <b>círculo</b> de cada persona cuando te pague; si ha puesto más de 50 € de aporte, toca su «▾ 50 €» y elige cuánto. Toca su <b>nombre</b> para ver todo su detalle. <b>Solo se guarda en este móvil</b> y no cambia los datos de nadie: lo que cuenta es lo que anota el coordinador. Las marcas se borran solas al empezar el mes.</div>`:""}
+    <button class="nha-btn nha-wa" onclick="nhaCtlWaAdmin()">💬 Enviar al coordinador</button>
     ${nRec?`<button class="nha-ctl-borrar" onclick="nhaCtlBorrar()">${NHA.ctlBorrarArm?"Toca otra vez para borrar tus marcas":"Borrar mis marcas"}</button>`:""}</div>`;
 }
 function _nhaMesTxt(){ return MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase()+" "+DATA.reportYear; }
-function _nhaWa(txt){ window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank"); }
+function _nhaWa(txt,num){ window.open("https://wa.me/"+(num||"")+"?text="+encodeURIComponent(txt),"_blank"); } // v46.30: con num va directo a ese chat
 // A una persona: SOLO lo suyo de este mes
 function nhaCtlWaPersona(id){
   const x=_nhaCtlPersona(id); if(!x)return; const rm=DATA.reportMonth, ry=DATA.reportYear, t=totalDelMes(x,rm,ry);
@@ -428,7 +430,7 @@ function nhaCtlWaAdmin(){
   const L=[`Grupo de ${String(m.name||"").trim().split(/\s+/)[0]} · ${_nhaMesTxt()}`];
   if(pag.length)L.push("","Me han pagado:",...pag,`Total recogido: ${fmtEur(_r2(tot))} €`); else L.push("","Todavía no me ha pagado nadie.");
   if(fal.length)L.push("","Faltan:",...fal);
-  _nhaWa(L.join("\n"));
+  _nhaWa(L.join("\n"),NHA_COORD_WA); // v46.30: directo al WhatsApp del coordinador
 }
 // ── Más ──
 function nhaMasHTML(m){
@@ -437,7 +439,7 @@ function nhaMasHTML(m){
   if(aval)h+=`<div class="ft-card"><div class="ft-card-title">🤝 Aval</div>${aval}</div>`;
   if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
   h+=`<div class="nha-sec">Preguntas frecuentes</div>`+nhaFaqHTML();
-  h+=`<div class="nha-sec">Tu enlace es privado</div><div class="nha-card nha-txt">Con tu enlace se ve tu cuenta: <b>no lo compartas</b>. Si crees que alguien más lo tiene, pídele al administrador uno nuevo y el antiguo dejará de funcionar.</div>`;
+  h+=`<div class="nha-sec">Tu enlace es privado</div><div class="nha-card nha-txt">Con tu enlace se ve tu cuenta: <b>no lo compartas</b>. Si crees que alguien más lo tiene, pídele al coordinador uno nuevo y el antiguo dejará de funcionar.</div>`;
   return h;
 }
 // ── Simular (pantalla propia) ──
@@ -467,7 +469,7 @@ function nhaPeticionLocal(){ try{ const p=JSON.parse(localStorage.getItem("nha-p
 function nhaPedirInfo(m){
   const need=_simPermNecesaria(m,SIM.cap,SIM.n), cur=(m.ciclo!=null?m.ciclo:12);
   if(need===null)return {ok:false,html:`Con estos datos no se puede pedir. Prueba con menos cantidad o menos meses.`};
-  return {ok:true,html:`Le llegará al administrador: <b>${fmtEur(SIM.cap)}&nbsp;€</b> en <b>${SIM.n} ${SIM.n===1?"cuota":"cuotas"}</b>${need!==cur?`, ampliando tu permanencia a <b>${need===0?"indefinida":need+" meses"}</b>`:""}. Él lo revisa y te avisa.`};
+  return {ok:true,html:`Le llegará al coordinador: <b>${fmtEur(SIM.cap)}&nbsp;€</b> en <b>${SIM.n} ${SIM.n===1?"cuota":"cuotas"}</b>${need!==cur?`, ampliando tu permanencia a <b>${need===0?"indefinida":need+" meses"}</b>`:""}. Él lo revisa y te avisa.`};
 }
 function nhaPedirActualizar(){
   const m=NHA.m, el=document.getElementById("nha-pedir-info"); if(!m||!SIM||!el)return;
@@ -497,7 +499,7 @@ async function nhaPedir(){
     const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
     try{ localStorage.setItem("nha-pet-"+NHA.codigo,JSON.stringify({capital:obj.capital,cuotas:obj.cuotas,ts})); }catch(e){}
     NHA.enviando=false; MODAL=null; SIM=null; NHA.pant="inicio"; render(); window.scrollTo(0,0);
-    toast("✓ Enviada. El administrador la revisará y te avisará.",5000);
+    toast("✓ Enviada. El coordinador la revisará y te avisará.",5000);
   }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
 }
 
@@ -515,24 +517,24 @@ function nhaFaq(){
       +`<b>Ejemplo:</b> Pedro pone ${R.BLOQUE_APORTE} € cada mes. En febrero gana ${B[0]} € por lo que puso en enero, en marzo otros ${B[0]} € por febrero, y así cada mes. Cuando lleva 12 meses pagados tiene <b>${12*B[0]} € de beneficio guardado</b>.<br><br>`
       +`Lo que pones un mes empieza a ganar al mes siguiente. El beneficio se guarda y lo recibes al terminar tu permanencia. Haz tus cuentas en «¿Cuánto puedo ganar?».`],
     ["¿Cuánta ayuda puedo pedir?",`Depende de tu permanencia:`+tabla(["Permanencia","Puedes pedir","Lo devuelves en"],[["12 meses","hasta "+R.AYUDA_MAX_CORTA+" €","hasta "+R.CUOTAS_MAX_CORTA+" meses"],["24 o 36 meses","hasta "+_miles(SIM_MAX_AYUDA)+" €","hasta "+R.CUOTAS_MAX+" meses"]])+`La última cuota tiene que caer, como mucho, en el último mes de tu permanencia. Si necesitas más, puedes ampliarla.`],
-    ["¿Cómo pido una ayuda?",`En <b>Ayudas → ¿Cuánto puedo pedir?</b> elige la cantidad y los meses. Si te encaja, toca <b>«Pedir esta ayuda»</b>. Al administrador le llega tu petición, la revisa y te avisa. Si se aprueba, la verás en «Ayudas».`],
+    ["¿Cómo pido una ayuda?",`En <b>Ayudas → ¿Cuánto puedo pedir?</b> elige la cantidad y los meses. Si te encaja, toca <b>«Pedir esta ayuda»</b>. Al coordinador le llega tu petición, la revisa y te avisa. Si se aprueba, la verás en «Ayudas».`],
     ["¿Qué es la permanencia?",`Es el tiempo que te comprometes a estar en el fondo: <b>12, 24 o 36 meses</b>. Cuanto más larga, más beneficio ganas y más grandes son las ayudas que puedes pedir. Puedes ampliarla cuando quieras.`],
-    ["¿Puedo descansar unos meses?",`Sí. Puedes pedir una <b>pausa de 1 a 3 meses</b> sin aportar. Habla con el administrador.`],
+    ["¿Puedo descansar unos meses?",`Sí. Puedes pedir una <b>pausa de 1 a 3 meses</b> sin aportar. Habla con el coordinador.`],
     ["¿Y si quiero salir del fondo?",`<b>Siempre recuperas todo lo que aportaste.</b> Del beneficio, te llevas el de los bloques de 12 meses que completaste; el del bloque que dejas a medias se queda en el fondo.`
       +tabla(["Si te vas…","Recibes"],[["Antes de pagar 12 meses","Todo lo que aportaste"],["Con 12 a 23 meses pagados","Lo aportado + el beneficio de los meses 1 a 12"],["Con 24 a 35 meses pagados","Lo aportado + el beneficio de los meses 1 a 24"]])
       +`<b>Ejemplo:</b> Lucía eligió 36 meses, pone ${R.BLOQUE_APORTE} € al mes y se va en el mes 29:`
       +tabla(["Concepto","Importe","¿Se lo lleva?"],[["Sus aportes (29 × "+R.BLOQUE_APORTE+" €)",fmtEur(lucia.ap)+" €","Sí"],["Beneficio meses 1 a 12",lucia.b1+" €","Sí"],["Beneficio meses 13 a 24",lucia.b2+" €","Sí"],["Beneficio meses 25 a 29",lucia.b3+" €","No, quedó a medias"],["<b>Recibe</b>","<b>"+fmtEur(lucia.ap+lucia.b1+lucia.b2)+" €</b>",""]])],
     ["¿Qué gano si traigo a alguien?",`Si eres asociado y traes a una persona nueva al fondo, te descontamos <b>${R.BONO_REFERIDO} €</b> de tu aporte de ese mes por cada una (como mucho ${R.REFERIDOS_MAX_MES} al mes).`],
-    ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el administrador. Si eres responsable de un grupo, ves también lo del mes de las personas de tu grupo.`],
+    ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el coordinador. Si eres responsable de un grupo, ves también lo del mes de las personas de tu grupo.`],
   ];
 }
 // v45.64: a un tercero solo le salen las preguntas que le afectan (no aporta, no tiene permanencia ni beneficio)
 function nhaFaqTercero(){
   const R=REGLAS;
   return [
-    ["¿Puedo pedir otra ayuda?",`Sí. Con el aval de un asociado puedes pedir de <b>100 a ${R.AYUDA_MAX_CORTA} €</b> y devolverlo en <b>1 a ${R.CUOTAS_MAX_CORTA} meses</b>. Habla con tu aval o con el administrador.`],
-    ["¿Y si un mes no puedo pagar la cuota?",`Avisa cuanto antes al administrador o a tu aval. Si no pagas, responde tu aval por ti.`],
-    ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el administrador.`],
+    ["¿Puedo pedir otra ayuda?",`Sí. Con el aval de un asociado puedes pedir de <b>100 a ${R.AYUDA_MAX_CORTA} €</b> y devolverlo en <b>1 a ${R.CUOTAS_MAX_CORTA} meses</b>. Habla con tu aval o con el coordinador.`],
+    ["¿Y si un mes no puedo pagar la cuota?",`Avisa cuanto antes al coordinador o a tu aval. Si no pagas, responde tu aval por ti.`],
+    ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el coordinador.`],
   ];
 }
 function nhaFaqHTML(){

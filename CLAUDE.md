@@ -113,6 +113,9 @@ lenguaje sencillo antes de aplicarlos.
   NH_APP_V de app/index.html publicado con el del móvil (al abrir, al volver a la app y cada 3 min); «Actualizar» recarga con
   _v= sin perder ?c=; ✕ lo oculta mientras siga abierta. Al versionar, NH_APP_V de app/index.html debe subir con el ?v=.
 - Desde v46.29: en «Falta tu código» / «No encontramos tu cuenta» el botón dice «💬 Pedir mi enlace» (antes «… a Angel»).
+- Desde v46.30: app de asociados dice «coordinador» (como el Maestro y la Guía), nunca «administrador», en todo lo que ve el
+  asociado. «Falta tu código» pasa a «No podemos abrir tu cuenta» (una sola acción: pedir el enlace); «Pedir mi enlace» abre
+  el WhatsApp del coordinador, igual que «Enviar al coordinador» de Mi grupo (NHA_COORD_WA en app/app.js = COORD de info/index.html: si cambia, cambiar los dos).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
