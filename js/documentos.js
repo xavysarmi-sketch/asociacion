@@ -4,7 +4,7 @@
 // Solo declaraciones: no ejecuta nada al cargarse (el arranque está en js/arranque.js).
 // v46.13 (Ángel 07/11/2026): al cerrar el documento se vuelve al mismo sitio desde el que se abrió
 let _Y_DOC=0;
-function abrirDocImp(tipo){ if(!DOC_IMP)_Y_DOC=window.scrollY||0; DOC_IMP={tipo,rm:DATA.reportMonth,ry:DATA.reportYear}; PDF_LISTO=null; window.scrollTo(0,0); render(); }
+function abrirDocImp(tipo,rm,ry){ if(!DOC_IMP)_Y_DOC=window.scrollY||0; DOC_IMP={tipo,rm:rm||DATA.reportMonth,ry:ry||DATA.reportYear}; /* v46.31: rm/ry = acta de otro mes (desplegable «Actas de cierre») */ PDF_LISTO=null; window.scrollTo(0,0); render(); }
 function cerrarDocImp(){ DOC_IMP=null; PDF_LISTO=null; document.body.classList.remove("doc-abierto"); render(); window.scrollTo(0,_Y_DOC||0); }
 function _mdSoloLectura(rm,ry){ return (DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)])||{aportes:{}}; }
 // Personas del documento agrupadas por grupos de cierre (principal primero) y, al final,
@@ -59,35 +59,34 @@ function resumenMesDoc(rm,ry){
 }
 // v45.4 (fase de crecimiento: todo se reinvierte): el acta muestra solo lo que entró y salió en el
 // mes, un hueco para el efectivo contado y el dinero del fondo, sin saldo arrastrado desde 2025.
-function cajaMesHTML(rm,ry){
+function cajaMesHTML(rm,ry,num){ // v46.31: num = número del apartado; sin filas a 0 ni «Efectivo contado / Diferencia» (eso va en la hoja de cobro)
   const c=cajaMensual()[getMesKey(rm,ry)]; if(!c)return "";
   const mesF=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
   const neto=Math.round((c.entradas-c.salidas)*100)/100;
-  return `<h3>4. Caja del mes</h3>
+  const f=(t,v,b)=>v?`<tr><td>${b?`<b>${t}</b>`:t}</td><td class="n">${b?`<b>${_eur(v)}</b>`:_eur(v)}</td></tr>`:"";
+  return `<h3>${num||4}. Caja del mes</h3>
   <div class="doc-caja2">
   <table class="doc-t doc-caja"><tbody>
     <tr class="doc-subt"><td colspan="2">Entró en ${mesF}</td></tr>
-    <tr><td>Aportes cobrados${c.bonos?` <span class="doc-sub">(íntegros ${_eur(c.aportesBrutos)} − bonos ${_eur(c.bonos)})</span>`:""}</td><td class="n">${_eur(c.aportes)}</td></tr>
-    <tr><td>Cuotas cobradas <span class="doc-sub">(capital ${_eur(c.capDev)} + retornos ${_eur(c.retornos)})</span></td><td class="n">${_eur(c.cuotas)}</td></tr>
+    ${f(`Aportes cobrados${c.bonos?` <span class="doc-sub">(íntegros ${_eur(c.aportesBrutos)} − bonos ${_eur(c.bonos)})</span>`:""}`,c.aportes)}
+    ${f(`Cuotas cobradas <span class="doc-sub">(capital ${_eur(c.capDev)} + retornos ${_eur(c.retornos)})</span>`,c.cuotas)}
     ${c.puntIn?`<tr><td>Aportes temporales recibidos (${c.nPuntIn})</td><td class="n">${_eur(c.puntIn)}</td></tr>`:""}
     <tr><td><b>Total entró</b></td><td class="n"><b>${_eur(c.entradas)}</b></td></tr>
-    <tr class="doc-subt"><td colspan="2">Salió en ${mesF}</td></tr>
-    <tr><td>Ayudas entregadas (${c.nApoyos})</td><td class="n">${_eur(c.apoyos)}</td></tr>
+    ${c.salidas?`<tr class="doc-subt"><td colspan="2">Salió en ${mesF}</td></tr>`:""}
+    ${f(`Ayudas entregadas (${c.nApoyos})`,c.apoyos)}
     ${c.puntOut?`<tr><td>Aportes temporales devueltos (${c.nPuntOut})</td><td class="n">${_eur(c.puntOut)}</td></tr>`:""}
     ${c.bajas?`<tr><td>Salidas del fondo pagadas</td><td class="n">${_eur(c.bajas)}</td></tr>`:""}
     ${c.retir?`<tr><td>Beneficio retirado sin salir (${c.nRetir})</td><td class="n">${_eur(c.retir)}</td></tr>`:""}
     ${c.gastos?`<tr><td>Gastos administrativos (${c.nGastos})</td><td class="n">${_eur(c.gastos)}</td></tr>`:""}
-    <tr><td><b>Total salió</b></td><td class="n"><b>${_eur(c.salidas)}</b></td></tr>
+    ${f("Total salió",c.salidas,true)}
     <tr class="doc-subt"><td>Queda del mes (entró − salió)</td><td class="n">${neto>0?"+":""}${_eur(neto)}</td></tr>
-    <tr><td>Efectivo contado</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
-    <tr><td>Diferencia</td><td class="n"><span class="doc-raya-e"></span>€</td></tr>
   </tbody></table>
   <table class="doc-t doc-caja"><tbody>
     <tr class="doc-subt"><td colspan="2">Dinero del fondo al cerrar ${mesF}</td></tr>
-    <tr><td>Prestado en ayudas <span class="doc-sub">(falta que lo devuelvan)</span></td><td class="n">${_eur(c.cartera)}</td></tr>
+    ${f(`Prestado en ayudas <span class="doc-sub">(falta que lo devuelvan)</span>`,c.cartera)}
     <tr class="doc-subt"><td colspan="2">De los asociados</td></tr>
-    <tr><td>Sus aportes</td><td class="n">${_eur(c.acAp)}</td></tr>
-    <tr><td>Su beneficio guardado</td><td class="n">${_eur(c.acBen)}</td></tr>
+    ${f("Sus aportes",c.acAp)}
+    ${f("Su beneficio guardado",c.acBen)}
     ${c.puntPend?`<tr><td>Aportes temporales por devolver</td><td class="n">${_eur(c.puntPend)}</td></tr>`:""}
     <tr><td><b>Total de los asociados</b></td><td class="n"><b>${_eur(c.acAp+c.acBen+c.puntPend)}</b></td></tr>
   </tbody></table></div>`;
@@ -103,12 +102,12 @@ function _seccionesReunion(R,rm,ry,cerrado){
   const kCu=`<div class="doc-kpi"><div class="k">Cuotas de ayudas</div><div class="v">${_eur(cerrado?R.cuCob:R.cuPrev)}</div><div class="s">${cerrado?`${R.nCuPag} de ${R.nCu} cuotas`:`${R.nCu} cuotas`}</div></div>`;
   // v46.15 (Ángel 07/11/2026): en la hoja de cobro, aportaciones + cuotas = total previsto, y sin la tabla de retornos/excedente (sigue en el acta)
   const sg=t=>`<div class="doc-kpi-sg">${t}</div>`, kq=(k,t)=>k.replace(/<div class="k">[^<]*<\/div>/,`<div class="k">${t}</div>`);
-  let h=`<div class="doc-kpis">${cerrado?kTot+kAp+kCu:kq(kAp,"Total de aportes")+sg("+")+kq(kCu,"Total cuotas de ayudas")+sg("=")+kq(kTot,"Total previsto")}</div>
-  ${cerrado?`<table class="doc-t doc-mini"><tbody>
-    <tr><td>Retornos compartidos ${cerrado?"del mes":"previstos"} (5 % de cada cuota)</td><td class="n">${_eur(cerrado?R.recargoMes:R.recPrev)}</td></tr>
-    <tr><td>Beneficio para los asociados según su permanencia y aporte (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>
+  let h=`<div class="doc-kpis">${cerrado?kq(kAp,"Total de aportaciones")+sg("+")+kq(kCu,"Total de cuotas devueltas")+sg("=")+kq(kTot,"Total cobrado"):kq(kAp,"Total de aportes")+sg("+")+kq(kCu,"Total cuotas de ayudas")+sg("=")+kq(kTot,"Total previsto")}</div>
+  ${cerrado&&((cerrado?R.recargoMes:R.recPrev)||rep.obligacion||bonos||exc)?`<table class="doc-t doc-mini"><tbody>
+    ${(cerrado?R.recargoMes:R.recPrev)?`<tr><td>Retornos compartidos ${cerrado?"del mes":"previstos"} (5 % de cada cuota)</td><td class="n">${_eur(cerrado?R.recargoMes:R.recPrev)}</td></tr>`:""}
+    ${rep.obligacion?`<tr><td>Beneficio para los asociados según su permanencia y aporte (${rep.conDerecho.length} con derecho)</td><td class="n">${_eur(rep.obligacion)}</td></tr>`:""}
     ${bonos?`<tr><td>Bonos por referido ${cerrado?"del mes":"previstos"} (los asume el fondo)</td><td class="n">${_eur(bonos)}</td></tr>`:""}
-    <tr><td><b>${exc>=0?"Excedente":"Diferencia que pone el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""})`:""} <span class="doc-sub">· dato informativo: se reinvierte en ayudas (Maestro FO-2)</span></td><td class="n"><b>${_eur(exc)}</b></td></tr>
+    ${exc?`<tr><td><b>${exc>=0?"Excedente":"Diferencia que pone el fondo"}</b> ${exc>=0?`(retornos − beneficio${bonos?" − bonos":""})`:""} <span class="doc-sub">· dato informativo: se reinvierte en ayudas (Maestro FO-2)</span></td><td class="n"><b>${_eur(exc)}</b></td></tr>`:""}
   </tbody></table>`:""}
   ${(()=>{ // v44.17: solo los apartados con contenido; los vacíos en una línea (ahorra papel)
     const secs=[];
@@ -120,7 +119,7 @@ function _seccionesReunion(R,rm,ry,cerrado){
     // v46.15 (Ángel 07/11/2026): quién recibe el bono y por quién, y en qué se nota
     { const ly=a=>a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" y "+a[a.length-1];
       secs.push(["🎁 Bonos por referido","bonos por referido",R.referidos.map(x=>`<b>${escH(x.m.name)}</b> recibe ${_eur(REGLAS.BONO_REFERIDO*x.nombres.length)} de bono por traer a ${escH(ly(x.nombres))} <span class="doc-sub">(se le descuenta de su aporte)</span>`)]); }
-    secs.push(["👋 Nuevos asociados","nuevos asociados",R.altas.map(m=>{const q=quienRefirio(m);return escH(m.name)+(q?` <span class="doc-sub">(referido por ${escH(q)})</span>`:"");})]);
+    secs.push(rm==="Ago"&&ry===2025?["⭐ Asociados fundadores","asociados fundadores"]:["👋 Nuevos asociados","nuevos asociados"]); secs[secs.length-1].push(R.altas.map(m=>{const q=quienRefirio(m);return escH(m.name)+(q?` <span class="doc-sub">(referido por ${escH(q)})</span>`:"");})); // v46.31: agosto 2025 = asociados fundadores
     // v46.15 (Ángel 07/11/2026): devolución por baja como una cuenta (aportes − ayuda pendiente = total) y casilla «Pagado»
     secs.push(["↩️ Devoluciones por baja","devoluciones por baja",R.bajas.lista.map(m=>{ const d=datosBaja(m), pag=m.baja.pagada;
       const nM=m.baja.ultimoMes?aportesConBeneficio(m,_idxMes(m.baja.ultimoMes,m.baja.ultimoAnio)).length:0, cap=d.capitalDevuelto!=null?d.capitalDevuelto:d.total;
@@ -202,7 +201,7 @@ function docActaHTML(rm,ry){
   const R=resumenMesDoc(rm,ry), mesF=MONTHS_FULL[MONTHS.indexOf(rm)];
   const hoy=new Date().toLocaleDateString("es-ES");
   let h=`<div class="doc-cab"><div><div class="doc-org">NUEVOS HORIZONTES</div><div class="doc-tit">Acta de cierre · ${mesF} ${ry}</div></div>
-    <div class="doc-fecha">Generada el ${hoy}</div></div>
+    <div class="doc-fecha">${rm===DATA.reportMonth&&ry===DATA.reportYear&&!(_mdSoloLectura(rm,ry).cierre)?"<b>Mes sin cerrar</b> · datos de hoy<br>":""}Generada el ${hoy}</div></div>
   <h3>1. Resumen del mes</h3>`+_seccionesReunion(R,rm,ry,true);
   const pend=[];
   h+=`<div class="doc-grupos"><div class="doc-cabgrupos"><h3>2. Detalle por persona</h3></div>`;
@@ -239,11 +238,14 @@ function docActaHTML(rm,ry){
           +`</tr>`;
       });
     });
-    h+=`<tr class="doc-subt"><td colspan="2">Total del grupo</td><td class="n">${_eur(gAp)}</td><td class="n">${_eur(gCu)}</td><td class="n">${_eur(gCob)}</td><td></td></tr></tbody></table></div>`;
+    const z=v=>v?_eur(v):"—"; // v46.31: lo que va a 0 no se escribe
+    h+=`<tr class="doc-subt"><td colspan="2">Total del grupo</td><td class="n">${z(gAp)}</td><td class="n">${z(gCu)}</td><td class="n">${_eur(gCob)}</td><td></td></tr></tbody></table></div>`;
   });
-  h+=`</div><div class="doc-final">`+(pend.length?`<h3>3. Pendientes de cobro</h3>`+_lista(pend.map(x=>`${escH(x.m.name)} — ${_eur(x.falta)} (${x.items.map(i=>escH(i.txt)).join("; ")})`)):`<h3>3. Pendientes de cobro: ninguno</h3>`);
-  h+=`<div class="doc-pie">Totales: previsto ${_eur(R.totPrev)} · cobrado ${_eur(R.totCob)}${R.noCob>0?` · no cobrado por baja ${_eur(R.noCob)}`:""} · pendiente ${_eur(R.pendiente)}.</div>`;
-  h+=cajaMesHTML(rm,ry)+`</div>`;
+  // v46.31 (Ángel 09/11/2026): «Pendientes de cobro» y la línea de totales solo si hay algo pendiente o no cobrado
+  const hayPend=pend.length>0||R.noCob>0;
+  h+=`</div><div class="doc-final">`+(hayPend?`<h3>3. Pendientes de cobro</h3>`+(pend.length?_lista(pend.map(x=>`${escH(x.m.name)} — ${_eur(x.falta)} (${x.items.map(i=>escH(i.txt)).join("; ")})`)):"")
+    +`<div class="doc-pie">Totales: previsto ${_eur(R.totPrev)} · cobrado ${_eur(R.totCob)}${R.noCob>0?` · no cobrado por baja ${_eur(R.noCob)}`:""} · pendiente ${_eur(R.pendiente)}.</div>`:"");
+  h+=cajaMesHTML(rm,ry,hayPend?4:3)+`</div>`;
   return h;
 }
 function quedaAsociacionHTML(rm,ry){
@@ -283,20 +285,19 @@ function docCarpetaHTML(){
     T.prev+=R.totPrev;T.cob+=R.totCob;T.ap+=R.apCob;T.cu+=R.cuCob;T.ret+=R.recargoMes;T.ben+=rep.obligacion;T.bon=(T.bon||0)+R.bonosCob;T.exc+=exc;T.nConc+=R.concedidos.length;T.conc+=conc;
     T.noCob=(T.noCob||0)+R.noCob;
     return `<tr><td>${nom(m)}</td><td class="n">${_eur(R.totPrev)}</td><td class="n">${_eur(R.totCob)}</td><td class="n">${_eur(R.pendiente)}${R.noCob>0?`<div class="doc-sub">+${_eur(R.noCob)} baja</div>`:""}</td>
-      <td class="n">${_eur(R.recargoMes)}</td><td class="n">${_eur(rep.obligacion)}</td><td class="n">${_eur(R.bonosCob)}</td><td class="n">${_eur(exc)}</td><td class="n">${R.concedidos.length} · ${_eur(conc)}</td></tr>`;
+      <td class="n">${_eur(R.recargoMes)}</td><td class="n">${_eur(rep.obligacion)}</td><td class="n">${_eur(R.bonosCob)}</td><td class="n">${_eur(exc)}</td><td class="n">${R.concedidos.length}</td><td class="n">${_eur(conc)}</td></tr>`;
   }).join("");
-  let h=`<div class="doc-unidad doc-portada"><div class="doc-cab"><div><div class="doc-org">NUEVOS HORIZONTES</div><div class="doc-tit">Carpeta de control · Actas de cierre</div></div>
+  let h=`<div class="doc-unidad doc-portada"><div class="doc-cab"><div><div class="doc-org">NUEVOS HORIZONTES</div><div class="doc-tit">Carpeta de control</div></div>
     <div class="doc-fecha">De ${nom(ini)} a ${nom(ult)}<br>Generada el ${hoy}</div></div>
     <h3>Índice y resumen por mes</h3>
-    <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Bonos</th><th class="n">Excedente</th><th class="n">Ayudas concedidas</th></tr></thead>
-    <tbody>${filas}<tr class="doc-subt"><td>Total</td><td class="n">${_eur(T.prev)}</td><td class="n">${_eur(T.cob)}</td><td class="n">${_eur(T.prev-T.cob-(T.noCob||0))}</td><td class="n">${_eur(T.ret)}</td><td class="n">${_eur(T.ben)}</td><td class="n">${_eur(T.bon||0)}</td><td class="n">${_eur(T.exc)}</td><td class="n">${T.nConc} · ${_eur(T.conc)}</td></tr></tbody></table>
+    <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Previsto</th><th class="n">Cobrado</th><th class="n">Pendiente</th><th class="n">Retornos</th><th class="n">Beneficio</th><th class="n">Bonos</th><th class="n">Excedente</th><th class="n">Nº de ayudas</th><th class="n">Importe de ayudas</th></tr></thead>
+    <tbody>${filas}<tr class="doc-subt"><td>Total</td><td class="n">${_eur(T.prev)}</td><td class="n">${_eur(T.cob)}</td><td class="n">${_eur(T.prev-T.cob-(T.noCob||0))}</td><td class="n">${_eur(T.ret)}</td><td class="n">${_eur(T.ben)}</td><td class="n">${_eur(T.bon||0)}</td><td class="n">${_eur(T.exc)}</td><td class="n">${T.nConc}</td><td class="n">${_eur(T.conc)}</td></tr></tbody></table>
     <div class="doc-nota">Retornos = 5 % de cada cuota cobrada · Beneficio = lo que corresponde a los asociados por cada 50 € aportado y su año de permanencia · Bonos = bonos por referido (los asume el fondo) · Excedente = retornos − beneficio − bonos (dato informativo: en la fase de crecimiento se reinvierte en ayudas) · Pendiente no incluye lo no cobrado a quien causó baja.</div>
     <h3>Libro de caja por mes</h3>
     <table class="doc-t doc-mini"><thead><tr><th>Mes</th><th class="n">Saldo inicial</th><th class="n">Entradas</th><th class="n">Salidas</th><th class="n">Saldo final</th><th class="n">Capital prestado</th><th class="n">Total fondo</th><th class="n">Excedente acum.</th></tr></thead>
     <tbody>${meses.map(m=>{const c=cajaMensual()[getMesKey(m.rm,m.ry)];return `<tr><td>${nom(m)}</td><td class="n">${_eur(c.ini)}</td><td class="n">${_eur(c.entradas)}</td><td class="n">${_eur(c.salidas)}</td><td class="n">${_eur(c.fin)}</td><td class="n">${_eur(c.cartera)}</td><td class="n">${_eur(c.fin+c.cartera)}</td><td class="n">${_eur(c.reserva)}</td></tr>`;}).join("")}</tbody></table>
-    <div class="doc-nota">Saldo inicial (ago-2025): 0 €. Total fondo = caja + capital prestado; de él, aportaciones (íntegras) y beneficios acumulados son de los asociados y el resto es el excedente del fondo. Detalle de cada mes en su acta.</div></div>`;
-  meses.forEach(m=>{ h+=`<div class="doc-unidad doc-nueva-pag">${docActaHTML(m.rm,m.ry)}</div>`; });
-  return h;
+    <div class="doc-nota">Saldo inicial (ago-2025): 0 €. Total fondo = caja + capital prestado; de él, aportaciones (íntegras) y beneficios acumulados son de los asociados y el resto es el excedente del fondo. Detalle de cada mes en su acta (Cierre › Actas de cierre).</div></div>`;
+  return h; // v46.31 (Ángel 09/11/2026): solo el resumen; cada acta se abre desde el desplegable «Actas de cierre»
 }
 function renderDocImp(){
   const {tipo,rm,ry}=DOC_IMP;

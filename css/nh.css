@@ -1099,3 +1099,14 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 /* v46.17 · cifras de los tres cuadros a la misma altura y apartados del resumen con borde fino */
 .doc-kpi .k{min-height:2.5em}
 .doc-cols>div{border:1px solid #D5DED8;border-radius:8px;padding:6px 9px}
+/* v46.31: desplegable «Actas de cierre» (Cobros › Cierre) */
+.actas-lista{margin-top:8px;border:1px solid var(--border);border-radius:12px;background:#fff;overflow:hidden}
+.actas-lista button{display:flex;align-items:center;gap:8px;width:100%;padding:12px 14px;border:none;border-top:1px solid var(--border);background:#fff;font:inherit;font-size:15px;font-weight:700;color:var(--dark);text-align:left;cursor:pointer}
+.actas-lista button:first-child{border-top:none}
+.actas-lista small{font-size:12.5px;font-weight:700;color:#94571A;background:#FFF4E5;border-radius:10px;padding:2px 8px}
+.actas-lista .fl{margin-left:auto;color:#2D6A4F;font-size:20px;line-height:1}
+/* v46.31: en tablet y ordenador el documento se ve como un folio (antes las tablas se salían del papel) */
+@media screen and (min-width:700px){ body.doc-abierto{max-width:860px!important;margin:0 auto!important} body.doc-abierto::before{display:none!important} body.doc-abierto .doc-a4{font-size:12.5px} body.doc-abierto .doc-t td,body.doc-abierto .doc-t th{font-size:12px} }
+/* v46.31: al imprimir desde el ordenador, la parte final del acta («Caja del mes») desaparecía en las actas de una sola hoja
+   (Chrome la perdía por estar marcada como «no partir» y en rejilla). Ahora en dos columnas con flex y sin esa marca */
+@media print{ .doc-final{break-inside:auto!important} .doc-caja2{display:flex!important;gap:10px;align-items:flex-start} .doc-caja2>.doc-t{flex:1;min-width:0} }

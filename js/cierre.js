@@ -360,13 +360,16 @@ function comprobacionCierre(){
     {ok:!(d.porPagar>0),txt:d.porPagar>0?`Salidas de ${mesTxt} sin marcar como pagadas: ${fmtEur(d.porPagar)} € (Más › Histórico)`:"Las salidas del mes, pagadas"},
   ]};
 }
+// v46.31: meses para el desplegable «Actas de cierre»: del mes de trabajo hacia atrás hasta agosto 2025
+function _mesesActas(){ const out=[]; let y=DATA.reportYear, i=MONTHS.indexOf(DATA.reportMonth); while(y*12+i>=2025*12+7){ out.push({rm:MONTHS[i],ry:y}); i--; if(i<0){i=11;y--;} } return out; }
 function cierreMesHTML(){
   const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), mesTxt=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();
   const md=(DATA.monthlyData&&DATA.monthlyData[key])||{}, c=md.cierre;
   const papeles=`<div style="display:flex;gap:8px;margin-top:12px">
       <button onclick="abrirDocImp('cobro')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">🧾 Hoja de cobro</button>
-      <button onclick="abrirDocImp('acta')" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📄 Acta de cierre</button></div>
-    <button onclick="abrirDocImp('carpeta')" style="width:100%;margin-top:8px;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📚 Carpeta de actas (desde agosto 2025)</button>`;
+      <button onclick="DESP['actas-meses']=!DESP['actas-meses'];render()" aria-expanded="${!!DESP['actas-meses']}" style="flex:1;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:${DESP['actas-meses']?"#E3F1E7":"#fff"};color:var(--dark);font-size:14px;font-weight:700">📄 Actas de cierre ${DESP['actas-meses']?"▴":"▾"}</button></div>
+    ${DESP['actas-meses']?`<div class="actas-lista">${_mesesActas().map((m,k)=>`<button onclick="abrirDocImp('acta','${m.rm}',${m.ry})"><span>${MONTHS_FULL[MONTHS.indexOf(m.rm)]} ${m.ry}</span>${k===0&&!c?`<small>sin cerrar</small>`:""}<span class="fl">›</span></button>`).join("")}</div>`:""}
+    <button onclick="abrirDocImp('carpeta')" style="width:100%;margin-top:8px;padding:11px 8px;border-radius:12px;border:1.5px solid var(--accent);background:#fff;color:var(--dark);font-size:14px;font-weight:700">📊 Carpeta de control</button>`; // v46.31: desplegable con el acta de cada mes (del mes de hoy hacia atrás) y la carpeta aparte
   if(c){
     const r=c.resumen||{}, armR=!!DESP["reabrir-mes"];
     return `<div class="mes-card" id="cierre-mes" style="border:2px solid #1B4332"><div class="mes-title" style="margin-bottom:6px">🔒 ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry} está cerrado</div>

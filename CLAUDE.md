@@ -116,6 +116,12 @@ lenguaje sencillo antes de aplicarlos.
 - Desde v46.30: app de asociados dice «coordinador» (como el Maestro y la Guía), nunca «administrador», en todo lo que ve el
   asociado. «Falta tu código» pasa a «No podemos abrir tu cuenta» (una sola acción: pedir el enlace); «Pedir mi enlace» abre
   el WhatsApp del coordinador, igual que «Enviar al coordinador» de Mi grupo (NHA_COORD_WA en app/app.js = COORD de info/index.html: si cambia, cambiar los dos).
+- Desde v46.31: Cobros › Cierre: «📄 Actas de cierre ▾» (DESP['actas-meses'], _mesesActas en js/cierre.js) abre el acta de cada
+  mes, del mes de trabajo («sin cerrar») hacia atrás hasta agosto 2025 (abrirDocImp(tipo,rm,ry)); «📊 Carpeta de control» aparte y
+  de una hoja (sin las actas detrás). Acta: «Total de aportaciones + Total de cuotas devueltas = Total cobrado»; sin filas a 0;
+  «Pendientes de cobro» solo si hay; «Caja del mes» sin «Efectivo contado / Diferencia» (eso queda en la hoja de cobro); agosto 2025
+  «Asociados fundadores». Al imprimir, .doc-final ya no lleva break-inside:avoid y .doc-caja2 es flex: Chrome perdía la caja en
+  las actas de una hoja. En pantalla ≥700 px el documento ocupa 860 px (antes las tablas se salían del folio).
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)
