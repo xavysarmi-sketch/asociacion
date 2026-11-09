@@ -581,4 +581,31 @@ function nhaBienvenidaHTML(m){
     </div>`;
 }
 
+// ── v46.28 (Ángel 09/11/2026): aviso «Hay una versión nueva». Propio de esta app (el de la app del administrador mira la
+// fecha del archivo y aquí recargaba solo): compara el número de versión publicado en app/index.html (NH_APP_V) con el
+// de este móvil, así no hay falsos avisos. Se mira al abrir, al volver a la app y cada 3 minutos. «Actualizar» recarga
+// sin perder el ?c= (añade _v=, regla crítica 4); la ✕ lo oculta mientras la app siga abierta.
+let NHA_UPD_CERRADO=false;
+function nhaComprobarVersion(){
+  if(NHA_UPD_CERRADO||document.hidden||document.getElementById("nhaUpd")||!window.NH_APP_V)return;
+  fetch(location.pathname+"?_check="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(t=>{
+    const v=(String(t).match(/NH_APP_V="([0-9.]+)"/)||[])[1];
+    if(v&&v!==String(window.NH_APP_V))nhaAvisoVersion();
+  }).catch(()=>{});
+}
+function nhaAvisoVersion(){
+  if(NHA_UPD_CERRADO||document.getElementById("nhaUpd"))return;
+  const d=document.createElement("div"); d.id="nhaUpd"; d.className="nha-upd"; d.setAttribute("role","status");
+  d.innerHTML=`<div class="nha-upd-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></div><div class="nha-upd-tx">Hay una versión nueva<small>Toca «Actualizar» para verla</small></div><button class="nha-upd-bt" onclick="nhaActualizarApp()">Actualizar</button><button class="nha-upd-x" aria-label="Cerrar el aviso" onclick="nhaCerrarAvisoVersion()">✕</button>`;
+  document.body.appendChild(d);
+}
+function nhaActualizarApp(){
+  try{ const base=location.href.split("#")[0].replace(/([?&])_v=\d+&?/,"$1").replace(/[?&]$/,""); location.replace(base+(base.includes("?")?"&":"?")+"_v="+Date.now()); }
+  catch(e){ location.reload(); }
+}
+function nhaCerrarAvisoVersion(){ NHA_UPD_CERRADO=true; const d=document.getElementById("nhaUpd"); if(d)d.remove(); }
+
+setTimeout(nhaComprobarVersion,4000);
+setInterval(nhaComprobarVersion,3*60*1000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden)nhaComprobarVersion(); });
 nhaArrancar();

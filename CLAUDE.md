@@ -109,6 +109,9 @@ lenguaje sencillo antes de aplicarlos.
 - Desde v46.27: «Invitar a alguien» más sencillo: «Elige qué le interesa a tu amigo o familiar» (Pedir una ayuda · Ahorrar
   cada mes · Las dos cosas) y «Enviar por WhatsApp» en la misma tarjeta; fuera «Tu WhatsApp», «Así le llegará» y «Copiar el
   mensaje»; el bono en una tarjeta verde, en positivo, sin lo del avalista. El enlace ya no lleva &w= (info/ lo sigue leyendo).
+- Desde v46.28: aviso «Hay una versión nueva» en la app de asociados (nhaComprobarVersion, final de app/app.js): compara
+  NH_APP_V de app/index.html publicado con el del móvil (al abrir, al volver a la app y cada 3 min); «Actualizar» recarga con
+  _v= sin perder ?c=; ✕ lo oculta mientras siga abierta. Al versionar, NH_APP_V de app/index.html debe subir con el ?v=.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## REGLAS CRÍTICAS (no romper nunca)

@@ -419,3 +419,13 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 .nha-input{width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #CFC6B8;border-radius:12px;font-size:16px;background:#fff}
 .nha-btn-wa{display:block;width:100%;margin-top:12px;padding:14px;border:none;border-radius:14px;background:#25D366;color:#fff;font:inherit;font-size:16px;font-weight:800;cursor:pointer}
 .nha-btn-sec{display:block;width:100%;margin-top:8px;padding:12px;border:1.5px solid #1B4332;border-radius:14px;background:#fff;color:#1B4332;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+/* v46.28: aviso «Hay una versión nueva» (verde, encima de la barra de abajo) */
+.nha-upd{position:fixed;left:12px;right:12px;max-width:476px;margin:0 auto;bottom:calc(84px + env(safe-area-inset-bottom));z-index:95;border-radius:16px;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:10px;background:#1B4332;color:#fff;box-shadow:0 6px 24px rgba(0,0,0,.18);animation:nhaUpdSube .25s ease-out}
+body:not(:has(.nha-nav)) .nha-upd{bottom:calc(16px + env(safe-area-inset-bottom))}
+@keyframes nhaUpdSube{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.nha-upd-ic{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nha-upd-ic .ic{width:20px;height:20px}
+.nha-upd-tx{flex:1;font-size:15px;font-weight:800;line-height:1.25;color:#fff}
+.nha-upd-tx small{display:block;font-size:13.5px;font-weight:500;margin-top:2px;color:#fff}
+.nha-upd-bt{border:none;border-radius:12px;padding:11px 14px;background:#fff;color:#1B4332;font:inherit;font-size:15px;font-weight:800;white-space:nowrap;cursor:pointer}
+.nha-upd-x{border:none;background:none;width:32px;height:32px;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;cursor:pointer}
