@@ -569,7 +569,7 @@ function nhaBienvenidaHTML(m){
     +paso(3,icono,`Toca <b>Añadir</b>. Ya tienes el icono <b>NH</b> en tu móvil: ábrela siempre desde ahí.`);
   const and=`<div class="nha-so">📱 Android</div>`+(s.so==="android"&&NHA_PROMPT?_nhaBotonInstalar()+`<div class="nha-txt" style="margin:0 0 6px">Toca el botón y luego <b>Instalar</b>. Si no te sale, hazlo así:</div>`:"")+(s.so==="android"&&s.otra?`<div class="nha-aviso">Si este enlace se ha abierto dentro de otra app, toca los tres puntos y <b>«Abrir en Chrome»</b> primero.</div>`:"")
     +(s.samsung?paso(1,NHA_SVG.menu,`Toca el <b>menú</b> (las tres rayas, abajo).`)+paso(2,NHA_SVG.mas,`Toca <b>«Añadir página a»</b> y luego <b>«Pantalla de inicio»</b>.`)
-      :paso(1,NHA_SVG.puntos,`Toca los <b>tres puntos</b> de arriba a la derecha.`)+paso(2,NHA_SVG.mas,`Toca <b>«Añadir a pantalla de inicio»</b> (o <b>«Instalar aplicación»</b>) y luego <b>Añadir</b>.`))
+      :paso(1,NHA_SVG.puntos,`Toca los <b>tres puntos</b> de arriba a la derecha.`)+paso(2,NHA_SVG.mas,`Toca <b>«Añadir a pantalla de inicio»</b> (o <b>«Instalar aplicación»</b>) y luego <b>Instalar</b> o <b>Añadir</b>.`))
     +paso(3,icono,`Ya tienes el icono <b>NH</b> en tu móvil: ábrela siempre desde ahí.`);
   const pasos=s.so==="ios"?ios:s.so==="android"?and:ios+and;
   const otro=s.so==="ios"?and:s.so==="android"?ios:"";
