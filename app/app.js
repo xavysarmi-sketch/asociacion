@@ -579,7 +579,7 @@ function nhaBienvenidaHTML(m){
   const s=nhaSistema(), paso=(n,ic,t)=>`<div class="nha-paso"><div class="nha-paso-n">${n}</div><div class="nha-paso-t">${t}</div>${ic?`<div class="nha-paso-ic">${ic}</div>`:""}</div>`;
   const icono=`<span class="nha-mini-logo">NH</span>`;
   const ios=`<div class="nha-so">📱 iPhone</div>`+(s.so==="ios"&&s.otra?`<div class="nha-aviso">Si este enlace se ha abierto dentro de otra app, toca <b>«Abrir en Safari»</b> primero.</div>`:"")
-    +paso(1,NHA_SVG.share,`Toca el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba). En Safari está abajo; en Chrome, arriba.`)
+    +paso(1,NHA_SVG.share,`Toca el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba). En Safari está abajo; en Chrome, arriba. Si no ves Compartir, toca primero los tres puntos <b>···</b> de abajo.`)
     +paso(2,NHA_SVG.mas,`Baja un poco y toca <b>«Añadir a pantalla de inicio»</b>. <span style="font-weight:400">Si no aparece, es que se ha abierto dentro de WhatsApp: toca primero el icono de la brújula (abajo a la derecha) para abrirla en <b>Safari</b>.</span>`)
     +paso(3,icono,`Toca <b>Añadir</b>. Ya tienes el icono <b>NH</b> en tu móvil: ábrela siempre desde ahí.`);
   const and=`<div class="nha-so">📱 Android</div>`+(s.so==="android"&&NHA_PROMPT?_nhaBotonInstalar()+`<div class="nha-txt" style="margin:0 0 6px">Toca el botón y luego <b>Instalar</b>. Si no te sale, hazlo así:</div>`:"")+(s.so==="android"&&s.otra?`<div class="nha-aviso">Si este enlace se ha abierto dentro de otra app, toca los tres puntos y <b>«Abrir en Chrome»</b> primero.</div>`:"")
