@@ -429,3 +429,13 @@ body:not(:has(.nha-nav)) .nha-upd{bottom:calc(16px + env(safe-area-inset-bottom)
 .nha-upd-tx small{display:block;font-size:13.5px;font-weight:500;margin-top:2px;color:#fff}
 .nha-upd-bt{border:none;border-radius:12px;padding:11px 14px;background:#fff;color:#1B4332;font:inherit;font-size:15px;font-weight:800;white-space:nowrap;cursor:pointer}
 .nha-upd-x{border:none;background:none;width:32px;height:32px;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;cursor:pointer}
+/* v46.35: cada tarjeta de Inicio lleva a su detalle; resumen de la ayuda; próxima cuota; aviso de instalar en una línea */
+.nha-ver{display:block;width:100%;min-height:44px;margin-top:10px;padding:12px 0 2px;border:none;border-top:1px solid rgba(27,67,50,.14);background:none;text-align:left;font:inherit;font-size:15.5px;font-weight:800;color:#1B4332;cursor:pointer}
+.nha-toca .nha-ver{color:#fff;border-top-color:rgba(255,255,255,.28)}
+.nha-perm .nha-ver{color:#5C4708;border-top-color:rgba(122,95,18,.25)}
+.nha-s-prox{margin-top:8px;font-size:15px;line-height:1.4;color:#fff}
+.nha-resumen{font-size:17px;line-height:1.35;color:#111}
+.nha-resumen b{font-size:20px;color:#1B4332;white-space:nowrap}
+.nha-resumen small{display:block;font-size:14.5px;margin-top:2px;color:#444}
+.nha-inst-mini{display:flex;align-items:center;gap:10px;min-height:44px;margin:4px 0 12px;padding:10px 14px;border:1.5px solid #2D6A4F;border-radius:14px;background:#fff;color:#1B4332;font-size:15px;line-height:1.3;text-decoration:none}
+.nha-inst-mini .ic{width:20px;height:20px;flex-shrink:0}
