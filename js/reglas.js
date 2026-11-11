@@ -1183,6 +1183,9 @@ function subidaNivelReciente(m,rm,ry){
 }
 // v45 (Maestro v18.2 · PE-5, PE-7): permanencias que terminan (aviso un mes antes) y aniversarios
 // de la indefinida (cada 12 meses puede retirar el beneficio guardado). Solo lectura.
+// v46.37 (Maestro v18.62 · PE-5): si termina una permanencia de 12 o de 24 meses sin decisión anotada, se amplía sola al
+// tramo siguiente. De 36 no hay tramo siguiente automático (se decide con el coordinador).
+function permSiguiente(c){ return c===12?24:c===24?36:null; }
 function avisosPermanencia(rm,ry){
   const idx=_idxMes(rm,ry), out=[];
   const t=x=>MONTHS_FULL[x%12].toLowerCase()+" "+Math.floor(x/12);
@@ -1197,11 +1200,13 @@ function avisosPermanencia(rm,ry){
       }
       return;
     }
+    // v46.37 (PE-5): mes de vuelta atrás, el siguiente al último de la permanencia que se amplió sola
+    if(m.ampliaSola&&idx===m.ampliaSola.finIdx+1){ out.push({m,tipo:"vuelta",fin:m.ampliaSola.finIdx,txt:`Su permanencia se amplió sola de ${m.ampliaSola.de} a ${m.ampliaSola.a} meses. Durante ${t(idx)} aún puede decir que termina y sale sin perder beneficio (PE-5).`}); return; }
     const fin=_finCon(m,m.ciclo); // último mes de su permanencia (v45.33: + pausas)
     if(idx===fin-1||idx===fin){
-      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(beneficioGuardado(m))} €) o termina (cobra en ${t(fin+1)}).`});
+      out.push({m,tipo:"fin",fin,txt:`Su permanencia de ${m.ciclo} meses termina en ${t(fin)}. Acordad si amplía (puede retirar su beneficio guardado, hoy ${fmtEur(beneficioGuardado(m))} €) o termina (cobra en ${t(fin+1)}).${permSiguiente(m.ciclo)?` Si no hay decisión, se amplía sola a ${permSiguiente(m.ciclo)} meses (PE-5).`:""}`});
     }else if(idx>fin){
-      out.push({m,tipo:"pasada",fin,txt:`Su permanencia de ${m.ciclo} meses terminó en ${t(fin)} y no consta que la haya ampliado. Anota la decisión: amplía en ⚙️ Permanencia y aporte, o da la salida.`});
+      out.push({m,tipo:"pasada",fin,txt:permSiguiente(m.ciclo)?`Su permanencia de ${m.ciclo} meses terminó en ${t(fin)} sin decisión anotada: se amplía sola a ${permSiguiente(m.ciclo)} meses (PE-5). Anótalo con un toque, o da la salida si te ha dicho que termina.`:`Su permanencia de ${m.ciclo} meses terminó en ${t(fin)} y no consta que la haya ampliado. Anota la decisión: amplía en ⚙️ Permanencia y aporte, o da la salida.`});
     }
   });
   return out;

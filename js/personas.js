@@ -813,9 +813,40 @@ function avisosPermanenciaHTML(rm,ry){
   }
   return h+`</div>`;
 }
+// v46.37 (Maestro v18.62 · PE-5): aviso por WhatsApp a quien termina, ampliación sola con dos toques y mes de vuelta atrás.
+function avisarFinPermanencia(mid){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return; const de=m.ciclo, a=permSiguiente(de); if(!a)return;
+  const fin=_finCon(m,de), mes=i=>MONTHS_FULL[((i%12)+12)%12].toLowerCase(), nom=String(m.name||"").trim().split(/\s+/)[0]||"";
+  const antes=de===12?REGLAS.BENEFICIO_ANIO1:REGLAS.BENEFICIO_ANIO2, ahora=de===12?REGLAS.BENEFICIO_ANIO2:REGLAS.BENEFICIO_ANIO3;
+  const txt=`Hola ${nom} 👋 En ${mes(fin)} terminas tus ${de} meses en Nuevos Horizontes. Tienes dos opciones:\n\n1. Seguir: pasas a ${a} meses. Desde ${mes(fin+1)}, cada 50 € que aportes ganan ${ahora} € en vez de ${antes} €. ${de===12?"Tu beneficio de este año":"Tu beneficio guardado"} lo puedes cobrar o dejarlo guardado.\n\n2. Terminar: recibes tus aportes y tu beneficio entre el 5 y el 10 de ${mes(fin+1)}.\n\nSi no me dices nada antes de que acabe ${mes(fin)}, sigues automáticamente a ${a} meses. Y si en ${mes(fin+1)} cambias de idea, me avisas ese mismo mes y terminas sin perder nada.`;
+  window.open("https://wa.me/"+(_telWA(m.phone||"")||"")+"?text="+encodeURIComponent(txt),"_blank");
+}
+function ampliarSola(mid){
+  const m=DATA.members.find(x=>x.id===mid); if(!m)return; const de=m.ciclo, a=permSiguiente(de); if(!a)return;
+  const k="amp-"+mid;
+  if(!DESP[k]){ DESP[k]=true; render(); setTimeout(()=>{ if(DESP[k]){ delete DESP[k]; render(); } },4000); return; } // dos toques (sin confirm nativo)
+  delete DESP[k];
+  m.ampliaSola={de,a,finIdx:_finCon(m,de),fecha:new Date().toISOString().slice(0,10)};
+  m.ciclo=a;
+  save(); toast("Permanencia ampliada a "+a+" meses ✓ (PE-5)"); render();
+}
+// Mes de vuelta atrás: se deshace la ampliación y se abre la salida como al final de su permanencia (conserva todo el beneficio).
+function terminarVueltaAtras(mid){
+  const m=DATA.members.find(x=>x.id===mid), s=m&&m.ampliaSola; if(!s)return;
+  const sig=_mesDeIdx(s.finIdx+1), key=sig.anio+"-"+String(MONTHS.indexOf(sig.mes)+1).padStart(2,"0"), md=DATA.monthlyData&&DATA.monthlyData[key];
+  const ult=(md&&md.aportes&&md.aportes[m.id]===true)?s.finIdx+1:s.finIdx; // si ya aportó el mes ampliado, ese aporte también se le devuelve
+  m.ciclo=s.de; delete m.ampliaSola; save(); render();
+  openModal('baja',{mid:m.id,bajaUltimoIdx:ult});
+}
 // v45.1: decisión directa desde el aviso (ampliar, terminar o retirar el beneficio)
 function avisoBotonesHTML(a){
   const st="flex:1;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;";
+  // v46.37 (PE-5)
+  if(a.tipo==="vuelta")return `<div style="display:flex;gap:6px;margin-top:7px"><button onclick="terminarVueltaAtras('${esc(a.m.id)}')" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">↩ Dice que termina</button></div>`;
+  if(a.tipo==="pasada"&&permSiguiente(a.m.ciclo))return `<div style="display:flex;gap:6px;margin-top:7px">
+    <button onclick="ampliarSola('${esc(a.m.id)}')" style="${st}border:1.5px solid #1B4332;background:${DESP["amp-"+a.m.id]?"#1B4332":"#2D6A4F"};color:#fff">${DESP["amp-"+a.m.id]?"¿Seguro? Toca otra vez":"✓ Ampliar a "+permSiguiente(a.m.ciclo)+" meses"}</button>
+    <button onclick="openModal('baja',{mid:'${esc(a.m.id)}',bajaUltimoIdx:${a.fin}})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🏁 Termina</button></div>`;
+  const avisar=a.tipo==="fin"&&permSiguiente(a.m.ciclo)?`<button onclick="avisarFinPermanencia('${esc(a.m.id)}')" style="${st}border:1.5px solid #15803D;background:#15803D;color:#fff">💬 Avisar</button>`:"";
   if(a.tipo==="pausa")return `<div style="display:flex;gap:6px;margin-top:7px">
     <button onclick="pausaVuelve('${esc(a.m.id)}')" style="${st}border:1.5px solid #2D6A4F;background:#fff;color:#1B4332">✓ Vuelve</button>
     <button onclick="salidaDesdePausa('${esc(a.m.id)}')" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🏁 No vuelve</button></div>`; // v45.33
@@ -825,7 +856,7 @@ function avisoBotonesHTML(a){
     return `<div style="display:flex;gap:6px;margin-top:7px"><button onclick="openModal('retirada',{mid:'${esc(a.m.id)}',finIdx:${a.fin}})" style="${st}border:1.5px solid #2D6A4F;background:#2D6A4F;color:#fff">💶 Retira su beneficio</button></div>`;
   }
   return `<div style="display:flex;gap:6px;margin-top:7px">
-    <button onclick="openModal('ciclo',{mid:'${esc(a.m.id)}'})" style="${st}border:1.5px solid #2D6A4F;background:#fff;color:#1B4332">🔁 Amplía</button>
+    ${avisar}<button onclick="openModal('ciclo',{mid:'${esc(a.m.id)}'})" style="${st}border:1.5px solid #2D6A4F;background:#fff;color:#1B4332">🔁 Amplía</button>
     <button onclick="openModal('baja',{mid:'${esc(a.m.id)}',bajaUltimoIdx:${a.fin}})" style="${st}border:1.5px solid #C0492C;background:#fff;color:#A63A20">🏁 Termina</button></div>`;
 }
 function avisoSubidaNivelHTML(m,rm,ry){
