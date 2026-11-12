@@ -318,9 +318,13 @@ function nhaImportanteHTML(m,g){
 }
 
 // ── Aportes (y beneficios) ──
+function nhaSalHoyHTML(m){ // v46.39: «¿Y si salgo hoy?» debajo de lo acumulado; mismo cuadro que el simulador (siSalesHoyHTML)
+  if(m.type==="tercero"||m.baja||!m.joinMonth||typeof siSalesHoyHTML!=="function")return ""; const c=siSalesHoyHTML(m); if(!c)return "";
+  return `<div class="nha-card"><button class="nha-ver" style="margin-top:0;border-top:none;padding-top:0" onclick="NHA.salHoy=!NHA.salHoy;render()">¿Y si salgo hoy? ›</button>${NHA.salHoy?`<div style="margin-top:10px">${c}</div>`:""}</div>`;
+}
 function nhaAportesHTML(m){
   const a=nhaPartes(m,"aportes"), b=nhaPartes(m,"beneficios");
-  return nhaTitulo(m,"Mis aportes y beneficios","Lo que has aportado y tus beneficios.","wallet")+a.cuerpo.replace(/<div class="ft-card-title">💰 Tus aportes<\/div>/,"")+(b.cuerpo?`<div class="nha-sec">Beneficios</div>`+b.cuerpo:"")+nhaSimBotonesHTML(m,"ben");
+  return nhaTitulo(m,"Mis aportes y beneficios","Lo que has aportado y tus beneficios.","wallet")+a.cuerpo.replace(/<div class="ft-card-title">💰 Tus aportes<\/div>/,"")+(b.cuerpo?`<div class="nha-sec">Beneficios</div>`+b.cuerpo:"")+nhaSalHoyHTML(m)+nhaSimBotonesHTML(m,"ben");
 }
 // ── Ayudas ──
 function nhaAyudasHTML(m){
@@ -523,6 +527,7 @@ function nhaFaq(){
   const R=REGLAS, B=[R.BENEFICIO_ANIO1,R.BENEFICIO_ANIO2,R.BENEFICIO_ANIO3];
   const tabla=(cab,filas)=>`<table class="nha-tabla"><tr>${cab.map(c=>`<th>${c}</th>`).join("")}</tr>${filas.map(f=>`<tr>${f.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
   // v45.55 (revisión de Ángel 30/10/2026): mismas tablas y ejemplos que la Guía para asociados (puntos 4 y 9)
+  const mh=NHA.m, hoy=(mh&&mh.type!=="tercero"&&!mh.baja&&mh.joinMonth&&typeof siSalesHoyHTML==="function")?siSalesHoyHTML(mh):""; // v46.39: el ejemplo, con sus datos de hoy
   const lucia={ap:29*R.BLOQUE_APORTE, b1:12*B[0], b2:12*B[1], b3:5*B[2]};
   return [
     ["¿Qué es el aporte del mes?",`Es lo que pones cada mes en el fondo. Lo mínimo son <b>${R.APORTE_MINIMO} €</b>, y cada mes puedes elegir:`+tabla(["Puedes aportar"],[[R.APORTE_OPCIONES.map(v=>v+" €").join(" · ")]])+`Todo lo que aportas es tuyo: se te devuelve cuando termina tu permanencia.`],
@@ -535,10 +540,10 @@ function nhaFaq(){
     ["¿Cómo pido una ayuda?",`En <b>Ayudas → ¿Cuánto puedo pedir?</b> elige la cantidad y los meses. Si te encaja, toca <b>«Pedir esta ayuda»</b>. Al coordinador le llega tu petición, la revisa y te avisa. Si se aprueba, la verás en «Ayudas».`],
     ["¿Qué es la permanencia?",`Es el tiempo que te comprometes a estar en el fondo: <b>12, 24 o 36 meses</b>. Cuanto más larga, más beneficio ganas y más grandes son las ayudas que puedes pedir. Puedes ampliarla cuando quieras.`],
     ["¿Puedo descansar unos meses?",`Sí. Puedes pedir una <b>pausa de 1 a 3 meses</b> sin aportar. Habla con el coordinador.`],
-    ["¿Y si quiero salir del fondo?",`<b>Siempre recuperas todo lo que aportaste.</b> Del beneficio, te llevas el de los bloques de 12 meses que completaste; el del bloque que dejas a medias se queda en el fondo.`
+    ["Si salgo hoy, ¿cuánto recibo?",`<b>Siempre recuperas todo lo que aportaste.</b> Del beneficio, te llevas el de los bloques de 12 meses que completaste; el del bloque que dejas a medias se queda en el fondo.`
       +tabla(["Si te vas…","Recibes"],[["Antes de pagar 12 meses","Todo lo que aportaste"],["Con 12 a 23 meses pagados","Lo aportado + el beneficio de los meses 1 a 12"],["Con 24 a 35 meses pagados","Lo aportado + el beneficio de los meses 1 a 24"]])
-      +`<b>Ejemplo:</b> Lucía eligió 36 meses, pone ${R.BLOQUE_APORTE} € al mes y se va en el mes 29:`
-      +tabla(["Concepto","Importe","¿Se lo lleva?"],[["Sus aportes (29 × "+R.BLOQUE_APORTE+" €)",fmtEur(lucia.ap)+" €","Sí"],["Beneficio meses 1 a 12",lucia.b1+" €","Sí"],["Beneficio meses 13 a 24",lucia.b2+" €","Sí"],["Beneficio meses 25 a 29",lucia.b3+" €","No, quedó a medias"],["<b>Recibe</b>","<b>"+fmtEur(lucia.ap+lucia.b1+lucia.b2)+" €</b>",""]])],
+      +(hoy?`<b>Con tus datos de hoy:</b><div style="margin-top:8px">${hoy}</div>`:`<b>Ejemplo:</b> Lucía eligió 36 meses, pone ${R.BLOQUE_APORTE} € al mes y se va en el mes 29:`
+      +tabla(["Concepto","Importe","¿Se lo lleva?"],[["Sus aportes (29 × "+R.BLOQUE_APORTE+" €)",fmtEur(lucia.ap)+" €","Sí"],["Beneficio meses 1 a 12",lucia.b1+" €","Sí"],["Beneficio meses 13 a 24",lucia.b2+" €","Sí"],["Beneficio meses 25 a 29",lucia.b3+" €","No, quedó a medias"],["<b>Recibe</b>","<b>"+fmtEur(lucia.ap+lucia.b1+lucia.b2)+" €</b>",""]]))],
     ["¿Qué gano si traigo a alguien?",`Si eres asociado y traes a una persona nueva al fondo, te descontamos <b>${R.BONO_REFERIDO} €</b> de tu aporte de ese mes por cada una (como mucho ${R.REFERIDOS_MAX_MES} al mes).`],
     ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el coordinador. Si eres responsable de un grupo, ves también lo del mes de las personas de tu grupo.`],
   ];

@@ -608,6 +608,24 @@ function saveEditLoan(){
   closeModal();save();toast("Ayuda actualizada ✓");render();
 }
 const SIM_MAX_AYUDA=REGLAS.SIMULADOR_MAX_AYUDA; // v45.38: js/maestro.js · decisión de Ángel 03/10/2026: por la demanda, el simulador llega hasta 1.000 € (más adelante 2.000 y 3.000)
+// v46.39 (Ángel 12/11/2026): «Si sales hoy», UN solo cálculo (salidaV18, Maestro SA) y un solo cuadro para el simulador,
+// Preguntas frecuentes y «Mis aportes y beneficios» de la app de asociados. Enseña también el beneficio que dejaría
+// y cuántos aportes le faltan para no perderlo (completar el bloque de 12 o llegar al final de su permanencia).
+function siSalesHoyHTML(m){
+  const rep=_idxMes(DATA.reportMonth,DATA.reportYear), s=salidaV18(m,rep); if(!(s.capital>0))return "";
+  const fila=(l,v,o={})=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:${o.big?15.5:13.5}px;padding:${o.big?"6px 0 0":"2px 0"};${o.top?"border-top:1px solid #E3DDD2;margin-top:6px;":""}"><span style="${o.big?"font-weight:800;color:#1B4332":"color:#4A4A4A"}">${l}</span><b style="white-space:nowrap;${o.color?`color:${o.color}`:""};font-size:${o.big?18:13.5}px">${v}</b></div>`;
+  const fin=finPermanenciaIdx(m); let x=0;
+  if(s.perdido>0){ const b=12-(s.nPagados%12), f=(fin!=null&&fin>rep)?fin-rep:Infinity; x=Math.min(b,f); if(!isFinite(x))x=0; }
+  return `<div style="border:1.5px dashed #B5A88F;border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#FAF8F3;text-align:left">
+      <div style="font-size:15px;font-weight:800;color:#5C5242">Si sales hoy</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:2px 0 6px">Con tu último aporte en ${_txtIdx(rep)}</div>
+      ${fila(`Tus aportes (${s.nPagados} ${s.nPagados===1?"mes":"meses"})`,fmtEur(s.capital)+" €")}
+      ${s.aPagar?fila("Beneficio que ya es tuyo","+"+fmtEur(s.aPagar)+" €",{color:"#2D6A4F"}):""}
+      ${s.ayuda&&s.ayuda.importe?fila("Lo que te queda de tu ayuda","−"+fmtEur(s.ayuda.importe)+" €",{color:"#A63A20"}):""}
+      ${s.total>=0?fila("Recibirías",fmtEur(s.total)+" €",{big:true,top:true}):fila("Tendrías que pagar",fmtEur(-s.total)+" €",{big:true,top:true,color:"#A63A20"})}
+      ${s.perdido>0?`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:#EEF7F1;font-size:13px;line-height:1.4;color:#1B4332">${x>0?`<b>Te ${x===1?"falta":"faltan"} ${x} ${x===1?"aporte":"aportes"} para sumar ${fmtEur(s.perdido)} € de beneficio.</b>`:`<b>Tienes ${fmtEur(s.perdido)} € de beneficio de un tramo que aún no has completado.</b>`} Si sales antes, no se suman.</div>`:""}
+    </div>`;
+}
 function abrirSimulador(mid,tab){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
   SIM={mid,tab:tab||"ayuda",ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,_simMaxCuotas(m))),ap:50};
@@ -778,16 +796,7 @@ function simBenResHTML(m){
     </div>`;
   });
   // v46.10 (Ángel 07/11/2026): «Si sales ahora», con la misma cuenta que la salida real (salidaV18, Maestro SA)
-  { const s=salidaV18(m,rep);
-    if(s.capital>0){ h+=`<div style="border:1.5px dashed #B5A88F;border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#FAF8F3">
-      <div style="font-size:15px;font-weight:800;color:#5C5242">Si sales ahora</div>
-      <div style="font-size:12.5px;color:var(--muted);margin:2px 0 6px">Con tu último aporte en ${_txtIdx(rep)}</div>
-      ${fila("Tus aportes",fmtEur(s.capital)+" €")}
-      ${s.aPagar?fila("Tu beneficio",(s.aPagar?"+":"")+fmtEur(s.aPagar)+" €",{color:"#2D6A4F"}):""}
-      ${s.ayuda&&s.ayuda.importe?fila("Lo que te queda de tu ayuda","−"+fmtEur(s.ayuda.importe)+" €",{color:"#A63A20"}):""}
-      ${s.total>=0?fila("Recibes",fmtEur(s.total)+" €",{big:true,top:true}):fila("Tendrías que pagar",fmtEur(-s.total)+" €",{big:true,top:true,color:"#A63A20"})}
-      ${s.perdido>0?`<div style="font-size:12.5px;color:#A63A20;margin-top:4px">Pierdes ${fmtEur(s.perdido)} € de beneficio ${m.ciclo===0?"del año que aún no has completado":"por salir antes de terminar tu permanencia"}.</div>`:""}
-    </div>`; } }
+  h+=siSalesHoyHTML(m); // v46.39: el mismo cuadro que en Preguntas y en «Mis aportes y beneficios»
   // v45.10: «¿Tengo que aportar siempre lo mismo?» va al final, después de los cuadros
   h+=`<button onclick="DESP['sim-var']=!DESP['sim-var'];render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;margin:0 0 ${ab2?0:12}px;padding:11px 14px;border-radius:${ab2?"12px 12px 0 0":"12px"};border:1.5px solid #C9A227;background:#FFF8E1;color:#5C4A00">
       <span style="font-size:20px">🔀</span><span style="flex:1;font-size:14px;font-weight:800">¿Tengo que aportar siempre lo mismo? <span style="font-weight:600;font-size:12.5px;opacity:.8">Toca aquí</span></span>
