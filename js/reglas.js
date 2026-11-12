@@ -1535,7 +1535,7 @@ function avalTexto(m){ const a=avalDe(m); return !a?"sin aval anotado":a.fundado
 // SA-10 paso 4: lo que no cubren su beneficio y sus aportes lo paga su aval; si es fundador, el fondo.
 function destinoFaltaTexto(m){ const a=avalDe(m);
   return !a?"pasa a su aval (⚠️ sin anotar: anótalo en ⚙️ Permanencia y aporte)":a.fundador?"lo asume el fondo (fundador, sin aval)":`pasa a su aval: <b>${escH(a.m?a.m.name:a.nombre)}</b>`; }
-function avisoMesesPorSaldo(saldo){ return saldo>REGLAS.AVISO_SALDO_3_MESES?3:saldo>REGLAS.AVISO_SALDO_2_MESES?2:1; } // SA-1 · v45.38: js/maestro.js
+function avisoMesesPorSaldo(saldo){ return REGLAS.AVISO_MESES; } // v46.40 (Maestro v18.64): un mes para todos; ya no depende del saldo · // SA-1 · v45.38: js/maestro.js
 // Salida con las reglas v18. 'ultimoIdx' = último mes en que aporta. Se paga el día 5 del mes
 // siguiente (PE-5, SA-5). Al terminar la permanencia conserva todo el beneficio; antes de tiempo
 // (o saliendo de la indefinida) solo el de los años completos = 12 aportes pagados (SA-2/3/4).

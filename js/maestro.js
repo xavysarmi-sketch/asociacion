@@ -25,8 +25,8 @@ const REGLAS=Object.freeze({
   AYUDA_MAX: 3000,                      // AY-5 · máximo absoluto de una ayuda
   SIMULADOR_MAX_AYUDA: 1000,            // decisión de Ángel 03/10/2026: el simulador llega hasta 1.000 €
   // ── Salidas (SA) ──
-  AVISO_SALDO_2_MESES: 3000,            // SA-1 · con más de 3.000 € de saldo, 2 meses de aviso
-  AVISO_SALDO_3_MESES: 6000,            // SA-1 · con más de 6.000 €, 3 meses (si no, 1 mes)
+  AVISO_MESES: 1,                       // SA-1 (Maestro v18.64, 12/11/2026): un mes de aviso para todos, con cualquier saldo. Antes: · con más de 3.000 € de saldo, 2 meses de aviso
+  AVISO_DIA_CORTE: 15,                  // SA-1 (v18.64): el aviso vale para el mes si llega hasta este día; desde el siguiente, para el mes siguiente. Antes: · con más de 6.000 €, 3 meses (si no, 1 mes)
   // ── Bonus por referido (BO) ──
   BONO_REFERIDO: 10,                    // BO · € por cada referido del mes (los asume el fondo)
   REFERIDOS_MAX_MES: 3,                 // BO · como mucho 3 referidos por mes

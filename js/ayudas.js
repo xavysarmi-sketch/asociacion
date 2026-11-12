@@ -624,6 +624,7 @@ function siSalesHoyHTML(m){
       ${s.ayuda&&s.ayuda.importe?fila("Lo que te queda de tu ayuda","−"+fmtEur(s.ayuda.importe)+" €",{color:"#A63A20"}):""}
       ${s.total>=0?fila("Recibirías",fmtEur(s.total)+" €",{big:true,top:true}):fila("Tendrías que pagar",fmtEur(-s.total)+" €",{big:true,top:true,color:"#A63A20"})}
       ${s.perdido>0?`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:#EEF7F1;font-size:13px;line-height:1.4;color:#1B4332">${x>0?`<b>Te ${x===1?"falta":"faltan"} ${x} ${x===1?"aporte":"aportes"} para sumar ${fmtEur(s.perdido)} € de beneficio.</b>`:`<b>Tienes ${fmtEur(s.perdido)} € de beneficio de un tramo que aún no has completado.</b>`} Si sales antes, no se suman.</div>`:""}
+      <div style="font-size:12.5px;color:var(--muted);margin-top:8px">Para salir hay que avisar con ${REGLAS.AVISO_MESES} mes de antelación, hasta el día ${REGLAS.AVISO_DIA_CORTE}.</div>
     </div>`;
 }
 function abrirSimulador(mid,tab){
