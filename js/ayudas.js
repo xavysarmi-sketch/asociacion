@@ -615,7 +615,7 @@ function siSalesHoyHTML(m){
   const rep=_idxMes(DATA.reportMonth,DATA.reportYear), s=salidaV18(m,rep); if(!(s.capital>0))return "";
   const fila=(l,v,o={})=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:${o.big?15.5:13.5}px;padding:${o.big?"6px 0 0":"2px 0"};${o.top?"border-top:1px solid #E3DDD2;margin-top:6px;":""}"><span style="${o.big?"font-weight:800;color:#1B4332":"color:#4A4A4A"}">${l}</span><b style="white-space:nowrap;${o.color?`color:${o.color}`:""};font-size:${o.big?18:13.5}px">${v}</b></div>`;
   const fin=finPermanenciaIdx(m); let x=0;
-  if(s.perdido>0){ const b=12-(s.nPagados%12), f=(fin!=null&&fin>rep)?fin-rep:Infinity; x=Math.min(b,f); if(!isFinite(x))x=0; }
+  if(s.perdido>0){ const b=12-(s.nPagados%12), f=(fin!=null&&fin>=rep)?fin-rep+(_aportePagadoKey(m,_keyDeIdx(rep))?0:1):Infinity; x=Math.min(b,f); if(!isFinite(x))x=0; }
   return `<div style="border:1.5px dashed #B5A88F;border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#FAF8F3;text-align:left">
       <div style="font-size:15px;font-weight:800;color:#5C5242">Si sales hoy</div>
       <div style="font-size:12.5px;color:var(--muted);margin:2px 0 6px">Con tu último aporte en ${_txtIdx(rep)}</div>
