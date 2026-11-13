@@ -1115,3 +1115,280 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 .doc-ayc td{padding:2px 4px;border-bottom:1px solid #EEE7DC;vertical-align:top}
 .doc-ayc tr:last-child td{border-bottom:none}
 .doc-ayc td.n{text-align:right;white-space:nowrap;width:1%}
+
+/* ── v46.42 · Administración editorial en iPad y ordenador ────────────────
+   Solo cambia la presentación de body.nh-admin desde 768 px. Teléfono,
+   app de asociados, documentos, datos, cálculos y funciones quedan fuera. */
+@keyframes nhAdminEntra{
+  from{opacity:.9;transform:translateY(8px)}
+  to{opacity:1;transform:none}
+}
+@keyframes nhAdminBarra{
+  from{opacity:.25;transform:scaleY(.12)}
+  to{opacity:1;transform:scaleY(1)}
+}
+
+@media screen and (min-width:768px){
+  body.nh-admin:not(.doc-abierto){
+    max-width:none;
+    margin:0;
+    min-height:100vh;
+    background:#F7F8F5;
+    color:#173F2D;
+  }
+  body.nh-admin:not(.doc-abierto)::before{
+    content:"";
+    position:fixed;
+    inset:0 auto 0 0;
+    width:88px;
+    z-index:80;
+    background:#123D2B;
+    box-shadow:8px 0 30px rgba(18,61,43,.08);
+  }
+  body.nh-admin:not(.doc-abierto) .header{
+    position:fixed;
+    z-index:91;
+    top:0;
+    left:88px;
+    right:0;
+    width:auto;
+    min-height:72px;
+    box-sizing:border-box;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    padding:14px 28px;
+    border:0;
+    border-radius:0;
+    background:rgba(255,255,255,.96);
+    box-shadow:0 1px 0 #DDE5DF;
+    text-align:left;
+    overflow:visible;
+    backdrop-filter:blur(18px);
+  }
+  body.nh-admin:not(.doc-abierto) .header::before{display:none}
+  body.nh-admin:not(.doc-abierto) .header .h-title{
+    margin:0;
+    color:#173F2D;
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:24px;
+    line-height:1.08;
+    letter-spacing:-.35px;
+  }
+  body.nh-admin:not(.doc-abierto) .header .h-date-row{
+    justify-content:flex-end;
+    flex-wrap:nowrap;
+    color:#173F2D;
+  }
+  body.nh-admin:not(.doc-abierto) .header .h-date-sel{
+    min-height:42px;
+    padding:8px 13px;
+    border:1px solid #C9D7CD;
+    border-radius:12px;
+    background:#fff;
+    color:#173F2D;
+    box-shadow:none;
+    transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
+  }
+  body.nh-admin:not(.doc-abierto) .header .h-date-sel:hover{
+    border-color:#7EA58C;
+    box-shadow:0 6px 18px rgba(23,63,45,.09);
+    transform:translateY(-1px);
+  }
+  body.nh-admin:not(.doc-abierto) .nav-inf{
+    position:fixed;
+    z-index:92;
+    top:96px;
+    bottom:auto;
+    left:0;
+    right:auto;
+    width:88px;
+    max-width:none;
+    margin:0;
+    padding:0 8px;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn{
+    position:relative;
+    flex:none;
+    width:72px;
+    min-height:64px;
+    padding:9px 4px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:5px;
+    border-radius:14px;
+    color:#D9E6DE;
+    font-size:11.5px;
+    line-height:1.1;
+    transition:background .22s ease,color .22s ease,transform .22s ease;
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn .ic{
+    width:23px;
+    height:23px;
+    transition:transform .22s ease;
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn:hover{
+    background:rgba(255,255,255,.09);
+    color:#fff;
+    transform:translateY(-1px);
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn:hover .ic{transform:scale(1.08)}
+  body.nh-admin:not(.doc-abierto) .nav-btn.on{
+    color:#fff;
+    background:#315F49;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn.on::before{
+    content:"";
+    position:absolute;
+    left:-8px;
+    top:15px;
+    width:3px;
+    height:34px;
+    border-radius:0 4px 4px 0;
+    background:#E3BE58;
+    transition:transform .25s cubic-bezier(.22,1,.36,1);
+  }
+  body.nh-admin:not(.doc-abierto) .content{
+    width:auto;
+    max-width:none;
+    min-height:calc(100vh - 72px);
+    box-sizing:border-box;
+    margin:72px 0 0 88px;
+    padding:28px clamp(24px,3.2vw,52px) 48px;
+  }
+  body.nh-admin:not(.doc-abierto) .content.tab-inicio,
+  body.nh-admin:not(.doc-abierto) .content.dk-ancho{max-width:none}
+  body.nh-admin:not(.doc-abierto) .ini-cols{
+    column-count:2;
+    column-gap:20px;
+  }
+  body.nh-admin:not(.doc-abierto) .ini-cols>*{
+    break-inside:avoid;
+    -webkit-column-break-inside:avoid;
+    animation:nhAdminEntra .32s cubic-bezier(.22,1,.36,1) both;
+  }
+  body.nh-admin:not(.doc-abierto) .ini-cols>*:nth-child(2){animation-delay:.03s}
+  body.nh-admin:not(.doc-abierto) .ini-cols>*:nth-child(3){animation-delay:.06s}
+  body.nh-admin:not(.doc-abierto) .ini-cols>*:nth-child(4){animation-delay:.09s}
+  body.nh-admin:not(.doc-abierto) .card,
+  body.nh-admin:not(.doc-abierto) .mes-card,
+  body.nh-admin:not(.doc-abierto) .cgt,
+  body.nh-admin:not(.doc-abierto) .mg-acc-head,
+  body.nh-admin:not(.doc-abierto) .ini-rapido,
+  body.nh-admin:not(.doc-abierto) .pl-fila{
+    border-color:#DCE5DE;
+    box-shadow:0 6px 22px rgba(23,63,45,.055);
+    transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease,background .22s ease;
+  }
+  body.nh-admin:not(.doc-abierto) :is(.card,.mes-card,.cgt,.mg-acc-head,.ini-rapido,.pl-fila):hover{
+    border-color:#B8CCBE;
+    box-shadow:0 12px 34px rgba(23,63,45,.095);
+    transform:translateY(-2px);
+  }
+  body.nh-admin:not(.doc-abierto) .ini-estado{
+    position:relative;
+    overflow:hidden;
+    border:0;
+    border-radius:22px;
+    background:#174B35!important;
+    box-shadow:0 16px 38px rgba(23,63,45,.16);
+  }
+  body.nh-admin:not(.doc-abierto) .ini-estado::after{
+    content:"";
+    position:absolute;
+    right:-55px;
+    top:-70px;
+    width:180px;
+    height:180px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:50%;
+    pointer-events:none;
+  }
+  body.nh-admin:not(.doc-abierto) .ini-est-tit{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:25px;
+    letter-spacing:-.3px;
+  }
+  body.nh-admin:not(.doc-abierto) .ini-fila{
+    border-radius:10px;
+    transition:background .2s ease,transform .2s ease;
+  }
+  body.nh-admin:not(.doc-abierto) .ini-fila:hover{
+    background:rgba(255,255,255,.19);
+    transform:translateX(3px);
+  }
+  body.nh-admin:not(.doc-abierto) .ini-rapido:hover .ic,
+  body.nh-admin:not(.doc-abierto) .mgmt-btn:hover .ic{transform:translateX(2px)}
+  body.nh-admin:not(.doc-abierto) :is(button,a,.ini-fila,.ini-aviso,.mg-acc-head){-webkit-tap-highlight-color:transparent}
+  body.nh-admin:not(.doc-abierto) .toast{bottom:28px}
+}
+
+@media screen and (min-width:1100px){
+  body.nh-admin:not(.doc-abierto)::before{width:236px}
+  body.nh-admin:not(.doc-abierto) .header{
+    left:236px;
+    min-height:78px;
+    padding:16px clamp(30px,3vw,50px);
+  }
+  body.nh-admin:not(.doc-abierto) .header .h-title{font-size:28px}
+  body.nh-admin:not(.doc-abierto) .nav-inf{
+    top:122px;
+    width:236px;
+    padding:0 15px;
+    gap:6px;
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn{
+    width:206px;
+    min-height:48px;
+    padding:11px 14px;
+    flex-direction:row;
+    justify-content:flex-start;
+    gap:13px;
+    border-radius:13px;
+    font-size:15.5px;
+  }
+  body.nh-admin:not(.doc-abierto) .nav-btn.on::before{
+    left:-15px;
+    top:10px;
+    height:28px;
+  }
+  body.nh-admin:not(.doc-abierto) .content{
+    margin-top:78px;
+    margin-left:236px;
+    min-height:calc(100vh - 78px);
+    padding-top:34px;
+  }
+  body.nh-admin:not(.doc-abierto) .ini-cols{
+    column-count:3;
+    column-gap:24px;
+  }
+  body.nh-admin:not(.doc-abierto) .dk-cob{
+    grid-template-columns:minmax(420px,500px) minmax(0,1fr);
+    gap:28px;
+  }
+  body.nh-admin:not(.doc-abierto) .dk-der{
+    top:96px;
+    max-height:calc(100vh - 124px);
+    border:1px solid #DCE5DE;
+    box-shadow:0 10px 30px rgba(23,63,45,.08);
+  }
+}
+
+@media screen and (min-width:1500px){
+  body.nh-admin:not(.doc-abierto) .content{max-width:1480px}
+  body.nh-admin:not(.doc-abierto) .ini-cols{column-count:3;column-gap:28px}
+}
+
+@media screen and (min-width:768px) and (prefers-reduced-motion:reduce){
+  body.nh-admin:not(.doc-abierto) .ini-cols>*{animation:none!important}
+}
