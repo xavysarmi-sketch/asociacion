@@ -89,4 +89,20 @@ function permanenciasGestionHTML(){
   });
   return h+`</div>`;
 }
+// v46.45 · Personas de confianza (Maestro v18.69 · SA-11): solo consulta; se cambian desde la ficha o aprobando la petición en Inicio
+function autorizadosGestionHTML(asoc){
+  const L=(asoc||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"es"));
+  const con=L.filter(m=>m.autorizado).length, pend=autorizadoPeticiones().length, ab=!!DESP["mg-aut"];
+  let h=`<div class="mg-acc-head" onclick="DESP['mg-aut']=!DESP['mg-aut'];render()">
+      <span>🤝 Personas de confianza <span class="mg-acc-num${pend?" aviso":""}">${pend?pend+" por aprobar · ":""}${con} de ${L.length}</span></span>
+      <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
+  if(!ab)return h;
+  h+=`<div class="mes-card" style="margin:8px 0 14px">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.45">Quien puede recoger el dinero de cada asociado si sale y no puede venir. Toca una persona para abrir su ficha (⚙️ Gestión › 🤝).</div>`;
+  L.forEach(m=>{ const a=m.autorizado, p=autorizadoPendienteDe(m);
+    h+=`<div onclick="openFicha('${esc(m.id)}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid #EFEAE0">
+      <span style="font-size:14.5px;font-weight:700;color:var(--dark);min-width:0">${escH(m.name)}</span>
+      <span style="font-size:13.5px;text-align:right;${a?"color:var(--dark)":"color:var(--muted)"}">${a?escH(a.nombre):"Sin elegir"}${p?`<br><span style="color:#8A4F12;font-weight:700">Pide: ${escH(String(p.nombre||"").slice(0,80))}</span>`:""}</span></div>`; });
+  return h+`</div>`;
+}
 function irPermanencias(){ TAB="manage"; FICHA_ID=null; DESP["mg-perm"]=true; PERM_FIL="todas"; render(); setTimeout(()=>{ const e=document.getElementById("mg-perm-head"); if(e)e.scrollIntoView({behavior:"smooth",block:"start"}); },40); }

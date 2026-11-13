@@ -100,11 +100,13 @@ function inicioHTML(){
   h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">⚠ Avisos</div>
     ${_avisoManana?`<button class="ini-aviso" style="color:#8A4F12" onclick="irAlMes(${_iHoy})">⏰ Mañana, día ${_diaAv}, la app pasa a ${_mesNom(_iHoy+1)}. Cierra ${_mesNom(_iHoy)} hoy ›</button>`:""}
     ${_sinCerrarAnt?`<button class="ini-aviso" style="color:#8A4F12" onclick="irAlMes(${_iAnt})">🔒 ${_txtIdx(_iAnt).split(" ")[0].replace(/^./,c=>c.toUpperCase())} sigue sin cerrar: ciérralo ›</button>`:""}
+    ${autorizadoPeticiones().length?`<button class="ini-aviso" onclick="document.getElementById('ini-aut')?.scrollIntoView({behavior:'smooth',block:'start'})">🤝 Persona de confianza: <b>${autorizadoPeticiones().length} por aprobar</b> ›</button>`:""}
     <button class="ini-aviso" onclick="TAB='ayudas';render();window.scrollTo(0,0)">📝 Solicitudes de ayuda: <b>${nSol?nSol+" pendiente"+(nSol>1?"s":""):"ninguna pendiente"}</b> ›</button>
     ${banner?`<button class="ini-aviso" style="color:#8A4F12" onclick="TAB='mes';render();window.scrollTo(0,0)">⚠️ El retorno del mes no cuadra: revísalo en Cobros ›</button>`:""}
     ${avisos?"":`<div class="ini-sin">Sin avisos de permanencias ni salidas este mes.</div>`}
   </div>`;
   h+=avisos;
+  { const a=autorizadoPeticionesHTML(); if(a)h+=`<div id="ini-aut">${a}</div>`; } // v46.45 · SA-11
   // Accesos rápidos
   const q=(ic,txt,fn)=>`<button class="ini-rapido" onclick="${fn}">${ic} ${txt}</button>`;
   h+=`<div class="ini-rapidos">

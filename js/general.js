@@ -882,6 +882,8 @@ function _renderPantalla(){
       <span class="mg-acc-fl ir" aria-hidden="true"></span></div>`;
     // ⏳ v45.28: fechas de fin de permanencia de los asociados (solo lectura)
     h+=permanenciasGestionHTML();
+    // 🤝 v46.45: personas de confianza (SA-11) — quién la tiene, quién no y cuáles están por aprobar
+    h+=autorizadosGestionHTML(asocAll);
     // 📞 v45.22: teléfonos de todos (para tenerlos guardados, sin enviar nada)
     h+=telefonosGestionHTML(asocAll,tercAll);
     // 🧾 v45.23: gastos administrativos (Maestro v18.9 · FO-6)
@@ -948,6 +950,7 @@ function _renderPantalla(){
     if(MODAL.type==="cg_lista")h+=cgListaModalHTML(); // v45.85
     if(MODAL.type==="cg_envio")h+=cgEnvioModalHTML(); // v46.7
     if(MODAL.type==="nombre")h+=nombreModalHTML(); // v45.50
+    if(MODAL.type==="autorizado")h+=autorizadoModalHTML(); // v46.45 · SA-11
     if(MODAL.type==="app_cola")h+=appColaModalHTML(); // v45.52
     if(MODAL.type==="tel_import")h+=telImportModalHTML(); // v45.73
     if(MODAL.type==="app_tarjeta")h+=appTarjetaModalHTML(); // v45.52
