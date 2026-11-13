@@ -20,6 +20,35 @@ function _fechaCorta(iso){
 // ── Inicio ─────────────────────────────────────────────────────────────────
 // Lo que hay que saber al abrir: cómo va el mes, el dinero del mes, los avisos y accesos rápidos.
 // Solo calcula y pinta (regla crítica 7: el render no escribe datos).
+function _inicioDashboardHTML({rm,ry,d,nSol,asocMes,aud,faltan}){
+  const actual=_idxMes(rm,ry), meses=[];
+  for(let i=actual-4;i<=actual;i++){
+    const f=_mesDeIdx(i), r=resumenMesDoc(f.mes,f.anio);
+    meses.push({txt:MONTHS_FULL[MONTHS.indexOf(f.mes)].slice(0,3),valor:Math.max(0,r.totCob||0)});
+  }
+  const max=Math.max(1,...meses.map(x=>x.valor));
+  const barras=meses.map((x,i)=>`<div class="nhd-bar-item"><div class="nhd-bar-track"><i class="${i===3?'gold':''}" style="--nhd-h:${Math.max(8,Math.round(x.valor/max*100))}%"></i></div><span>${x.txt}</span></div>`).join("");
+  const r=resumenMesDoc(rm,ry), base=Math.max(1,(r.apCob||0)+(r.cuCob||0)+(r.recCob||0));
+  const pA=Math.round((r.apCob||0)/base*100), pC=Math.round((r.cuCob||0)/base*100), pO=Math.max(0,100-pA-pC);
+  const grupos=(DATA.gruposCierre||[]).length;
+  const kpi=(clase,titulo,valor,chip,fn)=>`<button class="nhd-kpi ${clase}" onclick="${fn}"><span>${titulo}</span><b>${valor}</b><em>${chip}</em></button>`;
+  return `<section class="nh-dash-desktop" aria-label="Resumen general">
+    <div class="nhd-head"><div><small>PANEL GENERAL · ACTUALIZADO AHORA</small><h1>Situación de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()}</h1><p>Estado, dinero y actividad en una sola pantalla.</p></div><div class="nhd-month">● ${MONTHS_FULL[MONTHS.indexOf(rm)]} ${ry}⌄</div></div>
+    <div class="nhd-filtros"><button class="on">Todo</button><button onclick="TAB='mes';render()">Cobros</button><button onclick="TAB='ayudas';render()">Ayudas</button><button onclick="TAB='asociados';render()">Personas</button></div>
+    <div class="nhd-kpis">
+      ${kpi('cobrado','Cobrado',fmtEur(d.cobrado)+' €','↑ este mes',"TAB='mes';render()")}
+      ${kpi('pendiente','Pendiente',fmtEur(d.porCobrar)+' €',faltan+' cobros',"TAB='mes';render()")}
+      ${kpi('disponible','Disponible',fmtEur(d.disponible)+' €',aud.errores.length?'Revisar':'Todo cuadra',"TAB='ayudas';render()")}
+      ${kpi('solicitudes','Solicitudes',String(nSol),nSol?'Revisar':'Al día',"TAB='ayudas';render()")}
+    </div>
+    <div class="nhd-visuals">
+      <article class="nhd-chart"><header><b>Evolución de cobros</b><span>Últimos 5 meses</span></header><div class="nhd-bars">${barras}</div></article>
+      <article class="nhd-distrib"><h2>Distribución del mes</h2><div class="nhd-donut"><img src="assets/nh-donut-base.svg" alt=""><img class="progreso" src="assets/nh-donut-progreso.svg" alt=""><b>${fmtEur(d.disponible)} €</b></div><div class="nhd-leyenda"><p><i></i>Aportes <b>${pA} %</b></p><p><i></i>Cuotas <b>${pC} %</b></p><p><i></i>Otros <b>${pO} %</b></p></div></article>
+    </div>
+    <div class="nhd-resumen"><button onclick="TAB='mes';render()"><i>${grupos}</i><span><b>Grupos activos</b><small>Cobros organizados</small></span></button><button onclick="TAB='asociados';render()"><i>${asocMes.length}</i><span><b>Personas activas</b><small>${faltan} cobros pendientes</small></span></button><button onclick="TAB='manage';AUDIT_OPEN=true;render()"><i class="ok">${aud.errores.length?'!':'✓'}</i><span><b>Auditoría ${aud.errores.length?'por revisar':'correcta'}</b><small>${aud.errores.length?aud.errores.length+' diferencias':'Sin diferencias'}</small></span></button></div>
+    <p class="nhd-foot">Solo escritorio · La versión móvil no se modifica</p>
+  </section>`;
+}
 function inicioHTML(){
   const rm=DATA.reportMonth, ry=DATA.reportYear, mesTxt=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()+" "+ry;
   const md=(DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)])||{};
@@ -75,7 +104,7 @@ function inicioHTML(){
     ${q("👤","Dar de alta","openModal('member',{preset:'asociado'})")}
     ${q("🔍","Buscar","TAB='asociados';FICHA_ID=null;render();setTimeout(()=>{const s=document.getElementById('asoc-search');if(s)s.focus();},60)")}
   </div>`;
-  return h;
+  return _inicioDashboardHTML({rm,ry,d,nSol,asocMes,aud,faltan})+`<div class="nh-inicio-legacy">${h}</div>`;
 }
 
 // ── Ayudas ─────────────────────────────────────────────────────────────────

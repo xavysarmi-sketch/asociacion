@@ -1392,3 +1392,67 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 @media screen and (min-width:768px) and (prefers-reduced-motion:reduce){
   body.nh-admin:not(.doc-abierto) .ini-cols>*{animation:none!important}
 }
+
+/* ── v46.43 · Opción 3 animada de Figma, solo Administración ≥768 px ── */
+.nh-dash-desktop{display:none}
+@keyframes nhdRise{from{opacity:.9;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes nhdBar{from{opacity:.88;transform:scaleY(.08)}to{opacity:1;transform:scaleY(1)}}
+@keyframes nhdDonut{from{opacity:.88;transform:rotate(70deg)}to{opacity:1;transform:none}}
+
+@media screen and (min-width:768px){
+  body.nh-admin:not(.doc-abierto) .nh-dash-desktop{display:block;font-family:Inter,"Segoe UI",Arial,sans-serif;color:#173f2d}
+  body.nh-admin:not(.doc-abierto) .content.tab-inicio .ini-cols{display:block;column-count:initial;column-gap:0}
+  body.nh-admin:not(.doc-abierto) .content.tab-inicio .nh-dash-desktop{width:100%;animation:none!important}
+  body.nh-admin:not(.doc-abierto) .nh-inicio-legacy{display:none}
+  body.nh-admin:not(.doc-abierto) .content.tab-inicio{padding:24px clamp(20px,2.4vw,34px) 38px;background:#eef3ef url('../assets/nh-luz-ambiental.svg') right -180px/500px 500px no-repeat;min-height:calc(100vh - 72px)}
+  .nhd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:12px}
+  .nhd-head small{display:block;color:#8a4a24;font-size:10px;line-height:1.2;font-weight:800;letter-spacing:.04em;margin-bottom:7px}
+  .nhd-head h1{margin:0;font-size:clamp(25px,3vw,31px);line-height:1.05;letter-spacing:-.035em;animation:nhdRise .42s ease-out both}
+  .nhd-head p{margin:7px 0 0;color:#5b685f;font-size:14px}
+  .nhd-month{flex:none;min-width:176px;padding:13px 16px;border:1px solid #d4e0d7;border-radius:13px;background:#fff;font-size:12px;font-weight:700;box-sizing:border-box}
+  .nhd-filtros{display:flex;gap:8px;margin:12px 0 16px}
+  .nhd-filtros button{min-height:34px;padding:7px 15px;border:1px solid #c9d8cd;border-radius:18px;background:#fff;color:#315644;font:700 11px/1 Inter,"Segoe UI",sans-serif;cursor:pointer;transition:.2s ease}
+  .nhd-filtros button:hover{transform:translateY(-2px);box-shadow:0 7px 16px rgba(23,63,45,.1)}
+  .nhd-filtros button.on{border-color:#173f2d;background:#173f2d;color:#fff}
+  .nhd-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
+  .nhd-kpi{position:relative;min-height:108px;padding:16px;text-align:left;border:1px solid #e0e9e2;border-radius:18px;background:#fff;color:#173f2d;box-shadow:0 9px 18px rgba(23,63,45,.08);cursor:pointer;animation:nhdRise .54s cubic-bezier(.22,1,.36,1) both;transition:transform .2s ease,box-shadow .2s ease}
+  .nhd-kpi:nth-child(2){animation-delay:.09s}.nhd-kpi:nth-child(3){animation-delay:.18s}.nhd-kpi:nth-child(4){animation-delay:.27s}
+  .nhd-kpi:hover{transform:translateY(-4px);box-shadow:0 15px 26px rgba(23,63,45,.13)}
+  .nhd-kpi>span{display:block;color:#5b685f;font-size:12px;font-weight:600}.nhd-kpi>b{display:block;margin-top:11px;font-size:26px;line-height:1;font-weight:800;letter-spacing:-.03em}
+  .nhd-kpi>em{position:absolute;top:13px;right:13px;min-width:70px;padding:7px 9px;border-radius:14px;background:#dff1e6;color:#315c48;text-align:center;font-size:9px;font-style:normal;font-weight:800}
+  .nhd-kpi.pendiente>em,.nhd-kpi.solicitudes>em{background:#f4ebd5}
+  .nhd-visuals{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(260px,.9fr);gap:15px;margin-bottom:16px}
+  .nhd-chart,.nhd-distrib{min-height:278px;margin:0;padding:16px;border:1px solid #e0e9e2;border-radius:20px;background:#fff;box-shadow:0 9px 18px rgba(23,63,45,.08);box-sizing:border-box}
+  .nhd-chart header{display:flex;justify-content:space-between;align-items:center}.nhd-chart header b,.nhd-distrib h2{margin:0;font-size:16px}.nhd-chart header span{color:#6c786f;font-size:10px}
+  .nhd-bars{height:208px;display:flex;align-items:flex-end;justify-content:space-around;gap:16px;padding:18px 14px 0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 47px,#dde7df 48px,#dde7df 49px)}
+  .nhd-bar-item{height:100%;flex:1;max-width:64px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:9px;color:#6c786f;font-size:10px;font-weight:700}
+  .nhd-bar-track{width:56px;height:174px;border-radius:10px;background:#eef3ef;display:flex;align-items:flex-end;overflow:hidden}
+  .nhd-bar-track i{display:block;width:100%;height:var(--nhd-h);border-radius:10px;background:#2d7654;transform-origin:bottom;animation:nhdBar .42s ease-out .62s both}.nhd-bar-track i.gold{background:#d1af59}
+  .nhd-distrib{position:relative}.nhd-donut{position:absolute;left:22px;top:67px;width:138px;height:138px}.nhd-donut img{position:absolute;inset:0;width:100%;height:100%}.nhd-donut img.progreso{animation:nhdDonut .48s ease-out .72s both}.nhd-donut b{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}
+  .nhd-leyenda{position:absolute;left:184px;right:16px;top:65px}.nhd-leyenda p{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:8px;margin:0;padding:10px 0;color:#5b685f;font-size:11px}.nhd-leyenda i{width:10px;height:10px;border-radius:5px;background:#2d7654}.nhd-leyenda p:nth-child(2) i{background:#80bd99}.nhd-leyenda p:nth-child(3) i{background:#d5b566}.nhd-leyenda b{color:#173f2d}
+  .nhd-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.nhd-resumen button{min-height:88px;display:flex;align-items:center;gap:16px;padding:15px;border:1px solid #e0e9e2;border-radius:17px;background:#fff;color:#173f2d;text-align:left;cursor:pointer;animation:nhdRise .42s ease-out .84s both;transition:.2s ease}.nhd-resumen button:nth-child(2){animation-delay:.94s}.nhd-resumen button:nth-child(3){animation-delay:1.04s}.nhd-resumen button:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(23,63,45,.1)}
+  .nhd-resumen button>i{width:50px;height:50px;display:grid;place-items:center;flex:none;border-radius:15px;background:#eef3ef;color:#2d7654;font-style:normal;font-size:16px;font-weight:800}.nhd-resumen button>i.ok{background:#dff1e6}.nhd-resumen span{display:grid;gap:7px}.nhd-resumen b{font-size:13px}.nhd-resumen small{color:#6c786f;font-size:11px}
+  .nhd-foot{margin:10px 0 0;color:#748078;font-size:10px}
+}
+
+@media screen and (min-width:1100px){
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio)::before{width:230px;top:58px}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .header{left:0;min-height:58px;height:58px;padding:11px 24px;background:#fcfefc}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .header .h-title{font-family:Inter,"Segoe UI",sans-serif;font-size:11px;letter-spacing:.02em;color:#536158}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .header .h-title::before{content:"● ";color:#38a56b}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .header .h-date-row{display:none}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .nav-inf{top:170px;width:230px;padding:0 14px}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .nav-inf::before{content:"NH    Nuevos Horizontes\A        ADMINISTRACIÓN";white-space:pre;position:fixed;left:20px;top:82px;width:200px;color:#fff;font:800 15px/1.35 Inter,"Segoe UI",sans-serif;letter-spacing:0}.nav-inf::before{pointer-events:none}
+  body.nh-admin:not(.doc-abierto):has(.content.tab-inicio) .content.tab-inicio{margin:58px 0 0 230px;min-height:calc(100vh - 58px);padding:24px 30px 28px}
+  .nhd-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+}
+
+@media screen and (min-width:1500px){
+  body.nh-admin:not(.doc-abierto) .content.tab-inicio{max-width:none;padding-left:38px;padding-right:38px}
+}
+
+@media screen and (min-width:768px) and (max-width:999px){
+  .nhd-visuals{grid-template-columns:1fr}.nhd-distrib{min-height:230px}.nhd-resumen{grid-template-columns:1fr 1fr}.nhd-resumen button:last-child{grid-column:1/-1}.nhd-head{align-items:flex-end}.nhd-month{min-width:150px}
+}
+
+@media (prefers-reduced-motion:reduce){.nh-dash-desktop *{animation:none!important;transition:none!important}}
