@@ -58,7 +58,7 @@ function _inicioDashboardHTML({rm,ry,d,nSol,asocMes,aud,faltan}){
       <aside class="nhd-mini"><article class="nhd-chart"><header><b>Evolución de cobros</b><span>5 meses</span></header><div class="nhd-bars">${barras}</div></article><article class="nhd-distrib"><h2>Lo cobrado</h2><div class="nhd-donut" style="--nhd-pa:${pA}%;--nhd-pc:${pA+pC}%"><b>${fmtEur(d.cobrado)} €</b></div><div class="nhd-leyenda"><p><i></i>Aportes <b>${pA}%</b></p><p><i></i>Cuotas <b>${pC}%</b></p><p><i></i>Otros <b>${pO}%</b></p></div></article></aside>
     </div>
     <div class="nhd-abajo"><section><header><h2>Avisos y trabajo pendiente</h2><button onclick="TAB='mes';render()">Ver cobros →</button></header><div class="nhd-aviso-grid"><button onclick="TAB='mes';render()"><i>${faltan}</i><span><b>Cobros pendientes</b><small>${fmtEur(d.porCobrar)} € por registrar</small></span></button><button onclick="TAB='ayudas';render()"><i>${nSol}</i><span><b>Solicitudes de ayuda</b><small>${nSol?'Necesitan revisión':'Ninguna pendiente'}</small></span></button><button onclick="TAB='manage';render()"><i>${cerrado?'✓':'!'}</i><span><b>Cierre y revisión</b><small>${cerrado?'Mes cerrado':estado}</small></span></button></div></section><section class="nhd-acciones"><h2>Acciones rápidas</h2><div><button onclick="TAB='mes';render()">${_icSVG('cash')}<span>Registrar cobro</span></button><button onclick="TAB='ayudas';SOL_FORM=true;render()">${_icSVG('hand')}<span>Nueva ayuda</span></button><button onclick="openModal('member',{preset:'asociado'})">${_icSVG('users')}<span>Nueva persona</span></button></div></section></div>
-    <p class="nhd-foot">Previsualización de ordenador · La vista móvil no cambia</p>
+    
   </section>`;
 }
 function inicioHTML(){
