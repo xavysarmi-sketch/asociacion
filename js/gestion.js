@@ -94,7 +94,7 @@ function autorizadosGestionHTML(asoc){
   const L=(asoc||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"es"));
   const con=L.filter(m=>m.autorizado).length, pend=autorizadoPeticiones().length, ab=!!DESP["mg-aut"];
   let h=`<div class="mg-acc-head" onclick="DESP['mg-aut']=!DESP['mg-aut'];render()">
-      <span>🤝 Personas de confianza <span class="mg-acc-num${pend?" aviso":""}">${pend?pend+" por aprobar · ":""}${con} de ${L.length}</span></span>
+      <span>🤝 Personas autorizadas <span class="mg-acc-num${pend?" aviso":""}">${pend?pend+" por aprobar · ":""}${con} de ${L.length}</span></span>
       <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></div>`;
   if(!ab)return h;
   h+=`<div class="mes-card" style="margin:8px 0 14px">

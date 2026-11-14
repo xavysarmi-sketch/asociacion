@@ -1260,7 +1260,7 @@ function _fichaHTMLbase(m,readonly=false){
       <div class="mgmt-grid">
         ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('ciclo',{mid:'${esc(m.id)}'})">⚙️ Permanencia y aporte</button>`}
         ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('referido',{mid:'${esc(m.id)}'})">🎁 Referido</button>`}<!-- v45.43: el bono por referido es solo de asociados -->
-        ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('autorizado',{mid:'${esc(m.id)}'})">🤝 ${m.autorizado?"Confianza: "+escH(m.autorizado.nombre.split(" ")[0]):"Persona de confianza"}${autorizadoPendienteDe(m)?" ·&nbsp;pedida":""}</button>`}<!-- v46.45 · SA-11 -->
+        ${isTerc?"":`<button class="mgmt-btn" onclick="openModal('autorizado',{mid:'${esc(m.id)}'})">🤝 ${m.autorizado?"Autorizada: "+escH(m.autorizado.nombre.split(" ")[0]):"Persona autorizada"}${autorizadoPendienteDe(m)?" ·&nbsp;pedida":""}</button>`}<!-- v46.45 · SA-11 -->
         ${isTerc?`<button class="mgmt-btn" onclick="openModal('avalista',{mid:'${esc(m.id)}'})">🤝 Cambiar avalista</button>`:""}
       </div>
       <div class="acc-grupo-tit">Mensajes y enlace</div>

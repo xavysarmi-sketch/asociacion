@@ -243,7 +243,7 @@ function autorizadoPeticiones(){ return (PETICIONES||[]).filter(p=>p.tipo==="aut
 function autorizadoPendienteDe(m){ return m&&m.codigoApp?autorizadoPeticiones().filter(p=>p.c===m.codigoApp).pop()||null:null; }
 function autorizadoPeticionesHTML(){
   const l=autorizadoPeticiones(); if(!l.length)return "";
-  let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">🤝 Persona de confianza <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length} por aprobar</span></div>
+  let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">🤝 Persona autorizada <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length} por aprobar</span></div>
     <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4">Pedidas desde la app. Hasta que apruebes el cambio sigue valiendo la persona anterior (SA-11).</div>`;
   l.forEach(p=>{ const m=_petPersona(p), ok=!!m, ant=ok&&m.autorizado?m.autorizado.nombre:"";
     const f=p.creada?new Date(p.creada).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}):"";
@@ -263,7 +263,7 @@ async function autorizadoAprobar(pid){
   if(_autArmar(pid+"|a"))return; _autArmada=null;
   const nombre=nombreBonito(String(p.nombre||"").slice(0,80)); if(!nombre)return;
   m.autorizado={nombre,desde:_hoyISO()}; m.autorizadoUlt={nombre,estado:"aprobada",ts:Date.now()};
-  PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid); save(); render(); toast("Persona de confianza de "+m.name.split(" ")[0]+": "+nombre+" ✓",4000);
+  PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid); save(); render(); toast("Persona autorizada de "+m.name.split(" ")[0]+": "+nombre+" ✓",4000);
   try{ await window._fbFichas.borrarPeticion(pid); }catch(e){ console.warn("[NH] Aprobada, pero la petición no se pudo quitar de la nube:",e); }
 }
 async function autorizadoRechazar(pid){
@@ -278,14 +278,14 @@ async function autorizadoRechazar(pid){
 function autorizadoModalHTML(){
   const m=DATA.members.find(x=>x.id===MODAL.mid); if(!m)return "";
   const a=m.autorizado, pend=autorizadoPendienteDe(m), arm=_autArmada===m.id+"|q";
-  return `<div class="modal-title">🤝 Persona de confianza de ${escH(m.name.split(" ")[0])}</div>
+  return `<div class="modal-title">🤝 Persona autorizada de ${escH(m.name.split(" ")[0])}</div>
 <div style="font-size:13px;color:var(--muted);margin:-4px 0 12px;line-height:1.45">Quien puede recoger su dinero si sale y no puede venir (SA-11). Solo nombre y apellidos: el día del pago enseña su DNI, permiso de residencia o pasaporte y firma el recibo.</div>
 ${a?`<div style="background:#F4F9F6;border:1.5px solid #B7D9C3;border-radius:12px;padding:10px 12px;margin-bottom:12px"><div style="font-size:12.5px;color:var(--muted)">Ahora</div><div style="font-size:17px;font-weight:800">${escH(a.nombre)}</div>${a.desde?`<div style="font-size:12.5px;color:var(--muted)">desde el ${_fechaISOaDMA(a.desde)}</div>`:""}</div>`:`<div style="font-size:14px;margin-bottom:12px">Aún no tiene ninguna.</div>`}
 ${pend?`<div style="background:#FFF4E5;border:1px solid #E0A040;color:#8A4F12;border-radius:10px;padding:8px 10px;font-size:13.5px;margin-bottom:12px">Ha pedido desde la app: <b>${escH(String(pend.nombre||"").slice(0,80))}</b>. Apruébalo en Inicio.</div>`:""}
 <input id="aut-in" class="m-input" type="text" maxlength="80" autocomplete="off" placeholder="Nombre y apellidos" style="font-size:17px" oninput="tildeSugerir('aut-in','aut-tilde')">
 <div id="aut-tilde"></div>
 <button class="m-primary" onclick="autorizadoGuardar('${esc(m.id)}')">${a?"Cambiar":"Guardar"}</button>
-${a?`<button onclick="autorizadoQuitar('${esc(m.id)}')" style="width:100%;margin-top:8px;padding:11px;border-radius:12px;border:1.5px solid #C0492C;background:${arm?"#C0492C":"#fff"};color:${arm?"#fff":"#A63A20"};font-size:14px;font-weight:700;cursor:pointer">${arm?"¿Seguro? Toca otra vez":"Quitar persona de confianza"}</button>`:""}`;
+${a?`<button onclick="autorizadoQuitar('${esc(m.id)}')" style="width:100%;margin-top:8px;padding:11px;border-radius:12px;border:1.5px solid #C0492C;background:${arm?"#C0492C":"#fff"};color:${arm?"#fff":"#A63A20"};font-size:14px;font-weight:700;cursor:pointer">${arm?"¿Seguro? Toca otra vez":"Quitar persona autorizada"}</button>`:""}`;
 }
 function autorizadoGuardar(mid){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
@@ -294,13 +294,13 @@ function autorizadoGuardar(mid){
   if(_normNombre(n)===_normNombre(m.name)){ toast("⚠️ No puede ser la misma persona",3500); return; }
   UNDO_SNAPSHOT=JSON.stringify(DATA);
   m.autorizado={nombre:n,desde:_hoyISO()}; m.autorizadoUlt={nombre:n,estado:"aprobada",ts:Date.now()};
-  MODAL=null; save(); render(); _avisoDeshacer("Persona de confianza: "+n);
+  MODAL=null; save(); render(); _avisoDeshacer("Persona autorizada: "+n);
 }
 function autorizadoQuitar(mid){
   const m=DATA.members.find(x=>x.id===mid); if(!m||!m.autorizado)return;
   if(_autArmar(mid+"|q"))return; _autArmada=null;
   UNDO_SNAPSHOT=JSON.stringify(DATA); delete m.autorizado; delete m.autorizadoUlt;
-  MODAL=null; save(); render(); _avisoDeshacer("Persona de confianza quitada");
+  MODAL=null; save(); render(); _avisoDeshacer("Persona autorizada quitada");
 }
 
 // ══ v45.52 · ENVIAR LA APP A CADA ASOCIADO: mensaje de WhatsApp y tarjeta con su QR ═══════════

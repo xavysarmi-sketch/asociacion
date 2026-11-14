@@ -451,3 +451,14 @@ body:not(:has(.nha-nav)) .nha-upd{bottom:calc(16px + env(safe-area-inset-bottom)
 .nha-conf-pasos li{margin-bottom:6px}
 .nha-conf-link{display:block;margin-top:4px;padding:6px 0;border:none;background:none;color:#1B4332;font-size:15px;font-weight:800;text-decoration:underline;cursor:pointer}
 .nha-conf-form{margin-top:12px;padding-top:12px;border-top:1px solid #EFEAE0}
+
+/* v46.46 · «Tu persona de confianza» plegable */
+.nha-conf-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:2px 0;border:none;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.nha-conf-head-d{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.nha-conf-chip{font-size:13.5px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.nha-conf-chip.si{background:#E3F1E7;color:#1B5E36}
+.nha-conf-chip.no{background:#F1EEE8;color:#5A5348}
+.nha-conf-chip.pend{background:#FFF4E5;color:#7A4510}
+.nha-conf-fl{width:10px;height:10px;border-right:2.5px solid #1B4332;border-bottom:2.5px solid #1B4332;transform:rotate(45deg);margin:-4px 4px 0 0;transition:transform .2s}
+.nha-conf-fl.ab{transform:rotate(-135deg);margin-top:4px}
+.nha-conf-cuerpo{margin-top:10px}

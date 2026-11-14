@@ -454,7 +454,7 @@ function nhaCtlWaAdmin(){
 // ── Más ──
 function nhaMasHTML(m){
   const esTerc=m.type==="tercero", aval=esTerc?"":avalFichaHTML(m);
-  let h=nhaTitulo(m,"Más",esTerc?"Tu aval, preguntas frecuentes y cómo instalarla.":"Tu persona de confianza, tu aval y preguntas frecuentes.","settings");
+  let h=nhaTitulo(m,"Más",esTerc?"Tu aval, preguntas frecuentes y cómo instalarla.":"Tu persona autorizada, tu aval y preguntas frecuentes.","settings");
   h+=nhaConfianzaHTML(m); // v46.45 · SA-11
   if(aval)h+=`<div class="ft-card"><div class="ft-card-title">🤝 Aval</div>${aval}</div>`;
   if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
@@ -473,27 +473,30 @@ function nhaAutLocal(m){
 }
 function nhaConfianzaHTML(m){
   if(!m||m.type==="tercero"||m.baja||!m.joinMonth)return "";
-  const a=m.autorizado, pend=nhaAutLocal(m), ab=!!NHA.confVer;
-  let h=`<div class="nha-card nha-conf"><div class="nha-card-tit">Tu persona de confianza</div>`;
+  const a=m.autorizado, pend=nhaAutLocal(m), ab=!!NHA.confVer, abC=!!(NHA.confAb||NHA.confForm); // v46.46: la tarjeta entera se pliega (cerrada por defecto)
+  const chip=pend?`<span class="nha-conf-chip pend">Cambio pedido</span>`:a?`<span class="nha-conf-chip si">Elegida</span>`:`<span class="nha-conf-chip no">Sin elegir</span>`;
+  let h=`<div class="nha-card nha-conf"><button class="nha-conf-head" aria-expanded="${abC}" onclick="NHA.confAb=!(NHA.confAb||NHA.confForm);NHA.confForm=false;NHA.confArm=false;render()"><span class="nha-card-tit" style="margin:0">Tu persona autorizada</span><span class="nha-conf-head-d">${chip}<span class="nha-conf-fl${abC?" ab":""}" aria-hidden="true"></span></span></button>`;
+  if(!abC)return h+`</div>`;
+  h+=`<div class="nha-conf-cuerpo">`;
   if(a)h+=`<button class="nha-ver nha-conf-ver" style="margin-top:0;border-top:none;padding-top:0" aria-expanded="${ab}" onclick="NHA.confVer=!NHA.confVer;render()">${ab?"Ocultar el nombre ▴":"Ver ▾"}</button>`+
     (ab?`<div class="nha-conf-nom"><b>${escH(a.nombre)}</b>${a.desde&&/^\d{4}-\d{2}-\d{2}$/.test(a.desde)?`<small>desde el ${a.desde.slice(8,10)}/${a.desde.slice(5,7)}/${a.desde.slice(0,4)}</small>`:""}</div>`:"");
-  else h+=`<div class="nha-txt">Aún no has elegido a tu persona de confianza. Si un día sales y no puedes venir, nadie podrá recoger tu dinero por ti.</div>`;
+  else h+=`<div class="nha-txt">Aún no has elegido a tu persona autorizada. Si un día sales y no puedes venir, nadie podrá recoger tu dinero por ti.</div>`;
   if(pend)h+=`<div class="nha-conf-pend">${a?`Has pedido cambiarla por <b>${escH(pend.nombre)}</b>. Hasta que el coordinador apruebe el cambio, sigue valiendo la persona que ya tenías.`:`Has pedido elegir a <b>${escH(pend.nombre)}</b>. Valdrá cuando el coordinador lo apruebe.`}</div>`;
-  h+=`<div class="nha-txt" style="margin-top:10px">Si un día sales de la asociación y no puedes venir, tu persona de confianza puede recoger tu dinero por ti. Solo ella. Nadie más.</div>
+  h+=`<div class="nha-txt" style="margin-top:10px">Si un día sales de la asociación y no puedes venir, tu persona autorizada puede recoger tu dinero por ti. Solo ella. Nadie más.</div>
     <div class="nha-conf-pasos-t">Para recogerlo:</div>
     <ol class="nha-conf-pasos">
       <li>Ponte en contacto con el coordinador.</li>
       <li>El coordinador le dirá cuánto dinero tiene que recoger. Es lo mismo que tú ves en tu app.<button class="nha-conf-link" onclick="NHA.salHoy=true;nhaIr('aportes');setTimeout(()=>{const b=[...document.querySelectorAll('.nha-ver')].find(x=>x.textContent.indexOf('salgo hoy')>=0);if(b)b.scrollIntoView({behavior:'smooth',block:'start'});},80)">Ver cuánto recibiría ›</button></li>
-      <li>Tu persona de confianza viene con su documento de identidad (DNI, permiso de residencia o pasaporte).</li>
+      <li>Tu persona autorizada viene con su documento de identidad (DNI, permiso de residencia o pasaporte).</li>
       <li>Firma el recibo que se le entrega.</li>
     </ol>`;
-  if(NHA.confForm)h+=`<div class="nha-conf-form"><label for="nha-aut-in" class="nha-txt" style="display:block;font-weight:700;margin-bottom:6px">Nombre y apellidos de tu persona de confianza</label>
+  if(NHA.confForm)h+=`<div class="nha-conf-form"><label for="nha-aut-in" class="nha-txt" style="display:block;font-weight:700;margin-bottom:6px">Nombre y apellidos de tu persona autorizada</label>
     <input id="nha-aut-in" class="nha-input" type="text" maxlength="80" autocomplete="off" value="${escH(NHA.confTxt||"")}" oninput="NHA.confTxt=this.value;if(NHA.confArm){NHA.confArm=false;render();const i=document.getElementById('nha-aut-in');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}}">
     <div class="nha-txt" style="font-size:14px;color:#555;margin-top:6px">Le llegará al coordinador. ${a?"Hasta que lo apruebe, sigue valiendo la persona que ya tenías.":"Valdrá cuando lo apruebe."}</div>
     <button class="nha-btn${NHA.confArm?" arm":""}" ${NHA.enviando?"disabled":""} onclick="nhaAutPedir()">${NHA.enviando?"Enviando…":NHA.confArm?"Toca otra vez para enviarlo":"Enviar al coordinador"}</button>
-    <button class="nha-ver" onclick="NHA.confForm=false;NHA.confArm=false;render()">Cancelar</button></div>`;
-  else h+=`<button class="nha-btn" onclick="NHA.confForm=true;NHA.confTxt='';NHA.confArm=false;render();setTimeout(()=>{const i=document.getElementById('nha-aut-in');if(i)i.focus();},60)">${a||pend?"Cambiar mi persona de confianza":"Elegir mi persona de confianza"}</button>`;
-  return h+`</div>`;
+    <button class="nha-ver" onclick="NHA.confForm=false;NHA.confArm=false;NHA.confAb=true;render()">Cancelar</button></div>`;
+  else h+=`<button class="nha-btn" onclick="NHA.confForm=true;NHA.confTxt='';NHA.confArm=false;render();setTimeout(()=>{const i=document.getElementById('nha-aut-in');if(i)i.focus();},60)">${a||pend?"Cambiar mi persona autorizada":"Elegir mi persona autorizada"}</button>`;
+  return h+`</div></div>`;
 }
 let _nhaAutT=null;
 async function nhaAutPedir(){
@@ -508,9 +511,9 @@ async function nhaAutPedir(){
   try{
     const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
     try{ localStorage.setItem("nha-aut-"+NHA.codigo,JSON.stringify({nombre:n,ts})); }catch(e){}
-    NHA.enviando=false; NHA.confForm=false; NHA.confTxt=""; render();
+    NHA.enviando=false; NHA.confForm=false; NHA.confAb=true; NHA.confTxt=""; render();
     toast("✓ Enviado. El coordinador lo revisará.",5000);
-  }catch(e){ console.error("[NH app] persona de confianza:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
+  }catch(e){ console.error("[NH app] persona autorizada:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
 }
 // ── Simular (pantalla propia) ──
 function nhaSimularHTML(m){
