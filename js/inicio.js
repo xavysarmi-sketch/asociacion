@@ -34,28 +34,31 @@ function _inicioDashboardHTML({rm,ry,d,nSol,asocMes,aud,faltan}){
   const mOpts=MONTHS.map(m=>`<option value="${m}"${m===rm?" selected":""}>${MONTHS_FULL[MONTHS.indexOf(m)]}</option>`).join("");
   const yOpts=YEARS.map(y=>`<option value="${y}"${y===ry?" selected":""}>${y}</option>`).join("");
   const kpi=(clase,titulo,valor,chip,fn)=>`<button class="nhd-kpi ${clase}" onclick="${fn}"><span>${titulo}</span><b>${valor}</b><em>${chip}</em></button>`;
-  return `<section class="nh-dash-desktop nhd-editorial" aria-label="Resumen general">
-    <main class="nhd-centro">
-      <div class="nhd-head"><div><small>DIRECCIÓN EJECUTIVA EDITORIAL</small><h1>Dirección ejecutiva editorial</h1><p>Estado financiero y actividad del mes en un solo vistazo.</p></div><div class="nhd-month"><span>Mes de trabajo</span><select aria-label="Cambiar mes" onchange="setReportMonth(this.value);render()">${mOpts}</select><select aria-label="Cambiar año" onchange="setReportYear(this.value);render()">${yOpts}</select></div></div>
-      <div class="nhd-kpis">
-        ${kpi('cobrado','Cobrado',fmtEur(d.cobrado)+' €','',"TAB='mes';render()")}
-        ${kpi('pendiente','Falta por cobrar',fmtEur(d.porCobrar)+' €',faltan+' pendientes',"TAB='mes';render()")}
-        ${kpi('disponible','Disponible ahora',fmtEur(d.disponible)+' €','Tras compromisos',"TAB='ayudas';render()")}
-        ${kpi('solicitudes','Solicitudes',String(nSol),nSol?'Revisar':'Al día',"TAB='ayudas';render()")}
-      </div>
-      <article class="nhd-chart"><header><b>Evolución de cobros mensuales</b><button onclick="TAB='mes';render()">Últimos 5 meses⌄</button></header><div class="nhd-bars">${barras}</div></article>
-      <section class="nhd-pendientes"><header><div><h2>Trabajo pendiente</h2><p>${faltan+nSol} elementos que requieren tu atención</p></div><button onclick="TAB='mes';render()">Ver todo →</button></header>
-        ${nSol?`<button class="nhd-tarea solicitud" onclick="TAB='ayudas';render()"><i>□</i><span><b>Revisar solicitudes de ayuda</b><small>${nSol} pendiente${nSol===1?'':'s'}</small></span><em>Revisar →</em></button>`:''}
-        ${faltan?`<button class="nhd-tarea cobro" onclick="TAB='mes';render()"><i>€</i><span><b>Registrar cobros pendientes</b><small>${faltan} cobros · suman ${fmtEur(d.porCobrar)} €</small></span><em>Registrar →</em></button>`:''}
-        ${!nSol&&!faltan?`<div class="nhd-todo-ok">✓ No hay trabajo pendiente en este mes.</div>`:''}
-      </section>
-    </main>
-    <aside class="nhd-lateral">
-      <div class="nhd-fecha"><b>${new Date().getDate()} de ${MONTHS_FULL[new Date().getMonth()].toLowerCase()} de ${new Date().getFullYear()}</b><span>${['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()]}</span></div>
-      <section><h2>Acciones rápidas</h2><button onclick="openModal('member',{preset:'asociado'})"><span>＋</span>Nueva persona <b>›</b></button><button onclick="TAB='mes';render()"><span>€</span>Registrar cobro <b>›</b></button><button onclick="TAB='ayudas';SOL_FORM=true;render()"><span>□</span>Nueva solicitud <b>›</b></button></section>
-      <section><h2>Resumen claro</h2><div class="nhd-explica"><i></i><p><b>${fmtEur(d.disponible)} € disponibles ahora</b><span>después de lo ya comprometido</span></p></div><div class="nhd-explica oro"><i></i><p><b>${faltan} cobros pendientes</b><span>son ${fmtEur(d.porCobrar)} € que aún no han entrado</span></p></div><div class="nhd-explica"><i></i><p><b>${grupos} grupos · ${asocMes.length} personas</b><span>${aud.errores.length?aud.errores.length+' diferencias por revisar':'Auditoría correcta'}</span></p></div></section>
-      <button class="nhd-panel" onclick="TAB='manage';render()">Abrir panel lateral →</button>
-    </aside>
+  const md=(DATA.monthlyData&&DATA.monthlyData[getMesKey(rm,ry)])||{};
+  const aptPag=asocMes.filter(m=>md.aportes&&md.aportes[m.id]).length;
+  const cuotas=cuotasDelMes(rm,ry), cuoPag=cuotas.filter(c=>c.paid).length;
+  const cerrado=mesCerrado(getMesKey(rm,ry));
+  const estado=aud.errores.length?'Revisar auditoría':faltan?`${faltan} cobros pendientes`:'Todo cobrado';
+  const dato=(ic,tit,val,sub,fn)=>`<button class="nhd-dato" onclick="${fn}"><i>${_icSVG(ic)}</i><span><small>${tit}</small><b>${val}</b><em>${sub}</em></span><strong>›</strong></button>`;
+  return `<section class="nh-dash-desktop nhd-clasico" aria-label="Resumen general">
+    <div class="nhd-head"><div class="nhd-titulo-wrap"><i class="nhd-icono-vivo">${_icSVG('home')}</i><div><small>RESUMEN GENERAL · ADMINISTRACIÓN</small><h1>Situación de ${MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()}</h1><p>Todo lo importante del mes, con la misma información que en el móvil.</p></div></div><div class="nhd-month"><span>Mes de trabajo</span><select aria-label="Cambiar mes" onchange="setReportMonth(this.value);render()">${mOpts}</select><select aria-label="Cambiar año" onchange="setReportYear(this.value);render()">${yOpts}</select></div></div>
+    <div class="nhd-kpis">
+      ${kpi('cobrado','Cobrado hasta hoy',fmtEur(d.cobrado)+' €','Dinero que ya ha entrado',"TAB='mes';render()")}
+      ${kpi('pendiente','Falta por cobrar',fmtEur(d.porCobrar)+' €',faltan+' cobros pendientes',"TAB='mes';render()")}
+      ${kpi('disponible','Disponible ahora',fmtEur(d.disponible)+' €','Después de compromisos',"TAB='ayudas';render()")}
+      ${kpi('solicitudes','Solicitudes',String(nSol),nSol?'Pendientes de revisar':'Ninguna pendiente',"TAB='ayudas';render()")}
+    </div>
+    <div class="nhd-cuerpo">
+      <section class="nhd-operativa"><h2>Estado del mes</h2><div class="nhd-datos">
+        ${dato('users','Aportes',aptPag+' de '+asocMes.length,aptPag===asocMes.length?'Todos anotados':'Faltan '+(asocMes.length-aptPag),"TAB='mes';render()")}
+        ${dato('cash','Cuotas de ayudas',cuoPag+' de '+cuotas.length,cuoPag===cuotas.length?'Todas anotadas':'Faltan '+(cuotas.length-cuoPag),"TAB='mes';render()")}
+        ${dato('settings','Auditoría',aud.errores.length?aud.errores.length+' errores':'Todo cuadra',aud.advertencias.length?aud.advertencias.length+' avisos':'Sin diferencias',"TAB='manage';AUDIT_OPEN=true;render()")}
+        ${dato('check','Cierre del mes',cerrado?'Cerrado':'Sin cerrar',cerrado?'Mes protegido':estado,"TAB='mes';render()")}
+      </div><div class="nhd-explicacion"><b>${fmtEur(d.disponible)} € disponibles ahora</b><span>después de restar lo ya comprometido.</span><i></i><b>${faltan} cobros pendientes</b><span>equivalen a ${fmtEur(d.porCobrar)} € que todavía no han entrado.</span></div></section>
+      <aside class="nhd-mini"><article class="nhd-chart"><header><b>Evolución de cobros</b><span>5 meses</span></header><div class="nhd-bars">${barras}</div></article><article class="nhd-distrib"><h2>Lo cobrado</h2><div class="nhd-donut" style="--nhd-pa:${pA}%;--nhd-pc:${pA+pC}%"><b>${fmtEur(d.cobrado)} €</b></div><div class="nhd-leyenda"><p><i></i>Aportes <b>${pA}%</b></p><p><i></i>Cuotas <b>${pC}%</b></p><p><i></i>Otros <b>${pO}%</b></p></div></article></aside>
+    </div>
+    <div class="nhd-abajo"><section><header><h2>Avisos y trabajo pendiente</h2><button onclick="TAB='mes';render()">Ver cobros →</button></header><div class="nhd-aviso-grid"><button onclick="TAB='mes';render()"><i>${faltan}</i><span><b>Cobros pendientes</b><small>${fmtEur(d.porCobrar)} € por registrar</small></span></button><button onclick="TAB='ayudas';render()"><i>${nSol}</i><span><b>Solicitudes de ayuda</b><small>${nSol?'Necesitan revisión':'Ninguna pendiente'}</small></span></button><button onclick="TAB='manage';render()"><i>${cerrado?'✓':'!'}</i><span><b>Cierre y revisión</b><small>${cerrado?'Mes cerrado':estado}</small></span></button></div></section><section class="nhd-acciones"><h2>Acciones rápidas</h2><div><button onclick="TAB='mes';render()">${_icSVG('cash')}<span>Registrar cobro</span></button><button onclick="TAB='ayudas';SOL_FORM=true;render()">${_icSVG('hand')}<span>Nueva ayuda</span></button><button onclick="openModal('member',{preset:'asociado'})">${_icSVG('users')}<span>Nueva persona</span></button></div></section></div>
+    <p class="nhd-foot">Previsualización de ordenador · La vista móvil no cambia</p>
   </section>`;
 }
 function inicioHTML(){
