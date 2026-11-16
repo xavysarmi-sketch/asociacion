@@ -351,6 +351,10 @@ function comprobacionCierre(){
   const solP=(DATA.solicitudes||[]).filter(x=>x.estado==="pendiente"&&_solEsAhora(x)).length;
   const d=dineroAyudasMes();
   const faltan=(asocMes.length-aptPag)+(cuotas.length-cuoPag);
+  // v46.52 · AY-10 (decisión de Ángel 16/11/2026): quien devuelve una ayuda de más de 1.000 € con la llave 2 y este mes
+  // paga menos de 100 € → solo se avisa; decide el coordinador. No se cambia nada solo.
+  const llave2Bajo=asocMes.filter(m=>md.aportes&&md.aportes[m.id]&&ayudasConLlave2(m).length&&aporteBrutoMes(m,rm,ry)<REGLAS.APORTE_LLAVE2)
+    .map(m=>`${m.name.split(" ")[0]} paga ${fmtEur(aporteBrutoMes(m,rm,ry))} € este mes y devuelve una ayuda de más de ${_miles(REGLAS.AYUDA_MAX_LLAVE1)} € con las dos llaves: su compromiso es ${REGLAS.APORTE_LLAVE2} € (AY-10). Decide tú`);
   return {d,aptPag,nAp:asocMes.length,cuoPag,nCu:cuotas.length,lista:[
     {ok:!faltan,txt:faltan?`Faltan ${faltan} ${faltan===1?"cobro":"cobros"} (aportes ${aptPag}/${asocMes.length} · cuotas ${cuoPag}/${cuotas.length})`:`Todo cobrado (aportes ${aptPag}/${asocMes.length} · cuotas ${cuoPag}/${cuotas.length})`},
     {ok:!sinLiq.length,txt:sinLiq.length?`Grupos sin liquidar: ${sinLiq.join(", ")}`:"Todos los grupos liquidados"},
@@ -358,6 +362,7 @@ function comprobacionCierre(){
     {ok:!nErr,txt:nErr?`La auditoría tiene ${nErr} ${nErr===1?"error":"errores"} (Más › Auditoría)`:"La auditoría: todo cuadra"},
     {ok:!solP,txt:solP?`${solP} ${solP===1?"solicitud":"solicitudes"} de ${mesTxt} sin decidir (Ayudas)`:"Ninguna solicitud sin decidir"},
     {ok:!(d.porPagar>0),txt:d.porPagar>0?`Salidas de ${mesTxt} sin marcar como pagadas: ${fmtEur(d.porPagar)} € (Más › Histórico)`:"Las salidas del mes, pagadas"},
+    ...llave2Bajo.map(x=>({ok:false,txt:x})),
   ]};
 }
 // v46.31: meses para el desplegable «Actas de cierre»: del mes de trabajo hacia atrás hasta agosto 2025

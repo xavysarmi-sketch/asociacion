@@ -181,6 +181,13 @@ lenguaje sencillo antes de aplicarlos.
   pestaña, cada ficha, cada enlace de asociado y de grupo, papeles del mes). Si no da PASA, NO se
   publica. Las diferencias con la versión publicada se enseñan a Ángel: solo se publica con
   --permitir-diferencias si son exactamente las del cambio pedido. Ver pruebas_app\LEEME.md.
+- APP DE ASOCIADOS (desde el 16/11/2026, tras la v46.50): la app de asociados (app/) carga los js/
+  con su propia lista, NHA_ARCHIVOS (app/app.js). Todo archivo nuevo de js/ que cargue index.html
+  va también en NHA_ARCHIVOS, o en NO_ASOCIADOS de verificar_app.js si de verdad no lo usa; y
+  app/index.html lleva el mismo ?v= y NH_APP_V que APP_VERSION. La comprobación rápida (gancho
+  pre-push) lo exige, y la verificación completa abre app/?c= con una ficha ficticia y recorre sus
+  pantallas (también `--solo-asociados`, unos 4 s). La v46.50 dejó la app de asociados en
+  «Cargando tu cuenta…» 1 h 26 min porque faltaba torre en NHA_ARCHIVOS.
 - `node --check` sobre el JS extraído (sintaxis).
 - Si el cambio toca la inicialización o sanitizeData: además, simulación de ejecución con
   DOM simulado (mock) para confirmar que la app arranca.

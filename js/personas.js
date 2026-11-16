@@ -1489,6 +1489,8 @@ function saveCicloYAporte(mid){
   }
   const avEl=document.getElementById("ci-aval"); // v45.1: quien lo recomendó = su aval (GE-1)
   if(avEl){ if(avEl.value)m.referidoPor=avEl.value; else delete m.referidoPor; }
+  // v46.52 · AY-10: con una ayuda de más de 1.000 € recibida con la llave 2 y sin terminar, el aporte no baja de 100 €
+  if(ap<REGLAS.APORTE_LLAVE2&&ap<aporteHabitualDe(m)&&ayudasConLlave2(m).length){toast(`⛔ ${m.name.split(" ")[0]} devuelve una ayuda de más de ${_miles(REGLAS.AYUDA_MAX_LLAVE1)} € con las dos llaves: su aporte no puede bajar de ${REGLAS.APORTE_LLAVE2} € hasta la última cuota (Maestro AY-10)`,5500);return;}
   const volver=MODAL&&MODAL.volver; // v45.28: venía de una ayuda bloqueada por la permanencia
   fijarAportesPagados(m,ap);
   m.ciclo=c;
@@ -1771,7 +1773,7 @@ function addCierreLoanSubmit(){
   const tipoEnConcesion=m.type;
   const avalistaEnConcesion=(m.type==="tercero")?avalistaNombre(m):null; // nombre resuelto desde el id, texto congelado
   const cicloEnConcesion=(m.ciclo!=null?m.ciclo:null);
-  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion});
+  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,..._condLlave2(m,cap)});
   if(!m.history)m.history=[];
   m.history.push({gMonth:rm,gYear:ry,capital:cap,lid});
   // v45.14: viene de una solicitud → queda otorgada; si la entrega el principal de un grupo → cuenta del grupo

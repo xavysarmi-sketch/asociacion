@@ -111,6 +111,7 @@ function inicioHTML(){
   </div>`;
   h+=avisos;
   { const a=autorizadoPeticionesHTML(); if(a)h+=`<div id="ini-aut">${a}</div>`; } // v46.45 · SA-11
+  { const a=cambiosPeticionesHTML(); if(a)h+=`<div id="ini-cam">${a}</div>`; } // v46.52 · AY-10 (las dos llaves)
   // Accesos rápidos
   const q=(ic,txt,fn)=>`<button class="ini-rapido" onclick="${fn}">${ic} ${txt}</button>`;
   h+=`<div class="ini-rapidos">

@@ -22,8 +22,13 @@ const REGLAS=Object.freeze({
   CUOTAS_MAX_CORTA: 5,                  // AY-1 · cuotas máximas en ese caso
   CUOTAS_MAX: 12,                       // AY-1 · cuotas máximas con permanencia de 24, 36 meses o indefinida
   AYUDA_MAX_SIN_APROBACION: 1000,       // AY-5 · hasta aquí no hace falta aprobación previa del coordinador
-  AYUDA_MAX: 3000,                      // AY-5 · máximo absoluto de una ayuda
-  SIMULADOR_MAX_AYUDA: 1000,            // decisión de Ángel 03/10/2026: el simulador llega hasta 1.000 €
+  AYUDA_MAX: 2000,                      // AY-5/AY-10 (Maestro v18.75) · máximo absoluto, solo con las dos llaves (antes 3.000 €)
+  AYUDA_MAX_LLAVE1: 1000,               // AY-10 · llave 1 (permanencia 24, 36 o indefinida) con aporte habitual de 50 €
+  APORTE_LLAVE2: 100,                   // AY-10 · llave 2: aporte habitual de 100 € o más Y el último mes pagado de 100 € o más
+  AY10_DESDE: "2026-11",                // AY-10 · rige para las ayudas concedidas desde noviembre 2026 (Maestro v18.75, 16/11/2026)
+  SIMULADOR_MAX_AYUDA: 2000,            // el simulador llega hasta el límite de cada persona (AY-10): 500 € con 12 meses, 1.000 €
+                                        // con la llave 1 y 2.000 € con las dos llaves (decisión de Ángel 16/11/2026; antes, 1.000 €
+                                        // para todos, decisión del 03/10/2026). Ver limiteAyudaDe (js/reglas.js)
   // ── Salidas (SA) ──
   AVISO_MESES: 1,                       // SA-1 (Maestro v18.64, 12/11/2026): un mes de aviso para todos, con cualquier saldo. Antes: · con más de 3.000 € de saldo, 2 meses de aviso
   AVISO_DIA_CORTE: 15,                  // SA-1 (v18.64): el aviso vale para el mes si llega hasta este día; desde el siguiente, para el mes siguiente. Antes: · con más de 6.000 €, 3 meses (si no, 1 mes)

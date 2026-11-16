@@ -199,7 +199,7 @@ async function cargarPeticiones(forzar){
 }
 function _petPersona(p){ return p&&p.c?DATA.members.find(m=>m.codigoApp===p.c)||null:null; }
 function peticionesAppHTML(){
-  const l=(PETICIONES||[]).filter(p=>p.tipo!=="autorizado"); if(!l.length)return ""; // v46.45: las de persona de confianza van en Inicio
+  const l=(PETICIONES||[]).filter(p=>!["autorizado","aporte","perm"].includes(p.tipo)); if(!l.length)return ""; // v46.45: las de persona de confianza van en Inicio · v46.52: y las de las dos llaves
   let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">📱 Pedidas desde la app <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
     <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4">Al apuntarla pasa a Solicitudes, como si la hubieras escrito tú.</div>`;
   l.forEach(p=>{ const m=_petPersona(p), ok=!!m;
@@ -273,6 +273,63 @@ async function autorizadoRechazar(pid){
   PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid);
   if(m){ m.autorizadoUlt={nombre:nombreBonito(String(p.nombre||"").slice(0,80)),estado:"rechazada",ts:Date.now()}; save(); }
   render(); toast("Rechazada. Sigue valiendo la persona anterior");
+}
+// ══ v46.52 · LAS DOS LLAVES (Maestro v18.75 · AY-10, AP-4, PE-3) ═══════════════════════════════════
+// Desde su app, el asociado pide subir o bajar su aporte habitual (peticiones/{código_ms} con tipo "aporte" y aporte 50–200)
+// o pasar a 24 o 36 meses (tipo "perm", perm "24"/"36"). Llegan aquí, a Inicio; nada cambia hasta que el coordinador
+// aprueba. m.cambioUlt = {tipo, valor, estado:"aprobada"|"rechazada", ts}: la última decisión, para la app del asociado.
+let _camArmada=null;
+function cambiosPeticiones(){ return (PETICIONES||[]).filter(p=>p.tipo==="aporte"||p.tipo==="perm"); }
+function _camBloqueo(p,m){ // por qué no se puede aprobar (o "" si se puede)
+  if(!m)return "Enlace sin persona";
+  if(p.tipo==="aporte"){ const v=parseInt(p.aporte);
+    if(!REGLAS.APORTE_OPCIONES.includes(v))return "Importe no válido";
+    if(v<REGLAS.APORTE_LLAVE2&&v<aporteHabitualDe(m)&&ayudasConLlave2(m).length)return `Devuelve una ayuda de más de ${_miles(REGLAS.AYUDA_MAX_LLAVE1)} € con las dos llaves: no puede bajar de ${REGLAS.APORTE_LLAVE2} € hasta la última cuota (AY-10)`;
+    return ""; }
+  const c=parseInt(p.perm);
+  if(m.ciclo===0)return "Ya tiene la permanencia indefinida";
+  if(!(c===24||c===36))return "Permanencia no válida";
+  if(m.ciclo!=null&&c<=m.ciclo)return `Ya tiene ${m.ciclo} meses (la permanencia no baja, PE-3)`;
+  return "";
+}
+function _camTxt(p,m){ if(p.tipo==="aporte"){ const v=parseInt(p.aporte), h=m?aporteHabitualDe(m):null;
+    return {t:(h!=null&&v<h?"quiere bajar su aporte a ":"quiere subir su aporte a ")+v+" € al mes",ahora:h!=null?`Ahora: ${h} €${m&&!m.aporte?" (sin anotar)":""}`:""}; }
+  return {t:"quiere pasar a "+parseInt(p.perm)+" meses de permanencia",ahora:m?`Ahora: ${m.ciclo===0?"indefinida":(m.ciclo!=null?m.ciclo+" meses":"sin permanencia")}`:""}; }
+function cambiosPeticionesHTML(){
+  const l=cambiosPeticiones(); if(!l.length)return "";
+  let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">🔑 Dos llaves · cambios pedidos <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4">Pedidos desde la app. Hasta que lo apruebes sigue valiendo lo anterior (AP-4, PE-3).</div>`;
+  l.forEach(p=>{ const m=_petPersona(p), b=_camBloqueo(p,m), x=_camTxt(p,m);
+    const f=p.creada?new Date(p.creada).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}):"";
+    const armA=_camArmada===p.id+"|a", armR=_camArmada===p.id+"|r";
+    h+=`<div style="padding:10px 0;border-top:1px solid #EFEAE0">
+      <div style="font-size:15px"><b>${m?escH(m.name):"Enlace sin persona"}</b> ${escH(x.t)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">${escH(x.ahora)}${f?` · pedido el ${f}`:""}</div>
+      ${b&&m?`<div style="font-size:13px;color:#8A4F12;margin-top:4px">⚠️ ${escH(b)}</div>`:""}
+      <div style="display:flex;gap:8px;margin-top:8px">${!b?`<button onclick="cambioAprobar('${esc(p.id)}')" style="flex:1;padding:9px;border-radius:10px;border:none;background:${armA?"#A64B19":"#1B4332"};color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">${armA?"¿Seguro? Toca otra vez":"✓ Aprobar"}</button>`:""}
+        <button onclick="cambioRechazar('${esc(p.id)}')" style="flex:${!b?"0 0 auto":"1"};padding:9px 12px;border-radius:10px;border:1.5px solid #C0492C;background:${armR?"#C0492C":"#fff"};color:${armR?"#fff":"#A63A20"};font-size:13.5px;font-weight:700;cursor:pointer">${armR?"¿Seguro?":"✕ No aprobar"}</button></div>
+    </div>`; });
+  return h+`</div>`;
+}
+function _camArmar(k){ if(_camArmada===k)return false; _camArmada=k; render(); setTimeout(()=>{ if(_camArmada===k){ _camArmada=null; render(); } },4000); return true; }
+async function cambioAprobar(pid){
+  const p=cambiosPeticiones().find(x=>x.id===pid), m=_petPersona(p); if(!p||!m)return;
+  const b=_camBloqueo(p,m); if(b){ toast("⛔ "+b,5000); return; }
+  if(_camArmar(pid+"|a"))return; _camArmada=null;
+  UNDO_SNAPSHOT=JSON.stringify(DATA);
+  let msg;
+  if(p.tipo==="aporte"){ const v=parseInt(p.aporte); fijarAportesPagados(m,v); m.aporte=v; m.cambioUlt={tipo:"aporte",valor:v,estado:"aprobada",ts:Date.now()}; msg=`Aporte habitual de ${m.name.split(" ")[0]}: ${v} € ✓`; }
+  else { const c=parseInt(p.perm); m.ciclo=c; m.cambioUlt={tipo:"perm",valor:c,estado:"aprobada",ts:Date.now()}; msg=`Permanencia de ${m.name.split(" ")[0]}: ${c} meses ✓`; }
+  PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid); save(); render(); _avisoDeshacer(msg);
+  try{ await window._fbFichas.borrarPeticion(pid); }catch(e){ console.warn("[NH] Aprobado, pero la petición no se pudo quitar de la nube:",e); }
+}
+async function cambioRechazar(pid){
+  const p=cambiosPeticiones().find(x=>x.id===pid), m=_petPersona(p); if(!p)return;
+  if(_camArmar(pid+"|r"))return; _camArmada=null;
+  try{ await window._fbFichas.borrarPeticion(pid); }catch(e){ toast("No se pudo: revisa la conexión"); render(); return; }
+  PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid);
+  if(m){ m.cambioUlt={tipo:p.tipo,valor:p.tipo==="aporte"?parseInt(p.aporte):parseInt(p.perm),estado:"rechazada",ts:Date.now()}; save(); }
+  render(); toast("No aprobado. Sigue valiendo lo anterior");
 }
 // Ventana de la ficha: anotarla a mano (cuando el asociado se lo dice al coordinador) o quitarla
 function autorizadoModalHTML(){
