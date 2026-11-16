@@ -462,3 +462,19 @@ body:not(:has(.nha-nav)) .nha-upd{bottom:calc(16px + env(safe-area-inset-bottom)
 .nha-conf-fl{width:10px;height:10px;border-right:2.5px solid #1B4332;border-bottom:2.5px solid #1B4332;transform:rotate(45deg);margin:-4px 4px 0 0;transition:transform .2s}
 .nha-conf-fl.ab{transform:rotate(-135deg);margin-top:4px}
 .nha-conf-cuerpo{margin-top:10px}
+/* v46.53 · Las dos llaves (Maestro v18.75 · AY-10): tarjeta de Inicio */
+.nha-dl{border:2px solid #2D6A4F}
+.nha-dl-caja{border:1px solid #D5E3D9;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:15px;line-height:1.5}
+.nha-dl-ll{display:flex;justify-content:space-between;gap:8px}
+.nha-dl-ll+.nha-dl-ll{margin-top:6px}
+.nha-dl-si{color:#1B7A3D;font-weight:800;text-align:right}
+.nha-dl-no{color:#7A5A2A;font-weight:700;text-align:right}
+.nha-dl-tabla{padding:4px}
+.nha-dl-fila{display:flex;justify-content:space-between;gap:8px;padding:9px 12px}
+.nha-dl-fila b{white-space:nowrap}
+.nha-dl-fila.on{background:#1B4332;color:#fff;border-radius:10px;font-weight:800}
+.nha-dl-tu{font-size:12px;font-weight:700;background:#E07A3A;color:#fff;border-radius:20px;padding:1px 8px;margin-left:4px;white-space:nowrap}
+.nha-dl-nota{font-size:14px;color:#5A5A5A;margin-top:8px;line-height:1.4}
+.nha-dl-pend{margin-top:10px;padding:12px;border-radius:12px;background:#FFF4E5;border:1px solid #E0A040;color:#6B4210;font-size:15px;line-height:1.4}
+.nha-dl-btn{background:#fff;color:#1B4332;border:2px solid #1B4332}
+.nha-dl-btn.arm{background:#A64B19;color:#fff;border-color:#A64B19}

@@ -217,7 +217,7 @@ function nhaInicioHTML(m,salidaPend,g){
   if(!salidaPend)h+=p.arriba.replace("<!--NHA-TOCA-->",nhaTocaHTML(m)); // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
     h+=nhaLlevasHTML(m,f); // v46.9: una sola caja como suma (antes dos cuadros y «Llevas acumulado» aparte)
-    if(!salidaPend)h+=nhaPermanenciaHTML(m,f);
+    if(!salidaPend){ h+=nhaPermanenciaHTML(m,f); h+=nhaDosLlavesHTML(m); } // v46.53: tarjeta «Dos llaves» (AY-10)
   } else if(esTerc){
     h+=nhaTerceroAyudaHTML(m); // v46.9: cómo va su ayuda (antes «Tipo · Avalista · 1 activo · 1 cerrado»)
   }
@@ -227,6 +227,56 @@ function nhaInicioHTML(m,salidaPend,g){
     <button onclick="abrirSimulador('${esc(m.id)}','ben')"><span class="nha-acc-ic">${_icSVG("sprout")}</span><b>¿Cuánto puedo ganar?</b><small>Simula tus beneficios</small></button></div>`;
   if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
   return h;
+}
+// ── v46.53 · LAS DOS LLAVES (Maestro v18.75 · AY-10; v18.77 · AP-4) ─────────────────────────────────────────────
+// Tarjeta en Inicio: su límite de hoy, qué llave tiene y la tabla 500 / 1.000 / 2.000 €. Solo los botones de lo que le
+// falta: «Quiero pasar a 24 meses» (perm) y «Quiero subir mi aporte a 100 €» (aporte). Son peticiones (peticiones/
+// {código_ms}); el coordinador las aprueba en su Inicio. Bajar el aporte NO se pide desde aquí: se habla con el
+// coordinador (decisión de Ángel 16/11/2026, AP-4). Lo pedido se recuerda en este móvil hasta que llega la respuesta
+// (m.cambioUlt, más nueva que la petición).
+function _nhaCam(){ try{ const o=JSON.parse(localStorage.getItem("nha-cam-"+NHA.codigo)||"{}"); return o&&typeof o==="object"?o:{}; }catch(e){ return {}; } }
+function _nhaCamSet(o){ try{ localStorage.setItem("nha-cam-"+NHA.codigo,JSON.stringify(o)); }catch(e){} }
+function _nhaCamEstado(m,tipo){ // "pedido" · "rechazado" · ""
+  const ts=_nhaCam()[tipo], u=m.cambioUlt;
+  if(u&&u.tipo===tipo&&(!ts||u.ts>ts))return u.estado==="rechazada"&&Date.now()-u.ts<30*864e5?"rechazado":"";
+  return ts?"pedido":"";
+}
+function nhaDosLlavesHTML(m){
+  if(!m||m.type!=="asociado"||!m.joinMonth)return "";
+  const R=REGLAS, l1=tieneLlave1(m), l2=tieneLlave2(m), hab=aporteHabitualDe(m), nivel=l1&&l2?2:l1?1:0, hoy=limiteAyudaDe(m);
+  const si=`<span class="nha-dl-si">✓ La tienes</span>`, no=`<span class="nha-dl-no">Te falta</span>`;
+  const fila=(n,txt,cifra)=>`<div class="nha-dl-fila${n===nivel?" on":""}"><span>${txt}${n===nivel?` <span class="nha-dl-tu">Tú hoy</span>`:""}</span><b>${cifra}</b></div>`;
+  const l2txt=l2?si:(hab>=R.APORTE_LLAVE2?`<span class="nha-dl-no">Se activa al pagar tu primer mes de ${R.APORTE_LLAVE2} €</span>`:no);
+  let h=`<div class="nha-card nha-dl"><div class="nha-card-tit">🔑 Dos llaves para pedir más ayuda</div>
+    <div class="nha-txt" style="margin-bottom:10px">Hoy puedes pedir hasta <b style="font-size:19px">${fmtEur(hoy)} €</b>.</div>
+    <div class="nha-dl-caja"><div class="nha-dl-ll"><span><b>Llave 1</b> · quedarte 24 meses</span>${l1?si:no}</div>
+      <div class="nha-dl-ll"><span><b>Llave 2</b> · aportar ${R.APORTE_LLAVE2} € al mes</span>${l2txt}</div></div>
+    <div class="nha-dl-caja nha-dl-tabla">${fila(0,"Ninguna llave",fmtEur(R.AYUDA_MAX_CORTA)+" €")}${fila(1,"La llave 1",_miles(R.AYUDA_MAX_LLAVE1)+" €")}${fila(2,"Las dos llaves",_miles(R.AYUDA_MAX)+" €")}</div>`;
+  if(!l1&&hab>=R.APORTE_LLAVE2)h+=`<div class="nha-dl-nota">Con 12 meses tu límite sigue en ${R.AYUDA_MAX_CORTA} €, pero como aportas ${hab} € vas antes en la lista de ayudas.</div>`;
+  const boton=(tipo,txt)=>{ const e=_nhaCamEstado(m,tipo);
+    if(e==="pedido")return `<div class="nha-dl-pend">⏳ Pedido: ${tipo==="perm"?"pasar a 24 meses":"subir tu aporte a "+R.APORTE_LLAVE2+" €"}. Te contesta el coordinador.</div>`;
+    const arm=NHA.camArm===tipo;
+    return (e==="rechazado"?`<div class="nha-dl-nota">El coordinador no lo ha aprobado esta vez. Si quieres, háblalo con él.</div>`:"")
+      +`<button class="nha-btn nha-dl-btn${arm?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaCamPedir('${tipo}')">${arm?"Toca otra vez para enviarlo":"Quiero "+txt}</button>`; };
+  if(!l1)h+=boton("perm","pasar a 24 meses");
+  if(hab<R.APORTE_LLAVE2)h+=boton("aporte","subir mi aporte a "+R.APORTE_LLAVE2+" €");
+  if(l1&&l2)h+=`<div class="nha-txt" style="margin-top:10px;color:#1B7A3D;font-weight:700">Ya tienes las dos llaves.</div>`;
+  else h+=`<div class="nha-dl-nota">Es una petición: no cambia nada hasta que el coordinador la apruebe. Lo que aportas sigue siendo tuyo.</div>`;
+  return h+`</div>`;
+}
+let _nhaCamT=null;
+async function nhaCamPedir(tipo){
+  const m=NHA.m; if(!m||NHA.enviando)return;
+  if(NHA_ADM){ toast("Es la vista del administrador: desde aquí no se envían peticiones",4000); return; }
+  if(NHA.camArm!==tipo){ NHA.camArm=tipo; render(); clearTimeout(_nhaCamT); _nhaCamT=setTimeout(()=>{ if(NHA.camArm===tipo){ NHA.camArm=null; render(); } },5000); return; }
+  clearTimeout(_nhaCamT); NHA.camArm=null;
+  const ts=Date.now(), obj=tipo==="perm"?{c:NHA.codigo,tipo:"perm",perm:"24",creada:ts}:{c:NHA.codigo,tipo:"aporte",aporte:REGLAS.APORTE_LLAVE2,creada:ts};
+  NHA.enviando=true; render();
+  try{
+    const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
+    const o=_nhaCam(); o[tipo]=ts; _nhaCamSet(o);
+    NHA.enviando=false; render(); toast("✓ Enviado. El coordinador lo revisará.",5000);
+  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
 }
 // ── v46.18 (Ángel 08/11/2026): invitar a un familiar o amigo. Mensaje de WhatsApp + enlace a la página pública
 // info/ (sin datos de nadie).
@@ -590,7 +640,7 @@ function nhaFaq(){
       +`Los meses 13 a 24 se ganan si tu permanencia es de 24 meses o más; desde el mes 25, si es de 36 meses.<br><br>`
       +`<b>Ejemplo:</b> Pedro pone ${R.BLOQUE_APORTE} € cada mes. En febrero gana ${B[0]} € por lo que puso en enero, en marzo otros ${B[0]} € por febrero, y así cada mes. Cuando lleva 12 meses pagados tiene <b>${12*B[0]} € de beneficio guardado</b>.<br><br>`
       +`Lo que pones un mes empieza a ganar al mes siguiente. El beneficio se guarda y lo recibes al terminar tu permanencia. Haz tus cuentas en «¿Cuánto puedo ganar?».`],
-    ["¿Cuánta ayuda puedo pedir?",`Depende de tu permanencia:`+tabla(["Permanencia","Puedes pedir","Lo devuelves en"],[["12 meses","hasta "+R.AYUDA_MAX_CORTA+" €","hasta "+R.CUOTAS_MAX_CORTA+" meses"],["24 o 36 meses","hasta "+_miles(SIM_MAX_AYUDA)+" €","hasta "+R.CUOTAS_MAX+" meses"]])+`La última cuota tiene que caer, como mucho, en el último mes de tu permanencia. Si necesitas más, puedes ampliarla.`],
+    ["¿Cuánta ayuda puedo pedir?",`Depende de tu permanencia:`+tabla(["Permanencia","Puedes pedir","Lo devuelves en"],[["12 meses","hasta "+R.AYUDA_MAX_CORTA+" €","hasta "+R.CUOTAS_MAX_CORTA+" meses"],["24 o 36 meses","hasta "+_miles(R.AYUDA_MAX_LLAVE1)+" €","hasta "+R.CUOTAS_MAX+" meses"],["24 o 36 meses y "+R.APORTE_LLAVE2+" € al mes","hasta "+_miles(R.AYUDA_MAX)+" €","hasta "+R.CUOTAS_MAX+" meses"]])+`Son las dos llaves: quedarte 24 meses y aportar ${R.APORTE_LLAVE2} € al mes (con al menos un mes ya pagado a ${R.APORTE_LLAVE2} €). La última cuota tiene que caer, como mucho, en el último mes de tu permanencia. Si necesitas más, puedes ampliarla.`], // v46.53: AY-10 (antes decía 2.000 € para todos con 24 o 36 meses)
     ["¿Cómo pido una ayuda?",`En <b>Ayudas → ¿Cuánto puedo pedir?</b> elige la cantidad y los meses. Si te encaja, toca <b>«Pedir esta ayuda»</b>. Al coordinador le llega tu petición, la revisa y te avisa. Si se aprueba, la verás en «Ayudas».`],
     ["¿Qué es la permanencia?",`Es el tiempo que te comprometes a estar en el fondo: <b>12, 24 o 36 meses</b>. Cuanto más larga, más beneficio ganas y más grandes son las ayudas que puedes pedir. Puedes ampliarla cuando quieras.`],
     ["¿Puedo descansar unos meses?",`Sí. Puedes pedir una <b>pausa de 1 a 3 meses</b> sin aportar. Habla con el coordinador.`],
