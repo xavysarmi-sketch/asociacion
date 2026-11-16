@@ -6,7 +6,7 @@
 
 // ── Barra de abajo ──────────────────────────────────────────────────────────
 function navInferiorHTML(){
-  const act=TAB==="historico"?"manage":TAB;
+  const act=(TAB==="historico"||TAB==="torre")?"manage":TAB; // v46.50: la Torre también vive dentro de «Más»
   const b=(tab,ic,txt,fn)=>`<button class="nav-btn${act===tab?" on":""}" onclick="_TAB_LISTA=null;${fn||`TAB='${tab}';FICHA_ID=null;render();window.scrollTo(0,0)`}">${_icSVG(ic)}<span>${txt}</span></button>`;
   return `<nav class="nav-inf">${b("inicio","home","Inicio")}${b("mes","cash","Cobros")}${b("asociados","users","Personas")}${b("ayudas","hand","Ayudas")}${b("manage","settings","Más","irGestion();window.scrollTo(0,0)")}</nav>`;
 }
@@ -73,7 +73,8 @@ function inicioHTML(){
   const col={ok:["#1B4332","#2D6A4F"],falta:["#8A4F12","#B06A1E"],mal:["#8E2A1A","#C0492C"]}[estado];
   const tit={ok:"Todo cobrado y cuadrado",falta:`Faltan ${faltan} cobro${faltan>1?"s":""}`,mal:`La auditoría tiene ${nErr} error${nErr>1?"es":""}`}[estado];
   const fila=(txt,val,okF,fn)=>`<button class="ini-fila" onclick="${fn}"><span>${txt}</span><b>${val} ${okF?"✓":"›"}</b></button>`;
-  let h=`<div class="ini-estado" style="background:linear-gradient(135deg,#1B4332,#2D6A4F)">
+  let h=iniEstadoTorreHTML(); // v46.50: línea de estado de la Torre de control (opción B, decisión de Ángel 14/11/2026)
+  h+=`<div class="ini-estado" style="background:linear-gradient(135deg,#1B4332,#2D6A4F)">
     <div class="ini-est-cab"><span>Estado del mes</span><span class="ini-est-pill ${estado}">${tit}</span></div>
     ${fila("Aportes",aptPag+"/"+asocMes.length,aptPag===asocMes.length,"TAB='mes';render();window.scrollTo(0,0)")}
     ${fila("Cuotas de ayudas",cuoPag+"/"+cuotas.length,cuoPag===cuotas.length,"TAB='mes';render();window.scrollTo(0,0)")}

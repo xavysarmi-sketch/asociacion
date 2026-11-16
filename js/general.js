@@ -358,7 +358,7 @@ function _nhAccesible(){ try{ const a=document.getElementById("app")||document.b
 function _nhSinPartir(){ try{ const app=document.getElementById("app"); if(!app)return; const w=document.createTreeWalker(app,NodeFilter.SHOW_TEXT); let n;
   while((n=w.nextNode())){ const v=n.nodeValue; if(v.indexOf(" €")<0&&v.indexOf(" %")<0)continue; const p=n.parentNode; if(p&&/^(TEXTAREA|SCRIPT|STYLE|OPTION)$/.test(p.nodeName))continue;
     const nv=v.replace(/(\d) (€|%)/g,"$1\u00A0$2"); if(nv!==v)n.nodeValue=nv; } }catch(e){} }
-function render(){ if(window.NH_ENLACE_RETIRADO)return; /* v46.4 */ _MEMO_RENDER={}; const _vPrev=document.querySelector(".modal-bg:not(.nh-sale)"); try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); _nhSinPartir(); try{ _nhVentanaSale(_vPrev&&!_vPrev.isConnected?_vPrev:null); }catch(e){} } }
+function render(){ if(window.NH_ENLACE_RETIRADO)return; /* v46.4 */ _usoTick(); /* v46.50 */ _MEMO_RENDER={}; const _vPrev=document.querySelector(".modal-bg:not(.nh-sale)"); try{ _renderPantalla(); } finally { _MEMO_RENDER=null; _nhAplicarLetra(); _nhAccesible(); _nhSinPartir(); try{ _nhVentanaSale(_vPrev&&!_vPrev.isConnected?_vPrev:null); }catch(e){} } }
 function _renderPantalla(){
   // v45.39: el nuevo orden y la letra más grande son solo para la app del administrador
   // (los enlaces de los asociados, «Así lo ve» y los papeles del mes se ven como siempre)
@@ -866,6 +866,9 @@ function _renderPantalla(){
     h+=`</div>`+historicoRetiradasHTML()+`<div class="mes-card" style="padding-top:10px;padding-bottom:10px"><div style="font-size:11px;color:var(--muted)">Sección de administración. Preparada para crecer (futuros: reingresos, cesiones de plaza).</div></div>`;
   }
 
+  // ── PESTAÑA TORRE DE CONTROL (v46.50 · Maestro FO-8; solo admin, igual que Histórico) ──
+  if(TAB==="torre")h+=torreHTML();
+
   // ── PESTAÑA ENVÍOS ──
   // ── PESTAÑA GESTIÓN ──
   if(TAB==="manage"){
@@ -877,6 +880,7 @@ function _renderPantalla(){
     // v45.39: las Solicitudes están en la pestaña «Ayudas». Aquí, lo de consultar y los ajustes.
     h+=nombresPorCorregirHTML(); // v45.49: solo sale si hay nombres con las mayúsculas mal puestas
     h+=`<div class="mas-sec">📂 Consultas</div>`; // v45.43: Más en tres apartados
+    h+=torreGestionHeadHTML(); // v46.50: Torre de control, primera (también se abre desde Inicio)
     h+=`<div class="mg-acc-head" onclick="_Y_MAS=window.scrollY||0;TAB='historico';render();window.scrollTo(0,0)">
       <span>📜 Histórico <span style="font-weight:600;color:var(--muted)">· bajas y retiradas</span></span>
       <span class="mg-acc-fl ir" aria-hidden="true"></span></div>`;

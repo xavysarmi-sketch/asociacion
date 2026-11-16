@@ -42,6 +42,11 @@ function bloquearFirestoreProduccion(motivo){
 // Por defecto no hay nube (sin conexión, bloqueado o error): nada se lee ni se escribe.
 window._fbFichas={leer:async()=>null,escribir:async()=>false,borrar:async()=>false,pedir:async()=>false,peticiones:async()=>null,borrarPeticion:async()=>false};
 
+// v46.50 · Torre de control (Maestro v18.73 · FO-8): resumen nocturno (solo lectura; lo escribe el
+// revisor) y decisiones de la bandeja de propuestas (las escribe aquí el administrador; el revisor
+// solo las lee). Por defecto no hay nube: nada se lee ni se escribe.
+window._fbTorre={leer:async()=>null,decidir:async()=>false,registrarUso:async()=>false};
+
 function initFirebase(){
   const entorno=detectarEntornoNH();
   const prodConfig={
@@ -162,6 +167,18 @@ function initFirebase(){
       // solo guarda la fecha y el tipo de móvil, nada más; lo lee solo el administrador)
       instalada:async(c,obj)=>{ await db.collection("instalaciones").doc(c).set(obj); return true; },
       instalaciones:async()=>{ const q=await db.collection("instalaciones").get(); const o={}; q.docs.forEach(d=>{ o[d.id]=d.data(); }); return o; }
+    };
+
+    // v46.50 · Torre de control (Maestro v18.73 · FO-8).
+    // leer: solo lectura de torre/resumen (lo sube cada noche el revisor con su llave, que no pasa
+    // por estas reglas). decidir: escribe UNA ficha de la bandeja en torre/decisiones (merge: nunca
+    // pisa las decisiones de otras fichas; el revisor las lee y las anota). registrarUso: registro de
+    // uso (Maestro FO-8, punto 5 del encargo; sin nombres ni importes) en torre/uso_AAAA-MM, una
+    // entrada por sesión (arrayUnion: no pisa las de otras sesiones del mismo mes).
+    window._fbTorre={
+      leer:async()=>{ const s=await db.collection("torre").doc("resumen").get(); return s.exists?s.data():null; },
+      decidir:async(id,entrada)=>{ await db.collection("torre").doc("decisiones").set({ultima:id,fichas:{[id]:entrada}},{merge:true}); return true; },
+      registrarUso:async(mesKey,entrada)=>{ await db.collection("torre").doc("uso_"+mesKey).set({sesiones:firebase.firestore.FieldValue.arrayUnion(entrada)},{merge:true}); return true; }
     };
 
     if(entorno.modo==="desarrollo"){

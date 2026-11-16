@@ -142,6 +142,21 @@ let PDF_LISTO=null; // {file, url, nombre}
 let SIM=null; // {mid, tab:"ayuda"|"ben", ciclo, cap, n, ap}
 const renderGrupo=_enVistaPersonal(_renderGrupoBase);
 
+// ══ v46.50 · TORRE DE CONTROL (Maestro v18.73 · FO-8) ═══════════════════════════════════════
+// Resumen nocturno del revisor (torre/resumen, solo lectura) para la línea de Inicio y la
+// pantalla «Más › Torre de control». TORRE.datos es tal cual lo sube revisor_nh.py.
+let TORRE={cargando:false,datos:null,error:null};
+let TORRE_DECIDIENDO=null; // id de la ficha de la bandeja mientras se guarda su decisión
+
+// ══ v46.50 · REGISTRO DE USO (punto 5 del encargo, aprobado 14/11/2026) ════════════════════
+// Solo pantalla, hora, duración y nº de anotaciones (nunca nombres ni importes). Se acumula en
+// memoria y se sube como mucho una vez por sesión (al pasar la app a segundo plano), para no
+// gastar batería ni ralentizar nada. Ver js/torre.js (_usoTick, _usoAnotar, _usoCerrarYSubir).
+let USO_ACTUAL={tab:null,t0:0}, USO_SESION={pantallas:{}}, USO_SUBIDO=false;
+if(!window.NH_APP_ASOCIADOS){
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden)_usoCerrarYSubir(); });
+}
+
 
 
 if(!window.NH_APP_ASOCIADOS)load(); // v45.52: la app de asociados arranca por su cuenta (app/app.js)
