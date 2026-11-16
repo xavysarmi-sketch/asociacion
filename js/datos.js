@@ -6,7 +6,7 @@ const MONTHS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov",
 const MONTHS_FULL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const YEARS=[2025,2026,2027,2028];
 const DATA_VERSION=11; // versión del esquema/datos; independiente de APP_VERSION
-const APP_VERSION="v46.50"; // v46.50 (Maestro v18.73 · FO-8): pestaña «Torre de control» (Más, y una línea de estado en Inicio que
+const APP_VERSION="v46.51"; // v46.51: corrección urgente — la app de asociados no abría desde la v46.50 (se quedaba en «Cargando tu cuenta…»): render() llamaba a _usoTick (js/torre.js) y la app de asociados no cargaba ese archivo. Ahora lo carga (app/app.js) y las dos llamadas del registro de uso (render y save) están protegidas por si faltara. Sin cambios en datos, cálculos ni reglas. // v46.50 (Maestro v18.73 · FO-8): pestaña «Torre de control» (Más, y una línea de estado en Inicio que
 // también la abre): el resumen nocturno del revisor (cómo está todo, versiones, avisos del mes, bandeja de propuestas con
 // Aprobar/Descartar/Más tarde, último informe mensual), leído de torre/resumen; si todavía no hay resumen o no se puede leer,
 // dice «Sin datos de la Torre todavía» en vez de fallar. Registro de uso (punto 5 del encargo, aprobado): pantalla, hora,
@@ -717,7 +717,7 @@ async function save(){
   if(!READONLY_ID&&!ES_MODO_GRUPO)asegurarCodigosApp(); // v45.52: con la app de asociados en marcha, toda persona nueva lleva su código
   DATA.updatedAt=Date.now(); // marca de tiempo: para que gane siempre la versión más reciente
   invalidateAuditCache(); // los datos cambiaron: la próxima lectura del chip/tarjeta recalcula
-  _usoAnotar(); // v46.50: registro de uso (punto 5 del encargo) — solo cuenta, no guarda qué se anotó
+  if(typeof _usoAnotar==="function")_usoAnotar(); // v46.51: protegido · v46.50: registro de uso (punto 5 del encargo) — solo cuenta, no guarda qué se anotó
   try{localStorage.setItem(KEY,JSON.stringify(DATA));}catch{}
 
   if(SYNC_DECISION_PENDING)return; // hay un conflicto de sync sin resolver: solo local, nada de Firebase

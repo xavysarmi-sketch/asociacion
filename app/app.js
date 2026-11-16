@@ -5,7 +5,7 @@
 // Solo lee: no escribe nada salvo una petición de ayuda cuando la persona la envía.
 // Lo que se ejecuta al cargarse es solo el arranque (nhaArrancar, al final del archivo).
 
-const NHA_ARCHIVOS=["maestro","utilidades","datos","reglas","iconos","general","cierre","grupos","documentos","personas","ayudas","gestion","enlaces","inicio","arranque"];
+const NHA_ARCHIVOS=["maestro","utilidades","datos","reglas","iconos","general","cierre","grupos","documentos","personas","ayudas","torre","gestion","enlaces","inicio","arranque"];
 const NHA_COD_RE=/^[a-z2-9]{20}$/;
 // v45.78: abierta desde «Ver» de la app del administrador
 const NHA_ADM=(()=>{ try{ return new URLSearchParams(location.search).get("adm")==="1"; }catch(e){ return false; } })();
