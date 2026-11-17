@@ -478,3 +478,22 @@ body:not(:has(.nha-nav)) .nha-upd{bottom:calc(16px + env(safe-area-inset-bottom)
 .nha-dl-pend{margin-top:10px;padding:12px;border-radius:12px;background:#FFF4E5;border:1px solid #E0A040;color:#6B4210;font-size:15px;line-height:1.4}
 .nha-dl-btn{background:#fff;color:#1B4332;border:2px solid #1B4332}
 .nha-dl-btn.arm{background:#A64B19;color:#fff;border-color:#A64B19}
+
+/* v46.55 · Tu solicitud de ayuda (vista previa «Asociado» / «AsociadoSiguiente») */
+.nha-sol-cab{background:#1B4332;color:#fff;border-radius:18px;padding:18px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.nha-sol-imp{font-size:34px;font-weight:800;line-height:1.1}
+.nha-sol-eti{background:#fff;color:#1B4332;border-radius:10px;padding:8px 12px;font-size:15px;font-weight:800;align-self:flex-start}
+.nha-sol{display:flex;flex-direction:column;gap:14px}
+.nha-sol-tit{font-size:18px;font-weight:800;color:#1A1A1A}
+.nha-sol-paso{display:flex;gap:12px;align-items:center}
+.nha-sol-paso>div{display:flex;flex-direction:column}
+.nha-sol-paso b{font-size:16px}
+.nha-sol-paso span{font-size:14px}
+.nha-sol-ok{flex:0 0 32px;width:32px;height:32px;border-radius:16px;background:#1B4332;display:flex;align-items:center;justify-content:center}
+.nha-sol-no{flex:0 0 32px;width:32px;height:32px;box-sizing:border-box;border-radius:16px;border:2.5px solid #1B4332;background:#fff}
+.nha-sol-link{width:100%;background:#fff;border:1px solid var(--border);border-radius:18px;padding:12px 14px 12px 18px;margin-bottom:12px;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#1A1A1A;font-size:16px;font-weight:700;text-align:left;cursor:pointer}
+.nha-sol-fl{flex:0 0 40px;width:40px;height:40px;border-radius:20px;background:#1B4332;display:flex;align-items:center;justify-content:center}
+.nha-sol-lbl{display:block;font-size:14px;font-weight:700;margin:8px 0 4px}
+.nha-sol-in{width:100%;box-sizing:border-box;font-size:17px;padding:10px 12px;border:1.5px solid #CFC7BA;border-radius:12px;background:#fff;color:#1A1A1A}
+.nha-sol-anu{background:#fff;color:#A63A20;border:1.5px solid #C0492C}
+.nha-sol-anu.arm{background:#A63A20;color:#fff}

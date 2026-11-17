@@ -214,7 +214,8 @@ function nhaInicioHTML(m,salidaPend,g){
   if(!NHA_ADM&&!nhaInstalada()&&NHA.instMini)h+=`${_nhaBotonInstalar()}<a class="nha-inst-mini" href="instalar/">${_icSVG("mobile")}<span><b>Ponla en tu móvil</b> · ver cómo instalarla ›</span></a>`;
   else if(!NHA_ADM&&!nhaInstalada())h+=`<div class="nha-inst-av nha-inst-n"><span class="nha-item-ic">${_icSVG("mobile")}</span><div><b>Ponla en tu móvil</b>Crea el icono <b class="nha-inl">NH</b> y ábrela siempre desde ahí. Pronto dejará de abrirse desde el navegador.${_nhaBotonInstalar()}<a class="nha-btn nha-inst-btn" href="instalar/">Ver cómo instalarla ›</a></div></div>`; // v46.1: más amable
   if(salidaPend)h+=salidaAvisoFichaHTML(m); else if(pausaVigente(m))h+=pausaAvisoFichaHTML(m);
-  if(!salidaPend)h+=p.arriba.replace("<!--NHA-TOCA-->",nhaTocaHTML(m)); // lo que corresponde este mes (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
+  if(!salidaPend)h+=p.arriba.replace("<!--NHA-TOCA-->",nhaTocaHTML(m)); // lo que corresponde este mes
+  if(!salidaPend)h+=nhaSolicitudHTML(m); // v46.55 · AY-9: tu solicitud de ayuda (vista previa «Asociado») (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
     h+=nhaLlevasHTML(m,f); // v46.9: una sola caja como suma (antes dos cuadros y «Llevas acumulado» aparte)
     if(!salidaPend){ h+=nhaPermanenciaHTML(m,f); h+=nhaDosLlavesHTML(m); } // v46.53: tarjeta «Dos llaves» (AY-10)
@@ -227,6 +228,81 @@ function nhaInicioHTML(m,salidaPend,g){
     <button onclick="abrirSimulador('${esc(m.id)}','ben')"><span class="nha-acc-ic">${_icSVG("sprout")}</span><b>¿Cuánto puedo ganar?</b><small>Simula tus beneficios</small></button></div>`;
   if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
   return h;
+}
+// ── v46.55 · TU SOLICITUD DE AYUDA (Maestro v18.80 · AY-9; encargo «lista de espera», vista previa «Asociado» y
+// «AsociadoSiguiente») ──────────────────────────────────────────────────────────────────────────────────────────
+// Tarjeta en Inicio con su solicitud: importe, cuotas y cómo va (la pediste · el coordinador la ha apuntado · se decide en
+// el cierre, como tarde el 24; o, si pasó de mes, que no alcanzó el dinero y sigue apuntada). Nunca su puesto en la lista
+// ni las de otros (la ficha solo trae las suyas). «Cambiar o anular mi solicitud» envía una petición (tipo "solicitud").
+function _nhaFechaLarga(dma){ const m=/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(String(dma||"").trim()); return m?`${+m[1]} de ${MONTHS_FULL[+m[2]-1].toLowerCase()}`:""; }
+function _nhaMesDe(key){ const m=/^(\d{4})-(\d{2})$/.exec(key||""); return m?MONTHS_FULL[+m[2]-1].toLowerCase():""; }
+function nhaSolicitudActual(m){
+  const kRep=getMesKey(DATA.reportMonth,DATA.reportYear);
+  const mias=(DATA.solicitudes||[]).filter(s=>s&&(!s.mid||s.mid===m.id)&&!s.anulada);
+  const pend=mias.filter(s=>s.estado==="pendiente").sort((a,b)=>String(a.mes||"").localeCompare(String(b.mes||"")));
+  return pend.length?pend[0]:null; // 17/11/2026 (Ángel): si no se otorga, la tarjeta desaparece; el coordinador se lo dice en persona
+}
+function _nhaSolCam(){ try{ const o=JSON.parse(localStorage.getItem("nha-solcam-"+NHA.codigo)||"null"); return o&&typeof o==="object"?o:null; }catch(e){ return null; } }
+function _nhaSolCamSet(o){ try{ if(o)localStorage.setItem("nha-solcam-"+NHA.codigo,JSON.stringify(o)); else localStorage.removeItem("nha-solcam-"+NHA.codigo); }catch(e){} }
+function nhaSolicitudHTML(m){
+  const s=m?nhaSolicitudActual(m):null; if(!s)return "";
+  const {cuotas}=ayudaCuotas(s.capital,s.cuotas,DATA.rate), kRep=getMesKey(DATA.reportMonth,DATA.reportYear);
+  const hist=(s.historial||[]).filter(h=>h&&h.motivo==="dinero"), ult=hist[hist.length-1];
+  const futuro=String(s.mes||kRep)>kRep, mesSol=_nhaMesDe(s.mes||kRep);
+  // 17/11/2026 (Ángel): tono tranquilo, sin fechas que esperar ni hablar de falta de dinero
+  const etiqueta=ult?"Sigue en la lista":futuro?`Apuntada para ${mesSol}`:"Apuntada en la lista";
+  const ok=`<span class="nha-sol-ok"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  const paso=(hecho,tit,sub)=>`<div class="nha-sol-paso">${hecho?ok:`<span class="nha-sol-no"></span>`}<div><b>${tit}</b>${sub?`<span>${sub}</span>`:""}</div></div>`;
+  let h=`<div class="nha-sol-cab"><div>Tu solicitud de ayuda</div><div class="nha-sol-imp">${fmtEur(s.capital)} €</div>
+    <div>${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"} de ${fmtEur(cuotas[0])} €</div><div class="nha-sol-eti">${etiqueta}</div></div>
+    <div class="nha-card nha-sol"><div class="nha-sol-tit">¿Cómo va?</div>`;
+  if(s.pedida)h+=paso(true,"La pediste",_nhaFechaLarga(s.pedida));
+  if(s.fecha)h+=paso(true,"El coordinador la ha apuntado",_nhaFechaLarga(s.fecha));
+  if(ult)h+=paso(false,"Sigue en la lista, de las primeras","No tienes que pedirla otra vez");
+  else h+=paso(false,"En espera","Cuando esté lista, te avisamos por WhatsApp");
+  h+=`</div>`;
+  {
+    const pc=_nhaSolCam(), u=s.camUlt;
+    const pendCam=pc&&pc.sid===s.id&&!(u&&u.ts>pc.ts)?pc:null;
+    if(pendCam)h+=`<div class="nha-dl-pend">⏳ Has pedido ${pendCam.accion==="anular"?"anular tu solicitud":`cambiarla a ${fmtEur(pendCam.capital)} € en ${pendCam.cuotas} ${pendCam.cuotas===1?"cuota":"cuotas"}`}. Te contesta el coordinador.</div>`;
+    else {
+      if(u&&u.estado==="rechazada"&&Date.now()-u.ts<30*864e5)h+=`<div class="nha-dl-nota" style="margin:0 4px 8px">El cambio que pediste no se ha hecho: tu solicitud sigue como está.</div>`;
+      h+=`<button class="nha-sol-link" onclick="NHA.solCam=!NHA.solCam;NHA.solCamArm=null;render()" aria-expanded="${NHA.solCam?"true":"false"}"><span>Cambiar o anular mi solicitud</span><span class="nha-sol-fl"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="${NHA.solCam?"M4 7l5 5 5-5":"M7 4l5 5-5 5"}" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`;
+      if(NHA.solCam){
+        const arm=NHA.solCamArm, capV=NHA.solCapTxt!=null?NHA.solCapTxt:String(s.capital), nV=NHA.solN||s.cuotas;
+        h+=`<div class="nha-card nha-sol-cam">
+          <div class="nha-txt" style="margin-bottom:8px">Se lo pides al coordinador. Hasta que lo haga, tu solicitud sigue igual.</div>
+          <label class="nha-sol-lbl" for="nha-sol-cap">Nuevo importe (€)</label>
+          <input id="nha-sol-cap" class="nha-sol-in" type="number" inputmode="numeric" min="${REGLAS.AYUDA_MIN}" max="${REGLAS.AYUDA_MAX}" step="50" value="${escH(capV)}" oninput="NHA.solCapTxt=this.value">
+          <label class="nha-sol-lbl" for="nha-sol-n">Cuotas</label>
+          <select id="nha-sol-n" class="nha-sol-in" onchange="NHA.solN=+this.value">${Array.from({length:REGLAS.CUOTAS_MAX},(_,i)=>i+1).map(n=>`<option value="${n}"${n===nV?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+          <button class="nha-btn${arm==="cambiar"?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaSolCamPedir('cambiar')">${arm==="cambiar"?"Toca otra vez para enviarlo":"Pedir el cambio"}</button>
+          <button class="nha-btn nha-sol-anu${arm==="anular"?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaSolCamPedir('anular')">${arm==="anular"?"Toca otra vez para anularla":"Anular mi solicitud"}</button></div>`;
+      }
+    }
+  }
+  return h;
+}
+let _nhaSolT=null;
+async function nhaSolCamPedir(accion){
+  const m=NHA.m, s=m&&nhaSolicitudActual(m); if(!s||NHA.enviando)return;
+  if(NHA_ADM){ toast("Es la vista del administrador: desde aquí no se envían peticiones",4000); return; }
+  let cap=null, n=null;
+  if(accion==="cambiar"){
+    cap=Math.round(parseFloat(String(NHA.solCapTxt!=null?NHA.solCapTxt:s.capital).replace(",","."))||0); n=NHA.solN||s.cuotas;
+    if(cap<REGLAS.AYUDA_MIN||cap>REGLAS.AYUDA_MAX){ toast(`El importe tiene que estar entre ${REGLAS.AYUDA_MIN} y ${fmtEur(REGLAS.AYUDA_MAX)} €`,4000); return; }
+    if(cap===s.capital&&n===s.cuotas){ toast("Cambia el importe o las cuotas",3500); return; }
+  }
+  if(NHA.solCamArm!==accion){ NHA.solCamArm=accion; render(); clearTimeout(_nhaSolT); _nhaSolT=setTimeout(()=>{ if(NHA.solCamArm===accion){ NHA.solCamArm=null; render(); } },5000); return; }
+  clearTimeout(_nhaSolT); NHA.solCamArm=null;
+  const ts=Date.now(), obj={c:NHA.codigo,tipo:"solicitud",sid:String(s.id),accion,creada:ts};
+  if(accion==="cambiar"){ obj.capital=cap; obj.cuotas=n; }
+  NHA.enviando=true; render();
+  try{
+    const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
+    _nhaSolCamSet({sid:s.id,accion,capital:cap,cuotas:n,ts});
+    NHA.enviando=false; NHA.solCam=false; NHA.solCapTxt=null; NHA.solN=null; render(); toast("✓ Enviado. El coordinador lo revisará.",5000);
+  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
 }
 // ── v46.53 · LAS DOS LLAVES (Maestro v18.75 · AY-10; v18.77 · AP-4) ─────────────────────────────────────────────
 // Tarjeta en Inicio: su límite de hoy, qué llave tiene y la tabla 500 / 1.000 / 2.000 €. Solo los botones de lo que le
@@ -345,7 +421,7 @@ function nhaImportanteHTML(m,g){
     items.push([_icSVG("cal"),`${ult?"Última cuota":"Próxima cuota"} de tu ayuda de ${fmtEur(l.capital)} €`,`${fmtEur(cuotaDe(l,i))} € · ${MONTHS_FULL[MONTHS.indexOf(p.m)].toLowerCase()} ${p.y} · llevas ${pag} de ${l.n} pagadas`,"ayudas"]); });
   (DATA.solicitudes||[]).forEach(s=>{ if(s.mid&&s.mid!==m.id)return; // v45.63: solo las suyas (la ficha ya trae solo las suyas)
     const mi=s.mes&&/^\d{4}-\d{2}$/.test(s.mes)?MONTHS_FULL[parseInt(s.mes.slice(5))-1].toLowerCase():"";
-    if(s.estado==="pendiente")items.push([_icSVG("clip"),`Tu solicitud de ${fmtEur(s.capital)} € está apuntada`,`${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"}${mi?` · para ${mi}`:""}. Te avisaremos cuando se decida.`,"ayudas"]);
+    if(s.estado==="pendiente"&&!nhaSolicitudActual(m))items.push([_icSVG("clip"),`Tu solicitud de ${fmtEur(s.capital)} € está apuntada`,`${s.cuotas} ${s.cuotas===1?"cuota":"cuotas"}${mi?` · para ${mi}`:""}. Te avisaremos cuando se decida.`,"ayudas"]);
     else if(s.estado==="otorgada"&&s.mesOtorgada===getMesKey(DATA.reportMonth,DATA.reportYear))items.push([_icSVG("check"),`Tu ayuda de ${fmtEur(s.capital)} € está aprobada`,`Este mes. La verás en «Ayudas».`,"ayudas"]);
   });
   // v46.18: bono por referido (lo apunta el administrador al dar de alta a la persona que trajo)

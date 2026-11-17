@@ -61,7 +61,9 @@ function datosPrivadosDe(m){
   const d={_version:DATA._version,reportMonth:DATA.reportMonth,reportYear:DATA.reportYear,monthlyFee:DATA.monthlyFee,rate:DATA.rate,
     updatedAt:DATA.updatedAt,members:miembros,monthlyData:md,extras:sub(DATA.extras),referidos,aportesPuntuales:_sinDestino(sub(DATA.aportesPuntuales)),
     gruposCierre:g?[_copia(g)]:[],cuentasGrupo:{},
-    solicitudes:(DATA.solicitudes||[]).filter(s=>s&&s.mid===m.id).map(s=>({id:s.id,capital:s.capital,cuotas:s.cuotas,fecha:s.fecha,estado:s.estado,mes:s.mes,mesOtorgada:s.mesOtorgada||null,origen:s.origen||null}))};
+    solicitudes:(DATA.solicitudes||[]).filter(s=>s&&s.mid===m.id).map(s=>({id:s.id,capital:s.capital,cuotas:s.cuotas,fecha:s.fecha,estado:s.estado,mes:s.mes,mesOtorgada:s.mesOtorgada||null,origen:s.origen||null,
+      ...(s.pedida?{pedida:s.pedida}:{}),...(s.anulada?{anulada:true}:{}),...(s.camUlt?{camUlt:_copia(s.camUlt)}:{}), // v46.55: tarjeta «Tu solicitud de ayuda»
+      ...(s.historial&&s.historial.length?{historial:s.historial.map(h=>({mes:h.mes,a:h.a,motivo:h.motivo}))}:{})}))};
   if(DATA.diaAvisoProximo!=null)d.diaAvisoProximo=DATA.diaAvisoProximo;
   if(DATA.mesAutoAplicado)d.mesAutoAplicado=DATA.mesAutoAplicado;
   if(g)Object.entries(DATA.cuentasGrupo||{}).forEach(([k,v])=>{ if(v&&v[g.id])d.cuentasGrupo[k]={[g.id]:_copia(v[g.id])}; });
@@ -199,7 +201,7 @@ async function cargarPeticiones(forzar){
 }
 function _petPersona(p){ return p&&p.c?DATA.members.find(m=>m.codigoApp===p.c)||null:null; }
 function peticionesAppHTML(){
-  const l=(PETICIONES||[]).filter(p=>!["autorizado","aporte","perm"].includes(p.tipo)); if(!l.length)return ""; // v46.45: las de persona de confianza van en Inicio · v46.52: y las de las dos llaves
+  const l=(PETICIONES||[]).filter(p=>!["autorizado","aporte","perm","solicitud"].includes(p.tipo)); if(!l.length)return ""; // v46.45: las de persona de confianza van en Inicio · v46.52: y las de las dos llaves
   let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">📱 Pedidas desde la app <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
     <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4">Al apuntarla pasa a Solicitudes, como si la hubieras escrito tú.</div>`;
   l.forEach(p=>{ const m=_petPersona(p), ok=!!m;
@@ -273,6 +275,58 @@ async function autorizadoRechazar(pid){
   PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid);
   if(m){ m.autorizadoUlt={nombre:nombreBonito(String(p.nombre||"").slice(0,80)),estado:"rechazada",ts:Date.now()}; save(); }
   render(); toast("Rechazada. Sigue valiendo la persona anterior");
+}
+// ══ v46.55 · CAMBIAR O ANULAR UNA SOLICITUD DESDE LA APP (Maestro v18.80 · AY-9) ══════════════════════════════════
+// El asociado lo pide desde la tarjeta «Tu solicitud de ayuda» (peticiones/{código_ms}, tipo "solicitud": sid, accion
+// "cambiar" con capital y cuotas, o "anular"). Llega a Ayudas; nada cambia hasta que el coordinador aplica.
+// so.camUlt = {accion, estado:"aprobada"|"rechazada", ts}: la última decisión, para la tarjeta del asociado.
+let _solCamArmada=null;
+function solCambiosPeticiones(){ return (PETICIONES||[]).filter(p=>p.tipo==="solicitud"); }
+function _solDePeticion(p){ const m=_petPersona(p); const so=m&&(DATA.solicitudes||[]).find(x=>x.id===p.sid&&x.mid===m.id); return {m,so}; } // solo si la solicitud es de quien lo pide
+// El cambio pedido tiene que cumplir las reglas de siempre (AY-1, AY-5, AY-10…): validarApoyo, como al apuntarla u otorgarla
+function _solCambioBloqueo(p,m){ if(p.accion!=="cambiar"||!m)return "";
+  const cap=Math.round(+p.capital||0), n=parseInt(p.cuotas)||0;
+  if(cap<REGLAS.AYUDA_MIN||cap>REGLAS.AYUDA_MAX||n<1||n>REGLAS.CUOTAS_MAX)return "Importe o cuotas no válidos";
+  const cur=_idxMes(DATA.reportMonth,DATA.reportYear), ini={m:MONTHS[(cur+1)%12],y:Math.floor((cur+1)/12)}, c=_condicionActual(m);
+  const v=validarApoyo(m,cap,n,c.tipo,c.ciclo,ini); return v.bloqueo?String(v.bloqueo).replace(/<[^>]+>/g,""):""; }
+function solCambiosHTML(){
+  const l=solCambiosPeticiones(); if(!l.length)return "";
+  let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">📝 Cambios pedidos en solicitudes <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4">Pedidos desde la app. Hasta que lo apliques, la solicitud sigue igual.</div>`;
+  l.forEach(p=>{ const {m,so}=_solDePeticion(p), bloq=so&&so.estado==="pendiente"?_solCambioBloqueo(p,m):"", vale=!!(so&&so.estado==="pendiente"&&!bloq);
+    const f=p.creada?new Date(p.creada).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}):"";
+    const armA=_solCamArmada===p.id+"|a", armR=_solCamArmada===p.id+"|r";
+    const que=p.accion==="anular"?"quiere <b>anular</b> su solicitud":`quiere cambiarla a <b>${fmtEur(+p.capital||0)} € en ${+p.cuotas||"?"} ${+p.cuotas===1?"cuota":"cuotas"}</b>`;
+    h+=`<div style="padding:10px 0;border-top:1px solid #EFEAE0">
+      <div style="font-size:15px"><b>${m?escH(m.name):"Enlace sin persona"}</b> ${que}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">${so?`Ahora: ${fmtEur(so.capital)} € en ${so.cuotas} ${so.cuotas===1?"cuota":"cuotas"}`:"La solicitud ya no está"}${so&&so.estado!=="pendiente"?` · ya está ${so.estado==="otorgada"?"otorgada":"no otorgada"}`:""}${f?` · pedido el ${f}`:""}</div>
+      ${bloq?`<div style="font-size:13px;color:#8A4F12;margin-top:4px">⚠️ No se puede aplicar: ${escH(bloq)}</div>`:""}
+      <div style="display:flex;gap:8px;margin-top:8px">${vale?`<button onclick="solCambioAplicar('${esc(p.id)}')" style="flex:1;padding:9px;border-radius:10px;border:none;background:${armA?"#A64B19":"#1B4332"};color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">${armA?"¿Seguro? Toca otra vez":(p.accion==="anular"?"✓ Anularla":"✓ Aplicar el cambio")}</button>`:""}
+        <button onclick="solCambioRechazar('${esc(p.id)}')" style="flex:${vale?"0 0 auto":"1"};padding:9px 12px;border-radius:10px;border:1.5px solid #C0492C;background:${armR?"#C0492C":"#fff"};color:${armR?"#fff":"#A63A20"};font-size:13.5px;font-weight:700;cursor:pointer">${armR?"¿Seguro?":(vale?"✕ No":"✕ Quitar")}</button></div>
+    </div>`; });
+  return h+`</div>`;
+}
+function _solCamArmar(k){ if(_solCamArmada===k)return false; _solCamArmada=k; render(); setTimeout(()=>{ if(_solCamArmada===k){ _solCamArmada=null; render(); } },4000); return true; }
+async function solCambioAplicar(pid){
+  const p=solCambiosPeticiones().find(x=>x.id===pid); if(!p)return; const {m,so}=_solDePeticion(p);
+  if(!so||so.estado!=="pendiente"){ toast("Esa solicitud ya no está pendiente",4000); return; }
+  { const b=_solCambioBloqueo(p,m); if(b){ toast("⛔ "+b,6000); return; } }
+  if(_solCamArmar(pid+"|a"))return; _solCamArmada=null;
+  UNDO_SNAPSHOT=JSON.stringify(DATA);
+  if(p.accion==="anular"){ so.estado="no"; so.anulada=true; }
+  else { so.capital=Math.round(+p.capital); so.cuotas=parseInt(p.cuotas); }
+  so.camUlt={accion:p.accion,estado:"aprobada",ts:Date.now()};
+  PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid); save(); render();
+  _avisoDeshacer(`${m.name.split(" ")[0]}: ${p.accion==="anular"?"solicitud anulada":`solicitud cambiada a ${fmtEur(so.capital)} € en ${so.cuotas} cuotas`}`);
+  try{ await window._fbFichas.borrarPeticion(pid); }catch(e){ console.warn("[NH] Hecho, pero la petición no se pudo quitar de la nube:",e); }
+}
+async function solCambioRechazar(pid){
+  const p=solCambiosPeticiones().find(x=>x.id===pid); if(!p)return; const {so}=_solDePeticion(p);
+  if(_solCamArmar(pid+"|r"))return; _solCamArmada=null;
+  try{ await window._fbFichas.borrarPeticion(pid); }catch(e){ toast("No se pudo: revisa la conexión"); render(); return; }
+  PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid);
+  if(so&&so.estado==="pendiente"){ so.camUlt={accion:p.accion,estado:"rechazada",ts:Date.now()}; save(); }
+  render(); toast("Hecho. La solicitud sigue igual");
 }
 // ══ v46.52 · LAS DOS LLAVES (Maestro v18.75 · AY-10, AP-4, PE-3) ═══════════════════════════════════
 // Desde su app, el asociado pide subir o bajar su aporte habitual (peticiones/{código_ms} con tipo "aporte" y aporte 50–200)

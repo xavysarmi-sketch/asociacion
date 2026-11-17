@@ -293,6 +293,7 @@ function ayudasTabHTML(){
   h+=origenCobradoHTML(d); // v45.23
   h+=`</div>`;
   h+=peticionesAppHTML(); // v45.52: pedidas desde la app de asociados
+  h+=solCambiosHTML(); // v46.55 · AY-9: cambiar o anular una solicitud, pedido desde la app
   // Solicitudes
   h+=`<div class="mes-card"><div class="mes-title" style="margin-bottom:6px">📝 Solicitudes de ayuda ${pend.length?`<span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#FFF4E5;color:#8A4F12;vertical-align:middle;white-space:nowrap">${pend.length} pendiente${pend.length>1?"s":""}</span>`:""}</div>`;
   if(!pend.length&&!SOL_FORM)h+=`<div style="color:var(--muted);font-size:13px;padding:6px 0">No hay solicitudes pendientes para ${mesTxt}.</div>`;
