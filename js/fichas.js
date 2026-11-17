@@ -218,7 +218,7 @@ async function peticionApuntar(pid){
   const p=(PETICIONES||[]).find(x=>x.id===pid), m=_petPersona(p); if(!p||!m)return;
   const av=m.type==="tercero"?m.ref:m.referidoPor, gid=_grupoDe(m.id)||(av?_grupoDe(av):"")||null;
   const mes=p.mes&&/^\d{4}-\d{2}$/.test(p.mes)?p.mes:getMesKey(DATA.reportMonth,DATA.reportYear);
-  _sols().push({id:"S"+Date.now()+Math.random().toString(36).slice(2,6),mid:m.id,nombre:m.name,capital:_r2(+p.capital),cuotas:parseInt(p.cuotas)||1,fecha:_hoyDMA(),estado:"pendiente",avalId:av||null,grupoGid:gid,mes,origen:"app",...(p.nota?{nota:String(p.nota).slice(0,300)}:{})});
+  _sols().push({id:"S"+Date.now()+Math.random().toString(36).slice(2,6),mid:m.id,nombre:m.name,capital:_r2(+p.capital),cuotas:parseInt(p.cuotas)||1,fecha:_hoyDMA(),...(p.creada?{pedida:new Date(p.creada).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"})}:{}),estado:"pendiente",avalId:av||null,grupoGid:gid,mes,origen:"app",...(p.nota?{nota:String(p.nota).slice(0,300)}:{})});
   PETICIONES=(PETICIONES||[]).filter(x=>x.id!==pid); save(); render(); toast("Apuntada en Solicitudes ✓");
   try{ await window._fbFichas.borrarPeticion(pid); }catch(e){ console.warn("[NH] La petición se apuntó pero no se pudo quitar de la nube:",e); }
 }

@@ -37,6 +37,8 @@ const REGLAS=Object.freeze({
   REFERIDOS_MAX_MES: 3,                 // BO · como mucho 3 referidos por mes
   // ── Aportes puntuales al fondo ──
   RETORNO_PUNTUAL: 0.05,                // 5 % sobre el capital aportado
+  APORTE_TEMPORAL_MIN: 100,             // AT-1 (Maestro v18.76) · aporte temporal de 100 a 2.000 € (la app pedía 500–3.000)
+  APORTE_TEMPORAL_MAX: 2000,            // AT-1 · nunca más de lo que falta para una ayuda (tope de ayuda 2.000 €, AY-5)
   // ── Pausa de aportes (PE-8) ──
   PAUSA_MESES: [1,2,3],                 // PE-8 · de 1 a 3 meses
   PAUSA_INDEFINIDA_CADA: 12,            // PE-8 · en la indefinida, una pausa cada 12 meses

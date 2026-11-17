@@ -950,6 +950,8 @@ function _renderPantalla(){
     if(MODAL.type==="bienvenida")h+=bienvenidaModalHTML(); // v45.21
     if(MODAL.type==="telefono")h+=telefonoModalHTML(); // v45.22
     if(MODAL.type==="ayuda_ok")h+=ayudaOkModalHTML(); // v45.39
+    if(MODAL.type==="solvarias")h+=solVariasModalHTML(); // v46.54 · AY-9
+    if(MODAL.type==="soltemporal")h+=solTemporalModalHTML(); // v46.54 · AT-1
     if(MODAL.type==="cg_cola")h+=cgColaModalHTML(); // v45.43
     if(MODAL.type==="cg_lista")h+=cgListaModalHTML(); // v45.85
     if(MODAL.type==="cg_envio")h+=cgEnvioModalHTML(); // v46.7

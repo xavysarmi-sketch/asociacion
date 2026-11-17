@@ -1535,8 +1535,8 @@ function puntualFormHTML(){
 <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Aportación puntual al fondo. El aportante recupera su capital más un 5% el mes siguiente.</p>
 <label class="m-label">Mes de entrega</label>
 ${selectorMesAnio("pu-mes","pu-anio")}
-<label class="m-label">Capital aportado (€) — entre 500 y 3000</label>
-<input id="pu-monto" class="m-input" type="number" min="500" max="3000" step="50" placeholder="500" style="font-size:20px;font-weight:700" oninput="puntualCalc()">
+<label class="m-label">Capital aportado (€) — entre ${REGLAS.APORTE_TEMPORAL_MIN} y ${_miles(REGLAS.APORTE_TEMPORAL_MAX)} (AT-1)</label>
+<input id="pu-monto" class="m-input" type="number" min="${REGLAS.APORTE_TEMPORAL_MIN}" max="${REGLAS.APORTE_TEMPORAL_MAX}" step="1" placeholder="500" style="font-size:20px;font-weight:700" oninput="puntualCalc()"${MODAL.prefill?` value="${+MODAL.prefill}"`:""}>
 <label class="m-label">Plazo (meses)</label>
 <div style="display:flex;gap:8px;margin-bottom:14px">
   <button class="m-opt pu-pl-opt active" data-pl="1" onclick="document.querySelectorAll('.pu-pl-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">1 mes</button>
@@ -1561,7 +1561,7 @@ function savePuntual(mid){
   const mes=document.getElementById("pu-mes")?.value||DATA.reportMonth;
   const anio=parseInt(document.getElementById("pu-anio")?.value)||DATA.reportYear;
   const plazo=parseInt(document.querySelector(".pu-pl-opt.active")?.dataset.pl||"1");
-  if(cap<500||cap>3000){alert("El capital debe estar entre 500 y 3000 €");return;}
+  if(cap<REGLAS.APORTE_TEMPORAL_MIN||cap>REGLAS.APORTE_TEMPORAL_MAX){alert(`El capital debe estar entre ${REGLAS.APORTE_TEMPORAL_MIN} y ${_miles(REGLAS.APORTE_TEMPORAL_MAX)} € (AT-1)`);return;} // v46.54: antes 500–3.000 (Maestro v18.76: 100–2.000)
   const ret=Math.round(cap*REGLAS.RETORNO_PUNTUAL);
   // Mes de devolución = mes siguiente al de entrega
   let di=MONTHS.indexOf(mes)+1, dy=anio;
@@ -1751,6 +1751,37 @@ function updateCierreLoanPreview(){
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm-txt)">${cuotaTxt}</b></div>
   </div>`;
 }
+// v46.54: registrar una ayuda aprobada (lo que hacía addCierreLoanSubmit, sin el formulario). La usan «Registrar ayuda»
+// y «Otorgar las que alcanzan» (js/ayudas.js): mismo efecto en datos y cuentas. Devuelve el id de la ayuda.
+function registrarAyudaAprobada(m,cap,nn,gidEnt,so){
+  const mid=m.id, rm=DATA.reportMonth, ry=DATA.reportYear;
+  const ni=(MONTHS.indexOf(rm)+1)%12;
+  const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
+  const rate=DATA.rate;
+  const{total,cuotas}=ayudaCuotas(cap,nn,rate);
+  const inst=cuotas[0]; // referencia visual (importe de la 1ª cuota); el cálculo real usa l.cuotas
+  const pays=[];let mi=ni,yr=ny;
+  for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
+  if(!m.loans)m.loans=[];
+  // v46.54: id único aunque se registren varias en el mismo milisegundo («Otorgar las que alcanzan»); misma forma «L»+número
+  const usados=new Set(); DATA.members.forEach(x=>[...(x.loans||[]),...(x.closedLoans||[])].forEach(l=>usados.add(l.id)));
+  let tl=Date.now(); while(usados.has("L"+tl))tl++;
+  const lid="L"+tl;
+  // Condición histórica de la ayuda en el momento de concederla (mismo patrón que addLoanSubmit).
+  const tipoEnConcesion=m.type;
+  const avalistaEnConcesion=(m.type==="tercero")?avalistaNombre(m):null; // nombre resuelto desde el id, texto congelado
+  const cicloEnConcesion=(m.ciclo!=null?m.ciclo:null);
+  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,..._condLlave2(m,cap)});
+  if(!m.history)m.history=[];
+  m.history.push({gMonth:rm,gYear:ry,capital:cap,lid});
+  // v45.14: viene de una solicitud → queda otorgada; si la entrega el principal de un grupo → cuenta del grupo
+  if(gidEnt){ _cgW(getMesKey(rm,ry),gidEnt).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"ayuda",importe:_r2(cap),fecha:_cgHoy(),mid,lid,nombre:m.name}); }
+  if(so){
+    if(so&&so.grupoGid&&!_grupoDe(mid)){ const gg=gruposCierre().find(x=>x.id===so.grupoGid); if(gg&&gg.principalId!==mid){ if(!gg.miembros)gg.miembros=[]; gg.miembros.push(mid); } } // v45.15
+    if(so&&so.avalId&&m.type==="tercero"&&!m.ref)m.ref=so.avalId; // v45.15
+    if(so){ so.estado="otorgada"; so.mid=mid; so.lid=lid; so.mesOtorgada=getMesKey(rm,ry); so.capitalOtorgado=cap; so.cuotasOtorgadas=nn; so.entregaGid=gidEnt||null; so.fechaOtorgada=_cgHoy(); } }
+  return lid;
+}
 function addCierreLoanSubmit(){
   const mid=document.getElementById("cl-mid").value;
   const cap=parseInt(document.getElementById("cl-cap").value)||0;if(cap<=0){alert("Capital inválido");return;}
@@ -1762,27 +1793,9 @@ function addCierreLoanSubmit(){
   if(!m)return;
   { const c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny}); // v45: mismas reglas que en la ficha
     if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v)+botonAmpliarAyudaHTML(m,cap,nn,{m:MONTHS[ni],y:ny}); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
-  const rate=DATA.rate;
-  const{total,cuotas}=ayudaCuotas(cap,nn,rate);
-  const inst=cuotas[0]; // referencia visual (importe de la 1ª cuota); el cálculo real usa l.cuotas
-  const pays=[];let mi=ni,yr=ny;
-  for(let i=0;i<nn;i++){pays.push({m:MONTHS[mi],y:yr,paid:false});mi++;if(mi>=12){mi=0;yr++;}}
-  if(!m.loans)m.loans=[];
-  const lid="L"+Date.now();
-  // Condición histórica de la ayuda en el momento de concederla (mismo patrón que addLoanSubmit).
-  const tipoEnConcesion=m.type;
-  const avalistaEnConcesion=(m.type==="tercero")?avalistaNombre(m):null; // nombre resuelto desde el id, texto congelado
-  const cicloEnConcesion=(m.ciclo!=null?m.ciclo:null);
-  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,..._condLlave2(m,cap)});
-  if(!m.history)m.history=[];
-  m.history.push({gMonth:rm,gYear:ry,capital:cap,lid});
-  // v45.14: viene de una solicitud → queda otorgada; si la entrega el principal de un grupo → cuenta del grupo
   const gidEnt=(document.getElementById("cl-entrega")||{}).value||"";
-  if(gidEnt){ _cgW(getMesKey(rm,ry),gidEnt).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"ayuda",importe:_r2(cap),fecha:_cgHoy(),mid,lid,nombre:m.name}); }
-  if(MODAL&&MODAL.sol){ const so=(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol);
-    if(so&&so.grupoGid&&!_grupoDe(mid)){ const gg=gruposCierre().find(x=>x.id===so.grupoGid); if(gg&&gg.principalId!==mid){ if(!gg.miembros)gg.miembros=[]; gg.miembros.push(mid); } } // v45.15
-    if(so&&so.avalId&&m.type==="tercero"&&!m.ref)m.ref=so.avalId; // v45.15
-    if(so){ so.estado="otorgada"; so.mid=mid; so.lid=lid; so.mesOtorgada=getMesKey(rm,ry); so.capitalOtorgado=cap; so.cuotasOtorgadas=nn; so.entregaGid=gidEnt||null; so.fechaOtorgada=_cgHoy(); } }
+  const so=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null;
+  const lid=registrarAyudaAprobada(m,cap,nn,gidEnt,so); // v46.54: lo mismo que «Otorgar las que alcanzan» (js/ayudas.js)
   save();MODAL=null;openModal('ayuda_ok',{mid,lid});toast("Ayuda registrada ✓"); // v45.39: resumen y WhatsApp en el mismo paso
 }
 function loanFormHTML(){
