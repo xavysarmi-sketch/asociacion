@@ -18,17 +18,28 @@ const REGLAS=Object.freeze({
   BENEFICIO_ANIO3: 15,                  // BE-2 · 3.er año en adelante (36 meses o indefinida)
   // ── Ayudas (AY) ──
   AYUDA_MIN: 100,                       // AY-1 · importe mínimo
-  AYUDA_MAX_CORTA: 500,                 // AY-1 · máximo con permanencia de 12 meses, terceros y asociado libre
+  AYUDA_MAX_CORTA: 500,                 // AY-1 · máximo para terceros con aval y Asociado Libre
   CUOTAS_MAX_CORTA: 5,                  // AY-1 · cuotas máximas en ese caso
-  CUOTAS_MAX: 12,                       // AY-1 · cuotas máximas con permanencia de 24, 36 meses o indefinida
+  // AY-10 (Maestro v18.82, «Tu ayuda crece con tu aporte»): lo máximo = «veces» el aporte que cuenta, con el tope AY-5
+  VECES_12: 14,                         // AY-10 · permanencia 12: 50 € × 14 = 700 €
+  VECES_24: 20,                         // AY-10 · permanencia 24: 50 € × 20 = 1.000 €
+  VECES_36: 30,                         // AY-10 · permanencia 36 o indefinida: 50 € × 30 = 1.500 €
+  AYUDA_12_APORTE_ALTO: 1500,           // AY-10 · excepción fija: 12 meses con 100 € o más → 1.500 € (Ángel 17/11/2026)
+  APORTE_ALTO: 100,                     // AY-10 · aporte que sube el límite: habitual de 100 € o más Y un mes ya pagado a 100 € o más
+  CUOTAS_12_50: 8,                      // AY-10 · cuotas: 12 meses con 50 €
+  CUOTAS_12_100: 12,                    // AY-10 · 12 meses con 100 € o más
+  CUOTAS_24_50: 12,                     // AY-10 · 24 meses con 50 €
+  CUOTAS_24_100: 15,                    // AY-10 · 24 meses con 100 € o más
+  CUOTAS_36: 15,                        // AY-10 · 36 meses o indefinida, con cualquier aporte
+  CUOTAS_MAX: 15,                       // AY-5 · cuotas máximas (parámetro que solo sube el coordinador; antes 12)
+  CUOTAS_SIN_APROBACION: 12,            // AY-5 · más de 12 cuotas necesita la aprobación previa del coordinador
   AYUDA_MAX_SIN_APROBACION: 1000,       // AY-5 · hasta aquí no hace falta aprobación previa del coordinador
-  AYUDA_MAX: 2000,                      // AY-5/AY-10 (Maestro v18.75) · máximo absoluto, solo con las dos llaves (antes 3.000 €)
-  AYUDA_MAX_LLAVE1: 1000,               // AY-10 · llave 1 (permanencia 24, 36 o indefinida) con aporte habitual de 50 €
-  APORTE_LLAVE2: 100,                   // AY-10 · llave 2: aporte habitual de 100 € o más Y el último mes pagado de 100 € o más
-  AY10_DESDE: "2026-11",                // AY-10 · rige para las ayudas concedidas desde noviembre 2026 (Maestro v18.75, 16/11/2026)
-  SIMULADOR_MAX_AYUDA: 2000,            // el simulador llega hasta el límite de cada persona (AY-10): 500 € con 12 meses, 1.000 €
-                                        // con la llave 1 y 2.000 € con las dos llaves (decisión de Ángel 16/11/2026; antes, 1.000 €
-                                        // para todos, decisión del 03/10/2026). Ver limiteAyudaDe (js/reglas.js)
+  AYUDA_MAX: 2000,                      // AY-5 · tope de ayuda (parámetro que solo sube el coordinador; hasta v18.74, 3.000 €)
+  AY10_DESDE: "2026-11",                // AY-10 · la auditoría juzga con esta tabla las ayudas desde noviembre 2026 (la anterior,
+                                        // v18.75–v18.81, era más estricta en todo: lo que cumplía aquella cumple esta)
+  AYUDAS_MAX_TERCERO: 1,                // AY-8 · una sola ayuda como tercero; para la 2.ª, se asocia
+  TERCERO_UNA_DESDE: "2026-12-01",      // AY-8 · vale para las solicitudes desde el 01/12/2026
+  SIMULADOR_MAX_AYUDA: 2000,            // simulador guiado: la barra «¿Necesitas otra cantidad?» llega al tope AY-5
   // ── Salidas (SA) ──
   AVISO_MESES: 1,                       // SA-1 (Maestro v18.64, 12/11/2026): un mes de aviso para todos, con cualquier saldo. Antes: · con más de 3.000 € de saldo, 2 meses de aviso
   AVISO_DIA_CORTE: 15,                  // SA-1 (v18.64): el aviso vale para el mes si llega hasta este día; desde el siguiente, para el mes siguiente. Antes: · con más de 6.000 €, 3 meses (si no, 1 mes)

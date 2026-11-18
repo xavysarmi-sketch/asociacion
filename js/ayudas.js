@@ -7,7 +7,7 @@ function _solMesIdx(so){ if(!so||!so.mes)return -1e9; const [y,m]=so.mes.split("
 function _solEsAhora(so){ return _solMesIdx(so)<=_idxMes(DATA.reportMonth,DATA.reportYear); }
 // v45.17: preferencia — primero asociados (y personas nuevas, que entran como asociados), después terceros; dentro, el orden que fija Ángel (▲▼)
 function _solTipo(so){ const m=so.mid&&DATA.members.find(x=>x.id===so.mid); if(m)return m.type==="tercero"?1:0; return so.tipoNuevo==="tercero"?1:0; } // v45.18: cuenta cómo está hoy (AY-2); una persona nueva, según cómo entra
-function _solEtqTipo(so,m){ return m?(m.type==="tercero"?"Tercero":"Asociado"+(aporteHabitualDe(m)>=REGLAS.APORTE_LLAVE2?" · aporta "+aporteHabitualDe(m)+" €":"")):(so.tipoNuevo==="tercero"?"Nuevo · tercero con aval":so.tipoNuevo==="asociado"?"Nuevo · asociado":"Nuevo"); }
+function _solEtqTipo(so,m){ return m?(m.type==="tercero"?"Tercero":"Asociado"+(aporteHabitualDe(m)>=REGLAS.APORTE_ALTO?" · aporta "+aporteHabitualDe(m)+" €":"")):(so.tipoNuevo==="tercero"?"Nuevo · tercero con aval":so.tipoNuevo==="asociado"?"Nuevo · asociado":"Nuevo"); }
 // v46.52 (Maestro v18.75 · AY-9): la app PROPONE el orden: entre los asociados, primero el aporte habitual más alto y, a igualdad,
 // por orden de llegada. Las que el coordinador ya ha colocado con ▲▼ (so.orden) van primero, en su orden: él decide siempre.
 function _solAporte(so){ const m=so.mid&&DATA.members.find(x=>x.id===so.mid); return m&&m.type==="asociado"?aporteHabitualDe(m):0; }
@@ -184,9 +184,9 @@ function _solVarias(){
   pend.forEach(so=>{ if(!rep[so.id]||!rep[so.id].ok)return;
     const m=so.mid&&DATA.members.find(x=>x.id===so.mid);
     if(!m){ aMano.push({so,motivo:"persona nueva: hay que darla de alta (Otorgar)"}); return; }
-    const c=_condicionActual(m), v=validarApoyo(m,so.capital,so.cuotas,c.tipo,c.ciclo,ini);
+    const c=_condicionActual(m), v=validarApoyo(m,so.capital,so.cuotas,c.tipo,c.ciclo,ini,undefined,so.fecha);
     if(v.bloqueo){ aMano.push({so,motivo:String(v.bloqueo).replace(/<[^>]+>/g,"")}); return; }
-    si.push({so,m,aprob:so.capital>REGLAS.AYUDA_MAX_SIN_APROBACION});
+    si.push({so,m,aprob:so.capital>REGLAS.AYUDA_MAX_SIN_APROBACION||so.cuotas>REGLAS.CUOTAS_SIN_APROBACION});
   });
   return {si,aMano,total:_r2(si.reduce((a,x)=>a+x.so.capital,0))};
 }
@@ -427,7 +427,7 @@ function delLoan(mid,lid){
   }});
   save();toast("Ayuda eliminada ✓");render();
 }
-function _limAyudaTxt(c,m){ return c===12?"hasta "+REGLAS.AYUDA_MAX_CORTA+" € · "+REGLAS.CUOTAS_MAX_CORTA+" cuotas":"hasta "+_miles(m?limiteAyudaDe(m,c):REGLAS.AYUDA_MAX_LLAVE1)+" € · "+REGLAS.CUOTAS_MAX+" cuotas"; } // v46.52: con m, su límite (AY-10)
+function _limAyudaTxt(c,m){ return "hasta "+_miles(limiteAyudaDe(m,c))+" € · "+cuotasMaxDe(m,c)+" cuotas"; } // v46.56: su límite con su aporte (AY-10)
 function _permCorta(c){ return c===0?"Indefinida":c+" meses"; }
 function simMensajeDatos(m){
   const cap=SIM.cap, n=SIM.n, cur=(m.ciclo!=null?m.ciclo:12), need=_simPermNecesaria(m,cap,n);
@@ -436,7 +436,7 @@ function simMensajeDatos(m){
   const finDe=c=>(c===0||jIdx==null)?null:jIdx+c-1;
   const extras=[];
   if(need!=null&&need!==cur){
-    if(cur===12)extras.push(`Ayudas de hasta ${_miles(limiteAyudaDe(m,24))} € en hasta ${REGLAS.CUOTAS_MAX} cuotas`);
+    extras.push(`Ayudas de hasta ${_miles(limiteAyudaDe(m,need))} € en hasta ${cuotasMaxDe(m,need)} cuotas`);
     if(jIdx!=null){ const mN=Object.assign({},m,{ciclo:need}), hasta=jIdx+(need===0?37:need);
       [[12,10],[15,12]].forEach(([lv,antes])=>{ for(let i=Math.max(rep+1,jIdx+1);i<=hasta;i++){ const k=_keyDeIdx(i);
         if(tarifaNivelMes(mN,k)===lv&&tarifaNivelMes(m,k)<lv){ extras.push(`Tu beneficio sube: desde ${_txtIdx(i-1)}, cada 50 € que aportas gana <b>${lv} €</b> en vez de ${antes} €`); break; } } }); }
@@ -519,7 +519,7 @@ function _avisoApoyoHTML(v){
 function botonAmpliarAyudaHTML(m,cap,nn,ini){
   const c=permNecesariaApoyo(m,cap,nn,ini); if(c==null)return "";
   return `<button onclick="ampliarDesdeAyuda('${esc(m.id)}',${c})" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #2D6A4F;background:#2D6A4F;color:#fff;font-size:14px;font-weight:800;cursor:pointer">🔁 Ampliar su permanencia a ${c===0?"indefinida":c+" meses"}</button>
-    ${cap<=_simMaxBarra(m)&&nn<=12?`<button onclick="avisarDesdeAyuda('${esc(m.id)}',${cap},${nn})" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1.5px solid #25D366;background:#fff;color:#128C4A;font-size:13.5px;font-weight:800;cursor:pointer">📲 Avisar por WhatsApp</button>`:""}
+    ${cap<=SIM_MAX_AYUDA&&nn<=REGLAS.CUOTAS_MAX?`<button onclick="avisarDesdeAyuda('${esc(m.id)}',${cap},${nn})" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1.5px solid #25D366;background:#fff;color:#128C4A;font-size:13.5px;font-weight:800;cursor:pointer">📲 Avisar por WhatsApp</button>`:""}
     <div style="font-size:12px;color:var(--muted);margin:4px 0 10px;line-height:1.4">«Ampliar» abre la ventana de su permanencia; «Avisar» abre el simulador con esta ayuda para enviársela. En los dos casos vuelves aquí con la ayuda tal como está.</div>`;
 }
 function ampliarDesdeAyuda(mid,c){
@@ -547,7 +547,7 @@ function addLoanSubmit(){
   const tipoEnConcesion=mOr?mOr.type:"asociado";
   const avalistaEnConcesion=(mOr&&mOr.type==="tercero")?avalistaNombre(mOr):null; // nombre resuelto desde el id, texto congelado
   const cicloEnConcesion=mOr&&mOr.ciclo!=null?mOr.ciclo:null; // v45: sin inventar (antes 0 = indefinida)
-  DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,..._condLlave2(mOr,cap)});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
+  DATA.members.forEach(m=>{if(m.id===MODAL.mid){const lid="l"+Date.now();m.loans.push({id:lid,gMonth:gm,gYear:gy,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,...condicionesConcesion(mOr,cap,nn)});if(!m.history)m.history=[];m.history.push({gMonth:gm,gYear:gy,capital:cap,lid});}});
   closeModal();toast("Ayuda añadida ✓");save();
 }
 
@@ -712,10 +712,138 @@ function saveEditLoan(){
   recalcularApoyo(l);
   closeModal();save();toast("Ayuda actualizada ✓");render();
 }
-// v46.52 (Ángel 16/11/2026, AY-10): la barra llega hasta 2.000 € para quien tiene las dos llaves; para los demás, hasta
-// 1.000 € (lo que se puede pedir con la llave 1), y el simulador dice qué permanencia hace falta, como siempre.
-function _simMaxBarra(m){ return tieneLlave2(m)?SIM_MAX_AYUDA:REGLAS.AYUDA_MAX_LLAVE1; }
-const SIM_MAX_AYUDA=REGLAS.SIMULADOR_MAX_AYUDA; // js/maestro.js: 2.000 € desde la v46.52 (antes 1.000 €, decisión de Ángel 03/10/2026)
+const SIM_MAX_AYUDA=REGLAS.SIMULADOR_MAX_AYUDA; // js/maestro.js: la barra del simulador guiado llega al tope AY-5 (2.000 €)
+// ══ v46.56 · SIMULADOR GUIADO (Maestro v18.82 · AY-10; diseño «Simulador guiado» del lienzo de Ángel, 17/11/2026) ══
+// Arriba «Lo que puedes pedir hoy» (plegable). Debajo: 1. permanencia, 2. aporte (50 / 100 €), el cuadro verde con lo
+// que podría pedir y en cuántas cuotas, «Para conseguirlo» (en la app de asociados con los botones «Quiero…», que son
+// peticiones al coordinador) y 3. «¿Necesitas otra cantidad?» con los caminos para llegar. A los terceros: «Sin
+// asociarme» (una sola ayuda, hasta 500 €). Mismas reglas que todo lo demás: limiteAyudaCon y cuotasMaxCon (js/reglas.js).
+function _simgHoy(m){ const t=m.type==="tercero"; return {p:t?"T":(m.ciclo!=null?m.ciclo:12), a:t?0:(aporteQueCuenta(m)>=REGLAS.APORTE_ALTO?100:50)}; }
+function _simgLim(p,a){ return p==="T"?REGLAS.AYUDA_MAX_CORTA:limiteAyudaCon(p,a); }
+function _simgK(m,p,a){ // cuotas máximas; con su permanencia, nunca después de su último mes (AY-1)
+  if(p==="T")return REGLAS.CUOTAS_MAX_CORTA;
+  let k=cuotasMaxCon(p,a);
+  if(p!==0&&m.type!=="tercero"&&m.joinMonth){ const ini=_idxMes(DATA.reportMonth,DATA.reportYear)+1; k=Math.min(k,Math.max(0,_finCon(m,p)-ini+1)); }
+  return k;
+}
+function _simgPerms(m){ return m.type==="tercero"?[12,24,36,"T"]:_simPermOpciones(m); }
+function _simgInit(m){
+  if(SIM.p!==undefined&&(SIM.p==="T"?m.type==="tercero":_simgPerms(m).indexOf(SIM.p)>=0))return;
+  const H=_simgHoy(m), L=_simgLim(H.p,H.a), k=_simgK(m,H.p,H.a);
+  SIM.p=H.p; SIM.a=H.a||50; SIM.cap=Math.min(500,L); SIM.n=Math.max(1,Math.min(5,k||1));
+}
+function _simgTercYa(m){ return m.type==="tercero"&&terceroYaTuvoSuAyuda(m); } // AY-8: ya recibió su ayuda como tercero
+function _simgCuota(cap,n){ return Math.max(...ayudaCuotas(cap,n,DATA.rate).cuotas); }
+function _simgPermTxt(p){ return p==="T"?"Sin asociarme":p===0?"Indefinida":p+" meses"; }
+function simgElige(o){ // botones del simulador: permanencia, aporte, cantidad, caminos
+  if(!SIM)return; const m=DATA.members.find(x=>x.id===SIM.mid); if(!m)return;
+  if(o.p!==undefined)SIM.p=o.p; if(o.a!==undefined)SIM.a=o.a;
+  if(o.cap!==undefined){ SIM.cap=o.cap; SIM.tocCap=true; SIM.tocN=true; }
+  const k=Math.max(1,_simgK(m,SIM.p,SIM.p==="T"?0:SIM.a));
+  SIM.n=Math.max(1,Math.min(o.cap!==undefined||o.max?k:SIM.n,k));
+  simPintar();
+}
+function simgCuotas(d){ if(!SIM)return; const m=DATA.members.find(x=>x.id===SIM.mid); if(!m)return;
+  const k=Math.max(1,_simgK(m,SIM.p,SIM.p==="T"?0:SIM.a)); SIM.n=Math.max(1,Math.min(k,SIM.n+d)); SIM.tocN=true; simPintar(); }
+function simgBarra(v){ // la barra: solo se repinta la parte de abajo (si se repintara la barra, se cortaría el gesto)
+  if(!SIM)return; const m=DATA.members.find(x=>x.id===SIM.mid); if(!m)return;
+  SIM.cap=+v; SIM.tocCap=true; SIM.tocN=true; SIM.n=Math.max(1,_simgK(m,SIM.p,SIM.p==="T"?0:SIM.a));
+  const el=document.getElementById("simg-abajo"); if(el)el.innerHTML=_simgAbajoHTML(m);
+  const t=document.getElementById("simg-cap"); if(t)t.textContent=fmtEur(SIM.cap)+" €";
+  if(typeof nhaPedirActualizar==="function")nhaPedirActualizar();
+}
+const _simgBox=(sel,fs)=>`flex:1;min-width:0;min-height:58px;border-radius:12px;border:2px solid ${sel?"#1B4332;background:#1B4332;color:#fff":"#D5D0C8;background:#fff;color:#1A1A1A"};font-size:${fs||15}px;font-weight:800;cursor:pointer;padding:4px 2px;line-height:1.2`;
+function _simgAbajoHTML(m){ // chips de cantidad + cuotas, o los caminos para llegar
+  const p=SIM.p, a=p==="T"?0:SIM.a, L=_simgLim(p,a), k=_simgK(m,p,a), cap=SIM.cap, cabe=cap<=L&&k>=1&&!(p==="T"&&_simgTercYa(m));
+  const chip=v=>`<button onclick="simgElige({cap:${v}})" style="flex:1 1 30%;min-height:42px;border-radius:10px;border:2px solid ${v===cap?"#1B4332;background:#1B4332;color:#fff":"#D5D0C8;background:#fff;color:#1A1A1A"};font-size:15px;font-weight:800;cursor:pointer">${_miles(v)} €</button>`;
+  let h=`<div style="display:flex;flex-wrap:wrap;gap:6px">${[300,500,700,1000,1500,2000].filter(v=>v<=SIM_MAX_AYUDA).map(chip).join("")}</div>`;
+  if(cabe){ const n=Math.max(1,Math.min(SIM.n,k)), bt=`width:40px;height:40px;border-radius:20px;border:2px solid #1B4332;background:#fff;color:#1B4332;font-size:20px;font-weight:800;cursor:pointer`;
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><span style="font-size:15px">¿En cuántas cuotas?</span>
+        <div style="display:flex;align-items:center;gap:10px"><button onclick="simgCuotas(-1)" style="${bt}" aria-label="Menos cuotas">−</button><b id="simg-n" style="font-size:20px;min-width:24px;text-align:center">${n}</b><button onclick="simgCuotas(1)" style="${bt}" aria-label="Más cuotas">+</button></div></div>
+      <div style="background:#EDF5EF;border-radius:12px;padding:12px;margin-top:10px">
+        <div style="display:flex;justify-content:space-between;font-size:16px;padding:3px 0"><span>Recibes</span><b>${fmtEur(cap)} €</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:16px;padding:3px 0"><span>Pagas</span><b style="text-align:right">${n} ${n===1?"cuota":"cuotas"} de ${fmtEur(_simgCuota(cap,n))} €</b></div></div>`;
+    return h; }
+  const cam=[], A=REGLAS.APORTE_ALTO, can=(P,AA)=>_simgLim(P,AA)>=cap&&_simgK(m,P,AA)>=1;
+  if(p==="T"){ const f=[[12,50],[24,50],[12,A],[36,50],[24,A],[36,A]].find(([P,AA])=>can(P,AA));
+    if(f)cam.push({t:`Asociarme con ${f[0]} meses y ${f[1]} € al mes`,o:`{p:${f[0]},a:${f[1]},max:true}`}); }
+  else{ const P=[24,36].find(x=>(p!==0&&x>p)&&can(x,a));
+    if(P)cam.push({t:`Ampliar mi permanencia a ${P} meses`,o:`{p:${P},max:true}`});
+    if(a<A&&can(p,A))cam.push({t:`Aumentar mi aporte a ${A} € al mes`,o:`{a:${A},max:true}`});
+    if(!cam.length){ const Q=[24,36].find(x=>(p===0?false:x>=p)&&can(x,A)); if(Q)cam.push({t:`Ampliar a ${Q} meses y aportar ${A} € al mes`,o:`{p:${Q},a:${A},max:true}`}); } }
+  h+=`<div style="background:#EDF5EF;border-radius:12px;padding:12px;margin-top:12px"><div style="font-size:16px;font-weight:800;color:#1B4332;margin-bottom:8px">${cam.length?`Para ${fmtEur(cap)} € puedes:`:`${fmtEur(cap)} € no caben${k<1?": tu permanencia termina antes de la primera cuota":""}`}</div>
+    ${cam.map(c=>`<button onclick="simgElige(${c.o})" style="width:100%;min-height:50px;border:2px solid #1B4332;border-radius:12px;background:#fff;color:#1B4332;font-size:15px;font-weight:800;text-align:left;padding:8px 12px;margin-bottom:8px;cursor:pointer">${c.t}</button>`).join("")}
+    <div style="font-size:13px;color:#5F5A55">${cam.length?"Tócalo y arriba verás cómo queda.":`Prueba con menos cantidad. El tope de una ayuda es ${_miles(REGLAS.AYUDA_MAX)} €.`}</div></div>`;
+  return h;
+}
+// v46.56 (Ángel 18/11/2026): cuotas recortadas por el final de la permanencia, dicho en positivo. Con 12 o 24 meses,
+// cuántas cuotas tendría ampliándola al siguiente paso (mismo aporte); con 36 o indefinida, solo la primera frase.
+function _simgAvisoFinHTML(m,p,a,k){
+  let t=`Tus cuotas terminan con tu permanencia, en ${_txtIdx(_finCon(m,p))}.`;
+  const sig=p===12?24:p===24?36:null;
+  if(sig){ const k2=_simgK(m,sig,a); if(k2>k)t+=` Si la amplías a ${sig} meses, puedes tener hasta ${k2} ${k2===1?"cuota":"cuotas"}.`; }
+  return `<div style="font-size:13.5px;opacity:.9;margin-top:6px">${t}</div>`;
+}
+function simGuiadoHTML(m){
+  _simgInit(m);
+  const R=REGLAS, H=_simgHoy(m), esT=m.type==="tercero", p=SIM.p, a=p==="T"?0:SIM.a;
+  const L=_simgLim(p,a), k=_simgK(m,p,a), hL=_simgLim(H.p,H.a), hK=_simgK(m,H.p,H.a), ab=!!DESP["simg-hoy"];
+  const yaTuvo=esT&&terceroYaTuvoSuAyuda(m);
+  const asoc=!!window.NH_APP_ASOCIADOS&&typeof nhaCamPedir==="function"&&!esT; // los «Quiero…», solo en la app de asociados
+  // Lo que puedes pedir hoy
+  const caja=(t,v)=>`<div style="flex:1;background:#F5F0EB;border-radius:10px;padding:10px"><div style="font-size:12.5px;color:#5F5A55">${t}</div><b style="font-size:17px">${v}</b></div>`;
+  const fl=(t,v)=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:15px;padding:2px 0"><span>${t}</span><b style="text-align:right">${v}</b></div>`;
+  let h=`<div style="background:#fff;border-radius:16px;border-left:6px solid #2D6A4F;box-shadow:0 2px 6px rgba(0,0,0,.08);overflow:hidden;margin-bottom:14px">
+    <button onclick="DESP['simg-hoy']=!DESP['simg-hoy'];simPintar()" aria-expanded="${ab}" style="width:100%;border:none;background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;text-align:left;cursor:pointer;color:inherit">
+      <span><span style="display:block;font-size:13px;font-weight:700;color:#2D6A4F;letter-spacing:.5px">${yaTuvo?"TU PRÓXIMA AYUDA, COMO ASOCIADO":"LO QUE PUEDES PEDIR HOY"}</span>
+      <span style="display:block;font-size:26px;font-weight:800;color:#1B4332">${yaTuvo?`Desde ${fmtEur(limiteAyudaCon(12,R.APORTE_MINIMO))} €`:`Hasta ${fmtEur(hL)} €`}</span></span>
+      <span style="width:34px;height:34px;border-radius:17px;background:#EDF5EF;color:#1B4332;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ab?"▲":"▼"}</span></button>`;
+  if(ab){
+    h+=`<div style="padding:0 16px 16px">${yaTuvo?"":`<div style="display:flex;gap:8px;margin-bottom:8px">${esT?caja("Cómo pides","Con aval, sin asociarte"):caja("Tu permanencia",H.p===0?"Indefinida":H.p+" meses")+caja("Tu aporte",(H.a>=R.APORTE_ALTO?aporteQueCuenta(m):R.APORTE_MINIMO)+" € al mes")}</div>`}`;
+    if(yaTuvo)h+=`<div style="background:#EDF5EF;border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.45">Ya recibiste tu ayuda como tercero. Para la siguiente, asóciate.</div>`;
+    else h+=`<div style="background:#EDF5EF;border-radius:10px;padding:10px 12px">${fl("Puedes pedir","hasta "+fmtEur(hL)+" €")}${hK>=1?fl("Lo devuelves en","hasta "+hK+" cuotas"+(H.p!=="T"&&hK<cuotasMaxCon(H.p,H.a)?" (hasta "+_txtIdx(_finCon(m,H.p))+")":""))+fl("Cada cuota",fmtEur(_simgCuota(hL,hK))+" € al mes"):fl("Lo devuelves en","tu permanencia ya termina")}</div>`;
+    if(!esT&&aporteAltoPendiente(m))h+=`<div style="font-size:13.5px;color:#7A5300;margin-top:8px">Tu aporte de ${aporteHabitualDe(m)} € cuenta desde que pagues tu primer mes a ${R.APORTE_ALTO} €.</div>`;
+    if(!yaTuvo)h+=`<div style="font-size:13.5px;color:#2D6A4F;margin-top:8px">¿Quieres pedir más o menos, o en otras cuotas? Pruébalo en el simulador de abajo.</div>`;
+    h+=`</div>`;
+  }
+  h+=`</div><div style="font-size:26px;font-weight:800;font-family:Georgia,serif;color:#1B4332;margin-bottom:10px">Simular una ayuda</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px"><span style="color:#2D6A4F">1.</span> Con permanencia de</div>
+    <div style="display:flex;gap:8px">${_simgPerms(m).map(v=>`<button onclick="simgElige({p:${v==="T"?"'T'":v}})" style="${_simgBox(p===v,_simgPerms(m).length>3?13:15)}${v==="T"?";flex:1.35":""}">${v==="T"?"Sin<br>asociarme":_simgPermTxt(v)}</button>`).join("")}</div>`;
+  if(p!=="T")h+=`<div style="font-size:16px;font-weight:700;margin:12px 0 8px"><span style="color:#2D6A4F">2.</span> Con aporte de</div>
+    <div style="display:flex;gap:8px">${[R.APORTE_MINIMO,R.APORTE_ALTO].map(v=>`<button onclick="simgElige({a:${v}})" style="${_simgBox(SIM.a===v,22)}">${v} €</button>`).join("")}</div>`;
+  // Cuadro verde
+  h+=`<div style="background:#1B4332;color:#fff;border-radius:16px;padding:18px;margin-top:14px">`+(p==="T"&&yaTuvo
+    ?`<div style="font-size:17px;font-weight:700;line-height:1.45">Ya recibiste tu ayuda como tercero. Para la siguiente, asóciate.</div>`
+    :k>=1
+    ?`<div style="font-size:15px">Podrías pedir hasta</div><div style="font-size:38px;font-weight:800;line-height:1.15">${fmtEur(L)} €</div>
+      <div style="font-size:16px">y tienes hasta <b>${k} ${k===1?"cuota":"cuotas"}</b> para devolverlo</div>
+      <div style="font-size:15px;opacity:.9">(${k} ${k===1?"cuota":"cuotas"} de ${fmtEur(_simgCuota(L,k))} € al mes)</div>${k<cuotasMaxCon(p,a)&&p!=="T"?_simgAvisoFinHTML(m,p,a,k):""}`
+    :`<div style="font-size:16px;line-height:1.45">Con esta permanencia ya no da tiempo a devolver una ayuda antes de que termine. Amplíala para poder pedir.</div>`)+`</div>`;
+  // Para conseguirlo
+  const pasos=[], pedir=[];
+  if(p==="T"){ if(!yaTuvo)h+=`<div style="background:#fff;border:2px solid #1B4332;border-radius:14px;padding:14px;margin-top:14px;font-size:16px;font-weight:800;color:#1B4332">Sin asociarte puedes pedir una sola ayuda, de hasta ${R.AYUDA_MAX_CORTA} €.</div>`; }
+  else{
+    if(esT)pasos.push({t:`Asociarte con ${p} meses y ${SIM.a} € al mes`,d:"Tu aporte gana beneficio cada mes."});
+    else{
+      if(p!==H.p&&H.p!==0&&p>H.p){ pasos.push({t:`Ampliar tu permanencia a ${p} meses`,d:`Desde el mes ${H.p===12?13:25}, tu beneficio sube.`}); pedir.push({tipo:"perm",v:p,t:`Quiero ampliar a ${p} meses`}); }
+      if(SIM.a>H.a){ pasos.push({t:`Aportar ${SIM.a} € al mes`,d:aporteAltoPendiente(m)?`Ya lo tienes pedido: cuenta desde que pagues tu primer mes a ${SIM.a} €.`:"Tu beneficio de cada mes es el doble."}); if(!aporteAltoPendiente(m))pedir.push({tipo:"aporte",v:SIM.a,t:`Quiero aportar ${SIM.a} € al mes`}); }
+    }
+    if(pasos.length){
+      h+=`<div style="background:#fff;border:2px solid #1B4332;border-radius:14px;padding:14px;margin-top:14px"><div style="font-size:16px;font-weight:800;color:#1B4332;margin-bottom:10px">Para conseguirlo:</div>
+        ${pasos.map(x=>`<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px"><span style="margin-top:6px;width:10px;height:10px;border-radius:5px;background:#1B4332;flex-shrink:0"></span><div><b style="font-size:15px">${x.t}</b><div style="font-size:14px;color:#2D6A4F">${x.d}</div></div></div>`).join("")}
+        ${asoc?pedir.map(b=>nhaQuieroHTML(m,b)).join("")+`<div style="font-size:13.5px;color:#5F5A55;margin-top:4px">Es una petición: no cambia nada hasta que el coordinador la apruebe.</div>`:""}</div>`;
+    }
+  }
+  // 3. ¿Necesitas otra cantidad?
+  SIM.cap=Math.min(Math.max(R.AYUDA_MIN,SIM.cap),SIM_MAX_AYUDA);
+  h+=`<div style="background:#fff;border-radius:16px;padding:16px;margin-top:14px;border:1px solid #EFEAE0">
+    <div style="font-size:17px;font-weight:800;margin-bottom:10px"><span style="color:#2D6A4F">3.</span> ¿Necesitas otra cantidad?</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px">Cantidad</span><b id="simg-cap" style="font-size:26px;color:#1B4332">${fmtEur(SIM.cap)} €</b></div>
+    <input type="range" min="${R.AYUDA_MIN}" max="${SIM_MAX_AYUDA}" step="50" value="${SIM.cap}" oninput="simgBarra(this.value)" aria-label="Cantidad" class="sim-range" style="width:100%;accent-color:#1B4332;margin:6px 0 10px">
+    <div id="simg-abajo">${_simgAbajoHTML(m)}</div></div>`;
+  return h;
+}
+
 // v46.39 (Ángel 12/11/2026): «Si sales hoy», UN solo cálculo (salidaV18, Maestro SA) y un solo cuadro para el simulador,
 // Preguntas frecuentes y «Mis aportes y beneficios» de la app de asociados. Enseña también el beneficio que dejaría
 // y cuántos aportes le faltan para no perderlo (completar el bloque de 12 o llegar al final de su permanencia).
@@ -737,7 +865,7 @@ function siSalesHoyHTML(m){
 }
 function abrirSimulador(mid,tab){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
-  SIM={mid,tab:tab||"ayuda",ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,_simMaxCuotas(m))),ap:50};
+  SIM={mid,tab:m.type==="tercero"?"ayuda":(tab||"ayuda"),ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,m.type==="tercero"?REGLAS.CUOTAS_MAX_CORTA:_simMaxCuotas(m))),ap:50};
   openModal('sim',{mid});
 }
 // v45.53 (decisión de Ángel 25/10/2026): el simulador ya no ofrece la permanencia indefinida (llega hasta 36 meses);
@@ -746,7 +874,7 @@ function _simPermOpciones(m){ const c=(m.ciclo!=null?m.ciclo:12); return PERM_OP
 // Límites de la ayuda con la permanencia simulada. ini = mes de la 1.ª cuota (el siguiente al actual).
 function _simLimitesAyuda(m,ciclo){
   const rep=_idxMes(DATA.reportMonth,DATA.reportYear), ini=rep+1;
-  let maxCap=limiteAyudaDe(m,ciclo), maxN=ciclo===12?REGLAS.CUOTAS_MAX_CORTA:REGLAS.CUOTAS_MAX, porFin=false; // v45.38: js/maestro.js
+  let maxCap=limiteAyudaDe(m,ciclo), maxN=cuotasMaxDe(m,ciclo), porFin=false; // v46.56: AY-10
   if(ciclo!==0&&m.joinMonth){ const fin=_finCon(m,ciclo)+1; const k=fin-ini+1; if(k<maxN){maxN=Math.max(0,k);porFin=true;} }
   return {ini,maxCap,maxN,porFin};
 }
@@ -757,36 +885,15 @@ function simuladorHTML(){
   const perm=_simPermOpciones(m);
   if(perm.indexOf(SIM.ciclo)<0)SIM.ciclo=perm[0];
   let h=`<div class="modal-title">🧮 Simulador — ${escH(m.name.split(" ")[0])}</div>
-    <div style="display:flex;gap:4px;background:#EFEAE0;border-radius:12px;padding:4px;margin-bottom:14px">${tabBtn("ayuda","Ayuda")}${tabBtn("ben","Beneficio")}</div>`;
+    ${m.type==="tercero"?`<div></div>`:`<div style="display:flex;gap:4px;background:#EFEAE0;border-radius:12px;padding:4px;margin-bottom:14px">${tabBtn("ayuda","Ayuda")}${tabBtn("ben","Beneficio")}</div>`}`;
+  if(m.type==="tercero")SIM.tab="ayuda"; // v46.56: un tercero solo simula su ayuda (y lo que podría asociándose)
   if(SIM.tab==="ben")return h+`<div id="sim-res">${simBenResHTML(m)}</div>
     <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.4">Es solo una simulación: no cambia nada de tu ficha.</div>`;
-  // v45.6: una sola barra (100–1.000 €) y otra de 1 a 12 meses; el simulador dice qué permanencia hace falta
-  const abierto=!!DESP["sim-info"];
-  h+=`<button onclick="DESP['sim-info']=!DESP['sim-info'];render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;margin:0 0 ${abierto?0:14}px;padding:12px 14px;border-radius:${abierto?"12px 12px 0 0":"12px"};border:1.5px solid #2D6A4F;background:#EEF7F1;color:#1B4332">
-      <span style="font-size:22px">💡</span><span style="flex:1;font-size:14.5px;font-weight:800">¿Cuánto puedo pedir? <span style="font-weight:600;font-size:12.5px;opacity:.8">Toca aquí y te lo explicamos</span></span>
-      <span style="font-size:18px;transform:rotate(${abierto?90:0}deg)">›</span></button>`;
-  if(abierto)h+=`<div style="border:1.5px solid #2D6A4F;border-top:none;border-radius:0 0 12px 12px;padding:10px 14px 12px;margin-bottom:14px;font-size:13.5px;color:#1B4332;line-height:1.5;background:#fff">
-      Depende de tu <b>permanencia</b> (el tiempo que te comprometes a estar en el fondo):
-      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:0;margin:8px 0;border:1px solid #D5E3D9;border-radius:10px;overflow:hidden;font-size:13px">
-        <div style="background:#1B4332;color:#fff;padding:6px 8px;font-weight:700">Permanencia</div><div style="background:#1B4332;color:#fff;padding:6px 8px;font-weight:700">Puedes pedir</div><div style="background:#1B4332;color:#fff;padding:6px 8px;font-weight:700">Lo devuelves en</div>
-        <div style="padding:6px 8px">12 meses</div><div style="padding:6px 8px"><b>hasta ${REGLAS.AYUDA_MAX_CORTA} €</b></div><div style="padding:6px 8px">hasta ${REGLAS.CUOTAS_MAX_CORTA} meses</div>
-        <div style="padding:6px 8px;background:#F4F9F6">${m.ciclo===0?"24, 36 meses o indefinida":"24 o 36 meses"}</div><div style="padding:6px 8px;background:#F4F9F6"><b>hasta ${_miles(REGLAS.AYUDA_MAX_LLAVE1)} €</b><br><span style="font-size:12px">hasta ${_miles(REGLAS.AYUDA_MAX)} € si aportas ${REGLAS.APORTE_LLAVE2} € al mes</span></div><div style="padding:6px 8px;background:#F4F9F6">hasta ${REGLAS.CUOTAS_MAX} meses</div>
-      </div>
-      La última cuota se paga, como máximo, en el <b>último mes de tu permanencia</b>. Si necesitas más, puedes <b>ampliar tu permanencia</b> cuando quieras.</div>`;
-  h+=`<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Tu permanencia: <b style="color:var(--dark)">${m.ciclo===0?"indefinida":m.ciclo+" meses"}</b>${finPermanenciaIdx(m)!=null?` · termina en ${_txtIdx(finPermanenciaIdx(m))}`:""}</div>`;
-  if(SIM.tab==="ayuda"){
-    const _barMax=_simMaxBarra(m); SIM.cap=Math.min(Math.max(REGLAS.AYUDA_MIN,SIM.cap),_barMax); SIM.n=Math.min(Math.max(1,SIM.n),REGLAS.CUOTAS_MAX);
-    h+=`<label class="m-label">¿Cuánto necesitas? <b id="sim-cap-v" style="color:#1B4332;font-size:17px">${SIM.tocCap===false?"—":fmtEur(SIM.cap)+" €"}</b></label>
-      <div id="sim-aviso">${simAvisoAyudaHTML(m)}</div>
-      <input type="range" min="${REGLAS.AYUDA_MIN}" max="${_barMax}" step="50" value="${SIM.cap}" oninput="SIM.cap=+this.value;SIM.tocCap=true;simPintar()" class="sim-range">
-      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:12px"><span>${REGLAS.AYUDA_MIN} €</span><span>${fmtEur(_barMax)} €</span></div>
-      <label class="m-label">¿En cuántos meses lo devuelves? <b id="sim-n-v" style="color:#1B4332;font-size:17px">${SIM.tocN===false?"—":SIM.n+" "+(SIM.n===1?"mes":"meses")}</b></label>
-      <input type="range" min="1" max="${REGLAS.CUOTAS_MAX}" step="1" value="${SIM.n}" oninput="SIM.n=+this.value;SIM.tocN=true;simPintar()" class="sim-range">
-      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:6px"><span>1 mes</span><span>${REGLAS.CUOTAS_MAX} meses</span></div>`;
-  }
+  // v46.56: la pestaña Ayuda es el simulador guiado (Maestro v18.82 · AY-10)
+  if(SIM.tab==="ayuda")h+=`<div id="sim-guiado">${simGuiadoHTML(m)}</div>`;
   const _adm=!READONLY_ID&&!ES_MODO_GRUPO&&!VISTA_ASOC; // v45.28: enviar por WhatsApp solo desde la app del administrador
-  return h+`<div id="sim-res">${SIM.tab==="ayuda"?simAyudaResHTML(m):simBenResHTML(m)}</div>
-    ${_adm&&SIM.tab==="ayuda"?`<button onclick="simEnviarWA()" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:15px;font-weight:800;cursor:pointer">💬 Enviar por WhatsApp</button>
+  return h+`${SIM.tab==="ayuda"?"":`<div id="sim-res">${simBenResHTML(m)}</div>`}
+    ${_adm&&SIM.tab==="ayuda"&&m.type!=="tercero"?`<button onclick="simEnviarWA()" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:15px;font-weight:800;cursor:pointer">💬 Enviar por WhatsApp</button>
       <div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.4">Se envía una imagen con esta ayuda (y, si hace falta, la permanencia que necesita) y un mensaje corto.</div>`:""}
     ${_adm&&MODAL.volver?`<button onclick="volverAAyuda(MODAL.volver)" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer">← Volver a la ayuda</button>`:""}
     <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.4">Es solo una simulación: no cambia nada de tu ficha.</div>`;
@@ -796,8 +903,7 @@ function _simPermNecesaria(m,cap,n){
   const ini=_idxMes(DATA.reportMonth,DATA.reportYear)+1, cur=(m.ciclo!=null?m.ciclo:12);
   const cand=[cur,24,36].filter((c,i,a)=>a.indexOf(c)===i&&(cur===0?c===0:c>=cur)); // v45.53: sin ofrecer la indefinida
   for(const c of cand){
-    if(c===12&&(cap>500||n>5))continue;
-    if(cap>limiteAyudaDe(m,c)||n>12)continue; // v46.52: AY-10
+    if(cap>limiteAyudaDe(m,c)||n>cuotasMaxDe(m,c))continue; // v46.56: AY-10 (permanencia y aporte que cuenta)
     if(c!==0&&m.joinMonth){ const fin=_finCon(m,c); if(ini+n-1>fin)continue; } // v45.7: como máximo en el último mes de permanencia
     return c;
   }
@@ -806,6 +912,7 @@ function _simPermNecesaria(m,cap,n){
 function simPintar(){
   if(VISTA_ASOC&&!simPintar._dentro){ simPintar._dentro=true; try{ return _conMesAsociados(simPintar); } finally { simPintar._dentro=false; } } // v45.23
   const m=DATA.members.find(x=>x.id===(MODAL&&MODAL.mid)); if(!m||!SIM)return;
+  const g=document.getElementById("sim-guiado"); if(g&&SIM.tab==="ayuda"){ g.innerHTML=simGuiadoHTML(m); return; } // v46.56
   const a=document.getElementById("sim-cap-v"), b=document.getElementById("sim-n-v"), r=document.getElementById("sim-res");
   if(a)a.textContent=SIM.tocCap===false?"—":fmtEur(SIM.cap)+" €"; if(b)b.textContent=SIM.tocN===false?"—":SIM.n+" "+(SIM.n===1?"mes":"meses");
   if(r)r.innerHTML=SIM.tab==="ayuda"?simAyudaResHTML(m):simBenResHTML(m);
@@ -813,14 +920,14 @@ function simPintar(){
 }
 // v45.7: el aviso va entre la cantidad y la barra, para que se vea al moverla
 function _simMaxCuotas(m){ // con su permanencia actual: 5 o 12, y nunca más allá del último mes de permanencia
-  const cur=(m.ciclo!=null?m.ciclo:12); let k=cur===12?REGLAS.CUOTAS_MAX_CORTA:REGLAS.CUOTAS_MAX; // v45.38: js/maestro.js
+  const cur=(m.ciclo!=null?m.ciclo:12); let k=cuotasMaxDe(m,cur); // v46.56: AY-10
   if(cur!==0&&m.joinMonth){ const ini=_idxMes(DATA.reportMonth,DATA.reportYear)+1, fin=_finCon(m,cur); k=Math.min(k,fin-ini+1); }
   return k;
 }
 function simAvisoAyudaHTML(m){
   if(SIM.tocCap===false||SIM.tocN===false)return "";
   const cap=SIM.cap, n=SIM.n, need=_simPermNecesaria(m,cap,n), cur=(m.ciclo!=null?m.ciclo:12), k=_simMaxCuotas(m);
-  const lim="hasta "+fmtEur(limiteAyudaDe(m,cur))+" €"+" en "+k+" "+(k===1?"mes":"meses");
+  const lim="hasta "+fmtEur(limiteAyudaDe(m,cur))+" €"+" en "+k+" "+(k===1?"cuota":"cuotas");
   if(need===cur)return ""; // v45.10: sin cuadro cuando la ayuda cabe (decisión de Ángel 04/10/2026); solo se avisa si hay que ampliar
   return `<div style="margin:2px 0 8px;padding:10px 12px;border-radius:10px;background:#FFF4E5;border:1.5px solid #E0A040;color:#6B4210;font-size:13.5px;line-height:1.5">⚠️ Con tu permanencia de ${_permTxt(cur).toLowerCase()} ${k<1?"ya no da tiempo a devolver una ayuda antes de que termine":"puedes pedir "+lim}.<br><b>Para esta ayuda tienes que ampliar tu permanencia a ${need===0?"indefinida":need===24?"24 meses o más":need+" meses o más"}.</b></div>`;
 }

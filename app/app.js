@@ -180,7 +180,7 @@ function nhaPantalla(){
   // Barra de abajo. El responsable de un grupo tiene además «Mi grupo». v45.56: los simuladores ya no van aquí:
   // están en Inicio (los dos), en Ayudas («¿Cuánto puedo pedir?») y en Aportes («¿Cuánto puedo ganar?»).
   const pants=[["inicio","home","Inicio"]].concat(esTerc?[]:[["aportes","wallet","Aportes"]],[["ayudas","hand","Ayudas"]],g?[["grupo","users","Mi grupo"]]:[],[["mas","","Más"]]);
-  const validas=pants.map(p=>p[0]).concat(puedeSim?["simular"]:[],puedeSim&&NHA_PRUEBA_INV?["invitar"]:[]);
+  const validas=pants.map(p=>p[0]).concat(puedeSim||esTerc?["simular"]:[],puedeSim&&NHA_PRUEBA_INV?["invitar"]:[]); // v46.56: el tercero también simula su ayuda
   if(!validas.includes(NHA.pant))NHA.pant="inicio";
   let h=`<header class="nha-top">${NHA.pant!=="inicio"?`<button class="nha-atras" onclick="nhaAtras()" aria-label="Atrás">‹</button>`:""}<div class="nha-logo nha-luz"><span>NH</span></div><div class="nha-top-txt"><div class="nha-top-hola">Hola, ${nhaPrimerNombre(m)}</div><div class="nha-top-sub">Asociación Nuevos Horizontes</div></div></header><main class="nha-main">`;
   if(NHA.pant==="inicio")h+=nhaInicioHTML(m,salidaPend,g);
@@ -218,12 +218,13 @@ function nhaInicioHTML(m,salidaPend,g){
   if(!salidaPend)h+=nhaSolicitudHTML(m); // v46.55 · AY-9: tu solicitud de ayuda (vista previa «Asociado») (v45.63: no a quien ya ha salido: sus cuotas se descuentan de lo que recibe)
   if(!esTerc&&f["Total aportado al fondo"]){
     h+=nhaLlevasHTML(m,f); // v46.9: una sola caja como suma (antes dos cuadros y «Llevas acumulado» aparte)
-    if(!salidaPend){ h+=nhaPermanenciaHTML(m,f); h+=nhaDosLlavesHTML(m); } // v46.53: tarjeta «Dos llaves» (AY-10)
+    if(!salidaPend)h+=nhaPermanenciaHTML(m,f); // v46.56: sin la tarjeta «Dos llaves» (Maestro v18.82: lo explica el simulador guiado)
   } else if(esTerc){
     h+=nhaTerceroAyudaHTML(m); // v46.9: cómo va su ayuda (antes «Tipo · Avalista · 1 activo · 1 cerrado»)
   }
   if(salidaPend)return h;
   h+=nhaImportanteHTML(m,g);
+  if(esTerc)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span><b>¿Cuánto puedo pedir?</b><small>Simula una ayuda</small></button></div>`; // v46.56: también los terceros (sin asociarse o asociándose)
   if(!esTerc&&m.joinMonth)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span><b>¿Cuánto puedo pedir?</b><small>Simula una ayuda</small></button>
     <button onclick="abrirSimulador('${esc(m.id)}','ben')"><span class="nha-acc-ic">${_icSVG("sprout")}</span><b>¿Cuánto puedo ganar?</b><small>Simula tus beneficios</small></button></div>`;
   if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
@@ -304,12 +305,11 @@ async function nhaSolCamPedir(accion){
     NHA.enviando=false; NHA.solCam=false; NHA.solCapTxt=null; NHA.solN=null; render(); toast("✓ Enviado. El coordinador lo revisará.",5000);
   }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
 }
-// ── v46.53 · LAS DOS LLAVES (Maestro v18.75 · AY-10; v18.77 · AP-4) ─────────────────────────────────────────────
-// Tarjeta en Inicio: su límite de hoy, qué llave tiene y la tabla 500 / 1.000 / 2.000 €. Solo los botones de lo que le
-// falta: «Quiero pasar a 24 meses» (perm) y «Quiero subir mi aporte a 100 €» (aporte). Son peticiones (peticiones/
-// {código_ms}); el coordinador las aprueba en su Inicio. Bajar el aporte NO se pide desde aquí: se habla con el
-// coordinador (decisión de Ángel 16/11/2026, AP-4). Lo pedido se recuerda en este móvil hasta que llega la respuesta
-// (m.cambioUlt, más nueva que la petición).
+// ── v46.53/v46.56 · PEDIR MÁS PERMANENCIA O MÁS APORTE (Maestro v18.82 · AY-10; AP-4) ─────────────────────────────
+// Desde la v46.56 los botones «Quiero ampliar a X meses» y «Quiero aportar 100 € al mes» están en el simulador guiado
+// («Para conseguirlo», nhaQuieroHTML). Son peticiones (peticiones/{código_ms}); el coordinador las aprueba en su Inicio.
+// Bajar el aporte NO se pide desde aquí: se habla con el coordinador (decisión de Ángel 16/11/2026, AP-4). Lo pedido se
+// recuerda en este móvil hasta que llega la respuesta (m.cambioUlt, más nueva que la petición).
 function _nhaCam(){ try{ const o=JSON.parse(localStorage.getItem("nha-cam-"+NHA.codigo)||"{}"); return o&&typeof o==="object"?o:{}; }catch(e){ return {}; } }
 function _nhaCamSet(o){ try{ localStorage.setItem("nha-cam-"+NHA.codigo,JSON.stringify(o)); }catch(e){} }
 function _nhaCamEstado(m,tipo){ // "pedido" · "rechazado" · ""
@@ -317,36 +317,21 @@ function _nhaCamEstado(m,tipo){ // "pedido" · "rechazado" · ""
   if(u&&u.tipo===tipo&&(!ts||u.ts>ts))return u.estado==="rechazada"&&Date.now()-u.ts<30*864e5?"rechazado":"";
   return ts?"pedido":"";
 }
-function nhaDosLlavesHTML(m){
-  if(!m||m.type!=="asociado"||!m.joinMonth)return "";
-  const R=REGLAS, l1=tieneLlave1(m), l2=tieneLlave2(m), hab=aporteHabitualDe(m), nivel=l1&&l2?2:l1?1:0, hoy=limiteAyudaDe(m);
-  const si=`<span class="nha-dl-si">✓ La tienes</span>`, no=`<span class="nha-dl-no">Te falta</span>`;
-  const fila=(n,txt,cifra)=>`<div class="nha-dl-fila${n===nivel?" on":""}"><span>${txt}${n===nivel?` <span class="nha-dl-tu">Tú hoy</span>`:""}</span><b>${cifra}</b></div>`;
-  const l2txt=l2?si:(hab>=R.APORTE_LLAVE2?`<span class="nha-dl-no">Se activa al pagar tu primer mes de ${R.APORTE_LLAVE2} €</span>`:no);
-  let h=`<div class="nha-card nha-dl"><div class="nha-card-tit">🔑 Dos llaves para pedir más ayuda</div>
-    <div class="nha-txt" style="margin-bottom:10px">Hoy puedes pedir hasta <b style="font-size:19px">${fmtEur(hoy)} €</b>.</div>
-    <div class="nha-dl-caja"><div class="nha-dl-ll"><span><b>Llave 1</b> · quedarte 24 meses</span>${l1?si:no}</div>
-      <div class="nha-dl-ll"><span><b>Llave 2</b> · aportar ${R.APORTE_LLAVE2} € al mes</span>${l2txt}</div></div>
-    <div class="nha-dl-caja nha-dl-tabla">${fila(0,"Ninguna llave",fmtEur(R.AYUDA_MAX_CORTA)+" €")}${fila(1,"La llave 1",_miles(R.AYUDA_MAX_LLAVE1)+" €")}${fila(2,"Las dos llaves",_miles(R.AYUDA_MAX)+" €")}</div>`;
-  if(!l1&&hab>=R.APORTE_LLAVE2)h+=`<div class="nha-dl-nota">Con 12 meses tu límite sigue en ${R.AYUDA_MAX_CORTA} €, pero como aportas ${hab} € vas antes en la lista de ayudas.</div>`;
-  const boton=(tipo,txt)=>{ const e=_nhaCamEstado(m,tipo);
-    if(e==="pedido")return `<div class="nha-dl-pend">⏳ Pedido: ${tipo==="perm"?"pasar a 24 meses":"subir tu aporte a "+R.APORTE_LLAVE2+" €"}. Te contesta el coordinador.</div>`;
-    const arm=NHA.camArm===tipo;
-    return (e==="rechazado"?`<div class="nha-dl-nota">El coordinador no lo ha aprobado esta vez. Si quieres, háblalo con él.</div>`:"")
-      +`<button class="nha-btn nha-dl-btn${arm?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaCamPedir('${tipo}')">${arm?"Toca otra vez para enviarlo":"Quiero "+txt}</button>`; };
-  if(!l1)h+=boton("perm","pasar a 24 meses");
-  if(hab<R.APORTE_LLAVE2)h+=boton("aporte","subir mi aporte a "+R.APORTE_LLAVE2+" €");
-  if(l1&&l2)h+=`<div class="nha-txt" style="margin-top:10px;color:#1B7A3D;font-weight:700">Ya tienes las dos llaves.</div>`;
-  else h+=`<div class="nha-dl-nota">Es una petición: no cambia nada hasta que el coordinador la apruebe. Lo que aportas sigue siendo tuyo.</div>`;
-  return h+`</div>`;
+function nhaQuieroHTML(m,b){ // b = {tipo:"perm"|"aporte", v, t}
+  const e=_nhaCamEstado(m,b.tipo);
+  if(e==="pedido")return `<div class="nha-dl-pend">⏳ Ya lo has pedido${b.tipo==="perm"?": ampliar tu permanencia":": subir tu aporte"}. Te contesta el coordinador.</div>`;
+  const arm=NHA.camArm===b.tipo;
+  return (e==="rechazado"?`<div class="nha-dl-nota">El coordinador no lo ha aprobado esta vez. Si quieres, háblalo con él.</div>`:"")
+    +`<button class="nha-btn nha-dl-btn${arm?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaCamPedir('${b.tipo}',${+b.v})">${arm?"Toca otra vez para enviarlo":b.t}</button>`;
 }
 let _nhaCamT=null;
-async function nhaCamPedir(tipo){
+async function nhaCamPedir(tipo,v){
   const m=NHA.m; if(!m||NHA.enviando)return;
   if(NHA_ADM){ toast("Es la vista del administrador: desde aquí no se envían peticiones",4000); return; }
   if(NHA.camArm!==tipo){ NHA.camArm=tipo; render(); clearTimeout(_nhaCamT); _nhaCamT=setTimeout(()=>{ if(NHA.camArm===tipo){ NHA.camArm=null; render(); } },5000); return; }
   clearTimeout(_nhaCamT); NHA.camArm=null;
-  const ts=Date.now(), obj=tipo==="perm"?{c:NHA.codigo,tipo:"perm",perm:"24",creada:ts}:{c:NHA.codigo,tipo:"aporte",aporte:REGLAS.APORTE_LLAVE2,creada:ts};
+  const pv=v===36?"36":"24", av=REGLAS.APORTE_OPCIONES.includes(v)&&v>=REGLAS.APORTE_ALTO?v:REGLAS.APORTE_ALTO;
+  const ts=Date.now(), obj=tipo==="perm"?{c:NHA.codigo,tipo:"perm",perm:pv,creada:ts}:{c:NHA.codigo,tipo:"aporte",aporte:av,creada:ts};
   NHA.enviando=true; render();
   try{
     const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
@@ -649,12 +634,13 @@ function nhaSimularHTML(m){
   const seg=(id,ic,txt)=>`<button class="${SIM.tab===id?"on":""}" onclick="SIM.tab='${id}';render()">${_icSVG(ic)}<span>${txt}</span></button>`;
   const desde=NHA.simDesde&&NHA.simDesde!=="simular"?NHA.simDesde:"inicio", nomDesde={inicio:"Inicio",aportes:"Aportes",ayudas:"Ayudas",grupo:"Mi grupo",mas:"Más"}[desde]||"Inicio";
   return `<button class="nha-volver" onclick="nhaIr('${desde}')">‹ Volver a ${nomDesde}</button>`+nhaTitulo(m,"Haz tus cuentas","Con tus datos. Es solo una simulación: no cambia nada.","sim")
-    +`<div class="nha-seg">${seg("ayuda","bulb","¿Cuánto puedo pedir?")}${seg("ben","sprout","¿Cuánto puedo ganar?")}</div>`
+    +(m.type==="tercero"?"":`<div class="nha-seg">${seg("ayuda","bulb","¿Cuánto puedo pedir?")}${seg("ben","sprout","¿Cuánto puedo ganar?")}</div>`)
     +`<div class="nha-card nha-sim">${t.innerHTML}${nhaPedirHTML(m)}</div>`;
 }
 // v45.55: el simulador de ayuda empieza sin cifras; las cuentas salen cuando la persona mueve las dos barras
-function nhaSimSinCifras(){ if(!SIM)return; SIM.cap=REGLAS.AYUDA_MIN; SIM.n=1; SIM.tocCap=false; SIM.tocN=false; }
-function nhaSimListo(){ return !!SIM&&SIM.tocCap!==false&&SIM.tocN!==false; }
+// v46.56: el simulador guiado sí empieza con cifras (lo que puede pedir hoy); «Pídelo» sale al elegir una cantidad (3.)
+function nhaSimSinCifras(){ if(!SIM)return; delete SIM.p; SIM.tocCap=false; SIM.tocN=false; }
+function nhaSimListo(){ return !!SIM&&SIM.tocCap!==false; }
 function nhaSimBotonesHTML(m,solo){
   if(m.type==="tercero"||!m.joinMonth)return "";
   return `<div class="ficha-section nha-sims"><div class="ficha-sec-title">🧮 Simuladores</div>
@@ -667,7 +653,10 @@ function nhaSimBotonesHTML(m,solo){
 function nhaPeticionLocal(){ try{ const p=JSON.parse(localStorage.getItem("nha-pet-"+NHA.codigo)||"null"); if(p&&Date.now()-p.ts<45*864e5)return p; }catch(e){} return null; }
 function nhaPedirInfo(m){
   const need=_simPermNecesaria(m,SIM.cap,SIM.n), cur=(m.ciclo!=null?m.ciclo:12);
-  if(need===null)return {ok:false,html:`Con estos datos no se puede pedir. Prueba con menos cantidad o menos meses.`};
+  if(need===null){
+    const alto=aporteQueCuenta(m)<REGLAS.APORTE_ALTO&&[cur,24,36].some(c=>(cur===0?c===0:c>=cur)&&SIM.cap<=limiteAyudaCon(c,REGLAS.APORTE_ALTO)&&SIM.n<=cuotasMaxCon(c,REGLAS.APORTE_ALTO));
+    return {ok:false,html:alto?(aporteAltoPendiente(m)?`Para pedirla, tu aporte de ${aporteHabitualDe(m)} € cuenta desde que pagues tu primer mes a ${REGLAS.APORTE_ALTO} €.`:`Con tu aporte de hoy no llega: primero pide aportar ${REGLAS.APORTE_ALTO} € al mes (arriba, «Para conseguirlo»).`)
+      :`Con estos datos no se puede pedir. Prueba con menos cantidad o menos cuotas.`}; }
   return {ok:true,html:`Le llegará al coordinador: <b>${fmtEur(SIM.cap)}&nbsp;€</b> en <b>${SIM.n} ${SIM.n===1?"cuota":"cuotas"}</b>${need!==cur?`, ampliando tu permanencia a <b>${need===0?"indefinida":need+" meses"}</b>`:""}. Él lo revisa y te avisa.`};
 }
 function nhaPedirActualizar(){
@@ -716,7 +705,8 @@ function nhaFaq(){
       +`Los meses 13 a 24 se ganan si tu permanencia es de 24 meses o más; desde el mes 25, si es de 36 meses.<br><br>`
       +`<b>Ejemplo:</b> Pedro pone ${R.BLOQUE_APORTE} € cada mes. En febrero gana ${B[0]} € por lo que puso en enero, en marzo otros ${B[0]} € por febrero, y así cada mes. Cuando lleva 12 meses pagados tiene <b>${12*B[0]} € de beneficio guardado</b>.<br><br>`
       +`Lo que pones un mes empieza a ganar al mes siguiente. El beneficio se guarda y lo recibes al terminar tu permanencia. Haz tus cuentas en «¿Cuánto puedo ganar?».`],
-    ["¿Cuánta ayuda puedo pedir?",`Depende de tu permanencia:`+tabla(["Permanencia","Puedes pedir","Lo devuelves en"],[["12 meses","hasta "+R.AYUDA_MAX_CORTA+" €","hasta "+R.CUOTAS_MAX_CORTA+" meses"],["24 o 36 meses","hasta "+_miles(R.AYUDA_MAX_LLAVE1)+" €","hasta "+R.CUOTAS_MAX+" meses"],["24 o 36 meses y "+R.APORTE_LLAVE2+" € al mes","hasta "+_miles(R.AYUDA_MAX)+" €","hasta "+R.CUOTAS_MAX+" meses"]])+`Son las dos llaves: quedarte 24 meses y aportar ${R.APORTE_LLAVE2} € al mes (con al menos un mes ya pagado a ${R.APORTE_LLAVE2} €). La última cuota tiene que caer, como mucho, en el último mes de tu permanencia. Si necesitas más, puedes ampliarla.`], // v46.53: AY-10 (antes decía 2.000 € para todos con 24 o 36 meses)
+    ["¿Cuánta ayuda puedo pedir?",`Depende de tu permanencia y de tu aporte:`+tabla(["Permanencia","Con "+R.APORTE_MINIMO+" € al mes","Con "+R.APORTE_ALTO+" € o más"],[[12,"12 meses"],[24,"24 meses"],[36,"36 meses o indefinida"]].map(([c,t])=>[t,...[R.APORTE_MINIMO,R.APORTE_ALTO].map(a=>"hasta "+_miles(limiteAyudaCon(c,a))+" €<br>"+cuotasMaxCon(c,a)+" cuotas")]))
+      +`El aporte de ${R.APORTE_ALTO} € cuenta desde que pagas tu primer mes a ${R.APORTE_ALTO} €. Si pides más de lo que podrías con ${R.APORTE_MINIMO} €, mantienes ese aporte hasta pagar tu última cuota. Por encima de ${_miles(R.AYUDA_MAX_SIN_APROBACION)} € o de ${R.CUOTAS_SIN_APROBACION} cuotas, la aprueba antes el coordinador. La última cuota cae, como mucho, en el último mes de tu permanencia.<br><br>Si necesitas más, puedes ampliar tu permanencia o aumentar tus aportes, y con ello también tus beneficios. Pruébalo en «¿Cuánto puedo pedir?».`], // v46.56: AY-10 (Maestro v18.82)
     ["¿Cómo pido una ayuda?",`En <b>Ayudas → ¿Cuánto puedo pedir?</b> elige la cantidad y los meses. Si te encaja, toca <b>«Pedir esta ayuda»</b>. Al coordinador le llega tu petición, la revisa y te avisa. Si se aprueba, la verás en «Ayudas».`],
     ["¿Qué es la permanencia?",`Es el tiempo que te comprometes a estar en el fondo: <b>12, 24 o 36 meses</b>. Cuanto más larga, más beneficio ganas y más grandes son las ayudas que puedes pedir. Puedes ampliarla cuando quieras.`],
     ["¿Puedo descansar unos meses?",`Sí. Puedes pedir una <b>pausa de 1 a 3 meses</b> sin aportar. Habla con el coordinador.`],
@@ -732,7 +722,7 @@ function nhaFaq(){
 function nhaFaqTercero(){
   const R=REGLAS;
   return [
-    ["¿Puedo pedir otra ayuda?",`Sí. Con el aval de un asociado puedes pedir de <b>100 a ${R.AYUDA_MAX_CORTA} €</b> y devolverlo en <b>1 a ${R.CUOTAS_MAX_CORTA} meses</b>. Habla con tu aval o con el coordinador.`],
+    ["¿Puedo pedir otra ayuda?",`Con el aval de un asociado se puede recibir <b>una sola ayuda</b> como tercero, de 100 a ${R.AYUDA_MAX_CORTA} € y en 1 a ${R.CUOTAS_MAX_CORTA} cuotas (para las que se piden desde el 1 de diciembre de 2026). Para otra ayuda, puedes asociarte: con tu permanencia y tu aporte podrás pedir más. Míralo en «¿Cuánto puedo pedir?».`], // v46.56: AY-8
     ["¿Y si un mes no puedo pagar la cuota?",`Avisa cuanto antes al coordinador o a tu aval. Si no pagas, responde tu aval por ti.`],
     ["¿Quién ve mis datos?",`Solo tú, con tu enlace, y el coordinador.`],
   ];

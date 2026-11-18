@@ -117,10 +117,11 @@ function aporteBaseDe(m){ return (m&&m.aporte)||DATA.monthlyFee; }
 function ajusteAporteKey(m,key){ const e=DATA.extras&&DATA.extras[m.id]&&DATA.extras[m.id][key]; return (e&&e.monto)||0; }
 function aporteBrutoKey(m,key){ return Math.max(0,aporteBaseDe(m)+ajusteAporteKey(m,key)); }
 function aporteBrutoMes(m,rm,ry){ return aporteBrutoKey(m,getMesKey(rm,ry)); }
-// ══ v46.52 · LAS DOS LLAVES (Maestro v18.75 · AY-10) ══════════════════════════════════════════════
-// Llave 1: permanencia 24, 36 o indefinida. Llave 2: aporte habitual de 100 € o más (AP-4; sin anotar cuenta como
-// 50 €) Y el último mes ya pagado de 100 € o más (no basta con cambiar el aporte habitual: decisión de Ángel 16/11/2026).
-// Límite: 12 meses → 500 € · llave 1 → 1.000 € · las dos → 2.000 € (tope por ahora; 150 o 200 € no lo suben).
+// ══ v46.56 · TU AYUDA CRECE CON TU APORTE (Maestro v18.82 · AY-10, AY-5, AY-8) ═══════════════════════════════
+// Lo máximo que un asociado puede pedir = «veces» el aporte que cuenta según su permanencia (14 · 20 · 30), con el tope
+// AY-5 (2.000 €); 12 meses con 100 € o más: 1.500 € fijos. Cuotas: 12m 8 / 12 · 24m 12 / 15 · 36 o indefinida 15.
+// El aporte que cuenta: sin anotar, 50 €; el de 100 € o más, desde que ha pagado al menos un mes a 100 € o más.
+// Sustituye a «las dos llaves» (v46.52–v46.55). Los datos guardados de entonces (llave2) se siguen leyendo.
 function _ay10Idx(){ const [y,mm]=String(REGLAS.AY10_DESDE).split("-").map(Number); return y*12+mm-1; }
 function aporteHabitualDe(m){ return (m&&m.aporte)||REGLAS.APORTE_MINIMO; }
 function ultimoAportePagado(m){ // {key, importe} del último mes con el aporte marcado como pagado, o null
@@ -129,22 +130,54 @@ function ultimoAportePagado(m){ // {key, importe} del último mes con el aporte 
   for(const k of ks){ const md=DATA.monthlyData[k]; if(md&&md.aportes&&md.aportes[m.id]===true)return {key:k,importe:aporteBrutoKey(m,k)}; }
   return null;
 }
-function tieneLlave1(m,ciclo){ const c=ciclo!==undefined?ciclo:(m&&m.ciclo); return c===24||c===36||c===0; }
-function tieneLlave2(m){ if(!m||m.type!=="asociado")return false; const u=ultimoAportePagado(m);
-  return aporteHabitualDe(m)>=REGLAS.APORTE_LLAVE2&&!!u&&u.importe>=REGLAS.APORTE_LLAVE2; }
-function limiteAyudaDe(m,ciclo){ // importe máximo de una ayuda nueva a este asociado con esa permanencia (AY-1, AY-10)
-  const c=ciclo!==undefined?ciclo:(m&&m.ciclo!=null?m.ciclo:12);
-  if(!tieneLlave1(m,c))return REGLAS.AYUDA_MAX_CORTA;
-  return tieneLlave2(m)?REGLAS.AYUDA_MAX:REGLAS.AYUDA_MAX_LLAVE1;
+function aporteQueCuenta(m){ // AY-10 · el aporte con el que se calcula lo que puede pedir
+  const R=REGLAS; if(!m||m.type!=="asociado")return R.APORTE_MINIMO;
+  const h=aporteHabitualDe(m); if(h<R.APORTE_ALTO)return R.APORTE_MINIMO;
+  const u=ultimoAportePagado(m); if(!u||u.importe<R.APORTE_ALTO)return R.APORTE_MINIMO;
+  return Math.min(h,Math.floor(u.importe/50)*50);
 }
-// Una ayuda de más de 1.000 € concedida con la llave 2 (la guarda aporteEnConcesion, AY-2) y aún sin terminar de pagar:
-// mientras dure, el aporte se mantiene en 100 € o más (AY-10). Devuelve esas ayudas.
-// Al conceder (AY-2): se guarda el aporte habitual de ese día y si la ayuda pasa de 1.000 € gracias a la llave 2
-function _condLlave2(m,cap){ if(!m||m.type!=="asociado")return {}; const o={aporteEnConcesion:aporteHabitualDe(m)};
-  if(cap>REGLAS.AYUDA_MAX_LLAVE1&&tieneLlave2(m))o.llave2=true; return o; }
-function ayudasConLlave2(m){
-  if(!m)return [];
-  return (m.loans||[]).filter(l=>l.capital>REGLAS.AYUDA_MAX_LLAVE1&&(l.llave2===true||(l.aporteEnConcesion||0)>=REGLAS.APORTE_LLAVE2)&&(l.pays||[]).some(p=>!p.paid));
+function aporteAltoPendiente(m){ // habitual de 100 € o más, pero aún sin ningún mes pagado a 100 € (todavía no cuenta)
+  return !!m&&m.type==="asociado"&&aporteHabitualDe(m)>=REGLAS.APORTE_ALTO&&aporteQueCuenta(m)<REGLAS.APORTE_ALTO;
+}
+function _cicloAy(c){ return c===0||c===36?36:c===24?24:12; } // indefinida (0) cuenta como 36
+function limiteAyudaCon(ciclo,aporte){ // AY-10 · importe máximo con esa permanencia y ese aporte
+  const R=REGLAS, c=_cicloAy(ciclo), a=aporte||R.APORTE_MINIMO;
+  const v=c===12?(a>=R.APORTE_ALTO?R.AYUDA_12_APORTE_ALTO:a*R.VECES_12):a*(c===24?R.VECES_24:R.VECES_36);
+  return Math.min(v,R.AYUDA_MAX);
+}
+function cuotasMaxCon(ciclo,aporte){ // AY-10 · cuotas máximas con esa permanencia y ese aporte
+  const R=REGLAS, c=_cicloAy(ciclo), alto=(aporte||0)>=R.APORTE_ALTO;
+  const k=c===12?(alto?R.CUOTAS_12_100:R.CUOTAS_12_50):c===24?(alto?R.CUOTAS_24_100:R.CUOTAS_24_50):R.CUOTAS_36;
+  return Math.min(k,R.CUOTAS_MAX);
+}
+function _cicloDe(m,ciclo){ return ciclo!==undefined?ciclo:(m&&m.ciclo!=null?m.ciclo:12); }
+function limiteAyudaDe(m,ciclo){ return limiteAyudaCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); } // ayuda nueva a este asociado
+function cuotasMaxDe(m,ciclo){ return cuotasMaxCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); }
+// Compromiso (AY-10): quien recibe una ayuda mayor gracias a su aporte de 100 € o más (más importe o más cuotas de lo que
+// podría con 50 €) mantiene ese aporte hasta pagar su última cuota. Al conceder (AY-2) se guarda el aporte habitual de ese
+// día (aporteEnConcesion) y si la ayuda necesitó el aporte alto (aporteAlto).
+function necesitaAporteAlto(ciclo,cap,nn){ const R=REGLAS; return cap>limiteAyudaCon(ciclo,R.APORTE_MINIMO)||(nn||0)>cuotasMaxCon(ciclo,R.APORTE_MINIMO); }
+function condicionesConcesion(m,cap,nn){ if(!m||m.type!=="asociado")return {};
+  return {aporteEnConcesion:aporteHabitualDe(m), aporteAlto:aporteQueCuenta(m)>=REGLAS.APORTE_ALTO&&necesitaAporteAlto(m.ciclo,cap,nn)}; }
+function _ayudaConCompromiso(l){
+  if(l.aporteAlto!==undefined)return l.aporteAlto===true;
+  // ayudas de antes de la v46.56: «llave 2» (más de 1.000 € con aporte de 100 € o más)
+  return l.llave2===true||(l.capital>REGLAS.AYUDA_MAX_SIN_APROBACION&&(l.aporteEnConcesion||0)>=REGLAS.APORTE_ALTO);
+}
+function ayudasConCompromiso(m){ if(!m)return [];
+  return (m.loans||[]).filter(l=>_ayudaConCompromiso(l)&&(l.pays||[]).some(p=>!p.paid)); }
+// AY-8 · una sola ayuda como tercero (solicitudes desde el 01/12/2026); el Asociado Libre no tiene este límite (LI-4)
+function ayudasComoTercero(m){ if(!m)return [];
+  return [...(m.loans||[]),...(m.closedLoans||[])].filter(l=>(l.tipoEnConcesion!=null?l.tipoEnConcesion:m.type)==="tercero"); }
+function _isoDeFecha(f){ // «dd/mm/aaaa» → «aaaa-mm-dd»; sin fecha, hoy
+  const p=f?String(f).split("/"):null;
+  if(p&&p.length===3)return p[2]+"-"+p[1].padStart(2,"0")+"-"+p[0].padStart(2,"0");
+  const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function terceroYaTuvoSuAyuda(m,fechaSol){
+  if(!m||m.type!=="tercero")return false;
+  if(_isoDeFecha(fechaSol)<REGLAS.TERCERO_UNA_DESDE)return false;
+  return ayudasComoTercero(m).length>=REGLAS.AYUDAS_MAX_TERCERO;
 }
 // Total aportado = suma del aporte de cada mes PAGADO (se devuelve al terminar o salir · AP-5)
 function totalAportadoMiembro(m){
@@ -451,8 +484,8 @@ function auditarNH(){
     const n=l.n||l.pays.length;
     const plazoBase=n-nAplazadas;
     const esTerc=(l.tipoEnConcesion!=null?l.tipoEnConcesion:m.type)==="tercero"; // v44.17: se juzga con la condición de la concesión
-    // Maestro AY-5/AY-10 (v18.75): asociados 100–1.000€ libre; 1.000–2.000€ con las dos llaves y aprobación previa
-    // del coordinador (aviso, no error); por encima de 2.000€ no se concede ninguna ayuda (antes, 3.000€).
+    // Maestro AY-5 (v18.82): por encima de 1.000 € o de 12 cuotas, aprobación previa del coordinador (aviso, no error);
+    // por encima de 2.000 € no se concede ninguna ayuda (antes, 3.000 €). Lo de cada asociado, AY-10, más abajo.
     // Terceros: tope fijo de 500€ (no está sujeto a esta escala).
     const R=REGLAS; // v45.38: límites del Maestro desde js/maestro.js
     if(esTerc){
@@ -463,7 +496,7 @@ function auditarNH(){
       if(l.capital>R.AYUDA_MAX){
         errores.push(`Capital excedido: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ supera el máximo absoluto de ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
       }else if(l.capital>R.AYUDA_MAX_SIN_APROBACION){
-        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ está entre ${_miles(R.AYUDA_MAX_SIN_APROBACION)}€ y ${_miles(R.AYUDA_MAX)}€ (Maestro AY-5)`);
+        advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ pasa de ${_miles(R.AYUDA_MAX_SIN_APROBACION)}€ (Maestro AY-5)`);
       }
     }
     if(esTerc&&plazoBase>R.CUOTAS_MAX_CORTA){
@@ -471,12 +504,23 @@ function auditarNH(){
     }
     if(!esTerc&&_idxMes(l.gMonth,l.gYear)>=AY_V18_DESDE){
       const cicloC=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
-      if(cicloC===12&&l.capital>R.AYUDA_MAX_CORTA)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ con permanencia de 12 meses (máximo ${R.AYUDA_MAX_CORTA} €, Maestro AY-1)`);
-      // v46.52 · AY-10: más de 1.000 € solo con las dos llaves, juzgado con el aporte guardado al concederla (AY-2)
-      if(_idxMes(l.gMonth,l.gYear)>=_ay10Idx()&&l.capital>R.AYUDA_MAX_LLAVE1&&l.aporteEnConcesion!=null&&l.aporteEnConcesion<R.APORTE_LLAVE2)
-        errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ con aporte habitual de ${l.aporteEnConcesion} € al concederla (más de ${_miles(R.AYUDA_MAX_LLAVE1)} € solo con las dos llaves, Maestro AY-10)`);
+      if(_idxMes(l.gMonth,l.gYear)>=_ay10Idx()){
+        // v46.56 · AY-10: importe y cuotas según permanencia y aporte al concederla (AY-2). Con el aporte alto (aporteAlto,
+        // o «llave2» antes de la v46.56) se juzga con el aporte guardado; si no, con 50 €.
+        if(l.aporteEnConcesion!=null&&cicloC!=null){
+          const a=_ayudaConCompromiso(l)?Math.max(R.APORTE_ALTO,l.aporteEnConcesion):R.APORTE_MINIMO;
+          const lim=limiteAyudaCon(cicloC,a), k=cuotasMaxCon(cicloC,a), pt=cicloC===0?"indefinida":cicloC+" meses";
+          if(l.capital>lim)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ con permanencia de ${pt} y aporte de ${a} € (máximo ${_miles(lim)} €, Maestro AY-10)`);
+          if(plazoBase>k)errores.push(`Plazo excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} en ${plazoBase} cuotas con permanencia de ${pt} y aporte de ${a} € (máximo ${k}, Maestro AY-10)`);
+        }
+        if(plazoBase>R.CUOTAS_SIN_APROBACION&&plazoBase<=R.CUOTAS_MAX)
+          advertencias.push(`Requiere aprobación del coordinador: ${m.name} (asociado) — ayuda ${l.gMonth} ${l.gYear} en ${plazoBase} cuotas (más de ${R.CUOTAS_SIN_APROBACION}, Maestro AY-5)`);
+      }else if(cicloC===12&&l.capital>R.AYUDA_MAX_CORTA)errores.push(`Importe excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ con permanencia de 12 meses (máximo ${R.AYUDA_MAX_CORTA} €, Maestro AY-1)`);
     }
-    if(!esTerc&&plazoBase>R.CUOTAS_MAX_CORTA){
+    if(plazoBase>R.CUOTAS_MAX){
+      errores.push(`Plazo excedido: ${m.name} — ayuda ${l.gMonth} ${l.gYear} en ${plazoBase} cuotas (máximo ${R.CUOTAS_MAX}, Maestro AY-5)`);
+    }
+    if(!esTerc&&plazoBase>R.CUOTAS_MAX_CORTA&&_idxMes(l.gMonth,l.gYear)<_ay10Idx()){ // antes de la tabla AY-10 (v18.82)
       const ciclo=l.cicloEnConcesion!=null?l.cicloEnConcesion:m.ciclo;
       const cicloOk=(ciclo===24||ciclo===36||ciclo===0);
       if(!cicloOk){
@@ -484,6 +528,13 @@ function auditarNH(){
       }
     }
   });
+
+  // 11a (v46.56 · Maestro AY-8): una sola ayuda como tercero, para las ayudas desde diciembre 2026 (aviso: la regla mira
+  // la fecha de la solicitud, que la ayuda no guarda)
+  { const [ty,tm]=REGLAS.TERCERO_UNA_DESDE.split("-").map(Number), desde=ty*12+tm-1;
+    DATA.members.forEach(m=>{ const lt=ayudasComoTercero(m).slice().sort((a,b)=>_idxMes(a.gMonth,a.gYear)-_idxMes(b.gMonth,b.gYear));
+      lt.slice(REGLAS.AYUDAS_MAX_TERCERO).filter(l=>_idxMes(l.gMonth,l.gYear)>=desde).forEach(l=>
+        advertencias.push(`Más de una ayuda como tercero: ${m.name} — ayuda ${l.gMonth} ${l.gYear} de ${fmtEur(l.capital)}€ (Maestro AY-8: una sola ayuda como tercero; para la 2.ª, se asocia)`)); }); }
 
   // 11b (v45 · Maestro PE-1): asociados activos sin permanencia guardada (la ficha no debe suponer 12)
   DATA.members.filter(m=>m.type==="asociado"&&!m.baja&&m.ciclo==null).forEach(m=>{
@@ -1017,30 +1068,39 @@ function permanenciasLista(){
   out.sort((a,b)=>a.orden-b.orden||String(a.m.name).localeCompare(String(b.m.name)));
   return out;
 }
-function validarApoyo(m,cap,nn,tipo,ciclo,ini,concedida){
+function validarApoyo(m,cap,nn,tipo,ciclo,ini,concedida,fechaSol){ // v46.56: fechaSol («dd/mm/aaaa») para AY-8
   const nom=escH(m?m.name.split(" ")[0]:"Esta persona");
   const v17=concedida&&_idxMes(concedida.m,concedida.y)<AY_V18_DESDE;
   const dondePerm="Gestión → ⚙️ Permanencia y aporte";
   const R=REGLAS; // v45.38: límites del Maestro desde js/maestro.js
   if(cap<R.AYUDA_MIN)return {bloqueo:`El mínimo de una ayuda es ${R.AYUDA_MIN} € (Maestro AY-1).`};
   if(tipo==="tercero"||tipo==="libre"){
+    if(tipo==="tercero"&&!concedida&&terceroYaTuvoSuAyuda(m,fechaSol))
+      return {bloqueo:`${nom} ya recibió su ayuda como tercero. Para su 2.ª ayuda, puede asociarse: entra con su permanencia y su aporte (Maestro AY-8).`};
     if(cap>R.AYUDA_MAX_CORTA)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} puede recibir como máximo ${R.AYUDA_MAX_CORTA} € (Maestro AY-1).`};
     if(nn>R.CUOTAS_MAX_CORTA)return {bloqueo:`Un ${tipo==="libre"?"asociado libre":"tercero"} devuelve la ayuda en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (Maestro AY-1).`};
     return {};
   }
   if(ciclo==null)return {bloqueo:`${nom} no tiene permanencia guardada. Guárdala primero en ${dondePerm} (Maestro PE-1).`};
   if(cap>R.AYUDA_MAX)return {bloqueo:`El máximo de una ayuda es ${_miles(R.AYUDA_MAX)} € (Maestro AY-5).`};
-  if(nn>R.CUOTAS_MAX)return {bloqueo:`Una ayuda se devuelve en ${R.CUOTAS_MAX} cuotas como máximo (Maestro AY-1).`};
-  if(ciclo===12&&(nn>R.CUOTAS_MAX_CORTA||(!v17&&cap>R.AYUDA_MAX_CORTA))){
-    return {bloqueo:v17
-      ?`Con permanencia de 12 meses, la ayuda se devuelve en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (regla del v17).`
-      :`Con permanencia de 12 meses, ${nom} puede recibir de ${R.AYUDA_MIN} a ${R.AYUDA_MAX_CORTA} € y devolverlos en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (Maestro AY-1). Para más importe o más plazo, sube primero su permanencia a 24, 36 meses o indefinida en ${dondePerm}.`};
-  }
-  // v46.52 · AY-10: más de 1.000 € solo con las dos llaves (ayudas nuevas, desde noviembre 2026)
-  if(!v17&&!concedida&&cap>R.AYUDA_MAX_LLAVE1&&!tieneLlave2(m)){
-    const u=ultimoAportePagado(m), hab=aporteHabitualDe(m);
-    const falta=hab<R.APORTE_LLAVE2?`su aporte habitual es de ${hab} €`:`su último aporte pagado fue de ${u?u.importe:0} €`;
-    return {bloqueo:`Más de ${_miles(R.AYUDA_MAX_LLAVE1)} € solo con las dos llaves (Maestro AY-10): permanencia de 24 meses o más y aporte de ${R.APORTE_LLAVE2} € al mes, con al menos un mes ya pagado a ${R.APORTE_LLAVE2} €. Ahora ${falta}. Hasta ${_miles(R.AYUDA_MAX_LLAVE1)} € sí puede.`};
+  if(nn>R.CUOTAS_MAX)return {bloqueo:`Una ayuda se devuelve en ${R.CUOTAS_MAX} cuotas como máximo (Maestro AY-5).`};
+  if(v17){
+    if(ciclo===12&&nn>R.CUOTAS_MAX_CORTA)return {bloqueo:`Con permanencia de 12 meses, la ayuda se devuelve en ${R.CUOTAS_MAX_CORTA} cuotas como máximo (regla del v17).`};
+  }else{
+    // v46.56 · AY-10: importe y cuotas según permanencia y aporte. Al cambiar una ayuda ya concedida no se exige el aporte
+    // de hoy (pudo bajarlo después, AY-2): se mira con el aporte alto; la auditoría la juzga con el de su concesión.
+    const a=concedida?Math.max(aporteQueCuenta(m),R.APORTE_ALTO):aporteQueCuenta(m);
+    const lim=limiteAyudaCon(ciclo,a), k=cuotasMaxCon(ciclo,a);
+    if(cap>lim||nn>k){
+      const pt=ciclo===0?"indefinida":ciclo+" meses";
+      let t=`Con permanencia de ${pt} y aporte de ${a} € al mes, ${nom} puede recibir de ${R.AYUDA_MIN} a ${_miles(lim)} € y devolverlos en ${k} cuotas como máximo (Maestro AY-10).`;
+      if(!concedida&&a<R.APORTE_ALTO&&cap<=limiteAyudaCon(ciclo,R.APORTE_ALTO)&&nn<=cuotasMaxCon(ciclo,R.APORTE_ALTO))
+        t+=aporteAltoPendiente(m)
+          ?` Su aporte habitual ya es de ${aporteHabitualDe(m)} €: cuenta desde que pague su primer mes a ${R.APORTE_ALTO} €.`
+          :` Con ${R.APORTE_ALTO} € al mes (y un mes ya pagado a ${R.APORTE_ALTO} €) sí podría.`;
+      if(ciclo!==0&&ciclo!==36)t+=` O sube primero su permanencia en ${dondePerm}.`;
+      return {bloqueo:t};
+    }
   }
   // No puede pasar del final de su permanencia (Maestro AY-1 y AY-6; misma regla que la auditoría, control 13)
   if(!v17&&ciclo!==0&&ini&&m&&m.joinMonth){
@@ -1050,8 +1110,12 @@ function validarApoyo(m,cap,nn,tipo,ciclo,ini,concedida){
       return {bloqueo:`La última cuota sería en ${t(ult)}, pero la permanencia de ${nom} (${ciclo} meses) termina en ${t(fin)} y la última cuota tiene que pagarse como mucho ese mes (Maestro AY-1). Usa menos cuotas o sube primero su permanencia en ${dondePerm}.`};
     }
   }
-  if(cap>R.AYUDA_MAX_SIN_APROBACION)return {aviso:`Entre ${_miles(R.AYUDA_MAX_SIN_APROBACION)} € y ${_miles(R.AYUDA_MAX)} € necesita la aprobación previa del coordinador (Maestro AY-5). Con las dos llaves: mientras la devuelve, su aporte se mantiene en ${R.APORTE_LLAVE2} € o más (AY-10).`};
-  return {};
+  const avisos=[];
+  if(cap>R.AYUDA_MAX_SIN_APROBACION||nn>R.CUOTAS_SIN_APROBACION)
+    avisos.push(`Más de ${_miles(R.AYUDA_MAX_SIN_APROBACION)} € o más de ${R.CUOTAS_SIN_APROBACION} cuotas: necesita la aprobación previa del coordinador (Maestro AY-5).`);
+  if(!v17&&!concedida&&aporteQueCuenta(m)>=R.APORTE_ALTO&&necesitaAporteAlto(ciclo,cap,nn))
+    avisos.push(`Es más de lo que podría con ${R.APORTE_MINIMO} €: mientras la devuelve, mantiene su aporte de ${aporteQueCuenta(m)} € al mes (compromiso, AY-10).`);
+  return avisos.length?{aviso:avisos.join(" ")}:{};
 }
 function _condicionActual(m){ return {tipo:m?m.type:"asociado", ciclo:m&&m.ciclo!=null?m.ciclo:null}; } // v45: sin permanencia guardada → se bloquea (PE-1)
 // v45.28: si una ayuda nueva no cabe por la permanencia, botón para ampliarla sin salir de la ayuda.

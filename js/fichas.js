@@ -288,7 +288,8 @@ function _solCambioBloqueo(p,m){ if(p.accion!=="cambiar"||!m)return "";
   const cap=Math.round(+p.capital||0), n=parseInt(p.cuotas)||0;
   if(cap<REGLAS.AYUDA_MIN||cap>REGLAS.AYUDA_MAX||n<1||n>REGLAS.CUOTAS_MAX)return "Importe o cuotas no válidos";
   const cur=_idxMes(DATA.reportMonth,DATA.reportYear), ini={m:MONTHS[(cur+1)%12],y:Math.floor((cur+1)/12)}, c=_condicionActual(m);
-  const v=validarApoyo(m,cap,n,c.tipo,c.ciclo,ini); return v.bloqueo?String(v.bloqueo).replace(/<[^>]+>/g,""):""; }
+  const {so}=_solDePeticion(p);
+  const v=validarApoyo(m,cap,n,c.tipo,c.ciclo,ini,undefined,so&&so.fecha); return v.bloqueo?String(v.bloqueo).replace(/<[^>]+>/g,""):""; }
 function solCambiosHTML(){
   const l=solCambiosPeticiones(); if(!l.length)return "";
   let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">📝 Cambios pedidos en solicitudes <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
@@ -338,7 +339,7 @@ function _camBloqueo(p,m){ // por qué no se puede aprobar (o "" si se puede)
   if(!m)return "Enlace sin persona";
   if(p.tipo==="aporte"){ const v=parseInt(p.aporte);
     if(!REGLAS.APORTE_OPCIONES.includes(v))return "Importe no válido";
-    if(v<REGLAS.APORTE_LLAVE2&&v<aporteHabitualDe(m)&&ayudasConLlave2(m).length)return `Devuelve una ayuda de más de ${_miles(REGLAS.AYUDA_MAX_LLAVE1)} € con las dos llaves: no puede bajar de ${REGLAS.APORTE_LLAVE2} € hasta la última cuota (AY-10)`;
+    if(v<REGLAS.APORTE_ALTO&&v<aporteHabitualDe(m)&&ayudasConCompromiso(m).length)return `Devuelve una ayuda recibida gracias a su aporte de ${REGLAS.APORTE_ALTO} €: no puede bajarlo hasta la última cuota (AY-10)`;
     return ""; }
   const c=parseInt(p.perm);
   if(m.ciclo===0)return "Ya tiene la permanencia indefinida";
@@ -351,7 +352,7 @@ function _camTxt(p,m){ if(p.tipo==="aporte"){ const v=parseInt(p.aporte), h=m?ap
   return {t:"quiere pasar a "+parseInt(p.perm)+" meses de permanencia",ahora:m?`Ahora: ${m.ciclo===0?"indefinida":(m.ciclo!=null?m.ciclo+" meses":"sin permanencia")}`:""}; }
 function cambiosPeticionesHTML(){
   const l=cambiosPeticiones(); if(!l.length)return "";
-  let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">🔑 Dos llaves · cambios pedidos <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
+  let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">Permanencia y aporte · cambios pedidos <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>
     <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4">Pedidos desde la app. Hasta que lo apruebes sigue valiendo lo anterior (AP-4, PE-3).</div>`;
   l.forEach(p=>{ const m=_petPersona(p), b=_camBloqueo(p,m), x=_camTxt(p,m);
     const f=p.creada?new Date(p.creada).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}):"";

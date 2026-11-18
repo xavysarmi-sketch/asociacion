@@ -1254,7 +1254,7 @@ function _fichaHTMLbase(m,readonly=false){
       <div class="acc-grupo-tit">Ayudas</div>
       <div class="mgmt-grid">
         <button class="mgmt-btn" onclick="solDesdeGestion('${esc(m.id)}')">＋ Nueva solicitud</button>
-        ${isTerc?"":`<button class="mgmt-btn" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 Simuladores</button>`}
+        <button class="mgmt-btn" onclick="abrirSimulador('${esc(m.id)}','ayuda')">🧮 ${isTerc?"Simular una ayuda":"Simuladores"}</button> <!-- v46.56: también terceros (AY-8) -->
       </div>
       <div class="acc-grupo-tit">${isTerc?"Aval":"Permanencia y referidos"}</div>
       <div class="mgmt-grid">
@@ -1489,8 +1489,8 @@ function saveCicloYAporte(mid){
   }
   const avEl=document.getElementById("ci-aval"); // v45.1: quien lo recomendó = su aval (GE-1)
   if(avEl){ if(avEl.value)m.referidoPor=avEl.value; else delete m.referidoPor; }
-  // v46.52 · AY-10: con una ayuda de más de 1.000 € recibida con la llave 2 y sin terminar, el aporte no baja de 100 €
-  if(ap<REGLAS.APORTE_LLAVE2&&ap<aporteHabitualDe(m)&&ayudasConLlave2(m).length){toast(`⛔ ${m.name.split(" ")[0]} devuelve una ayuda de más de ${_miles(REGLAS.AYUDA_MAX_LLAVE1)} € con las dos llaves: su aporte no puede bajar de ${REGLAS.APORTE_LLAVE2} € hasta la última cuota (Maestro AY-10)`,5500);return;}
+  // v46.56 · AY-10 (compromiso): con una ayuda recibida gracias a su aporte de 100 € o más y sin terminar, el aporte no baja
+  if(ap<REGLAS.APORTE_ALTO&&ap<aporteHabitualDe(m)&&ayudasConCompromiso(m).length){toast(`⛔ ${m.name.split(" ")[0]} devuelve una ayuda recibida gracias a su aporte de ${REGLAS.APORTE_ALTO} €: no puede bajarlo hasta la última cuota (Maestro AY-10)`,5500);return;}
   const volver=MODAL&&MODAL.volver; // v45.28: venía de una ayuda bloqueada por la permanencia
   fijarAportesPagados(m,ap);
   m.ciclo=c;
@@ -1745,7 +1745,8 @@ function updateCierreLoanPreview(){
   const cuotaTxt=(cuotas.length>1&&base!==ultima)?`${fmtEur(base)} € (última ${fmtEur(ultima)} €)`:`${fmtEur(base)} €`;
   const mC=DATA.members.find(x=>x.id===document.getElementById("cl-mid")?.value), cC=_condicionActual(mC);
   const ni=(MONTHS.indexOf(DATA.reportMonth)+1)%12, ny=MONTHS.indexOf(DATA.reportMonth)===11?DATA.reportYear+1:DATA.reportYear;
-  const vC=validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny});
+  const soC=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null; // v46.56: AY-8 mira la fecha de la solicitud
+  const vC=validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny},undefined,soC&&soC.fecha);
   el.innerHTML=_avisoApoyoHTML(vC)+(vC.bloqueo?botonAmpliarAyudaHTML(mC,cap,nn,{m:MONTHS[ni],y:ny}):"")+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + retorno (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm-txt)">${cuotaTxt}</b></div>
@@ -1771,7 +1772,7 @@ function registrarAyudaAprobada(m,cap,nn,gidEnt,so){
   const tipoEnConcesion=m.type;
   const avalistaEnConcesion=(m.type==="tercero")?avalistaNombre(m):null; // nombre resuelto desde el id, texto congelado
   const cicloEnConcesion=(m.ciclo!=null?m.ciclo:null);
-  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,..._condLlave2(m,cap)});
+  m.loans.push({id:lid,gMonth:rm,gYear:ry,capital:cap,total,n:nn,inst,cuotas,rate,pays,tipoEnConcesion,avalistaEnConcesion,cicloEnConcesion,...condicionesConcesion(m,cap,nn)});
   if(!m.history)m.history=[];
   m.history.push({gMonth:rm,gYear:ry,capital:cap,lid});
   // v45.14: viene de una solicitud → queda otorgada; si la entrega el principal de un grupo → cuenta del grupo
@@ -1791,7 +1792,8 @@ function addCierreLoanSubmit(){
   const ny=MONTHS.indexOf(rm)===11?ry+1:ry;
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
-  { const c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny}); // v45: mismas reglas que en la ficha
+  { const soV=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null;
+    const c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny},undefined,soV&&soV.fecha); // v45: mismas reglas que en la ficha
     if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v)+botonAmpliarAyudaHTML(m,cap,nn,{m:MONTHS[ni],y:ny}); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
   const gidEnt=(document.getElementById("cl-entrega")||{}).value||"";
   const so=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null;

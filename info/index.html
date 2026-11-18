@@ -133,7 +133,8 @@ details.card[open]>summary{margin-bottom:4px}
     <p style="margin:0 0 6px">Hay dos formas de pedir una ayuda:</p>
     <div class="fb"><div class="fbh">1. Asociándote</div>
       <div class="fbr"><div class="fbp">12 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a12"></b><small>máximo</small></div><div class="fbn"><b id="t-c12"></b><small>cuotas máx.</small></div></div>
-      <div class="fbr"><div class="fbp">24 o 36 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a24"></b><small>máximo</small></div><div class="fbn"><b id="t-c24"></b><small>cuotas máx.</small></div></div>
+      <div class="fbr"><div class="fbp">24 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a24"></b><small>máximo</small></div><div class="fbn"><b id="t-c24"></b><small>cuotas máx.</small></div></div>
+      <div class="fbr"><div class="fbp">36 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a36"></b><small>máximo</small></div><div class="fbn"><b id="t-c36"></b><small>cuotas máx.</small></div></div>
     </div>
     <div class="fb fb2"><div class="fbh">2. Sin asociarte, con aval</div>
       <div class="fbr"><div class="fbp">Te avala<br><small>un asociado</small></div><div class="fbn"><b id="t-aav"></b><small>máximo</small></div><div class="fbn"><b id="t-cav"></b><small>cuotas máx.</small></div></div>
@@ -209,7 +210,7 @@ details.card[open]>summary{margin-bottom:4px}
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.25"></script>
+<script src="../js/maestro.js?v=46.56"></script>
 <script src="../js/iconos.js?v=46.25"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
@@ -221,22 +222,27 @@ const eur=n=>{ const r=Math.round(n*100)/100; let [e,d]=String(r).split("."); e=
 const DE=(Q.get("de")||"").trim().slice(0,60), W=(Q.get("w")||"").replace(/\D/g,"").slice(0,15), NOM=DE.split(" ")[0];
 function cuotas(cap,n){ const tot=Math.ceil(cap+cap*RETORNO/100*n-1e-9), b=Math.floor(tot/n), r=tot-b*n; return {tot,primera:r?b+1:b}; }
 function total(ap,meses){ const t=[R.BENEFICIO_ANIO1,R.BENEFICIO_ANIO2,R.BENEFICIO_ANIO3]; let ben=0; for(let a=0;a<meses/12;a++)ben+=12*(ap/R.BLOQUE_APORTE)*t[a]; return {aportado:ap*meses,ben,tot:ap*meses+ben}; }
+// v46.56 (Maestro v18.82 · AY-10): asociándote se entra con 50 € al mes; lo que se puede pedir crece con la permanencia
+const AP0=R.APORTE_MINIMO, LIM={12:Math.min(AP0*R.VECES_12,R.AYUDA_MAX),24:Math.min(AP0*R.VECES_24,R.AYUDA_MAX),36:Math.min(AP0*R.VECES_36,R.AYUDA_MAX)};
+const CU={12:Math.min(R.CUOTAS_12_50,R.CUOTAS_MAX),24:Math.min(R.CUOTAS_24_50,R.CUOTAS_MAX),36:Math.min(R.CUOTAS_36,R.CUOTAS_MAX)}, TOPE=LIM[36], CUMAX=CU[36];
+const permPara=(c,n)=>[12,24,36].find(p=>c<=LIM[p]&&n<=CU[p]);
 // Textos con las cifras del Maestro
-$("t-a12").textContent=eur(R.AYUDA_MAX_CORTA); $("t-c12").textContent=R.CUOTAS_MAX_CORTA;
-$("t-a24").textContent=eur(R.AYUDA_MAX_SIN_APROBACION); $("t-c24").textContent=R.CUOTAS_MAX;
+$("t-a12").textContent=eur(LIM[12]); $("t-c12").textContent=CU[12];
+$("t-a24").textContent=eur(LIM[24]); $("t-c24").textContent=CU[24];
+$("t-a36").textContent=eur(LIM[36]); $("t-c36").textContent=CU[36];
 $("t-aav").textContent=eur(R.AYUDA_MAX_CORTA); $("t-cav").textContent=R.CUOTAS_MAX_CORTA;
-$("s-im").min=R.AYUDA_MIN; $("s-im").max=R.AYUDA_MAX_SIN_APROBACION; $("s-cu").max=R.CUOTAS_MAX; $("s-im").value=R.AYUDA_MIN; $("s-cu").value=1; // v46.19: barras en vez de ejemplos
+$("s-im").min=R.AYUDA_MIN; $("s-im").max=TOPE; $("s-cu").max=CUMAX; $("s-im").value=R.AYUDA_MIN; $("s-cu").value=1; // v46.19: barras en vez de ejemplos
 function relleno(e){ e.style.setProperty("--p",((e.value-e.min)/(e.max-e.min)*100)+"%"); }
 function tocado(){ document.querySelector(".sim").classList.remove("quieto"); }
 function barras(){ relleno($("s-im")); relleno($("s-cu")); const c=+$("s-im").value, n=+$("s-cu").value, corta=c<=R.AYUDA_MAX_CORTA&&n<=R.CUOTAS_MAX_CORTA;
   $("s-imv").textContent=eur(c); $("s-cuv").textContent=n+(n===1?" cuota":" cuotas");
   $("s-res").innerHTML=`Pagarías ${n===1?"1 cuota":n+" cuotas"} de <b>${eur(cuotas(c,n).primera)}</b>`;
-  $("s-quien").textContent=corta?"Puedes pedirla con aval o asociándote.":"Solo asociándote con permanencia de 24 o 36 meses."; }
+  const p=permPara(c,n); $("s-quien").textContent=corta?"Puedes pedirla con aval o asociándote.":p?`Solo asociándote con permanencia de ${p} meses${p<36?" o más":""}.`:""; }
 $("s-im").oninput=$("s-cu").oninput=()=>{tocado();barras();}; document.querySelector(".sim").classList.add("quieto"); barras();
 $("t-aps").textContent=R.APORTE_OPCIONES.slice(0,-1).join(", ")+" o "+R.APORTE_OPCIONES.slice(-1)+" €";
 $("t-tar").textContent=`${R.BENEFICIO_ANIO1} € al mes el 1.er año, ${R.BENEFICIO_ANIO2} € el 2.º y ${R.BENEFICIO_ANIO3} € el 3.º.`;
 $("t-ben").innerHTML=`<tr><th>Aportando 50 € al mes</th><th class="n">Aportas</th><th class="n">Ganas</th><th class="n">Recibes</th></tr>`+[12,24,36].map(m=>{const t=total(50,m);return `<tr><td>${m} meses</td><td class="n">${eur(t.aportado)}</td><td class="n" style="color:var(--v2)">+ ${eur(t.ben)}</td><td class="n"><b>${eur(t.tot)}</b></td></tr>`;}).join("");
-$("t-faqcu").textContent=`Tú eliges. Con permanencia de 12 meses o con aval, de 1 a ${R.CUOTAS_MAX_CORTA} cuotas. Con permanencia de 24 o 36 meses, hasta ${R.CUOTAS_MAX} cuotas.`;
+$("t-faqcu").textContent=`Tú eliges. Con aval, de 1 a ${R.CUOTAS_MAX_CORTA} cuotas. Asociándote, hasta ${CU[12]} cuotas con permanencia de 12 meses, ${CU[24]} con 24 y ${CU[36]} con 36.`;
 // Quién invita y botones para hablar
 if(DE){ $("inv").innerHTML=`👋 Te invita <b>${DE.replace(/[<>&]/g,"")}</b>, asociado de Nuevos Horizontes.`; $("inv").classList.remove("oculto"); }
 const hola=q=>encodeURIComponent(`Hola, ${q}. He visto la información de Nuevos Horizontes${DE&&q!==NOM?` (me la ha pasado ${DE})`:""} y tengo una pregunta: `);
@@ -256,14 +262,14 @@ function elegir(id,v){ if(id==="f-pmc")F.pm=+v; else if(id==="f-apc")F.ap=+v; el
 $("f-apc").innerHTML=R.APORTE_OPCIONES.map(a=>`<button data-v="${a}">${a} €</button>`).join(""); F.ap=R.APORTE_OPCIONES[0];
 ["f-int","f-como","f-pmc","f-apc"].forEach(id=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>elegir(id,b.dataset.v)));
 document.querySelector('#f-apc button').classList.add("on");
-$("f-im").min=R.AYUDA_MIN; $("f-im").max=R.AYUDA_MAX_SIN_APROBACION; $("f-im").value=R.AYUDA_MIN; $("f-cu").max=R.CUOTAS_MAX; $("f-cu").value=1;
-$("f-imn").textContent=eur(R.AYUDA_MIN); $("f-imx").textContent=eur(R.AYUDA_MAX_SIN_APROBACION); $("f-cux").textContent=R.CUOTAS_MAX+" cuotas";
+$("f-im").min=R.AYUDA_MIN; $("f-im").max=TOPE; $("f-im").value=R.AYUDA_MIN; $("f-cu").max=CUMAX; $("f-cu").value=1;
+$("f-imn").textContent=eur(R.AYUDA_MIN); $("f-imx").textContent=eur(TOPE); $("f-cux").textContent=CUMAX+" cuotas";
 $("f-im").classList.add("quieto"); $("f-cu").classList.add("quieto"); // v46.25: late suave hasta que se toca, como «Calcula tu ayuda»
 $("f-im").oninput=$("f-cu").oninput=function(){ this.classList.remove("quieto"); pintar(); };
 function opts(sel,arr,fmt){ const v=+sel.value; sel.innerHTML=arr.map(x=>`<option value="${x}">${fmt(x)}</option>`).join(""); if(arr.includes(v))sel.value=v; }
 // v46.22: barras como el simulador de la app; el aviso solo sale si la ayuda pasa del límite de lo elegido
-function excede(){ const c=+$("f-im").value, n=+$("f-cu").value, largo=F.como==="aso"&&F.pm>=24;
-  return largo?(c>R.AYUDA_MAX_SIN_APROBACION||n>R.CUOTAS_MAX):(c>R.AYUDA_MAX_CORTA||n>R.CUOTAS_MAX_CORTA); }
+function excede(){ const c=+$("f-im").value, n=+$("f-cu").value;
+  return F.como==="aso"?(c>LIM[F.pm]||n>CU[F.pm]):(c>R.AYUDA_MAX_CORTA||n>R.CUOTAS_MAX_CORTA); }
 function pintar(){
   const ay=F.int==="ayuda", ah=F.int==="ahorro", aso=ay&&F.como==="aso";
   $("f-ay").classList.toggle("oculto",!ay); $("f-nota").classList.toggle("oculto",!ah);
@@ -274,8 +280,9 @@ function pintar(){
   $("f-imv").textContent=eur(c); $("f-cuv").textContent=n+(n===1?" cuota":" cuotas");
   let av="";
   if(ay&&F.como&&excede()){
-    if(F.como==="aval")av=`⚠️ <b>Para esta ayuda debes <a onclick="elegir('f-como','aso');elegir('f-pmc',24)">asociarte con permanencia de 24 o 36 meses</a>.</b>`;
-    else av=`⚠️ <b>Para esta ayuda debes cambiar tu permanencia a <a onclick="elegir('f-pmc',24)">24 o 36 meses</a>.</b>`;
+    const p=permPara(c,n)||36, pt=p+" meses"+(p<36?" o más":"");
+    if(F.como==="aval")av=`⚠️ <b>Para esta ayuda debes <a onclick="elegir('f-como','aso');elegir('f-pmc',${p})">asociarte con permanencia de ${pt}</a>.</b>`;
+    else av=`⚠️ <b>Para esta ayuda debes cambiar tu permanencia a <a onclick="elegir('f-pmc',${p})">${pt}</a>.</b>`;
   }
   if(ah){ const t=total(F.ap,F.pm); $("f-sum").innerHTML=`<div class="fi"><span>Aportas en ${F.pm} meses</span><b>${eur(t.aportado)}</b></div><div class="fi"><span>+ Beneficios</span><b>${eur(t.ben)}</b></div><div class="fi tot"><span>= Al terminar recibes</span><b>${eur(t.tot)}</b></div>`; }
   $("f-err").style.display="none";
