@@ -488,3 +488,10 @@ body:not(:has(.nha-nav)) .nha-upd{bottom:calc(16px + env(safe-area-inset-bottom)
 .nha-sol-in{width:100%;box-sizing:border-box;font-size:17px;padding:10px 12px;border:1.5px solid #CFC7BA;border-radius:12px;background:#fff;color:#1A1A1A}
 .nha-sol-anu{background:#fff;color:#A63A20;border:1.5px solid #C0492C}
 .nha-sol-anu.arm{background:#A63A20;color:#fff}
+
+/* ══ v46.59 · DISEÑO QUE SE ADAPTA SOLO (norma de CLAUDE.md, Ángel 18/11/2026 20:03): lo que no cabe baja de línea ══ */
+.nha-perm-top{flex-wrap:wrap}
+.nha-perm-n{margin-left:auto}
+.nha-nav{box-sizing:border-box}
+.nha-nav-btn{min-width:0}
+.nha-nav-btn span{max-width:100%;text-align:center;overflow-wrap:anywhere}
