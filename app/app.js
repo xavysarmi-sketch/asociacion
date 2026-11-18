@@ -205,6 +205,14 @@ function nhaTitulo(m,t,sub,ic){
 }
 
 // ── Inicio ──
+// v46.58 (encargo «ajustes-simulador-ayuda»): el botón «¿Cuánto puedo pedir?» lleva la cifra de la persona (limiteAyudaDe:
+// asociado según permanencia y aporte; tercero y Asociado Libre, 500 €). Tercero que ya tuvo su ayuda (AY-8, desde el
+// 01/12/2026): «Tu próxima ayuda, como asociado · desde 700 €».
+function nhaPedirBotonHTML(m){
+  const cifra=t=>`<small class="nha-acc-cifra">${t}</small>`;
+  if(m.type==="tercero"&&terceroYaTuvoSuAyuda(m))return `<span class="nha-acc-txt"><b>Tu próxima ayuda, como asociado</b>${cifra("desde "+fmtEur(limiteAyudaCon(12,REGLAS.APORTE_MINIMO))+"&nbsp;€")}</span>`;
+  return `<span class="nha-acc-txt"><b>¿Cuánto puedo pedir?</b>${cifra("Hasta "+fmtEur(limiteAyudaDe(m))+"&nbsp;€")}</span>`;
+}
 function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
   let h="";
@@ -224,8 +232,8 @@ function nhaInicioHTML(m,salidaPend,g){
   }
   if(salidaPend)return h;
   h+=nhaImportanteHTML(m,g);
-  if(esTerc)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span><b>¿Cuánto puedo pedir?</b><small>Simula una ayuda</small></button></div>`; // v46.56: también los terceros (sin asociarse o asociándose)
-  if(!esTerc&&m.joinMonth)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span><b>¿Cuánto puedo pedir?</b><small>Simula una ayuda</small></button>
+  if(esTerc)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span>${nhaPedirBotonHTML(m)}</button></div>`; // v46.56: también los terceros (sin asociarse o asociándose)
+  if(!esTerc&&m.joinMonth)h+=`<div class="nha-accesos nha-acc-fila"><button onclick="abrirSimulador('${esc(m.id)}','ayuda')"><span class="nha-acc-ic">${_icSVG("bulb")}</span>${nhaPedirBotonHTML(m)}</button>
     <button onclick="abrirSimulador('${esc(m.id)}','ben')"><span class="nha-acc-ic">${_icSVG("sprout")}</span><b>¿Cuánto puedo ganar?</b><small>Simula tus beneficios</small></button></div>`;
   if(!esTerc&&m.joinMonth&&NHA_PRUEBA_INV)h+=`<button class="nha-invitar" onclick="nhaIr('invitar')"><span class="nha-acc-ic">${_icSVG("share")}</span><span><b>Invitar a alguien</b><small>Mándale la información por WhatsApp</small></span><span class="nha-fl-c">›</span></button>`; // v46.18
   return h;

@@ -119,7 +119,7 @@ function aporteBrutoKey(m,key){ return Math.max(0,aporteBaseDe(m)+ajusteAporteKe
 function aporteBrutoMes(m,rm,ry){ return aporteBrutoKey(m,getMesKey(rm,ry)); }
 // ══ v46.56 · TU AYUDA CRECE CON TU APORTE (Maestro v18.82 · AY-10, AY-5, AY-8) ═══════════════════════════════
 // Lo máximo que un asociado puede pedir = «veces» el aporte que cuenta según su permanencia (14 · 20 · 30), con el tope
-// AY-5 (2.000 €); 12 meses con 100 € o más: 1.500 € fijos. Cuotas: 12m 8 / 12 · 24m 12 / 15 · 36 o indefinida 15.
+// AY-5 (2.000 €); 12 meses con 100 € o más: 1.500 € fijos. Cuotas: 12m 8 / 11 (v18.84) · 24m 12 / 15 · 36 o indefinida 15.
 // El aporte que cuenta: sin anotar, 50 €; el de 100 € o más, desde que ha pagado al menos un mes a 100 € o más.
 // Sustituye a «las dos llaves» (v46.52–v46.55). Los datos guardados de entonces (llave2) se siguen leyendo.
 function _ay10Idx(){ const [y,mm]=String(REGLAS.AY10_DESDE).split("-").map(Number); return y*12+mm-1; }
@@ -151,8 +151,10 @@ function cuotasMaxCon(ciclo,aporte){ // AY-10 · cuotas máximas con esa permane
   return Math.min(k,R.CUOTAS_MAX);
 }
 function _cicloDe(m,ciclo){ return ciclo!==undefined?ciclo:(m&&m.ciclo!=null?m.ciclo:12); }
-function limiteAyudaDe(m,ciclo){ return limiteAyudaCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); } // ayuda nueva a este asociado
-function cuotasMaxDe(m,ciclo){ return cuotasMaxCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); }
+// v46.58: terceros y Asociado Libre, 500 € y 5 cuotas (AY-1, LI-4); antes el Libre salía como 12 meses con 50 € (700 €)
+function _ayudaCorta(m){ return !!m&&(m.type==="tercero"||m.type==="libre"); }
+function limiteAyudaDe(m,ciclo){ return _ayudaCorta(m)?REGLAS.AYUDA_MAX_CORTA:limiteAyudaCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); } // ayuda nueva a esta persona
+function cuotasMaxDe(m,ciclo){ return _ayudaCorta(m)?REGLAS.CUOTAS_MAX_CORTA:cuotasMaxCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); }
 // Compromiso (AY-10): quien recibe una ayuda mayor gracias a su aporte de 100 € o más (más importe o más cuotas de lo que
 // podría con 50 €) mantiene ese aporte hasta pagar su última cuota. Al conceder (AY-2) se guarda el aporte habitual de ese
 // día (aporteEnConcesion) y si la ayuda necesitó el aporte alto (aporteAlto).

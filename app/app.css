@@ -1,7 +1,7 @@
 /* Nuevos Horizontes · app/app.css — App de asociados (v45.52)
    Se carga DESPUÉS de ../css/nh.css (los cuadros de la ficha son los mismos); aquí solo va
    el marco de la app: cabecera, barra de abajo, tarjetas de Inicio y preguntas. */
-body.nh-app{background:var(--bg);padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+body.nh-app{background:var(--bg);padding-bottom:calc(112px + env(safe-area-inset-bottom))} /* v46.58: antes 84px; con la letra del iPhone (+20 %, v45.88) la barra de abajo mide unos 88 px y tapaba el último botón */
 body.nh-app .app-version,body.nh-app .update-banner{display:none}
 .nha-cargando,.nha-error{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px 24px;text-align:center;color:var(--dark);font-size:16px}
 .nha-logo{width:44px;height:44px;flex-shrink:0;border-radius:13px;background:#1B4332;color:#F5F0EB;display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif;font-weight:800;font-size:18px;letter-spacing:.5px;box-shadow:0 2px 8px rgba(27,67,50,.25)}
@@ -405,6 +405,9 @@ body.nh-app{--muted:#1F1F1F;--text:#111;--warm:#6B4210;--warm-lt:#FFF3D6}
 .nha-acc-fila button{flex-direction:row;align-items:center;gap:10px;padding:11px 12px}
 .nha-acc-fila button small{display:none}
 .nha-acc-fila b{font-size:15px}
+/* v46.58: la cifra de «¿Cuánto puedo pedir?» se ve también en la fila (los demás subtítulos siguen ocultos) */
+.nha-acc-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.nha-accesos button small.nha-acc-cifra{display:block;font-size:15.5px;font-weight:800;color:#1B4332!important}
 .nha-terc{margin-top:12px}
 .nha-l-c{align-items:center}
 .nha-llevas .nha-l-f b,.nha-llevas .nha-l-t b{min-width:0}

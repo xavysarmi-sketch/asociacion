@@ -27,7 +27,7 @@ const REGLAS=Object.freeze({
   AYUDA_12_APORTE_ALTO: 1500,           // AY-10 · excepción fija: 12 meses con 100 € o más → 1.500 € (Ángel 17/11/2026)
   APORTE_ALTO: 100,                     // AY-10 · aporte que sube el límite: habitual de 100 € o más Y un mes ya pagado a 100 € o más
   CUOTAS_12_50: 8,                      // AY-10 · cuotas: 12 meses con 50 €
-  CUOTAS_12_100: 12,                    // AY-10 · 12 meses con 100 € o más
+  CUOTAS_12_100: 11,                    // AY-10 · 12 meses con 100 € o más (Maestro v18.84: nunca caben 12 con 12 meses, AY-1 y AY-3)
   CUOTAS_24_50: 12,                     // AY-10 · 24 meses con 50 €
   CUOTAS_24_100: 15,                    // AY-10 · 24 meses con 100 € o más
   CUOTAS_36: 15,                        // AY-10 · 36 meses o indefinida, con cualquier aporte
