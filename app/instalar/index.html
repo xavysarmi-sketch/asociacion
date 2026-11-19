@@ -24,7 +24,7 @@ else { av.innerHTML="Para instalarla, abre tu enlace personal (el que te mandó 
 var p=and?["android.jpg","iphone.jpg","¿Tienes iPhone? Ver sus pasos"]:["iphone.jpg","android.jpg","¿Tienes Android? Ver sus pasos"];
 document.getElementById("a").src=p[0]; document.getElementById("c").src=p[1]; var b=document.getElementById("b"); b.textContent=p[2];
 // v46.36: en el iPhone, Compartir puede estar detrás de los tres puntos; se dice debajo del dibujo del iPhone
-var NOTA="Si no ves Compartir, toca primero los tres puntos ··· de abajo.";
+var NOTA="Si no ves Compartir, toca primero ≡ o ··· en la barra de abajo."; // v46.61: Safari tiene ≡ junto a la dirección (prueba real 19/11)
 function nota(id){ var e=document.getElementById(id); e.textContent=NOTA; e.style.display="block"; }
 if(!and)nota("na");
 b.onclick=function(){ document.getElementById("c").style.display="block"; b.style.display="none"; if(and)nota("nc"); };

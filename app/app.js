@@ -758,7 +758,10 @@ function nhaEntrar(){ try{ localStorage.setItem("nha-bv-"+NHA.codigo,"1"); }catc
 function nhaVerBienvenida(){ NHA.bienvenida=true; MODAL=null; render(); window.scrollTo(0,0); }
 function nhaSistema(){
   const ua=navigator.userAgent||"", ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
-  if(ios)return {so:"ios",otra:/CriOS|FxiOS|EdgiOS|FBAN|FBAV|Instagram|Line\//.test(ua)};
+  // v46.61: sin CriOS (retoque 3). «dentro»: el userAgent no dice «Safari» = navegador dentro de otra app (regla inspirada en
+  // inapp-spy, MIT). Solo decide el texto del aviso: los pasos se enseñan siempre. Prueba real del 19/11 (iPhone, iOS 27.2.1):
+  // WhatsApp abre los enlaces directamente en Safari, así que no se añade nada propio de WhatsApp.
+  if(ios)return {so:"ios",chrome:/CriOS/.test(ua),dentro:!/Safari/.test(ua),otra:/FxiOS|EdgiOS|FBAN|FBAV|Instagram|Line\//.test(ua)};
   if(/Android/.test(ua))return {so:"android",samsung:/SamsungBrowser/.test(ua),otra:/FBAN|FBAV|Instagram|; wv\)/.test(ua)};
   return {so:"otro"};
 }
@@ -772,8 +775,15 @@ const NHA_SVG={
 // instalarla» llevaba a instalar/, una dirección sin el código: el icono creado desde allí no abría la cuenta (iPhone y
 // Android). En Android el camino principal es el menú ⋮ (el aviso automático de Chrome necesita un service worker, que la
 // app no tiene por la regla crítica 4); el botón verde sale solo si Chrome lo ofrece.
+// v46.61 (retoques de instalar, 19/11/2026): pasos cortos, como mucho 2 frases; lo excepcional va a «¿Te atascas?»
+// (nhaAtascoHTML). Los textos coinciden con las tarjetas de nh_pruebas\2026-11-19_instalacion (generar_html.py).
+// «⌄» dibujado: con la letra de la app el carácter sale como una «v» pequeña (igual que en las tarjetas)
+const NHA_CHEV='(<svg role="img" aria-label="flecha hacia abajo" style="width:1.1em;height:1.1em;vertical-align:-.2em" viewBox="4 4 16 16" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>)';
 function nhaAvisoAbrirFuera(so){
-  return `<div class="nha-aviso nha-aviso-fuera">${so==="ios"?`¿No ves cómo instalarla? Toca <b>···</b> y elige <b>Abrir en Safari</b>.`
+  const s=nhaSistema();
+  return `<div class="nha-aviso nha-aviso-fuera">${so==="ios"&&s.chrome?`¿No ves cómo instalarla? En Chrome, <b>Compartir</b> está arriba a la derecha.`
+    :so==="ios"&&s.dentro&&!nhaInstalada()?`¿No ves cómo instalarla? Toca <b>···</b> y elige <b>Abrir en Safari</b>.`
+    :so==="ios"?`¿No ves los botones? Están en la barra de abajo: toca <b>≡</b> o <b>···</b>.`
     :so==="android"?`¿No ves cómo instalarla? Toca <b>⋮</b> y elige <b>Abrir en Chrome</b>.`
     :`¿No ves cómo instalarla? Toca <b>···</b> (o <b>⋮</b>) y elige <b>Abrir en Safari</b> o <b>Abrir en Chrome</b>.`}</div>`;
 }
@@ -781,14 +791,33 @@ function nhaPasosHTML(so){
   const s=nhaSistema(), paso=(n,ic,t,cls)=>`<div class="nha-paso"><div class="nha-paso-n">${n}</div><div class="nha-paso-t">${t}</div>${ic?`<div class="nha-paso-ic${cls?" "+cls:""}">${ic}</div>`:""}</div>`;
   const icono=`<span class="nha-mini-logo">NH</span>`;
   if(so==="ios")return `<div class="nha-so">📱 iPhone</div>`
-    +paso(1,NHA_SVG.puntos.replace("<svg",'<svg style="transform:rotate(90deg)"'),`Abajo, toca <b>···</b> y luego <b>Compartir</b> (el cuadrado con la flecha hacia arriba). Si ya ves <b>Compartir</b>, tócalo directamente.`,"nha-paso-ic-late")
-    +paso(2,NHA_SVG.mas,`Baja un poco y toca <b>«Añadir a pantalla de inicio»</b>.`)
-    +paso(3,icono,`Toca <b>Añadir</b>. Ya tienes el icono <b>NH</b>: ábrela siempre desde ahí.`);
+    +paso(1,NHA_SVG.menu,`Toca el botón de abajo con tres rayas <b>≡</b> (o tres puntos <b>···</b>) y luego <b>Compartir</b>. Si ya ves <b>Compartir</b>, tócalo directamente.`,"nha-paso-ic-late")
+    +paso(2,NHA_SVG.mas,`Toca <b>«Ver más»</b> ${NHA_CHEV} y luego <b>«Añadir a pantalla de inicio»</b>. Si no está, al final de la lista toca <b>«Editar acciones»</b>.`)
+    +paso(3,icono,`Si ves <b>«Abrir como app web»</b>, déjalo encendido y toca <b>«Añadir»</b>. Ya tienes el icono <b>NH Asociados</b>: ábrela siempre desde ahí.`);
+  // Android: el menú ⋮ es el camino principal; el botón verde (si Chrome lo ofrece) va debajo, como atajo (retoque 5 adaptado)
   return `<div class="nha-so">📱 Android</div>`
-    +(so==="android"&&NHA_PROMPT?_nhaBotonInstalar()+`<div class="nha-txt" style="margin:0 0 6px">Toca el botón y luego <b>Instalar</b>. Si no te sale, hazlo así:</div>`:"")
-    +(so==="android"&&s.samsung?paso(1,NHA_SVG.menu,`Toca el <b>menú</b> (las tres rayas, abajo).`,"nha-paso-ic-late")+paso(2,NHA_SVG.mas,`Toca <b>«Añadir página a»</b> y luego <b>«Pantalla de inicio»</b>.`)
-      :paso(1,NHA_SVG.puntos,`Toca los <b>tres puntos ⋮</b> de Chrome (arriba a la derecha).`,"nha-paso-ic-late")+paso(2,NHA_SVG.mas,`Toca <b>«Instalar aplicación»</b> (o <b>«Añadir a pantalla de inicio»</b>) y luego <b>Instalar</b>.`))
-    +paso(3,icono,`Ya tienes el icono <b>NH</b>: ábrela siempre desde ahí.`);
+    +(so==="android"&&s.samsung?paso(1,NHA_SVG.menu,`Toca el <b>menú ☰</b> (las tres rayas, abajo).`,"nha-paso-ic-late")+paso(2,NHA_SVG.mas,`Toca <b>«Añadir página a»</b> y luego <b>«Pantalla de inicio»</b>.`)
+      :paso(1,NHA_SVG.puntos,`Toca los <b>tres puntos ⋮</b> de arriba a la derecha de Chrome.`,"nha-paso-ic-late")+paso(2,NHA_SVG.mas,`Toca <b>«Instalar y crear acceso directo»</b> (o <b>«Instalar aplicación»</b>). Luego toca <b>«Instalar»</b>.`))
+    +paso(3,icono,`¡Ya está! Toca el icono <b>NH Asociados</b> y entrarás directo a tu cuenta.`)
+    +(so==="android"&&NHA_PROMPT?`<div class="nha-atajo"><div class="nha-txt">Atajo: toca <b>«📲 Instalar mi app»</b> y luego <b>«Instalar»</b>.</div>${_nhaBotonInstalar()}</div>`
+      :`<div class="nha-atajo nha-txt">A veces sale un botón verde <b>«📲 Instalar mi app»</b>. Si sale, también vale.</div>`);
+}
+function nhaAtascoHTML(so){ // «¿Te atascas?»: lo que no es lo normal (mismos casos que las tarjetas)
+  const L=so==="ios"?[
+    ["No veo «Compartir»","Toca primero <b>≡</b> o <b>···</b> en la barra de abajo. En Chrome, <b>Compartir</b> está arriba a la derecha."],
+    ["No sale «Añadir a pantalla de inicio»","Toca <b>«Ver más»</b> "+NHA_CHEV+". Si tampoco está, al final de la lista toca <b>«Editar acciones»</b> y añádelo."],
+    ["Se ha abierto dentro de otra app","Toca el icono de la brújula o <b>«Abrir en Safari»</b>, y sigue desde ahí."],
+    ["El icono no abre mi cuenta","Si pone «Este icono no abre tu cuenta», mantén el dedo sobre el icono, toca <b>«Eliminar app»</b> y vuelve a empezar <b>desde tu enlace</b>. ¿No lo tienes? Toca <b style='white-space:nowrap'>«💬 Pedir mi enlace»</b>."],
+    ["Sigo sin poder","Escribe al <b>coordinador</b>. Te ayuda en un momento."]
+  ]:[
+    ["No sale el botón verde","No pasa nada. Hazlo con los tres puntos <b>⋮</b> (pasos 1 y 2)."],
+    ["No veo «Instalar y crear acceso directo»","En algunos móviles pone <b>«Añadir a pantalla de inicio»</b>. Tócalo y luego <b>«Añadir»</b>."],
+    ["Uso Samsung Internet","Toca el menú <b>☰</b> (las tres rayas, abajo), luego <b>«Añadir página a»</b> y <b>«Pantalla de inicio»</b>."],
+    ["Se ha abierto dentro de WhatsApp","Toca los tres puntos <b>⋮</b> y <b>«Abrir en Chrome»</b>, y sigue desde ahí."],
+    ["El icono no abre mi cuenta","Abre una vez tu enlace en <b>Chrome</b>; si sigue igual, bórralo y vuelve a empezar <b>desde tu enlace</b>. ¿No lo tienes? Toca <b style='white-space:nowrap'>«💬 Pedir mi enlace»</b>."],
+    ["Sigo sin poder","Escribe al <b>coordinador</b>. Te ayuda en un momento."]
+  ];
+  return `<details class="nha-atasco"><summary>¿Te atascas?</summary>${L.map(([p,r])=>`<div class="nha-atasco-f"><div class="nha-atasco-p">${p}</div><div>${r}</div></div>`).join("")}</details>`;
 }
 function nhaDibujoHTML(so){ // el dibujo grande, dentro de la misma pantalla (antes, otra página)
   const img=so==="android"?"instalar/android.jpg":"instalar/iphone.jpg";
@@ -801,18 +830,18 @@ function nhaInstPanelHTML(){ // hoja «Ponla en tu móvil» (misma dirección: c
   const s=nhaSistema(), so=s.so==="ios"||s.so==="android"?s.so:"ios", otro=so==="ios"?"android":"ios";
   return `<div class="nha-inst-panel" onclick="if(event.target===this)nhaInstCerrar()"><div class="nha-inst-hoja" id="nhaInstHoja" role="dialog" aria-modal="true" aria-labelledby="nhaInstTit" tabindex="-1">
       <div class="nha-inst-cab"><div class="nha-card-tit" id="nhaInstTit">Ponla en tu móvil</div><button class="nha-inst-x" onclick="nhaInstCerrar()" aria-label="Cerrar">✕</button></div>
-      <div class="nha-txt" style="margin-bottom:6px">Solo la primera vez. Son 3 pasos:</div>
-      ${nhaPasosHTML(so)}${nhaDibujoHTML(so)}${nhaAvisoAbrirFuera(s.so)}
-      <button class="nha-bv-otro" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">¿Tienes otro móvil? Ver los pasos</button><div style="display:none">${nhaPasosHTML(otro)}${nhaDibujoHTML(otro)}</div>
+      <div class="nha-txt" style="margin-bottom:6px">Solo la primera vez. Hazlo aquí, en esta pantalla. Son 3 pasos:</div>
+      ${nhaPasosHTML(so)}${nhaDibujoHTML(so)}${nhaAvisoAbrirFuera(s.so)}${nhaAtascoHTML(so)}
+      <button class="nha-bv-otro" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">¿Tienes otro móvil? Ver los pasos</button><div style="display:none">${nhaPasosHTML(otro)}${nhaDibujoHTML(otro)}${nhaAtascoHTML(otro)}</div>
     </div></div>${so==="ios"&&s.so==="ios"?`<div class="nha-flecha" aria-hidden="true"><span>Los botones de Safari están aquí abajo</span>↓</div>`:""}`;
 }
 function nhaBienvenidaHTML(m){
   const s=nhaSistema();
   return `<div class="nha-bv"><div class="nha-bv-top"><div class="nha-logo nha-logo-g nha-luz"><span>NH</span></div><div class="nha-bv-tit">Hola, ${nhaPrimerNombre(m)}</div>
       <div class="nha-bv-sub">Esta es tu app de <b>Nuevos Horizontes</b>. Aquí ves tus aportes, tus ayudas y tus beneficios, siempre al día.</div></div>
-    <div class="nha-card"><div class="nha-card-tit">Instálala en tu móvil</div><div class="nha-txt" style="margin-bottom:6px">Solo la primera vez. Son 3 pasos:</div>${s.so==="android"?nhaPasosHTML("android")+nhaDibujoHTML("android"):s.so==="ios"?nhaPasosHTML("ios")+nhaDibujoHTML("ios"):nhaPasosHTML("ios")+nhaPasosHTML("android")}
-      ${nhaAvisoAbrirFuera(s.so)}
-      ${s.so==="ios"||s.so==="android"?`<button class="nha-bv-otro" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">¿Tienes otro móvil? Ver los pasos</button><div style="display:none">${s.so==="ios"?nhaPasosHTML("android")+nhaDibujoHTML("android"):nhaPasosHTML("ios")+nhaDibujoHTML("ios")}</div>`:""}</div>
+    <div class="nha-card"><div class="nha-card-tit">Instálala en tu móvil</div><div class="nha-txt" style="margin-bottom:6px">Solo la primera vez. Hazlo aquí, en esta pantalla. Son 3 pasos:</div>${s.so==="android"?nhaPasosHTML("android")+nhaDibujoHTML("android"):s.so==="ios"?nhaPasosHTML("ios")+nhaDibujoHTML("ios"):nhaPasosHTML("ios")+nhaPasosHTML("android")}
+      ${nhaAvisoAbrirFuera(s.so)}${s.so==="android"?nhaAtascoHTML("android"):nhaAtascoHTML("ios")}
+      ${s.so==="ios"||s.so==="android"?`<button class="nha-bv-otro" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">¿Tienes otro móvil? Ver los pasos</button><div style="display:none">${s.so==="ios"?nhaPasosHTML("android")+nhaDibujoHTML("android")+nhaAtascoHTML("android"):nhaPasosHTML("ios")+nhaDibujoHTML("ios")+nhaAtascoHTML("ios")}</div>`:""}</div>
     <div class="nha-card nha-txt">🛡️ Este enlace es <b>solo tuyo</b>: con él se ve tu cuenta. No lo compartas.</div>
     <button class="nha-btn" onclick="nhaEntrar()">Entrar a mi cuenta</button>
     </div>`;

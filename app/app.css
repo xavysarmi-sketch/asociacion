@@ -513,3 +513,13 @@ button.nha-inst-btn{width:100%;border:none;font-family:inherit;cursor:pointer}
 .nha-flecha span{font-size:13.5px;font-weight:800;color:#fff;background:#A64B19;border-radius:12px;padding:4px 10px;text-shadow:none;max-width:90%;text-align:center}
 @keyframes nhaBote{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
 @media (prefers-reduced-motion:reduce){.nha-paso-ic-late,.nha-flecha{animation:none}}
+
+/* v46.61 · «¿Te atascas?» (lo excepcional, fuera de los pasos) y el botón verde de Android como atajo */
+.nha-atasco{margin:10px 0 4px;border:1.5px solid #D5D0C8;border-radius:14px;background:#fff;padding:0 12px}
+.nha-atasco summary{min-height:48px;display:flex;align-items:center;cursor:pointer;color:#1B4332;font-weight:800;font-size:15.5px}
+.nha-atasco-f{padding:8px 0;border-top:1px solid #EFEAE0;font-size:14.5px;line-height:1.45}
+.nha-atasco-p{font-weight:800;color:#1B4332}
+.nha-atajo{margin:4px 0 8px;padding:10px 12px;border-radius:12px;background:#EEF7F1;font-size:14.5px}
+.nha-atajo .nha-btn{margin:8px 0 0!important}
+/* v46.61 (prueba real 19/11): los avisos breves salen encima de la barra de abajo; arriba tapaban «Hola, …» */
+body.nh-app .toast{top:auto;bottom:calc(96px + env(safe-area-inset-bottom));white-space:normal;width:max-content;max-width:calc(100vw - 32px);text-align:center}
