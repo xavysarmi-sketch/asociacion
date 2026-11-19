@@ -425,7 +425,7 @@ function _appMensajeWA(m){
   // v46.34: mensaje corto. Los pasos para instalarla ya no van aquí (eran 24 líneas y prometían un botón que en Android
   // no siempre sale): se leen en la pantalla que se abre con el enlace, que enseña solo los del móvil de cada persona.
   const ve=m.type==="tercero"?"lo que te toca pagar cada mes y cómo va tu ayuda":"lo que te toca pagar cada mes, tus aportes y tus ayudas";
-  return `Hola ${nom} 👋\nEsta es tu *app de Nuevos Horizontes*. En ella ves ${ve}.\n\n👇 *Toca tu enlace* y sigue los 3 pasos que salen en la pantalla para dejar el icono *NH* en tu móvil (si no salen, toca «Ponla en tu móvil»):\n${enlaceAppDe(m)}\n\nEs solo tuyo: no lo compartas. Si te lías, escríbeme y lo hacemos juntos.\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
+  return `Hola ${nom} 👋\nEsta es tu *app de Nuevos Horizontes*. En ella ves ${ve}.\n\n👇 *Toca tu enlace* y sigue los 3 pasos que salen en la pantalla para dejar el icono *NH* en tu móvil (si no salen, toca «Ponla en tu móvil»):\n${enlaceAppDe(m)}\n\nEste enlace es solo tuyo: no lo compartas. Si te lías, escríbeme y lo hacemos juntos.\n\nNuevos Horizontes · Construyendo un nuevo sistema`;
 }
 function _appEnviados(){ return (_appCfg().enviados)||{}; }
 // ══ v45.73 · TELÉFONOS DESDE LOS CONTACTOS DEL MÓVIL ═══════════════════════════════════════════
