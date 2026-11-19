@@ -791,9 +791,9 @@ function nhaPasosHTML(so){
   const s=nhaSistema(), paso=(n,ic,t,cls)=>`<div class="nha-paso"><div class="nha-paso-n">${n}</div><div class="nha-paso-t">${t}</div>${ic?`<div class="nha-paso-ic${cls?" "+cls:""}">${ic}</div>`:""}</div>`;
   const icono=`<span class="nha-mini-logo">NH</span>`;
   if(so==="ios")return `<div class="nha-so">📱 iPhone</div>`
-    +paso(1,NHA_SVG.menu,`Toca el botón de abajo con tres rayas <b>≡</b> (o tres puntos <b>···</b>) y luego <b>Compartir</b>. Si ya ves <b>Compartir</b>, tócalo directamente.`,"nha-paso-ic-late")
-    +paso(2,NHA_SVG.mas,`Toca <b>«Ver más»</b> ${NHA_CHEV} y luego <b>«Añadir a pantalla de inicio»</b>. Si no está, al final de la lista toca <b>«Editar acciones»</b>.`)
-    +paso(3,icono,`Si ves <b>«Abrir como app web»</b>, déjalo encendido y toca <b>«Añadir»</b>. Ya tienes el icono <b>NH Asociados</b>: ábrela siempre desde ahí.`);
+    +paso(1,NHA_SVG.menu,`Toca <b>≡</b> (abajo, a la izquierda de la dirección; en otros iPhone es <b>···</b>) y luego <b>Compartir</b>. Si ya ves <b>Compartir</b>, tócalo directamente.`,"nha-paso-ic-late")
+    +paso(2,NHA_SVG.mas,`Toca <b>«Ver más»</b> ${NHA_CHEV}, desliza un poco hacia arriba y toca <b>«Añadir a pantalla de inicio»</b>. Si no aparece, al final de la lista toca <b>«Editar acciones»</b>.`)
+    +paso(3,icono,`Si ves <b>«Abrir como app web»</b>, déjalo encendido y toca <b>«Añadir»</b> arriba a la derecha (no hace falta escribir nada). Luego busca el icono <b>NH Asociados</b> en tu pantalla y ábrela siempre desde ahí.`);
   // Android: el menú ⋮ es el camino principal; el botón verde (si Chrome lo ofrece) va debajo, como atajo (retoque 5 adaptado)
   return `<div class="nha-so">📱 Android</div>`
     +(so==="android"&&s.samsung?paso(1,NHA_SVG.menu,`Toca el <b>menú ☰</b> (las tres rayas, abajo).`,"nha-paso-ic-late")+paso(2,NHA_SVG.mas,`Toca <b>«Añadir página a»</b> y luego <b>«Pantalla de inicio»</b>.`)
