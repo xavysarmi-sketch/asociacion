@@ -9,11 +9,18 @@ body{margin:0;background:#F5F0EB;font-family:system-ui,-apple-system,sans-serif;
 img{width:100%;height:auto;display:block;border-radius:14px}
 .otro{display:block;width:100%;margin:16px 0;padding:14px;border:2px solid #1B4332;border-radius:14px;background:#fff;color:#1B4332;font-size:17px;font-weight:800}
 .nota{display:none;margin:10px 4px 0;font-size:17px;line-height:1.4;font-weight:700;color:#1B4332}
+.aviso{margin:0 0 12px;padding:14px;border-radius:14px;background:#FFF4E5;border:2px solid #E0A040;color:#6B4210;font-size:17px;line-height:1.45;font-weight:700}
 </style></head><body><div class="w">
 <!-- v45.61+ · Pasos con dibujos para poner la app en el móvil. Sin datos de nadie: es pública. -->
+<!-- v46.60: desde aquí NO se instala (esta dirección no lleva el código de nadie). Se instala desde el enlace personal, con los pasos en esa misma pantalla. -->
+<div class="aviso" id="av"></div>
 <img id="a" alt="Pasos"><p class="nota" id="na"></p><button class="otro" id="b"></button><img id="c" alt="Pasos" style="display:none"><p class="nota" id="nc"></p>
 <script>
 var ua=navigator.userAgent||"", and=/Android/.test(ua);
+var inst=false; try{ inst=navigator.standalone===true||matchMedia("(display-mode: standalone)").matches; }catch(e){}
+var av=document.getElementById("av");
+if(inst){ av.innerHTML="Este icono no abre tu cuenta. Bórralo y vuelve a instalar la app desde tu enlace personal (el que te mandó el coordinador)."; }
+else { av.innerHTML="Para instalarla, abre tu enlace personal (el que te mandó el coordinador) y toca «Ver cómo instalarla». Desde esta página, el icono no abriría tu cuenta."; }
 var p=and?["android.jpg","iphone.jpg","¿Tienes iPhone? Ver sus pasos"]:["iphone.jpg","android.jpg","¿Tienes Android? Ver sus pasos"];
 document.getElementById("a").src=p[0]; document.getElementById("c").src=p[1]; var b=document.getElementById("b"); b.textContent=p[2];
 // v46.36: en el iPhone, Compartir puede estar detrás de los tres puntos; se dice debajo del dibujo del iPhone
