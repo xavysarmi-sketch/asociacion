@@ -255,6 +255,16 @@ function nhaInicioHTML(m,salidaPend,g){
 // ni las de otros (la ficha solo trae las suyas). «Cambiar o anular mi solicitud» envía una petición (tipo "solicitud").
 function _nhaFechaLarga(dma){ const m=/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(String(dma||"").trim()); return m?`${+m[1]} de ${MONTHS_FULL[+m[2]-1].toLowerCase()}`:""; }
 function _nhaMesDe(key){ const m=/^(\d{4})-(\d{2})$/.exec(key||""); return m?MONTHS_FULL[+m[2]-1].toLowerCase():""; }
+// v46.64 (AY-10, AY-1): cuotas que puede pedir al cambiar su solicitud, las mismas que el simulador (_simgK): cuotasMaxDe =
+// cuotasMaxCon con su permanencia y su aporte que cuenta (terceros y Asociado Libre, 5) y la última cuota dentro de su permanencia,
+// contando desde el mes de la solicitud. Nunca menos de las que ya tiene la solicitud (las pudo apuntar así el coordinador).
+function _nhaSolCuotasMax(m,s){
+  let k=cuotasMaxDe(m); const c=(m.ciclo!=null?m.ciclo:12);
+  if(c!==0&&!_ayudaCorta(m)&&m.joinMonth){ const p=String((s&&s.mes)||"").split("-"), base=p.length===2&&+p[0]&&+p[1]?(+p[0])*12+(+p[1]-1):_idxMes(DATA.reportMonth,DATA.reportYear); k=Math.min(k,Math.max(0,_finCon(m,c)-(base+1)+1)); }
+  return Math.max(1,k,(s&&s.cuotas)|0);
+}
+// v46.64: si Firebase rechaza la petición (sus reglas no la admiten), no es la conexión: que avise al coordinador.
+function _nhaErrEnvio(e){ return e&&e.code==="permission-denied"?"No se ha podido enviar: avisa al coordinador":"No se ha podido enviar. Revisa tu conexión e inténtalo otra vez."; }
 function nhaSolicitudActual(m){
   const kRep=getMesKey(DATA.reportMonth,DATA.reportYear);
   const mias=(DATA.solicitudes||[]).filter(s=>s&&(!s.mid||s.mid===m.id)&&!s.anulada);
@@ -294,7 +304,7 @@ function nhaSolicitudHTML(m){
           <label class="nha-sol-lbl" for="nha-sol-cap">Nuevo importe (€)</label>
           <input id="nha-sol-cap" class="nha-sol-in" type="number" inputmode="numeric" min="${REGLAS.AYUDA_MIN}" max="${REGLAS.AYUDA_MAX}" step="50" value="${escH(capV)}" oninput="NHA.solCapTxt=this.value">
           <label class="nha-sol-lbl" for="nha-sol-n">Cuotas</label>
-          <select id="nha-sol-n" class="nha-sol-in" onchange="NHA.solN=+this.value">${Array.from({length:REGLAS.CUOTAS_MAX},(_,i)=>i+1).map(n=>`<option value="${n}"${n===nV?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+          <select id="nha-sol-n" class="nha-sol-in" onchange="NHA.solN=+this.value">${Array.from({length:_nhaSolCuotasMax(m,s)},(_,i)=>i+1).map(n=>`<option value="${n}"${n===nV?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
           <button class="nha-btn${arm==="cambiar"?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaSolCamPedir('cambiar')">${arm==="cambiar"?"Toca otra vez para enviarlo":"Pedir el cambio"}</button>
           <button class="nha-btn nha-sol-anu${arm==="anular"?" arm":""}"${NHA.enviando?" disabled":""} onclick="nhaSolCamPedir('anular')">${arm==="anular"?"Toca otra vez para anularla":"Anular mi solicitud"}</button></div>`;
       }
@@ -310,6 +320,7 @@ async function nhaSolCamPedir(accion){
   if(accion==="cambiar"){
     cap=Math.round(parseFloat(String(NHA.solCapTxt!=null?NHA.solCapTxt:s.capital).replace(",","."))||0); n=NHA.solN||s.cuotas;
     if(cap<REGLAS.AYUDA_MIN||cap>REGLAS.AYUDA_MAX){ toast(`El importe tiene que estar entre ${REGLAS.AYUDA_MIN} y ${fmtEur(REGLAS.AYUDA_MAX)} €`,4000); return; }
+    if(n>_nhaSolCuotasMax(m,s)){ toast(`Con tu permanencia y tu aporte, como mucho ${_nhaSolCuotasMax(m,s)} cuotas`,4000); return; } // v46.64 (AY-10)
     if(cap===s.capital&&n===s.cuotas){ toast("Cambia el importe o las cuotas",3500); return; }
   }
   if(NHA.solCamArm!==accion){ NHA.solCamArm=accion; render(); clearTimeout(_nhaSolT); _nhaSolT=setTimeout(()=>{ if(NHA.solCamArm===accion){ NHA.solCamArm=null; render(); } },5000); return; }
@@ -321,7 +332,7 @@ async function nhaSolCamPedir(accion){
     const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
     _nhaSolCamSet({sid:s.id,accion,capital:cap,cuotas:n,ts});
     NHA.enviando=false; NHA.solCam=false; NHA.solCapTxt=null; NHA.solN=null; render(); toast("✓ Enviado. El coordinador lo revisará.",5000);
-  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
+  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast(_nhaErrEnvio(e),5000); }
 }
 // ── v46.53/v46.56 · PEDIR MÁS PERMANENCIA O MÁS APORTE (Maestro v18.82 · AY-10; AP-4) ─────────────────────────────
 // Desde la v46.56 los botones «Quiero ampliar a X meses» y «Quiero aportar 100 € al mes» están en el simulador guiado
@@ -355,7 +366,7 @@ async function nhaCamPedir(tipo,v){
     const ok=await window._fbFichas.pedir(NHA.codigo+"_"+ts,obj); if(!ok)throw new Error("sin conexión");
     const o=_nhaCam(); o[tipo]=ts; _nhaCamSet(o);
     NHA.enviando=false; render(); toast("✓ Enviado. El coordinador lo revisará.",5000);
-  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
+  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast(_nhaErrEnvio(e),5000); }
 }
 // ── v46.18 (Ángel 08/11/2026): invitar a un familiar o amigo. Mensaje de WhatsApp + enlace a la página pública
 // info/ (sin datos de nadie).
@@ -642,7 +653,7 @@ async function nhaAutPedir(){
     try{ localStorage.setItem("nha-aut-"+NHA.codigo,JSON.stringify({nombre:n,ts})); }catch(e){}
     NHA.enviando=false; NHA.confForm=false; NHA.confAb=true; NHA.confTxt=""; render();
     toast("✓ Enviado. El coordinador lo revisará.",5000);
-  }catch(e){ console.error("[NH app] persona autorizada:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
+  }catch(e){ console.error("[NH app] persona autorizada:",e); NHA.enviando=false; render(); toast(_nhaErrEnvio(e),5000); }
 }
 // ── Simular (pantalla propia) ──
 function nhaSimularHTML(m){
@@ -706,7 +717,7 @@ async function nhaPedir(){
     try{ localStorage.setItem("nha-pet-"+NHA.codigo,JSON.stringify({capital:obj.capital,cuotas:obj.cuotas,ts})); }catch(e){}
     NHA.enviando=false; MODAL=null; SIM=null; NHA.pant="inicio"; render(); window.scrollTo(0,0);
     toast("✓ Enviada. El coordinador la revisará y te avisará.",5000);
-  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast("No se ha podido enviar. Revisa tu conexión e inténtalo otra vez.",5000); }
+  }catch(e){ console.error("[NH app] petición:",e); NHA.enviando=false; render(); toast(_nhaErrEnvio(e),5000); }
 }
 
 // ── Preguntas frecuentes (borrador para revisar con el administrador) ──
