@@ -31,101 +31,7 @@ lenguaje sencillo antes de aplicarlos.
 - Estructura de datos: objeto DATA con members[], cada miembro con loans[] y closedLoans[],
   cada loan con pays[] {m, año, paid}.
 - Colores de marca: verde #1B4332 / #2D6A4F, naranja #E07A3A, crema #F5F0EB.
-- Pestañas (desde v45.39, barra de abajo): Inicio · Cobros (TAB "mes") · Personas (TAB "asociados") ·
-  Ayudas · Más (TAB "manage"; el Histórico se abre desde Más). La letra más grande y el nuevo orden
-  son solo para la app del administrador (clase body.nh-admin); enlaces de asociados, «Así lo ve» y
-  papeles del mes se ven como siempre.
-- Desde v45.42: Cobros empieza por una tarjeta por grupo (cobrosGruposHTML, js/grupos.js; mismas cifras
-  que dineroAyudasMes) y debajo «Por persona»; un grupo se abre solo (abrirGrupoCobros) con la cuenta del
-  responsable arriba. Personas es una lista compacta por grupos (listaPersonasHTML, js/personas.js). En el
-  alta hay que elegir grupo (o «Sin grupo»). En los <option> no usar emojis sin icono (ver iconizar).
-- Desde v45.46: cierre del mes en Cobros (cierreMesHTML, js/cierre.js). Se guarda en
-  monthlyData[mes].cierre (y reaperturas); un mes cerrado no deja marcar ni desmarcar (_mesBloqueado en
-  cada función que cambia cobros). render() es un envoltorio de _renderPantalla con _MEMO_RENDER (solo
-  cuotasDelMes se guarda durante un pintado); dineroAyudasMes usa _cajaMovMes del mes, no cajaMensual.
-- Desde v45.52: APP DE ASOCIADOS en app/ (app/index.html, app.js, app.css; se instala desde el enlace con
-  «Añadir a pantalla de inicio»; sin manifest ni Service Worker para no perder el ?c= del enlace). Cada persona
-  tiene m.codigoApp (20 símbolos secretos). Su ficha privada (fichaPrivadaDe, js/fichas.js: sus datos y, si es
-  responsable, los de su grupo; sin teléfonos, códigos ni notas internas) se sube a Firestore fichas/{código}
-  solo con la sesión del administrador y solo si cambió (publicarFichas, tras save() y al abrir). La app lee esa
-  ficha y carga los MISMOS js/ de reglas (window.NH_APP_ASOCIADOS: arranque.js no llama a load() y la app nunca
-  usa sanitizeData); render() pinta nhaPantalla. Peticiones de ayuda: peticiones/{código_ms} → Ayudas, «Pedidas
-  desde la app». Envío por WhatsApp y tarjetas con QR en Más → App de asociados (js/qr.js, librería MIT, se carga
-  solo al hacer tarjetas). Reglas de Firestore y su prueba con el emulador: NH Oficial\pruebas_app\reglas_firebase.
-- Desde v45.53: en la app de asociados los simuladores tienen pantalla propia («Simular», o desde Inicio); letra
-  mínima 13,5 px (app/app.css sube también los estilos escritos en js/). «¿Cuánto puedo ganar?» usa los números de
-  la persona (_simProyeccion). El simulador NO ofrece la permanencia indefinida (decisión de Ángel 25/10/2026: solo
-  llega a 36 meses; quien ya es indefinido la sigue viendo como la suya); las preguntas frecuentes, igual.
-- Desde v46.1: en la app de asociados, «Corresponde este mes» se pinta con nhaTocaHTML (app/app.js) como una suma:
-  importes en una columna a la derecha, «+» delante, total debajo con su raya (mismas cifras que totalDelMes en vista
-  personal). Mi grupo: «Quién falta» y «Al día» (los marcados por el responsable van con «Al día»), cada persona como
-  una suma. Iconos de línea (_icSVG) en Inicio; «Tus avisos» no repite la cuota de este mes. La ficha del enlace
-  antiguo y la del administrador no cambian.
-- Desde v46.4: los enlaces antiguos (?socio=, ?grupo=, ?grupoppal=) en producción solo pintan «Este enlace ya no se usa»
-  (pintarEnlaceRetirado, js/datos.js) y no leen la nube; en modo desarrollo siguen funcionando porque las pruebas
-  (verificar_app.js, revisor) los usan. buildMemberUrl devuelve el enlace de la app nueva; los enlaces de grupo ya no se
-  envían. Con esto, nh/data puede quedar en lectura solo para el administrador (reglas v46.4).
-- Desde v46.5: no se puede cerrar el mes con errores en la auditoría (cerrarMesToque y cierreMesHTML); el día antes del
-  día de aviso Inicio avisa si el mes de hoy sigue sin cerrar; «Ver como lo ve» abre la app nueva (verAppDe → abrirAppDe);
-  openFicha sube arriba y closeFicha vuelve al sitio de la lista; _nhSinPartir (render) une número y «€»/«%» con un
-  espacio que no se parte (solo pantalla; las pruebas ven esas diferencias invisibles).
-- Desde v46.6 (revisión lógica 07/11): la ficha del ADMINISTRADOR quita «Mes de ingreso» y dice «Aportes» / «los
-  beneficios» solo si !vistaPersonal(): la app de asociados LEE esas filas (nhaFilas) — no tocar la vista personal.
-  Dinero del mes (Ayudas) nombra cada salida pagada (Bajas, Beneficios retirados, Aportes temporales devueltos);
-  «En caja hoy» solo si ≠ Disponible. «Historial de ayudas» es una herramienta de corrección → Zona delicada.
-- Desde v46.7: «Enviar su cuenta» y «Enviar el plan» abren primero una ventana (cg_envio) con el mensaje tal como llega,
-  y botones: a él, a otro chat (wa.me sin número: WhatsApp deja elegir, también el propio) o copiar. El resultado
-  positivo de la cuenta dice «FALTA POR ENTREGAR». La cola de envíos (uno tras otro) sigue enviando directo.
-- Desde v46.8: sin «Hacer un plan». Las ayudas entran SOLO por Ayudas › Solicitudes; la cuenta del grupo muestra sola
-  «Propuesta del mes» (solicitudes pendientes del grupo en el mes de trabajo, con cuotas, + salidas pendientes) con Quitar /
-  Aprobar y «Enviar la propuesta». Si falta dinero para ayudas o salidas el mensaje dice «LO PONE LA ASOCIACIÓN» y
-  «Para completar la ayuda de X faltan N €» (_cgParaQue); «A TU FAVOR» solo si entregó de más. Sin «en mano o por Bizum».
-- Desde v46.9 (app de asociados): Inicio con «Lo que llevas» como suma (nhaLlevasHTML; a quien empieza, una frase),
-  sin caja de avisos si no hay; aviso de permanencia que acaba (avisosPermanencia → abre el simulador de ganar);
-  terceros ven su ayuda con barra (nhaTerceroAyudaHTML); accesos a simuladores en fila baja. Simulador de pedir:
-  calendario plegado (DESP sim-cal) y aviso si ya paga otra ayuda. Ficha: «1 de 2 pagadas», sin «,00», «activa/cerrada»,
-  aportes temporales en palabras.
-- Desde v46.10: simulador «¿Cuánto puedo ganar?»: arriba «Lo que tienes hoy» (sus datos); debajo ejemplos GENERALES de
-  12/24/36 meses empezando de cero (BE-2: 10/12/15 € por cada 50 € según el año; la suya marcada «LA TUYA»); al final
-  «Si sales ahora» con salidaV18 (sus aportes, beneficio que conserva, ayuda pendiente, lo que pierde).
-- Desde v46.12: _cgCerrada («Liquidado») = cuenta a 0 Y todo el grupo marcado; cuenta a 0 con gente sin marcar =
-  «Cuenta cuadrada» (_cgCuadrada; d.cuadrada excluye las liquidadas): chip «Faltan N por cobrar», no entra en «Los que deben».
-- Desde v46.13: volver al mismo sitio: documentos (_Y_DOC en abrir/cerrarDocImp), grupo («← Todos los grupos», _Y_GRUPOS),
-  Histórico («← Más», _Y_MAS) y ficha (closeFicha vuelve a la pestaña desde la que se abrió, _TAB_LISTA; el botón
-  dice «← Inicio/Cobros/Más…»; la barra de abajo lo borra).
-- Desde v46.14: tarjeta de grupo con cuenta cuadrada = como las demás («Faltan X €» y «Cobrado» con lo marcado, d.pagado);
-  tocar el nombre o la flecha del grupo abierto (cgDetToggle) también vuelve a la lista a la misma altura.
-- Desde v46.15: hoja de cobro sin «Reunión del» ni tabla de retornos/excedente (sigue en el acta); cuadros «Total de aportes
-  + Total cuotas = Total previsto»; grupos en una fila por persona (doc-cobro2: Aporte · Cuota de su ayuda «cuota N de M» /
-  «última cuota» · Paga en total · Pagó), «cobra X», terceros «tercero · aval de X» y «no aporta». Bonos y bajas explicados
-  (también en acta y carpeta). El acta reparte grupos por páginas según su alto: si cambia el alto, cambia el orden.
-- v46.16–17: .doc-cols a partes iguales (en el móvil una columna) y con borde fino; .doc-kpi .k con alto de dos líneas
-  (cifras alineadas); signos + y = entre cuadros; en la baja y en «Total del grupo» los signos van junto a las cifras.
-- Desde v46.18: «Invitar a alguien» (app de asociados, solo asociados): mensaje de WhatsApp + enlace a info/ (página
-  pública SIN datos de nadie, cifras de js/maestro.js; retorno 5 % fijo en la página = DATA.rate; WhatsApp del coordinador
-  en COORD). Formulario «Quiero entrar» → WhatsApp al coordinador. Aviso del bono por referido en la app (DATA.referidos)
-  y botón «Avisar a X de su bono» en la bienvenida tras el alta. EN PRUEBA: el botón y el aviso solo con &prueba=1
-  (NHA_PRUEBA_INV, se recuerda en el móvil); quitar la condición cuando Ángel lo apruebe. Vídeos en info/*.mp4.
-- Desde v46.27: «Invitar a alguien» más sencillo: «Elige qué le interesa a tu amigo o familiar» (Pedir una ayuda · Ahorrar
-  cada mes · Las dos cosas) y «Enviar por WhatsApp» en la misma tarjeta; fuera «Tu WhatsApp», «Así le llegará» y «Copiar el
-  mensaje»; el bono en una tarjeta verde, en positivo, sin lo del avalista. El enlace ya no lleva &w= (info/ lo sigue leyendo).
-- Desde v46.28: aviso «Hay una versión nueva» en la app de asociados (nhaComprobarVersion, final de app/app.js): compara
-  NH_APP_V de app/index.html publicado con el del móvil (al abrir, al volver a la app y cada 3 min); «Actualizar» recarga con
-  _v= sin perder ?c=; ✕ lo oculta mientras siga abierta. Al versionar, NH_APP_V de app/index.html debe subir con el ?v=.
-- Desde v46.29: en «Falta tu código» / «No encontramos tu cuenta» el botón dice «💬 Pedir mi enlace» (antes «… a Angel»).
-- Desde v46.30: app de asociados dice «coordinador» (como el Maestro y la Guía), nunca «administrador», en todo lo que ve el
-  asociado. «Falta tu código» pasa a «No podemos abrir tu cuenta» (una sola acción: pedir el enlace); «Pedir mi enlace» abre
-  el WhatsApp del coordinador, igual que «Enviar al coordinador» de Mi grupo (NHA_COORD_WA en app/app.js = COORD de info/index.html: si cambia, cambiar los dos).
-- Desde v46.31: Cobros › Cierre: «📄 Actas de cierre ▾» (DESP['actas-meses'], _mesesActas en js/cierre.js) abre el acta de cada
-  mes, del mes de trabajo («sin cerrar») hacia atrás hasta agosto 2025 (abrirDocImp(tipo,rm,ry)); «📊 Carpeta de control» aparte y
-  de una hoja (sin las actas detrás). Acta: «Total de aportaciones + Total de cuotas devueltas = Total cobrado»; sin filas a 0;
-  «Pendientes de cobro» solo si hay; «Caja del mes» sin «Efectivo contado / Diferencia» (eso queda en la hoja de cobro); agosto 2025
-  «Asociados fundadores». Al imprimir, .doc-final ya no lleva break-inside:avoid y .doc-caja2 es flex: Chrome perdía la caja en
-  las actas de una hoja. En pantalla ≥700 px el documento ocupa 860 px (antes las tablas se salían del folio).
-- Desde v46.32: acta - «🏁 Última cuota … terminada» en la línea de su cuota (no en Estado: con otra ayuda se mezclaba);
-  «Ayudas concedidas» en tabla .doc-ayc (persona · importe · cuotas); «Caja del mes», derecha: «Dónde está el dinero» (prestado +
-  en caja; caja negativa = lo adelantó el coordinador, oct–nov 2025) = «De quién es» (aportes + beneficio + excedente, o − déficit
-  por gastos administrativos, FO-2). Total del fondo = c.cartera + c.fin = acAp + acBen + puntPend + reserva.
+- Qué se hizo en cada versión y por qué (pantallas, nombres de funciones, decisiones): `docs/HISTORIAL.md`.
 - Fundadores (ids 1–10): borde dorado + "⭐ Fundador".
 
 ## Diseño que se adapta solo (norma permanente desde el 18/11/2026, Ángel)
@@ -189,6 +95,48 @@ cualquier tamaño de letra del móvil. Vale para TODO cambio nuevo:
    sigue apuntando a la persona correcta en vez de quedar congelado con el nombre
    antiguo.
 
+## Reglas y decisiones vigentes que vienen del historial
+Estaban dentro de notas de versión (ahora en `docs/HISTORIAL.md`); comprobadas en el código el 25/11/2026.
+- Persona autorizada (SA-11): `m.autorizado={nombre,desde}` guarda el NOMBRE, no el id (excepción a la regla
+  crítica 9: puede no ser asociado; sin número de documento). Solo va en la ficha del propio asociado
+  (datosPrivadosDe): el responsable no ve la de su grupo. (v46.45)
+- «Si sales hoy» (siSalesHoyHTML) no se pone en Inicio: decisión de Ángel, no invitar a salir. (v46.39)
+- El simulador no ofrece la permanencia indefinida: llega a 36 meses; quien ya es indefinido la sigue viendo como
+  la suya (decisión de Ángel 25/10/2026). (v45.53)
+- Aviso de salida (SA-1): la app NO aplica sola el corte del día 15; el mes del aviso lo elige el coordinador. (v46.40)
+- Permanencia que se amplía sola (PE-5): no es automática; la anota el coordinador con dos toques (ampliarSola),
+  porque el render nunca escribe (regla crítica 7). (v46.37)
+- Al probar cálculos del mes, probar también con el aporte del mes en curso sin pagar (lo normal en la primera
+  quincena). (v46.41)
+- `DATA.cuentasGrupo[mes][gid].tarde` («paga más tarde») va APARTE de `movs` a propósito: no cambia _cgFalta ni los
+  cuadres de la auditoría, ni lo que leen sync_nh.py y nh_balance.py. (v46.38)
+- Ficha del administrador: lo que cambia solo para él va con `!vistaPersonal()`; la app de asociados lee las filas
+  de la vista personal (nhaFilas): no tocar la vista personal. (v46.6)
+- `NHA_COORD_WA` (app/app.js) = `COORD` (info/index.html): si cambia el WhatsApp del coordinador, cambiar los dos. (v46.30)
+- Enlaces antiguos (?socio=, ?grupo=, ?grupoppal=): en producción solo «Este enlace ya no se usa»
+  (pintarEnlaceRetirado, js/datos.js) y no leen la nube; en modo desarrollo siguen funcionando porque las pruebas
+  (verificar_app.js, revisor) los usan. (v46.4)
+- App de asociados: el manifest se pone SOLO en Android y nunca en iPhone (allí cambiaría la dirección guardada y se
+  perdería el ?c= de cada persona), y no lleva service worker (regla crítica 4). (v45.52, v45.82)
+- Tras «Darle de alta de nuevo» a quien salió: la sincronización no cambia nombres, así que hay que renombrar a mano
+  (con respaldo) la fila antigua de la Maestra, porque Ayudas_Activas busca la permanencia por nombre (VLOOKUP). (v46.57)
+- Al imprimir actas: `.doc-final` sin break-inside:avoid y `.doc-caja2` en flex (css/nh.css, @media print); si no,
+  Chrome pierde la caja en las actas de una hoja. (v46.31)
+- Mes cerrado: toda función que cambie cobros comprueba `_mesBloqueado` (js/cierre.js) y no hace nada si el mes está
+  cerrado (no deja marcar ni desmarcar). Vale también para las funciones nuevas. (v45.46)
+- La app de asociados nunca usa sanitizeData, y arranque.js no llama a load() cuando existe `window.NH_APP_ASOCIADOS`
+  (la app arranca por su cuenta en app/app.js). (v45.52)
+- El texto «Te faltan N aportes para sumar X € de beneficio. Si sales antes, no se suman» (siSalesHoyHTML) lo eligió
+  Ángel (no quiso «Beneficio que dejarías»): no cambiarlo sin preguntarle. (v46.39)
+- Un tipo nuevo de petición desde la app de asociados (peticiones/) necesita ANTES ampliar las reglas de Firebase
+  (peticionValida, en NH Oficial\pruebas_app\reglas_firebase) y probarlas con el emulador; sin eso, la petición no
+  llega. (v46.45)
+- El registro de uso de la Torre (js/torre.js) solo guarda pantalla, tiempo y número de anotaciones: nunca nombres ni
+  importes. (v46.50)
+- Los pasos para instalar la app de asociados se ven siempre en la misma pantalla del enlace (nhaInstPanelHTML),
+  nunca en otra dirección: el icono guarda la dirección donde se pulsa «Añadir» y, sin el código ?c=, no abre la
+  cuenta. (v46.60)
+
 ## Validación obligatoria antes de dar un cambio por terminado
 - PRUEBAS ANTES DE PUBLICAR (obligatorias desde v45.36): `NH Oficial\pruebas_app\verificar_app.js`
   compara la versión nueva con la publicada usando una copia real de los datos (json\auto_*.json,
@@ -225,12 +173,18 @@ cualquier tamaño de letra del móvil. Vale para TODO cambio nuevo:
   directamente de su sitio. No se dejan copias de la app ni del Maestro en otras carpetas.
   COHERENCIA DE VERSIONES: el número de versión del contenido y el del nombre del archivo
   deben coincidir siempre (documento y app). Si no coinciden, corregir el nombre antes de seguir.
+- HISTORIAL: el historial de versiones está en `docs/HISTORIAL.md`. Añade ahí la línea de cada versión nueva
+  (al final, con fecha), no en este archivo.
 
 ## Terminología obligatoria (textos visibles y documentos)
 - Usar: asociados, aportes, ayudas, retorno, permanencia, devoluciones/cuotas, aval.
 - Evitar: socios, clientes, préstamo, crédito, interés, inversión, «nivel» y «ciclo» (decía así
   hasta el Maestro v18; en el código el campo sigue llamándose `ciclo` y no se renombra).
 - Al citar reglas del Maestro, usar su código (AY-1, PE-8…).
+- En todo lo que ve el asociado: «coordinador», nunca «administrador» (como el Maestro y la Guía). (v46.30)
+- En las dos apps: «persona autorizada», no «persona de confianza» (Maestro v18.71). Los nombres internos
+  (nhaConfianzaHTML, .nha-conf, m.autorizado) no cambian; «personas de confianza» de info/ y del mensaje de Invitar
+  es otra cosa (quién puede entrar) y se queda. (v46.49)
 
 ## Archivos fuera del repo
 - Ver Regla Crítica 6. El Excel de contabilidad y los documentos Word están FUERA de esta
@@ -273,40 +227,3 @@ push solo tras su «SÍ».
 
 - Criterio profesional honesto: si algo es mala idea o falta un dato, decirlo, no asumir.
 - El "Documento Maestro Interno" manda: si algo lo contradice, es un error a corregir.
-- v46.19 (08/11/2026): info/ - las partes Ayudas y Ahorrar salen cerradas (cada boton abre/cierra; ?p= solo marca 'Me interesa'); tabla de ayudas en dos bloques (Asociandote 12 / 24-36, Con aval); barras de importe y cuotas en vez de ejemplos; FAQ 'En cuantas cuotas la devuelvo?'.
-- v46.20 (08/11/2026): info/ - acordeon (solo Ayudas o Ahorrar abierta; flecha arriba y 'Cerrar' abajo); 'Calcula tu ayuda' con barras desde el minimo, relleno verde y circulo que late hasta tocarlo; tabla de ayudas en dos cajas con Cuanto/Cuotas en la linea de '1. Asociandote'; titulo 'Un fondo comun entre personas de confianza'; texto de ahorro 'y eliges tu permanencia'.
-- v46.21 (08/11/2026): info/ - iconos de linea de js/iconos.js (iconizar; _IC_RE se crea en la pagina porque vive en arranque.js); botones Ayuda/Ahorrar sin icono; 'Te interesa?' pasa a 'Tienes dudas?'; flecha de cerrar en circulo verde y boton 'Cerrar' con borde; formulario: ayuda (como, importe, cuotas; asociandome hasta 1.000/12) y ahorro (permanencia, aporte) no se mezclan; sin cuadro de resumen.
-- v46.22 (08/11/2026): info/ Quiero entrar - barras de importe (100-1.000) y cuotas (1-12) como el simulador; aviso naranja solo si pasa del limite (aval 500/5; asociandome 12 m 500/5; 24-36 m 1.000/12) con enlace que corrige; no deja enviar fuera de limite; ayuda asociandome pide permanencia (sin aporte); permanencia y aporte en botones.
-- v46.23 (08/11/2026): info/ Quiero entrar - avisos de limite en una frase ('Para esta ayuda debes...'); en Ahorrar, resumen verde Aportas + Beneficios = Al terminar recibes segun permanencia y aporte.
-- v46.24 (08/11/2026): info/ - cuadro de ayudas en dos cajas (verde Asociandote 12 / 24-36; naranja Con aval) con maximo y cuotas en cifras grandes (de REGLAS); barras del formulario 'Elige tu ayuda' y 'Elige tu cuota'.
-- v46.25 (08/11/2026): info/ Quiero entrar - cada barra late suave (clase quieto) hasta que se toca, como Calcula tu ayuda.
-- v46.26 (08/11/2026): app/ - NHA_PRUEBA_INV=true: Invitar a alguien (Inicio y Mas) y aviso del bono para todos los asociados (terceros no); chip 'Las dos cosas' con icono de linea.
-- v46.33 (10/11/2026): contraste WCAG 4,5:1 - aviso «Nueva versión disponible» del administrador (.update-banner) y su botón en #A64B19 (antes degradado naranja #E07A3A/#D96926); app de asociados: .nha-btn-wa («Enviar por WhatsApp» de Invitar) en #15803D, como los demás botones de WhatsApp.
-- v46.34 (10/11/2026): llegada del enlace. _appMensajeWA (js/fichas.js) es corto: saludo, enlace y «sigue los 3 pasos que salen en la pantalla» (antes 24 líneas con los pasos de iPhone y Android y un botón verde que en Android no siempre sale); los pasos viven SOLO en nhaBienvenidaHTML (app/app.js) y en app/instalar/. Más › App de asociados: «instalada dd/mm · iPhone|Android» y recuento «N iPhone · N Android» (dato `so` de instalaciones/). Pasos de Android: «y luego Instalar o Añadir». info/: «¿Qué te interesa más?» y los dos botones van ENCIMA del vídeo de presentación.
-- v46.35 (10/11/2026): app de asociados, cada dato lleva a su detalle. Botón .nha-ver al pie de tres tarjetas de Inicio: «Ver las cuotas de mi ayuda» (_nhaToca → Ayudas, si tiene cuotas sin pagar), «Ver mis aportes y beneficios» (nhaLlevasHTML → Aportes) y «¿Cuánto recibiré al terminar?» (nhaPermanenciaHTML → simulador de ganar). _nhaProxCuota (app/app.js): si este mes no hay cuota pero quedan, «Tu próxima cuota: X € en mes año» (importe de cuotaDe). Ayudas: arriba «Te quedan por devolver X € · Terminas en…» (pendAll). Título «Mis aportes y beneficios» (la barra de abajo sigue diciendo «Aportes»: no cabe más). Mi grupo: «Anotado por el coordinador» / «Falta por anotar». Aviso de instalar: grande solo la primera vez (localStorage nha-instv-<código>), después una línea (.nha-inst-mini). La permanencia nunca pinta meses negativos (alta para un mes que aún no ha empezado). Solo app/app.js y app/app.css: ningún cálculo ni regla cambia.
-- v46.36 (10/11/2026): instalar en iPhone. El paso 1 de nhaBienvenidaHTML (app/app.js) añade «Si no ves Compartir, toca primero los tres puntos ··· de abajo»; app/instalar/index.html pone esa misma frase debajo del dibujo del iPhone (p.nota). La pista iba en el WhatsApp largo y se perdió al acortarlo en la v46.34.
-- v46.37 (11/11/2026): Maestro v18.62 · PE-5, permanencia que se amplía sola. permSiguiente(c) (js/reglas.js): 12→24, 24→36, 36→nada. avisosPermanencia: el aviso «fin» dice que sin decisión se amplía sola; el aviso «pasada» de 12 o 24 meses ofrece ampliarla; tipo nuevo «vuelta» en el mes siguiente al último (m.ampliaSola.finIdx+1). js/personas.js: avisarFinPermanencia (WhatsApp con las dos opciones), ampliarSola (dos toques con DESP['amp-'+id]; guarda m.ampliaSola={de,a,finIdx,fecha} y sube m.ciclo) y terminarVueltaAtras (vuelve m.ciclo a `de`, borra m.ampliaSola y abre la salida: así salidaV18 la trata como «fin» y conserva todo el beneficio). NO es automática sin tocar: el render nunca escribe (regla crítica 7); la anota el coordinador con dos toques. De 36 meses no hay ampliación sola.
-- v46.38 (12/11/2026): cuenta con el responsable, «paga más tarde» (js/grupos.js). DATA.cuentasGrupo[mes][gid].tarde=[{mid,dia}] va APARTE de movs a propósito: no cambia _cgFalta ni los cuadres de la auditoría, ni lo que leen sync_nh.py y nh_balance.py. _cgTarde(g,idx) devuelve solo a quien aún tiene algo sin cobrar ese mes (al marcarlo cobrado la línea desaparece sola; el render no escribe). cuentaGrupoHTML añade las filas «Paga más tarde» y «Te da ahora» (falta − tarde, nunca menos de 0) y el botón «Alguien paga más tarde» (CG_FORM.tipo='tarde', se guarda en cgGuardar; quitar con dos toques: cgTardeQuitar). _cgCuentaTexto añade al ticket las líneas «- X € Paga más tarde: Nombre (día N)» y «= Y € *FALTA AHORA*». La tarjeta del grupo y el plan no cambian. Descartado en esta versión: pegar el mensaje del responsable con código (los responsables escriben a mano).
-- v46.39 (12/11/2026): «Si sales hoy» en un solo sitio: siSalesHoyHTML(m) (js/ayudas.js) = salidaV18(m, mes de trabajo). Lo usan el simulador de beneficios (antes un bloque suelto «Si sales ahora», v46.10), Preguntas frecuentes de la app de asociados (la pregunta se llama «Si salgo hoy, ¿cuánto recibo?»; el ejemplo de Lucía solo queda para quien no tiene aportes, terceros y quien ya salió) y «Mis aportes y beneficios» (nhaSalHoyHTML, botón «¿Y si salgo hoy?», estado NHA.salHoy). Si hay beneficio sin consolidar (s.perdido) se dice en verde «Te faltan N aportes para sumar X € de beneficio. Si sales antes, no se suman» (N = lo que falta para completar el bloque de 12 o para llegar al final de la permanencia, lo que sea menos); texto elegido por Ángel, que no quiso «Beneficio que dejarías». No se pone en Inicio a propósito (decisión de Ángel: no invitar a salir).
-- v46.40 (12/11/2026): Maestro v18.64, SA-1: aviso de salida de 1 mes para todos (decisión de Ángel; antes 2 o 3 meses con saldo de más de 3.000 o 6.000 €) y corte el día 15 (hasta el 15 vale para ese mes; desde el 16, para el siguiente). js/maestro.js: REGLAS.AVISO_MESES=1 y REGLAS.AVISO_DIA_CORTE=15 sustituyen a AVISO_SALDO_2_MESES/3_MESES (el revisor v1.9 los compara con la fila «Aviso para salir» del Maestro). avisoMesesPorSaldo() conserva el nombre pero devuelve REGLAS.AVISO_MESES; salidaV18 sigue devolviendo saldo y avisoMeses. La ventana de salida recuerda el corte, pero el mes del aviso lo elige el coordinador: la app NO aplica sola el día 15. siSalesHoyHTML añade «Para salir hay que avisar con 1 mes de antelación, hasta el día 15».
-- v46.41 (12/11/2026): corrección de siSalesHoyHTML (js/ayudas.js): «Te faltan N aportes» contaba uno de menos cuando el tope era el final de la permanencia y el aporte del mes de trabajo aún no estaba pagado (f = fin − rep + 1 si ese aporte no está pagado). Los importes no cambian. Lección: probar siempre también con el mes en curso sin pagar, que es lo normal en la primera quincena.
-- v46.45 (13/11/2026): Maestro v18.69 · SA-11, persona de confianza. m.autorizado={nombre,desde:"AAAA-MM-DD"} (NOMBRE, no id: puede no ser asociado; sin número de documento) y m.autorizadoUlt={nombre,estado:"aprobada"|"rechazada",ts}. _limpia los quita y datosPrivadosDe solo los pone en la ficha del propio asociado (el responsable no ve los de su grupo). App de asociados: nhaConfianzaHTML (Más, arriba): nombre en desplegable (NHA.confVer), 4 pasos, «Ver cuánto recibiría» (abre Aportes con NHA.salHoy) y pedir elegirla/cambiarla → peticiones/{código_ms} {c,tipo:"autorizado",nombre,creada}; en el móvil queda «pedido» (nha-aut-<código>) hasta que autorizadoUlt.ts sea posterior. Administrador (js/fichas.js): autorizadoPeticionesHTML en Inicio (Aprobar/Rechazar con dos toques; aprobar pone m.autorizado; hasta entonces vale la anterior), peticionesAppHTML ya no las muestra en Ayudas, ventana 'autorizado' en la ficha (⚙️ Gestión › 🤝, anotar o quitar) y autorizadosGestionHTML en Más › Consultas. REGLAS DE FIREBASE v46.45: peticionValida acepta también tipo «autorizado» (solo c, tipo, nombre, creada; nombre de 5 a 80). Sin esas reglas la app de asociados no puede enviar la petición (las de ayuda siguen igual).
-- v46.51 (16/11/2026): corrección urgente. Desde la v46.50 la app de asociados no abría (se quedaba en «Cargando tu cuenta…»): render() (js/general.js) llama a _usoTick, que está en js/torre.js, y app/app.js no cargaba ese archivo (NHA_ARCHIVOS). Ahora «torre» está en NHA_ARCHIVOS y las llamadas a _usoTick (render) y _usoAnotar (save) van protegidas con typeof. app/index.html pasa de ?v=46.49 a 46.51. Sin cambios en datos, cálculos ni reglas. LECCIÓN: todo archivo nuevo de js/ del que dependa general.js, datos.js o arranque.js debe añadirse también a NHA_ARCHIVOS (app/app.js), y antes de publicar hay que abrir la app de asociados, no solo la del administrador.
-- v46.50 (16/11/2026): pestaña «Torre de control» (Maestro v18.73 · FO-8) — se abre desde Más y desde una línea de
-  estado en Inicio («🟢/🟡/🔴 NH: …») que cambia de color según el semáforo: cómo está cada pieza de NH, versiones,
-  avisos del mes (reutiliza mesCerrado, auditarNHCached, instalaciones; cuenta nueva de ayudas con cuota vencida),
-  bandeja de propuestas con Aprobar/Descartar/Más tarde (escribe en torre/decisiones) y el último informe mensual;
-  lee torre/resumen (lo sube el revisor cada noche) y, si no hay nada todavía, dice «Sin datos de la Torre todavía»
-  en vez de fallar. Registro de uso (punto 5 del encargo, aprobado): pantalla, hora, duración y nº de anotaciones
-  por sesión (nunca nombres ni importes), en memoria y subido como mucho una vez por sesión a torre/uso_AAAA-MM.
-  Nuevo js/torre.js. Reglas v46.50 de Firebase publicadas el 16/11/2026 (con copia de las anteriores guardada
-  antes). Probado con datos ficticios en el emulador local.
-- v46.49 (14/11/2026; preparada como v46.46, pero entre medias se publicaron v46.46–v46.48 de diseño de escritorio): app de asociados, «Tu persona de confianza» plegable (petición de Ángel: abierta ocupaba mucho). nhaConfianzaHTML: cabecera .nha-conf-head (título + chip Elegida / Sin elegir / Cambio pedido + flecha) y el cuerpo solo con NHA.confAb (o con el formulario abierto, NHA.confForm). Cerrada por defecto en cada visita. Dentro, el nombre sigue en su propio «Ver ▾» (NHA.confVer). Además, decisión de Ángel 14/11: el texto visible «persona de confianza» pasa a «persona autorizada» en las dos apps (títulos, botones, pasos, Inicio, ficha y Más; Maestro v18.71). Los nombres internos (nhaConfianzaHTML, .nha-conf, m.autorizado) no cambian. «Personas de confianza» de info/ y del mensaje de Invitar es otra cosa (quién puede entrar) y se queda.
-- v46.56 (18/11/2026): Maestro v18.82 · AY-10 «Tu ayuda crece con tu aporte» (limiteAyudaCon, cuotasMaxCon, aporteQueCuenta en js/reglas.js; tabla VECES_*/CUOTAS_* en js/maestro.js; tope 2.000 €, máx. 15 cuotas, aprobación previa por encima de 1.000 € o de 12 cuotas), compromiso de mantener el aporte (loan.aporteAlto; lee también el antiguo llave2) y AY-8: una sola ayuda como tercero (solicitudes desde el 01/12/2026, terceroYaTuvoSuAyuda). Simulador guiado en las dos apps (simGuiadoHTML, js/ayudas.js); fuera la tarjeta «Dos llaves». Retoques de Ángel 18/11: cuotas recortadas por el fin de la permanencia, en positivo (_simgAvisoFinHTML: «Tus cuotas terminan con tu permanencia, en X. Si la amplías a 24/36 meses, puedes tener hasta N»; con 36 o indefinida solo la 1.ª frase); tercero que ya tuvo su ayuda: arriba «TU PRÓXIMA AYUDA, COMO ASOCIADO · Desde 700 €» y en el cuadro «Ya recibiste tu ayuda como tercero. Para la siguiente, asóciate.» (_simgTercYa; «Sin asociarme» ya no le deja simular importe).
-- v46.57 (18/11/2026): alta sin nombres repetidos (ficha «aviso-nombre-repetido-asociado», opción C). _altaCoincide (js/personas.js) compara con _normNombre (como el control 7 y guardarNombre) contra TODAS las personas: con otra activa no se crea nada y el aviso va en el formulario (#m-conv, sin confirm()): asociado ↔ tercero sigue con «Convertir en asociado»; asociado repetido, tercero repetido y tercero con nombre de asociado, solo aviso. Quien salió (SA-6) y ya cobró (_bajaPagada: baja v18 pagada, o baja anterior a la v18) puede volver con «Darle de alta de nuevo» (dos toques, ALTA_VUELVE_ARM en arranque.js): ficha nueva (SA-8, empieza de cero) y la antigua se renombra con _renombrar a «Nombre (salió mmm. aaaa)» (mes del último aporte). Con la salida sin pagar no se crea nada. OJO Excel: la sincronización no cambia nombres; tras una vuelta hay que renombrar a mano (con respaldo) la fila antigua de la Maestra, porque Ayudas_Activas busca la permanencia por nombre (VLOOKUP).
-- v46.58 (18/11/2026, encargo «ajustes-simulador-ayuda», Maestro v18.84): REGLAS.CUOTAS_12_100 = 11 (con 12 meses nunca caben 12 cuotas, AY-1 y AY-3; también nh_auditoria.py). limiteAyudaDe/cuotasMaxDe: terceros y Asociado Libre (m.type "libre"), 500 € y 5 cuotas (_ayudaCorta; antes el Libre salía como 12 meses con 50 €). Simulador guiado: _simgFuera (tercero o Libre: opción "T", que para el Libre dice «Como ahora»); el paso 3 arranca en lo que puede pedir hoy con sus cuotas máximas; con su permanencia y su aporte, el cuadro verde dice «Cambia la permanencia o el aporte y mira hasta dónde llegas»; «Esta ayuda la revisa antes el coordinador» por encima de 1.000 € o de 12 cuotas (AY-5). App de asociados: nhaPedirBotonHTML pone la cifra en el botón «¿Cuánto puedo pedir?» de Inicio (.nha-acc-cifra se ve aunque la fila oculte los demás subtítulos); body.nh-app padding-bottom 112px (con la letra del iPhone +20 % la barra de abajo mide unos 88 px y tapaba el último botón con 84px).
-- v46.59 (18/11/2026): diseño que se adapta solo (norma arriba). Simulador: cuadro «Puedes pedir hoy» con título en una línea, «Permanencia»/«Aporte» con el dato debajo y en verde «Puedes pedir · Cuotas · Cada cuota» (cada dato bajo su nombre) + «Terminas de pagar en …» (nota de Ángel de las 20:01). css/nh.css y app/app.css, bloque «DISEÑO QUE SE ADAPTA SOLO»: .pl-nom/.pl-meta, .ft-tabs/.ft-tab, .ft-row/.ft-val, .ini-fila, .cgt-btns, .nha-perm-top, .nha-nav-btn bajan de línea en vez de cortarse (antes solo con html.nh-letra-g). Paso 3 del simulador (Ángel 20:08): «Cantidad» arriba y una fila [−] [campo €] [+]: campo #simg-cap-in con teclado numérico (simgEscribe: mientras se escribe solo se repinta #simg-abajo, para no perder el teclado; simgFijaCampo sube a 100 € al salir), − / + de 50 en 50 (simgPaso), se puede escribir más del límite («Para X € puedes:», _simgCaminos); botones de importe y cuotas de 48 px, aria-pressed, foco visible naranja en #sim-guiado; anuncios al lector de pantalla en #nh-anuncio (aria-live, _simgAnunciar, _simgResumen y _simgResumenHoy al abrir «Puedes pedir hoy»). verificar_app.js: prueba obligatoria 3b (lib/pantallas_letra.js y lib/detector_desborde.js en NH Oficial\pruebas_app).
-- v46.60 (19/11/2026, encargo «instalación de la app de asociados»): los pasos de instalar se ven SIEMPRE en la misma pantalla del enlace (hoja nhaInstPanelHTML; bienvenida con nhaPasosHTML y nhaDibujoHTML), nunca en otra dirección: el icono guarda la dirección donde se pulsa «Añadir» y instalar/ no lleva el código. iPhone (sin manifest): ··· → Compartir → «Añadir a pantalla de inicio» → Añadir, flecha .nha-flecha hacia los botones de Safari. Android: camino principal ⋮ → «Instalar aplicación» → Instalar; el botón verde (beforeinstallprompt) solo sale si Chrome lo ofrece, y su aviso automático necesita un service worker (regla crítica 4: no hay). nhaAvisoAbrirFuera: «¿No ves cómo instalarla? Toca ··· / ⋮ y elige Abrir en Safari / Chrome». Al abrir desde el icono: nhaAvisoLista («✅ Tu app está lista», una vez, nha-lista-<código>); sin código, nhaError icono-ios (borrar y reinstalar desde el enlace) o icono-android (abrir una vez el enlace en Chrome). app/instalar/ avisa de que desde ahí no se instala (y, abierta desde un icono, que se borre). Fase 0 y pruebas en nh_pruebas\2026-11-19_instalacion.
-- v46.61 (19/11/2026, retoques de instalar 1, 2, 3 y 5; textos iguales a las tarjetas de nh_pruebas\2026-11-19_instalacion): pasos de como mucho 2 frases en nhaPasosHTML; lo excepcional (Chrome en iPhone, Safari/brújula, «Añadir a pantalla de inicio» en Android, Samsung Internet, WhatsApp, icono sin código) en nhaAtascoHTML («¿Te atascas?», desplegable); Android: ⋮ → «Instalar y crear acceso directo» (o «Instalar aplicación») → «Instalar» como camino principal y el botón verde debajo, como atajo (.nha-atajo); nhaSistema iPhone: chrome (CriOS) aparte de otra, y el aviso a Chrome dice dónde está Compartir. Prueba real en el iPhone de Ángel (iOS 27.2.1): WhatsApp abre el enlace en Safari; Safari tiene ≡ junto a la dirección (no ···) y en Compartir hay que tocar «Ver más»; 5 toques; el icono abre la cuenta. Por eso: pasos de iPhone con ≡ y «Ver más»; nhaSistema().dentro (userAgent sin «Safari», regla inspirada en inapp-spy, MIT) decide solo el aviso: «Abrir en Safari» si dentro y no instalada, si no «¿No ves los botones? Están en la barra de abajo: toca ≡ o ···»; body.nh-app .toast abajo; «⌄» de «Ver más» dibujado (NHA_CHEV: con la letra de la app el carácter salía como una «v»); «El icono no abre mi cuenta» de «¿Te atascas?» con los mismos pasos que la pantalla nhaError (iPhone: «Eliminar app»; los dos: «¿No lo tienes? Toca «💬 Pedir mi enlace»»), igual en tarjetas y láminas; app/instalar/iphone.jpg («dibujo grande») = lámina de iPhone de las tarjetas (la antigua, guardada en nh_pruebas\2026-11-19_instalacion). Android sin probar todavía: el dibujo grande de Android y la nota del service worker de la v46.60 se revisan con capturas reales de un asociado.
-- v46.62 (19/11/2026, grabación de la instalación en el iPhone de Ángel; solo textos, ninguna lógica): pasos de iPhone de nhaPasosHTML: 1 «Toca ≡ (abajo, a la izquierda de la dirección; en otros iPhone es ···) y luego Compartir…», 2 «Toca «Ver más» ⌄, desliza un poco hacia arriba y toca «Añadir a pantalla de inicio»…», 3 «… toca «Añadir» arriba a la derecha (no hace falta escribir nada). Luego busca el icono NH Asociados en tu pantalla…». _appMensajeWA (js/fichas.js): «(si no salen, toca «Ponla en tu móvil»)», para quien ya entró en Safari antes y reinstala: la bienvenida solo sale la primera vez (nha-bv-<código>; opción D2, sin tocar esa lógica). Tarjetas, láminas, PDF (nh_pruebas\2026-11-19_instalacion\tarjetas_v46.62) y app/instalar/iphone.jpg con los mismos textos.
-- v46.63 (19/11/2026): _appMensajeWA (js/fichas.js) dice «Este enlace es solo tuyo: no lo compartas.» (antes «Es solo tuyo: no lo compartas.»). Solo ese texto.
