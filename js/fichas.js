@@ -289,7 +289,7 @@ function _solCambioBloqueo(p,m){ if(p.accion!=="cambiar"||!m)return "";
   if(cap<REGLAS.AYUDA_MIN||cap>REGLAS.AYUDA_MAX||n<1||n>REGLAS.CUOTAS_MAX)return "Importe o cuotas no válidos";
   const cur=_idxMes(DATA.reportMonth,DATA.reportYear), ini={m:MONTHS[(cur+1)%12],y:Math.floor((cur+1)/12)}, c=_condicionActual(m);
   const {so}=_solDePeticion(p);
-  const v=validarApoyo(m,cap,n,c.tipo,c.ciclo,ini,undefined,so&&so.fecha); return v.bloqueo?String(v.bloqueo).replace(/<[^>]+>/g,""):""; }
+  const v=validarApoyo(m,cap,n,c.tipo,c.ciclo,ini,undefined,so&&so.fecha,so?{sid:so.id}:undefined); /* v46.65: la solicitud que cambia no cuenta */ return v.bloqueo?String(v.bloqueo).replace(/<[^>]+>/g,""):""; }
 function solCambiosHTML(){
   const l=solCambiosPeticiones(); if(!l.length)return "";
   let h=`<div class="mes-card" style="border:2px solid #2D6A4F"><div class="mes-title" style="margin-bottom:6px">📝 Cambios pedidos en solicitudes <span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;vertical-align:middle">${l.length}</span></div>

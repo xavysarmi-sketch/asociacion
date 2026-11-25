@@ -221,7 +221,8 @@ function nhaTitulo(m,t,sub,ic){
 function nhaPedirBotonHTML(m){
   const cifra=t=>`<small class="nha-acc-cifra">${t}</small>`;
   if(m.type==="tercero"&&terceroYaTuvoSuAyuda(m))return `<span class="nha-acc-txt"><b>Tu próxima ayuda, como asociado</b>${cifra("desde "+fmtEur(limiteAyudaCon(12,REGLAS.APORTE_MINIMO))+"&nbsp;€")}</span>`;
-  return `<span class="nha-acc-txt"><b>¿Cuánto puedo pedir?</b>${cifra("Hasta "+fmtEur(limiteAyudaDe(m))+"&nbsp;€")}</span>`;
+  const L=limiteAyudaNuevaDe(m); // v46.65 (Maestro v18.87): menos lo que le queda por devolver
+  return `<span class="nha-acc-txt"><b>¿Cuánto puedo pedir?</b>${cifra(L>=REGLAS.AYUDA_MIN?"Hasta "+fmtEur(L)+"&nbsp;€":"Ahora, ninguna más")}</span>`;
 }
 function nhaInicioHTML(m,salidaPend,g){
   const esTerc=m.type==="tercero", p=nhaPartes(m,"resumen"), f=p.filas;
@@ -320,6 +321,7 @@ async function nhaSolCamPedir(accion){
   if(accion==="cambiar"){
     cap=Math.round(parseFloat(String(NHA.solCapTxt!=null?NHA.solCapTxt:s.capital).replace(",","."))||0); n=NHA.solN||s.cuotas;
     if(cap<REGLAS.AYUDA_MIN||cap>REGLAS.AYUDA_MAX){ toast(`El importe tiene que estar entre ${REGLAS.AYUDA_MIN} y ${fmtEur(REGLAS.AYUDA_MAX)} €`,4000); return; }
+    { const L=limiteAyudaNuevaDe(m,undefined,{sid:s.id},_idxDeClave(s.mes)); if(cap>L){ toast(`Con lo que te queda por devolver, ahora puedes pedir como mucho ${fmtEur(L)} €`,4500); return; } } // v46.65: su solicitud no cuenta
     if(n>_nhaSolCuotasMax(m,s)){ toast(`Con tu permanencia y tu aporte, como mucho ${_nhaSolCuotasMax(m,s)} cuotas`,4000); return; } // v46.64 (AY-10)
     if(cap===s.capital&&n===s.cuotas){ toast("Cambia el importe o las cuotas",3500); return; }
   }
@@ -683,6 +685,8 @@ function nhaPeticionLocal(){ try{ const p=JSON.parse(localStorage.getItem("nha-p
 function nhaPedirInfo(m){
   const need=_simPermNecesaria(m,SIM.cap,SIM.n), cur=(m.ciclo!=null?m.ciclo:12);
   if(need===null){
+    { const pd=ayPendienteAplica(_idxMes(DATA.reportMonth,DATA.reportYear))?capitalPendienteDe(m):0, L=limiteAyudaNuevaDe(m); // v46.65 (Maestro v18.87)
+      if(pd>0&&SIM.cap>L&&SIM.cap<=limiteAyudaDe(m))return {ok:false,html:`Te quedan <b>${fmtEur(pd)}&nbsp;€</b> por devolver de tus ayudas: ahora puedes pedir hasta <b>${fmtEur(L)}&nbsp;€</b>.`}; }
     const alto=aporteQueCuenta(m)<REGLAS.APORTE_ALTO&&[cur,24,36].some(c=>(cur===0?c===0:c>=cur)&&SIM.cap<=limiteAyudaCon(c,REGLAS.APORTE_ALTO)&&SIM.n<=cuotasMaxCon(c,REGLAS.APORTE_ALTO));
     return {ok:false,html:alto?(aporteAltoPendiente(m)?`Para pedirla, tu aporte de ${aporteHabitualDe(m)} € cuenta desde que pagues tu primer mes a ${REGLAS.APORTE_ALTO} €.`:`Con tu aporte de hoy no llega: primero pide aportar ${REGLAS.APORTE_ALTO} € al mes (arriba, «Para conseguirlo»).`)
       :`Con estos datos no se puede pedir. Prueba con menos cantidad o menos cuotas.`}; }
@@ -735,7 +739,7 @@ function nhaFaq(){
       +`<b>Ejemplo:</b> Pedro pone ${R.BLOQUE_APORTE} € cada mes. En febrero gana ${B[0]} € por lo que puso en enero, en marzo otros ${B[0]} € por febrero, y así cada mes. Cuando lleva 12 meses pagados tiene <b>${12*B[0]} € de beneficio guardado</b>.<br><br>`
       +`Lo que pones un mes empieza a ganar al mes siguiente. El beneficio se guarda y lo recibes al terminar tu permanencia. Haz tus cuentas en «¿Cuánto puedo ganar?».`],
     ["¿Cuánta ayuda puedo pedir?",`Depende de tu permanencia y de tu aporte:`+tabla(["Permanencia","Con "+R.APORTE_MINIMO+" € al mes","Con "+R.APORTE_ALTO+" € o más"],[[12,"12 meses"],[24,"24 meses"],[36,"36 meses o indefinida"]].map(([c,t])=>[t,...[R.APORTE_MINIMO,R.APORTE_ALTO].map(a=>"hasta "+_miles(limiteAyudaCon(c,a))+" €<br>"+cuotasMaxCon(c,a)+" cuotas")]))
-      +`El aporte de ${R.APORTE_ALTO} € cuenta desde que pagas tu primer mes a ${R.APORTE_ALTO} €. Si pides más de lo que podrías con ${R.APORTE_MINIMO} €, mantienes ese aporte hasta pagar tu última cuota. Por encima de ${_miles(R.AYUDA_MAX_SIN_APROBACION)} € o de ${R.CUOTAS_SIN_APROBACION} cuotas, la aprueba antes el coordinador. La última cuota cae, como mucho, en el último mes de tu permanencia.<br><br>Si necesitas más, puedes ampliar tu permanencia o aumentar tus aportes, y con ello también tus beneficios. Pruébalo en «¿Cuánto puedo pedir?».`], // v46.56: AY-10 (Maestro v18.82)
+      +`El aporte de ${R.APORTE_ALTO} € cuenta desde que pagas tu primer mes a ${R.APORTE_ALTO} €. Si pides más de lo que podrías con ${R.APORTE_MINIMO} €, mantienes ese aporte hasta pagar tu última cuota. Por encima de ${_miles(R.AYUDA_MAX_SIN_APROBACION)} € o de ${R.CUOTAS_SIN_APROBACION} cuotas, la aprueba antes el coordinador. La última cuota cae, como mucho, en el último mes de tu permanencia. Si ya tienes una ayuda o una solicitud, lo que te queda por devolver se resta: con un máximo de 1.000 € y 250 € por devolver, puedes pedir hasta 750 €.<br><br>Si necesitas más, puedes ampliar tu permanencia o aumentar tus aportes, y con ello también tus beneficios. Pruébalo en «¿Cuánto puedo pedir?».`], // v46.56: AY-10 (Maestro v18.82)
     ["¿Cómo pido una ayuda?",`En <b>Ayudas → ¿Cuánto puedo pedir?</b> elige la cantidad y los meses. Si te encaja, toca <b>«Pedir esta ayuda»</b>. Al coordinador le llega tu petición, la revisa y te avisa. Si se aprueba, la verás en «Ayudas».`],
     ["¿Qué es la permanencia?",`Es el tiempo que te comprometes a estar en el fondo: <b>12, 24 o 36 meses</b>. Cuanto más larga, más beneficio ganas y más grandes son las ayudas que puedes pedir. Puedes ampliarla cuando quieras.`],
     ["¿Puedo descansar unos meses?",`Sí. Puedes pedir una <b>pausa de 1 a 3 meses</b> sin aportar. Habla con el coordinador.`],

@@ -1792,8 +1792,8 @@ function updateCierreLoanPreview(){
   const mC=DATA.members.find(x=>x.id===document.getElementById("cl-mid")?.value), cC=_condicionActual(mC);
   const ni=(MONTHS.indexOf(DATA.reportMonth)+1)%12, ny=MONTHS.indexOf(DATA.reportMonth)===11?DATA.reportYear+1:DATA.reportYear;
   const soC=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null; // v46.56: AY-8 mira la fecha de la solicitud
-  const vC=validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny},undefined,soC&&soC.fecha);
-  el.innerHTML=_avisoApoyoHTML(vC)+(vC.bloqueo?botonAmpliarAyudaHTML(mC,cap,nn,{m:MONTHS[ni],y:ny}):"")+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+  const sinC=soC?{sid:soC.id}:undefined, vC=validarApoyo(mC,cap,nn,cC.tipo,cC.ciclo,{m:MONTHS[ni],y:ny},undefined,soC&&soC.fecha,sinC); // v46.65: la solicitud que se otorga no cuenta
+  el.innerHTML=_avisoApoyoHTML(vC)+(vC.bloqueo?botonAmpliarAyudaHTML(mC,cap,nn,{m:MONTHS[ni],y:ny},sinC):"")+`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Capital + retorno (${DATA.rate}% × ${nn})</span><b style="color:var(--dark)">${fmtEur(total)} €</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px"><span>Cuota mensual</span><b style="color:var(--warm-txt)">${cuotaTxt}</b></div>
   </div>`;
@@ -1839,8 +1839,8 @@ function addCierreLoanSubmit(){
   const m=DATA.members.find(x=>x.id===mid);
   if(!m)return;
   { const soV=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null;
-    const c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny},undefined,soV&&soV.fecha); // v45: mismas reglas que en la ficha
-    if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v)+botonAmpliarAyudaHTML(m,cap,nn,{m:MONTHS[ni],y:ny}); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
+    const sinV=soV?{sid:soV.id}:undefined, c=_condicionActual(m), v=validarApoyo(m,cap,nn,c.tipo,c.ciclo,{m:MONTHS[ni],y:ny},undefined,soV&&soV.fecha,sinV); // v46.65: la solicitud que se otorga no cuenta; // v45: mismas reglas que en la ficha
+    if(v.bloqueo){ const el=document.getElementById("cl-preview"); if(el)el.innerHTML=_avisoApoyoHTML(v)+botonAmpliarAyudaHTML(m,cap,nn,{m:MONTHS[ni],y:ny},sinV); toast("⛔ No se puede registrar: revisa el aviso",4000); return; } }
   const gidEnt=(document.getElementById("cl-entrega")||{}).value||"";
   const so=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null;
   const lid=registrarAyudaAprobada(m,cap,nn,gidEnt,so); // v46.54: lo mismo que «Otorgar las que alcanzan» (js/ayudas.js)

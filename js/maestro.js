@@ -33,6 +33,7 @@ const REGLAS=Object.freeze({
   CUOTAS_36: 15,                        // AY-10 · 36 meses o indefinida, con cualquier aporte
   CUOTAS_MAX: 15,                       // AY-5 · cuotas máximas (parámetro que solo sube el coordinador; antes 12)
   CUOTAS_SIN_APROBACION: 12,            // AY-5 · más de 12 cuotas necesita la aprobación previa del coordinador
+  AY_PENDIENTE_DESDE: "2026-12",      // AY-10/LI-4 · v18.87: lo pendiente cuenta para el máximo en lo que se conceda desde este mes (GE-5: desde el mes siguiente; las anteriores conservan sus condiciones, AY-2)
   AYUDA_MAX_SIN_APROBACION: 1000,       // AY-5 · hasta aquí no hace falta aprobación previa del coordinador
   AYUDA_MAX: 2000,                      // AY-5 · tope de ayuda (parámetro que solo sube el coordinador; hasta v18.74, 3.000 €)
   AY10_DESDE: "2026-11",                // AY-10 · la auditoría juzga con esta tabla las ayudas desde noviembre 2026 (la anterior,
