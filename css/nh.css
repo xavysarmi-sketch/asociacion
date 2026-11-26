@@ -1589,3 +1589,41 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 .mgmt-btn{min-width:0;overflow-wrap:anywhere}
 /* v46.59 (Ángel 20:08): foco bien visible en el simulador (sobre el verde oscuro, el contorno verde no se veía) */
 #sim-guiado :is(button,input):focus-visible{outline:3px solid #A64B19!important;outline-offset:2px}
+
+/* v46.67 · Cuenta con el jefe de grupo en cascada (grupos.js) */
+.cgc-cuenta{background:#fff;border-radius:12px;padding:10px 14px;border:2px solid transparent}
+.cgc-cuenta.debe{background:#FFF3EE;border-color:#E3A08A}
+.cgc-fila,.cgc-mov{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 10px;padding:5px 0;font-size:.95rem}
+.cgc-mov{border-bottom:1px solid #EEF3EF;font-size:.9rem}
+.cgc-l{flex:1 1 12rem;min-width:0}
+.cgc-l small{display:block;color:var(--muted);font-size:.8rem;font-weight:600;line-height:1.3}
+.cgc-v{margin-left:auto}
+.cgc-final{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px}
+.cgc-fl{flex:1 1 10rem;min-width:0;font-size:1.05rem;color:#1B4332}
+.cgc-fv{margin-left:auto;font-size:clamp(1.6rem,7vw,2rem);font-weight:900;color:#1B4332;line-height:1.1}
+.cgc-cuenta.debe .cgc-final{border-top-color:#A63A20}
+.cgc-cuenta.debe .cgc-fl,.cgc-cuenta.debe .cgc-fv{color:#A63A20}
+.cgc-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cgc-b{flex:1 1 9rem;min-width:0;min-height:44px;padding:10px 8px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:.92rem;font-weight:800;cursor:pointer;font-family:inherit}
+.cgc-aviso{margin-top:8px;padding:9px 11px;border-radius:9px;background:#FDECE8;border:1.5px solid #E3A08A;color:#8A2E17;font-size:.88rem;font-weight:700;line-height:1.35}
+.cgc-via{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:4px 0 0 10px;font-size:.82rem;color:#2D6A4F;font-weight:700}
+.cgc-via.dir{color:#7A4A12}
+.cgc-via button{margin-left:auto;border:1.5px solid currentColor;background:#fff;color:inherit;border-radius:8px;padding:5px 9px;min-height:34px;font-size:.8rem;font-weight:800;cursor:pointer;font-family:inherit}
+/* v46.67 · Notas personales (notas.js): borde de rayas, no es dinero */
+.nota-caja{border:2px dashed #8C7BAF;background:#F7F4FB;border-radius:12px;padding:10px 12px;color:#3C3350}
+.nota-cab{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:.92rem}
+.nota-cab b{flex:1 1 8rem;min-width:0}
+.nota-aviso{margin-left:auto;font-size:.72rem;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#6A5A8C;background:#ECE6F5;border-radius:20px;padding:3px 9px}
+.nota-texto{margin-top:6px;font-size:.95rem;line-height:1.4;overflow-wrap:anywhere}
+.nota-txt{width:100%;box-sizing:border-box;margin-top:8px;border:1.5px solid #B8AACF;border-radius:9px;padding:9px;font-size:16px;font-family:inherit;resize:vertical;background:#fff}
+.nota-pie{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
+.nota-fecha{flex:1 1 8rem;min-width:0;font-size:.8rem;color:#6A5A8C}
+.nota-btns{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.nota-caja>.nota-btns{margin-top:8px;justify-content:flex-end}
+.nota-b{min-height:38px;padding:7px 11px;border-radius:9px;border:1.5px solid #8C7BAF;background:#fff;color:#4E3F6E;font-size:.85rem;font-weight:800;cursor:pointer;font-family:inherit}
+.nota-b.pri{background:#5E4C86;border-color:#5E4C86;color:#fff}
+.nota-b.arm{background:#A64B19;border-color:#A64B19;color:#fff}
+.nota-nueva{width:100%;min-height:44px;padding:10px 12px;border-radius:12px;border:2px dashed #8C7BAF;background:#FBF9FD;color:#4E3F6E;font-size:.92rem;font-weight:800;cursor:pointer;text-align:left;font-family:inherit}
+.nota-nueva small{font-weight:600;color:#6A5A8C}
+.nota-ico{border:none;background:none;padding:2px 4px;margin-left:4px;font-size:1rem;cursor:pointer;opacity:.45;vertical-align:middle;min-width:34px;min-height:34px}
+.nota-ico.con{opacity:1}

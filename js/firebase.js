@@ -181,6 +181,17 @@ function initFirebase(){
       registrarUso:async(mesKey,entrada)=>{ await db.collection("torre").doc("uso_"+mesKey).set({sesiones:firebase.firestore.FieldValue.arrayUnion(entrada)},{merge:true}); return true; }
     };
 
+    // v46.67 · Notas personales del coordinador (js/notas.js). Van en privado/notas, que ya solo puede leer y escribir el
+    // administrador con su sesión (reglas: match /privado/{doc}). NUNCA en nh/data: así no entran en la contabilidad, la
+    // auditoría, el Excel, sync_nh.py (lee nh/data) ni en las fichas de la app de asociados.
+    // guardar: una sola nota (grupos.<id> o personas.<id>), con merge: nunca pisa las demás. null = quitarla.
+    window._fbNotas={
+      leer:async()=>{ const s=await db.collection("privado").doc("notas").get(); return s.exists?s.data():{}; },
+      guardar:async(tipo,id,nota,archivada)=>{ const FV=firebase.firestore.FieldValue, o={[tipo]:{[id]:nota==null?FV.delete():nota}};
+        if(archivada)o.archivo=FV.arrayUnion(archivada);
+        await db.collection("privado").doc("notas").set(o,{merge:true}); return true; }
+    };
+
     if(entorno.modo==="desarrollo"){
       const prepararFixture=async()=>{
         if(window.NH_ES_APP_ASOCIADOS)return; // v45.52: la app de asociados no usa el documento de la app del administrador

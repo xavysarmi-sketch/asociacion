@@ -42,10 +42,10 @@ function _cgSimEtq(x,i,n,html){ const nm=x.nombre?(html?escH(x.nombre):x.nombre)
 function _cgDatosSim(g){
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), movs=_cgMovs(_keyDeIdx(idx),g.id), sim=[]; // v46.8: la propuesta es del mes de trabajo y solo con solicitudes guardadas
   const sum=t=>_r2(movs.filter(x=>x.tipo===t).reduce((a,x)=>a+x.importe,0));
-  const falta=_sinCrearMes(idx,()=>_cgFalta(g,idx)), simTot=_r2(sim.reduce((a,b)=>a+b.v,0));
+  const cc=_cgCascada(g,idx), falta=cc.falta, simTot=_r2(sim.reduce((a,b)=>a+b.v,0)); // v46.67: la misma cuenta en cascada
   const fuera=CG_SIM_SOLX[g.id]||[], sols=_cgSolsPend(g,idx).filter(s=>!fuera.includes(s.id)).map(s=>{ const n=s.cuotas||1, c=ayudaCuotas(s.capital,n,DATA.rate).cuotas; return {id:s.id,nombre:s.nombre,v:_r2(s.capital),n,cuota:c[0]}; }), solTot=_r2(sols.reduce((a,b)=>a+b.v,0)); // v45.69
   const selS=CG_SIM_SAL[g.id]||[], sal=_cgSalidasPend(g).filter(x=>!selS.includes(x.m.id)).map(x=>({mid:x.m.id,nombre:x.m.name,v:x.v})), salTot=_r2(sal.reduce((a,b)=>a+b.v,0)); // v45.68
-  return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:_r2(sum("entrega")+_sinCrearMes(idx,()=>_cgResto(g,idx))),ayudas:sum("ayuda"),salidasYa:sum("salida"),pagado:sum("pago"),sim,simTot,sal,salTot,sols,solTot,resto:_r2(falta-simTot-salTot-solTot)};
+  return {idx,total:_sinCrearMes(idx,()=>_cgTotal(g,idx)),arrastre:sum("arrastre"),entregado:_r2(cc.personas+cc.entregas-cc.solape),directo:cc.directo,ayudas:sum("ayuda"),salidasYa:sum("salida"),pagado:sum("pago"),sim,simTot,sal,salTot,sols,solTot,resto:_r2(falta-simTot-salTot-solTot)};
 }
 // v45.74: cuenta para WhatsApp con el importe delante en un recuadro (`…` = letra de ancho fijo de WhatsApp) y el
 // concepto detrás en letra normal. Con la letra grande del móvil una tabla de ancho fijo se partía (Ángel 01/11/2026);
@@ -91,7 +91,7 @@ function _cgRealHTML(g,d,nom){
 // v45.73: «Ya le he pasado los X €»: lo que pone la asociación (en mano o Bizum); cierra la cuenta del mes
 function cgPagoAsociacion(gid){
   const g=gruposCierre().find(x=>x.id===gid); if(!g||_mesBloqueado())return;
-  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), f=_cgFalta(g,idx); if(!(f<0))return;
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), f=_cgCascada(g,idx).falta; if(!(f<0))return; // v46.67: lo que le debes según la cascada
   _cgW(getMesKey(DATA.reportMonth,DATA.reportYear),gid).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"pago",importe:_r2(-f),fecha:_cgHoy()});
   delete CG_SIM_REAL[gid]; save(); render(); toast("✅ Apuntado: le has pasado "+fmtEur(-f)+" €");
 }
@@ -109,6 +109,7 @@ function _cgPlanTexto(gid){
   // v45.72: la cuenta como un ticket (columnas alineadas, letra de ancho fijo de WhatsApp) y el resultado al final
   const fil=[["Total del mes",d.total]];
   if(d.arrastre)fil.push(["Del mes pasado",d.arrastre]);
+  if(d.directo)fil.push(["Me pagaron a mí",-d.directo]); // v46.67
   if(d.entregado)fil.push(["Ya me has entregado",-d.entregado]);
   if(d.ayudas)fil.push(["Ayudas ya dadas",-d.ayudas]);
   if(d.salidasYa)fil.push(["Salidas ya pagadas",-d.salidasYa]);
@@ -158,19 +159,24 @@ function cgEnviarCuenta(gid){ const g=gruposCierre().find(x=>x.id===gid), p=g&&D
 function _cgCuentaTexto(gid){
   const g=gruposCierre().find(x=>x.id===gid); if(!g)return "";
   const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return "";
-  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), movs=_cgMovs(_keyDeIdx(idx),gid), falta=_cgFalta(g,idx);
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), cc=_cgCascada(g,idx), movs=cc.movs, falta=cc.falta; // v46.67: la cuenta en cascada
   const nom=p.name.split(" ")[0], mes=MONTHS_FULL[MONTHS.indexOf(DATA.reportMonth)].toLowerCase(), e=v=>fmtEur(v)+" €";
   const mesDe=k=>MONTHS_FULL[+k.slice(5)-1].toLowerCase();
   // v45.73: ticket; el encabezado y el final dicen en qué punto está la cuenta (pendiente, hecha y por pasarle, cerrada)
-  const fil=[["Total del mes",_cgTotal(g,idx)]], pn=n=>String(n||"").split(" ")[0];
+  const fil=[["Total del mes",cc.total]], pn=n=>String(n||"").split(" ")[0];
+  movs.forEach(x=>{ if(x.tipo==="arrastre")fil.push(["Pendiente de "+mesDe(x.de),x.importe]); });
+  if(cc.directo)fil.push(["Me pagaron a mí",-cc.directo]);
+  if(cc.personas)fil.push(["Ya me has entregado (personas)",-cc.personas]);
+  if(cc.entregas)fil.push(["Entregado a cuenta",-cc.entregas]);
   movs.forEach(x=>{
-    if(x.tipo==="arrastre")fil.push(["Pendiente de "+mesDe(x.de),x.importe]);
-    else if(x.tipo==="entrega")fil.push(["Entrega"+(x.fecha?" "+x.fecha:""),-x.importe]);
-    else if(x.tipo==="ayuda")fil.push(["Ayuda a "+pn(x.nombre),-x.importe]);
+    if(x.tipo==="ayuda")fil.push(["Ayuda a "+pn(x.nombre),-x.importe]);
     else if(x.tipo==="salida")fil.push(["Salida de "+pn(x.nombre),-x.importe]);
-    else if(x.tipo==="pago")fil.push(["Te pasé"+(x.fecha?" "+x.fecha:""),x.importe]);
   });
-  { const r=_cgResto(g,idx); if(r>0)fil.push(["Resto entregado",-r]); }
+  if(cc.solape)fil.push(["Ya incluido en las personas",cc.solape]); // opción B: no se resta dos veces
+  movs.forEach(x=>{
+    if(x.tipo==="pago")fil.push(["Te pasé"+(x.fecha?" "+x.fecha:""),x.importe]);
+    else if(x.tipo==="pasado")fil.push(["Pasado a "+mesDe(x.a),-x.importe]);
+  });
   const conPago=movs.some(x=>x.tipo==="pago"), conPagos=movs.some(x=>x.tipo==="ayuda"||x.tipo==="salida");
   const cab=falta<0?`✅ Hecho. Tus cuentas de *${mes}*:`:falta===0&&(conPago||conPagos)?`✅ Cuenta de *${mes}* cerrada:`:`Tus cuentas de *${mes}*:`;
   const pq=_cgParaQue(movs.filter(x=>x.tipo==="ayuda").map(x=>x.nombre).filter(Boolean),movs.filter(x=>x.tipo==="salida").map(x=>x.nombre).filter(Boolean)); // v46.8
@@ -235,6 +241,34 @@ function _cgResto(g,idx){
   return Math.max(0,_cgFaltaApuntes(g,idx));
 }
 function _cgFalta(g,idx){ return _r2(_cgFaltaApuntes(g,idx)-_cgResto(g,idx)); }
+// v46.67 (Ángel 26/11/2026): CUENTA CON EL JEFE DE GRUPO EN CASCADA. Es lo que se ve y se anota en Cobros (tarjeta de fuera,
+// tarjeta de dentro, «Liquidado», mensaje de WhatsApp). NO cambia _cgFaltaApuntes/_cgResto/_cgFalta (auditoría, Cuadre 3) ni
+// lo que leen sync_nh.py y nh_balance.py: no cambia ningún cálculo del fondo.
+// · Marcar a alguien como pagado = «te lo entregó su jefe»: resta de la cuenta (ya no hace falta tener todo el grupo marcado).
+// · «Me pagó a mí» (pago directo): DATA.cuentasGrupo[mes][gid].directo=[mid], APARTE de movs (como «tarde»): no resta de lo
+//   entregado por el jefe, sale del total que él tiene que recoger.
+// · «Pagado» (Ángel 26/11/2026, opción B) = el dinero de esa persona ya está resuelto con el fondo: el jefe te lo entregó o lo
+//   usó en una ayuda (o salida) aprobada. Lo marcado cubre PRIMERO lo que el jefe ya ha usado (entregas a cuenta, ayudas y
+//   salidas), para no restar dos veces: se resta lo mayor entre lo marcado y lo usado (solape = lo que no se resta dos veces).
+function _cgDirectos(g,idx){ const k=_keyDeIdx(idx), c=DATA.cuentasGrupo&&DATA.cuentasGrupo[k]&&DATA.cuentasGrupo[k][g.id]; return (c&&c.directo)||[]; }
+function _cgCascada(g,idx,pre){ return _sinCrearMes(idx,()=>{
+  const {mes,anio}=_mesDeIdx(idx), items=itemsDeGrupo(g,mes,anio,pre), movs=_cgMovs(_keyDeIdx(idx),g.id), dir=new Set(_cgDirectos(g,idx));
+  const S=a=>_r2(a.reduce((s,x)=>s+(+x.importe||0),0)), T=t=>S(movs.filter(x=>x.tipo===t));
+  const total=S(items), directo=S(items.filter(it=>it.yaPagado&&dir.has(it.mid))), personas=S(items.filter(it=>it.yaPagado&&!dir.has(it.mid)));
+  const entregas=T("entrega"), ayudas=T("ayuda"), salidas=T("salida"), pago=T("pago"), arrastre=T("arrastre"), pasado=T("pasado");
+  const usado=_r2(entregas+ayudas+salidas), solape=_r2(Math.min(personas,usado));
+  const falta=_r2(total-directo+arrastre-personas-usado+solape+pago-pasado);
+  // tiene = lo que el jefe puede pagar todavía en ayudas sin que se le deba nada (lo que falta + lo marcado aún sin usar)
+  const tiene=_r2(Math.max(0,falta+Math.max(0,personas-usado)));
+  return {items,movs,dir,total,directo,personas,entregas,ayudas,salidas,usado,solape,pago,arrastre,pasado,falta,tiene,todo:items.length>0&&items.every(it=>it.yaPagado)};
+}); }
+// «Me pagó a mí»: cambia solo la marca de la persona en la cuenta del jefe (no marca ni desmarca cobros)
+function cgDirectoToggle(gid,mid){
+  if(_mesBloqueado())return;
+  const c=_cgW(getMesKey(DATA.reportMonth,DATA.reportYear),gid), ya=(c.directo||[]).includes(mid);
+  c.directo=ya?c.directo.filter(x=>x!==mid):[...(c.directo||[]),mid]; if(!c.directo.length)delete c.directo;
+  save(); render(); toast(ya?"Vuelve a contar como entregado por su jefe":"Apuntado: te pagó a ti (no resta de la cuenta con el jefe)");
+}
 // v46.38 (Ángel 11/11/2026): «Paga más tarde». Alguien del grupo paga otro día del mes: sigue pendiente (no se marca
 // como cobrado ni cambia la cuenta), pero se aparta de lo que el responsable entrega ahora. Se guarda en
 // DATA.cuentasGrupo[mes][gid].tarde=[{mid,dia}] y vale solo para ese mes; cuando esa persona queda cobrada, la línea desaparece sola.
@@ -274,7 +308,13 @@ function cgGuardar(gid){
     const sel=(document.getElementById("cg-ayuda")||{}).value||""; if(!sel){toast("Elige la ayuda");return;}
     const [mid,lid]=sel.split("|"); const m=DATA.members.find(x=>x.id===mid);
     const l=m&&[...(m.loans||[]),...(m.closedLoans||[])].find(x=>x.id===lid); if(!l)return;
-    _cgW(key,gid).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"ayuda",importe:_r2(l.capital),fecha:_cgHoy(),mid,lid,nombre:m.name});
+    // v46.67: «Ayuda pagada»: solo la parte que el jefe paga con lo cobrado (lo que pones tú del fondo no entra en su cuenta)
+    const vi=String((document.getElementById("cg-ay-imp")||{}).value||"").trim(), v=vi===""?_r2(l.capital):_r2(numES(vi));
+    if(!(v>0)){toast("Escribe cuánto pagó con lo cobrado");return;}
+    if(v>_r2(l.capital)){toast("No puede ser más que la ayuda ("+fmtEur(l.capital)+" €)");return;}
+    const tiene=_cgCascada(g,_idxMes(DATA.reportMonth,DATA.reportYear)).tiene;
+    if(v>tiene&&CG_FORM.aviso!==sel+"|"+v){ CG_FORM.aviso=sel+"|"+v; CG_FORM.imp=vi; CG_FORM.sel=sel; render(); return; } // aviso, no bloquea: segundo toque
+    _cgW(key,gid).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"ayuda",importe:v,fecha:_cgHoy(),mid,lid,nombre:m.name});
   }
   CG_FORM=null; save(); render(); toast("Apuntado ✓");
 }
@@ -290,7 +330,7 @@ function cgBorrar(gid,mvid){
 function cgArrastrar(gid){
   if(_mesBloqueado())return; // v45.46: mes cerrado
   const g=gruposCierre().find(x=>x.id===gid); if(!g)return;
-  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), pk=_keyDeIdx(idx-1), f=_cgFalta(g,idx-1); if(!(f>0))return;
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), pk=_keyDeIdx(idx-1), f=_cgCascada(g,idx-1).falta; if(!(f>0))return; // v46.67: lo pendiente según la cascada
   const id="cg"+Date.now()+Math.random().toString(36).slice(2,6);
   _cgW(_keyDeIdx(idx),gid).movs.push({id,tipo:"arrastre",importe:f,fecha:_cgHoy(),de:pk});
   _cgW(pk,gid).movs.push({id:id+"p",tipo:"pasado",importe:f,fecha:_cgHoy(),par:id,a:_keyDeIdx(idx)});
@@ -310,9 +350,10 @@ function _cgCerrada(g,pre){ // v45.46: pre = cuotasDelMes del mes (opcional, par
   // v46.12 (Ángel 07/11/2026): «Liquidado» = cuenta a 0 Y todo el grupo marcado como cobrado. Si la cuenta está a 0
   // pero falta gente por marcar, es «Cuenta cuadrada» (_cgCuadrada), no liquidado.
   if(!(items.length>0&&items.every(it=>it.yaPagado)))return false;
-  return _cgMovs(_keyDeIdx(idx),g.id).length>0?_cgFalta(g,idx)===0:true;
+  // v46.67: manda la cuenta en cascada (si da 0, _cgFalta también da 0: la auditoría no cambia)
+  return _cgCascada(g,idx,pre).falta===0;
 }
-function _cgCuadrada(g){ const idx=_idxMes(DATA.reportMonth,DATA.reportYear); return _cgMovs(_keyDeIdx(idx),g.id).length>0&&_cgFalta(g,idx)===0; }
+function _cgCuadrada(g){ const c=_cgCascada(g,_idxMes(DATA.reportMonth,DATA.reportYear)); return c.items.length>0&&c.falta===0; } // v46.67
 // v45.26: en el Cierre está todo cobrado pero la cuenta del responsable no llega → lo que falta por apuntar
 function _cgFormHTML(g,idx,key,nom,mesTxt){
   let h=""; if(CG_FORM&&CG_FORM.gid===g.id){
@@ -345,18 +386,23 @@ function _cgFormHTML(g,idx,key,nom,mesTxt){
         <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">No se marca como cobrado: sigue pendiente, pero se aparta de lo que ${nom} te da ahora. Vale solo para ${mesTxt}.</div>`
         :`<div style="margin-top:10px;font-size:13px;color:#6B4210;background:#FFF4E5;border-radius:9px;padding:8px 10px">No queda nadie más de este grupo con algo sin cobrar en ${mesTxt}.</div>`;
     } else if(CG_FORM.tipo==="entrega"){
-      h+=`<label class="m-label" style="margin-top:10px">¿Cuánto te ha entregado ${nom}?</label>
-        <input id="cg-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 1100" style="font-size:16px">`;
+      h+=`<label class="m-label" style="margin-top:10px">¿Cuánto te ha entregado ${nom} a cuenta?</label>
+        <input id="cg-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 300" style="font-size:16px">
+        <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Dinero entregado sin decir de quién es. Cuando marques como pagada a una persona de su grupo, se descuenta primero de aquí (no se resta dos veces).</div>`; // v46.67
     } else {
-      const disp=_cgAyudasDisponibles(key);
-      h+=disp.length?`<label class="m-label" style="margin-top:10px">¿Qué ayuda ha pagado ${nom}?</label>
-        <select id="cg-ayuda" class="m-select" style="font-size:15px"><option value="">— Elegir ayuda de ${mesTxt} —</option>
-        ${disp.map(({m,l})=>`<option value="${esc(m.id)}|${esc(l.id)}">${escH(m.name)} · ${fmtEur(l.capital)} €</option>`).join("")}</select>`
+      const disp=_cgAyudasDisponibles(key), tiene=_cgCascada(g,idx).tiene, av=CG_FORM.aviso; // v46.67: a quién y cuánto
+      h+=disp.length?`<label class="m-label" style="margin-top:10px">¿A quién le ha pagado ${nom} la ayuda?</label>
+        <select id="cg-ayuda" class="m-select" style="font-size:15px" onchange="if(CG_FORM){CG_FORM.aviso=null;}"><option value="">— Elegir ayuda de ${mesTxt} —</option>
+        ${disp.map(({m,l})=>{ const v=esc(m.id)+"|"+esc(l.id); return `<option value="${v}"${CG_FORM.sel===m.id+"|"+l.id?" selected":""}>${escH(m.name)} · ${fmtEur(l.capital)} €</option>`; }).join("")}</select>
+        <label class="m-label">¿Cuánto pagó ${nom} con lo cobrado? <span style="font-weight:600;color:var(--muted)">(si lo dejas vacío, la ayuda entera)</span></label>
+        <input id="cg-ay-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 400" value="${escH(CG_FORM.imp||"")}" oninput="if(CG_FORM){CG_FORM.aviso=null;}" style="font-size:16px">
+        <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Lo que pongas tú con el dinero del fondo no se apunta aquí: no entra en la cuenta con ${nom}.</div>
+        ${av?`<div class="cgc-aviso">⚠️ ${nom} solo tiene ${fmtEur(tiene)} €. ¿Seguro? Si lo anotas, le deberás tú la diferencia.</div>`:""}`
         :`<div style="margin-top:10px;font-size:13px;color:#6B4210;background:#FFF4E5;border-radius:9px;padding:8px 10px">No hay ayudas de ${mesTxt} sin apuntar. Primero registra la ayuda como siempre y después la eliges aquí.</div>`;
     }
     h+=`<div style="display:flex;gap:6px;margin-top:8px">
         <button onclick="CG_FORM=null;render()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#6E6048;font-size:13.5px;font-weight:700;cursor:pointer">Cancelar</button>
-        <button onclick="${CG_FORM.tipo==="sim"?`cgSimAdd('${g.id}')`:`cgGuardar('${g.id}')`}" style="flex:2;padding:10px;border-radius:9px;border:none;background:${CG_FORM.tipo==="sim"?"#B06A1E":"#1B4332"};color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">${CG_FORM.tipo==="sim"?"Añadir al plan":"Guardar"}</button></div>`;
+        <button onclick="${CG_FORM.tipo==="sim"?`cgSimAdd('${g.id}')`:`cgGuardar('${g.id}')`}" style="flex:2;padding:10px;border-radius:9px;border:none;background:${CG_FORM.tipo==="sim"?"#B06A1E":CG_FORM.aviso?"#A63A20":"#1B4332"};color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">${CG_FORM.tipo==="sim"?"Añadir al plan":CG_FORM.aviso?"Sí, anotarla":"Guardar"}</button></div>`;
   }
   return h;
 }
@@ -370,50 +416,58 @@ function cuentaGrupoHTML(g,principal){
         <span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#1B4332">✅ Cuenta de ${mes0} liquidada<span style="display:block;font-size:13px;font-weight:600;color:#2D6A4F">${_cgMovs(_keyDeIdx(idx0),g.id).some(x=>x.tipo==="pago"||x.tipo==="ayuda"||x.tipo==="salida")?"todo apuntado y cuadrado":nom0+" te ha entregado "+fmtEur(tot0)+" €"} · no falta nada</span></span>
         <button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#1B4332;font-size:13.5px;font-weight:800;text-decoration:underline;cursor:pointer;padding:4px;white-space:nowrap">Ver detalle</button></div>`; }
     // v45.85: «✕ Cerrar» pliega la cuenta en una línea (también cuando ya tiene apuntes); al tocarla se abre otra vez
-    if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id)){ const f0=_cgFalta(g,idx0);
+    // v46.67: plegada, dice la misma cifra que la cuenta en cascada
+    const f0=_cgCascada(g,idx0).falta, est0=f0>0?"falta que te entregue "+fmtEur(f0)+" €":f0<0?"le debes "+fmtEur(-f0)+" €":_cgCerrada(g)?"liquidada":"cuenta cuadrada";
+    if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id)){
       return `<button onclick="DESP['cgplegar-${g.id}']=false;DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
-        <span style="font-size:18px">💶</span><span style="flex:1;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${f0>0?"te entrega "+fmtEur(f0)+" €":f0<0?"le pasas "+fmtEur(-f0)+" €":_cgCerrada(g)?"liquidada":"cuenta cuadrada"}</span></span><span style="font-size:18px">›</span></button>`; }
-    const pf0=_cgMovs(_keyDeIdx(idx0-1),g.id).length?_cgFalta(g,idx0-1):0;
+        <span style="font-size:18px">💶</span><span style="flex:1;min-width:0;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${est0}</span></span><span style="font-size:18px">›</span></button>`; }
+    const pf0=_cgMovs(_keyDeIdx(idx0-1),g.id).length?_cgCascada(g,idx0-1).falta:0;
     if(!_cgCerrada(g)&&!_cgMovs(_keyDeIdx(idx0),g.id).length&&!(pf0>0)&&!DESP["cgabrir-"+g.id]&&!usando)
       return `<button onclick="DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
-        <span style="font-size:18px">💶</span><span style="flex:1;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${(_cgSolsPend(g,idx0).length||_cgSalidasPend(g).length)?"📝 tiene una propuesta":"toca para abrir"}</span></span><span style="font-size:18px">›</span></button>`;
+        <span style="font-size:18px">💶</span><span style="flex:1;min-width:0;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${(_cgSolsPend(g,idx0).length||_cgSalidasPend(g).length)?"📝 tiene una propuesta":est0}</span></span><span style="font-size:18px">›</span></button>`;
   }
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), key=_keyDeIdx(idx), movs=_cgMovs(key,g.id);
-  const total=_cgTotal(g,idx), falta=_cgFalta(g,idx), nom=escH(principal.name.split(" ")[0]);
+  const nom=escH(principal.name.split(" ")[0]);
   const mesTxt=MONTHS_FULL[((idx%12)+12)%12].toLowerCase(), prevTxt=MONTHS_FULL[(((idx-1)%12)+12)%12].toLowerCase();
-  const fila=(l,v,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:14px"><span>${l}</span><b style="${c||""}">${v}</b></div>`;
   const cerrada=_cgCerrada(g); // v45.41: cuenta cerrada (no falta nada): se dice arriba y no se ofrecen apuntes nuevos
-  // v45.73: tres partes: 1) la cuenta real en claro · 2) «Plan del mes» (lo que más se usa) · 3) «Movimientos» plegado
-  const ent=_r2(movs.filter(x=>x.tipo==="entrega").reduce((a,x)=>a+x.importe,0)), resto=_cgResto(g,idx);
-  const pagosEl=movs.filter(x=>x.tipo==="ayuda"||x.tipo==="salida"), pagoAs=_r2(movs.filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0));
-  const arr=_r2(movs.filter(x=>x.tipo==="arrastre").reduce((a,x)=>a+x.importe,0));
-  const fr=(l,v,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 0;font-size:15px"><span>${l}</span><b style="white-space:nowrap;${c||""}">${v}</b></div>`;
+  // v46.67: tres partes: 1) la cuenta EN CASCADA (cifra final grande, dos botones, «Ver detalle» plegado) · 2) «Propuesta del mes»
+  // · 3) nota personal del grupo (notas.js; no cuenta en las cuentas)
+  const c=_cgCascada(g,idx), falta=c.falta, total=c.total, formTipo=CG_FORM&&CG_FORM.gid===g.id?CG_FORM.tipo:null;
+  const fr=(l,v,sub)=>`<div class="cgc-fila"><span class="cgc-l">${l}${sub?`<small>${sub}</small>`:""}</span><b class="cgc-v">${v}</b></div>`, mn=v=>(v?"−":"")+fmtEur(v)+" €";
   let h=`<div style="border:1.5px solid #2D6A4F;border-radius:14px;padding:12px 14px;margin-top:12px;background:#F4F9F6">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;font-size:16px;font-weight:800;color:#1B4332">💶 Cuenta con ${nom} · ${mesTxt}</div><button onclick="cgPlegar('${g.id}')" style="flex:none;border:1.5px solid #2D6A4F;background:#fff;color:#1B4332;border-radius:9px;padding:6px 10px;font-size:13.5px;font-weight:800;cursor:pointer">✕ Cerrar</button></div>`;
-  const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgFalta(g,idx-1):0;
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;min-width:0;font-size:16px;font-weight:800;color:#1B4332">💶 Cuenta con ${nom} · ${mesTxt}</div><button onclick="cgPlegar('${g.id}')" style="flex:none;border:1.5px solid #2D6A4F;background:#fff;color:#1B4332;border-radius:9px;padding:6px 10px;font-size:13.5px;font-weight:800;cursor:pointer">✕ Cerrar</button></div>`;
+  const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgCascada(g,idx-1).falta:0;
   if(pf>0)h+=`<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:9px;padding:8px 10px;font-size:13px;color:#6B4210;margin-bottom:8px">⚠️ En ${prevTxt} quedaron pendientes <b>${fmtEur(pf)} €</b>.
       <button onclick="cgArrastrar('${g.id}')" style="display:block;margin-top:6px;width:100%;padding:8px;border-radius:8px;border:none;background:#94571A;color:#fff;font-size:13px;font-weight:800;cursor:pointer">Pasar a ${mesTxt}</button></div>`;
-  // 1 · La cuenta real
-  h+=`<div style="background:#fff;border-radius:12px;padding:10px 14px">`+fr("Recoge de su grupo",fmtEur(total)+" €");
-  if(arr)h+=fr("Pendiente del mes anterior","+"+fmtEur(arr)+" €");
-  pagosEl.forEach(x=>{ h+=fr(`${x.tipo==="ayuda"?"Ayuda a":"Salida de"} ${escH(String(x.nombre||"").split(" ")[0])} <span style="color:var(--muted);font-size:13px">(la paga ${nom})</span>`,"−"+fmtEur(x.importe)+" €"); });
-  if(ent+resto>0)h+=fr("Ya te ha entregado","−"+fmtEur(_r2(ent+resto))+" €");
-  if(pagoAs)h+=fr("Le has pasado tú","+"+fmtEur(pagoAs)+" €");
-  const lab=falta>0?(ent+resto>0?"Falta por entregarte":"Te entrega"):falta<0?(pagosEl.length?"Le pasas tú (la asociación)":"Te ha dado de más: se lo devuelves"):cerrada?"✅ Liquidado":"✅ Cuenta cuadrada";
-  h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">${lab}</b>${falta!==0?`<b style="font-size:21px;white-space:nowrap;color:${falta>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(falta))} €</b>`:""}</div>`;
+  // 1 · La cuenta en cascada
+  h+=`<div class="cgc-cuenta${falta<0?" debe":""}">`+fr("Total del grupo este mes",fmtEur(total)+" €");
+  if(c.arrastre)h+=fr("Pendiente del mes anterior","+"+fmtEur(c.arrastre)+" €");
+  if(c.directo)h+=fr("Te pagaron a ti directamente",mn(c.directo),"no pasa por "+nom);
+  h+=fr(`Ya resuelto con ${nom}`,mn(c.personas),"personas marcadas como pagadas");
+  if(c.entregas)h+=fr("Entregado a cuenta (sin persona)",mn(c.entregas));
+  h+=fr(`Ayudas pagadas por ${nom} con lo cobrado`,mn(c.ayudas));
+  if(c.salidas)h+=fr(`Salidas pagadas por ${nom}`,mn(c.salidas));
+  if(c.solape)h+=fr("No se resta dos veces","+"+fmtEur(c.solape)+" €","ya está dentro de las personas marcadas"); // opción B
+  if(c.pago)h+=fr(`Le has pagado tú`,"+"+fmtEur(c.pago)+" €");
+  if(c.pasado)h+=fr("Pasado al mes siguiente",mn(c.pasado));
+  const lab=falta>0?"Falta que te entregue":falta<0?`Le debes a ${nom}`:cerrada?"✅ Liquidado":"✅ Cuenta cuadrada";
+  h+=`<div class="cgc-final"><b class="cgc-fl">${lab}</b>${falta!==0?`<b class="cgc-fv">${fmtEur(Math.abs(falta))} €</b>`:""}</div>`;
   { const td=falta>0?_cgTarde(g,idx):[]; if(td.length){ const tt=_r2(td.reduce((a,x)=>a+x.v,0)); // v46.38
     td.forEach(x=>{ const k="cgtd-"+g.id+"-"+x.mid, arm=!!DESP[k];
       h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0 0;font-size:14.5px"><span style="flex:1;min-width:0">🕒 Paga más tarde: ${escH(x.nombre)}${x.dia?` <span style="color:var(--muted);font-size:13px">(día ${x.dia})</span>`:""}</span><b style="white-space:nowrap">−${fmtEur(x.v)} €</b>
         <button onclick="${arm?`cgTardeQuitar('${g.id}','${esc(x.mid)}')`:`DESP['${esc(k)}']=true;render()`}" aria-label="Quitar" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#A63A20"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;min-width:38px;min-height:34px;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Quitar?":"✕"}</button></div>`; });
     h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">Te da ahora</b><b style="font-size:21px;white-space:nowrap;color:#1B4332">${fmtEur(Math.max(0,_r2(falta-tt)))} €</b></div>`; } }
   h+=`</div>`;
-  if(falta===0&&!cerrada){ const sm=itemsDeGrupo(g).filter(it=>!it.yaPagado).length; if(sm)h+=`<div style="font-size:13px;color:#8A4F12;margin-top:4px">Faltan ${sm} por marcar como cobrados: cuando estén todos, quedará liquidado.</div>`; } // v46.12
-  if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pasado los ${fmtEur(-falta)} €</button>`;
+  if(falta===0&&!cerrada){ const sm=c.items.filter(it=>!it.yaPagado).length; if(sm)h+=`<div style="font-size:13px;color:#8A4F12;margin-top:4px">Faltan ${sm} por marcar como cobrados: cuando estén todos, quedará liquidado.</div>`; } // v46.12
+  // Dos botones: «Anotar entrega» y «Ayuda pagada» (el formulario se abre justo debajo)
+  if(formTipo==="entrega"||formTipo==="ayuda")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`;
+  else if(!cerrada)h+=`<div class="cgc-btns"><button class="cgc-b" onclick="cgAbrir('${g.id}','entrega')">💶 Anotar entrega</button><button class="cgc-b" onclick="CG_FORM=null;cgAbrir('${g.id}','ayuda')">🤝 Ayuda pagada</button></div>`;
+  if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #A63A20;background:#fff;color:#A63A20;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pagado los ${fmtEur(-falta)} €</button>`;
   if(CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="tarde")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`; // v46.38
   else if(falta>0&&!cerrada)h+=`<button onclick="cgAbrir('${g.id}','tarde')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">🕒 ＋ Alguien paga más tarde</button>`;
   h+=`<button onclick="cgEnvioAbrir('${g.id}','cuenta')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar su cuenta a ${nom}</button>`;
+  h+=_cgDetalleHTML(g,c,idx,key,nom,mesTxt,cerrada,formTipo); // v46.67: «Ver detalle» (movimientos), plegado
   // 2 · Propuesta del mes (v46.8, Ángel 07/11/2026: sin «Hacer un plan»; las ayudas entran solo por Solicitudes y aquí se ven solas)
-  const formTipo=CG_FORM&&CG_FORM.gid===g.id?CG_FORM.tipo:null;
   const d=_cgDatosSim(g), hayPlan=d.sols.length||d.sal.length;
   const futuras=_solsR().filter(s=>s.estado==="pendiente"&&s.grupoGid===g.id&&s.capital>0&&_solMesIdx(s)>idx);
   const futTxt=futuras.length?`<div style="font-size:12.5px;color:var(--muted);margin-top:8px">+ ${futuras.length} ${futuras.length===1?"solicitud":"solicitudes"} para ${[...new Set(futuras.map(s=>_txtIdx(_solMesIdx(s)).split(" ")[0]))].join(", ")} (se verán en su mes)</div>`:"";
@@ -432,29 +486,35 @@ function cuentaGrupoHTML(g,principal){
       <button onclick="cgEnvioAbrir('${g.id}','plan')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar la propuesta a ${nom}</button>
       <button onclick="solDesdeGrupo('${g.id}')" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #8A4F12;background:#fff;color:#8A4F12;font-size:14px;font-weight:800;cursor:pointer">📝 ＋ Otra solicitud para este grupo</button>${futTxt}</div>`;
   }
-  // 3 · Movimientos (plegado)
-  const km="cgmov-"+g.id, abM=!!DESP[km]||(formTipo&&formTipo!=="sim"&&formTipo!=="tarde"), nM=movs.filter(x=>x.tipo!=="pasado").length+(resto>0?1:0);
-  h+=`<button onclick="DESP['${km}']=!DESP['${km}'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:11px 13px;border-radius:12px;border:1.5px solid #C9D9CF;background:#fff;color:#1B4332;font-size:15px;font-weight:800;cursor:pointer"><span>📒 Movimientos de su cuenta (${nM})</span><span class="nha-fl-c" style="transform:rotate(${abM?90:0}deg)">›</span></button>`;
-  if(abM){
-    h+=`<div style="background:#fff;border:1.5px solid #C9D9CF;border-top:none;border-radius:0 0 12px 12px;margin-top:-8px;padding:8px 12px 12px">`;
-    movs.forEach(x=>{
+  // 3 · Nota personal del grupo (v46.67, notas.js): fuera de la contabilidad
+  if(typeof notaGrupoHTML==="function")h+=notaGrupoHTML(g);
+  if(_cgCerrada(g)&&DESP["cgver-"+g.id])h+=`<div style="text-align:center;margin-top:8px"><button onclick="DESP['cgver-${g.id}']=false;render()" style="background:none;border:none;color:#2D6A4F;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer">Ocultar</button></div>`;
+  return h+`</div>`;
+}
+// v46.67: «Ver detalle» de la cuenta con el jefe: personas marcadas (a través del jefe o pagadas a ti) y apuntes, plegado.
+function _cgDetalleHTML(g,c,idx,key,nom,mesTxt,cerrada,formTipo){
+  const movs=c.movs, pag=c.items.filter(it=>it.yaPagado), por={};
+  pag.forEach(it=>{ por[it.mid]=_r2((por[it.mid]||0)+it.importe); });
+  const km="cgmov-"+g.id, abM=!!DESP[km]||formTipo==="salida", nM=movs.filter(x=>x.tipo!=="pasado").length+Object.keys(por).length;
+  let h=`<button onclick="DESP['${km}']=!DESP['${km}'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding:11px 13px;border-radius:12px;border:1.5px solid #C9D9CF;background:#fff;color:#1B4332;font-size:15px;font-weight:800;cursor:pointer;text-align:left"><span style="min-width:0">📒 Ver detalle (${nM})</span><span class="nha-fl-c" style="transform:rotate(${abM?90:0}deg)">›</span></button>`;
+  if(!abM)return h;
+  h+=`<div style="background:#fff;border:1.5px solid #C9D9CF;border-top:none;border-radius:0 0 12px 12px;margin-top:-8px;padding:8px 12px 12px">`;
+  if(Object.keys(por).length){
+    h+=`<div style="font-size:12.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0">Marcados como pagados</div>`;
+    Object.keys(por).forEach(mid=>{ const m=DATA.members.find(x=>x.id===mid), dir=c.dir.has(mid);
+      h+=`<div class="cgc-mov"><span class="cgc-l">${dir?"👤":"✅"} ${escH(m?m.name:"")}<small>${dir?"te pagó a ti · no resta de la cuenta con "+nom:"a través de "+nom}</small></span><b class="cgc-v">${dir?"":"−"}${fmtEur(por[mid])} €</b></div>`; });
+  }
+  if(movs.length)h+=`<div style="font-size:12.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 0 4px">Apuntes</div>`;
+  movs.forEach(x=>{
       const txt=x.tipo==="entrega"?`💶 Entrega · ${escH(x.fecha||"")}`:x.tipo==="ayuda"?`🤝 Ayuda a ${escH(x.nombre||"")}`:x.tipo==="salida"?`🚪 Salida de ${escH(x.nombre||"")}`:x.tipo==="pago"?`💸 Le pasaste · ${escH(x.fecha||"")}`:x.tipo==="arrastre"?`↪️ Pendiente de ${escH(_txtIdx(_idxMes(MONTHS[+x.de.slice(5)-1],+x.de.slice(0,4))).split(" ")[0])}`:`➡️ Pasado a ${escH(_txtIdx(_idxMes(MONTHS[+x.a.slice(5)-1],+x.a.slice(0,4))).split(" ")[0])}`;
       const signo=(x.tipo==="arrastre"||x.tipo==="pago")?"+":"−", k="cgdel-"+x.id, arm=!!DESP[k];
       h+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #EEF3EF;padding:7px 0;font-size:14px">
         <span style="flex:1;min-width:0">${txt}</span><b style="white-space:nowrap">${signo}${fmtEur(x.importe)} €</b>
         ${x.tipo==="pasado"?"":`<button onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#A63A20"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;min-width:38px;min-height:34px;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Borrar?":"✕"}</button>`}</div>`;
-    });
-    if(resto>0)h+=`<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;font-size:14px"><span>✅ Entregado sin apuntar <span style="font-size:12px;color:var(--muted)">(todo marcado como cobrado)</span></span><b style="white-space:nowrap">−${fmtEur(resto)} €</b></div>`;
-    if(!nM)h+=`<div style="font-size:13.5px;color:var(--muted);padding:4px 0">Todavía no hay apuntes este mes.</div>`;
-    if(formTipo&&formTipo!=="sim"&&formTipo!=="tarde")h+=_cgFormHTML(g,idx,key,nom,mesTxt);
-    else if(!cerrada)h+=`<div style="display:flex;gap:6px;margin-top:10px">
-        <button onclick="cgAbrir('${g.id}','entrega')" style="flex:1;padding:10px 4px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:13px;font-weight:800;cursor:pointer">＋ Entrega</button>
-        <button onclick="cgAbrir('${g.id}','ayuda')" style="flex:1;padding:10px 4px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:13px;font-weight:800;cursor:pointer">＋ Ayuda</button>
-        ${_cgSalidasPend(g).length?`<button onclick="cgAbrir('${g.id}','salida')" style="flex:1;padding:10px 4px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:13px;font-weight:800;cursor:pointer">＋ Salida</button>`:""}</div>
-      <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Solo para apuntar a mano lo que no venga de la propuesta (por ejemplo, si ${nom} te entrega el dinero en dos veces).</div>`;
-    h+=`</div>`;
-  }
-  if(_cgCerrada(g)&&DESP["cgver-"+g.id])h+=`<div style="text-align:center;margin-top:8px"><button onclick="DESP['cgver-${g.id}']=false;render()" style="background:none;border:none;color:#2D6A4F;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer">Ocultar</button></div>`;
+  });
+  if(!nM)h+=`<div style="font-size:13.5px;color:var(--muted);padding:4px 0">Todavía no hay nada este mes.</div>`;
+  if(formTipo==="salida")h+=_cgFormHTML(g,idx,key,nom,mesTxt);
+  else if(!cerrada&&_cgSalidasPend(g).length)h+=`<div class="cgc-btns"><button class="cgc-b" onclick="cgAbrir('${g.id}','salida')">🚪 ＋ Salida pagada por ${nom}</button></div>`;
   return h+`</div>`;
 }
 // ══ v45.42 · COBROS POR GRUPOS ══════════════════════════════════════════════════════════════
@@ -508,12 +568,12 @@ function cgTodoToque(gid){
   DESP[k]=false; marcarTodoGrupo(gid);
 }
 function _cgTarjetaDatos(g,pre,key){
-  const items=itemsDeGrupo(g,undefined,undefined,pre);
-  const total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
-  const ent=_r2(_cgMovs(key,g.id).filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0)-_cgMovs(key,g.id).filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0)); // v45.77: lo que puso la asociación («pago») no es dinero cobrado al grupo
-  const cobrado=Math.min(total,Math.max(pagado,ent));
-  const movs=_cgMovs(key,g.id), deMas=movs.length?Math.max(0,-_cgFalta(g,_idxMes(DATA.reportMonth,DATA.reportYear))):0; // v45.45
-  return {items,total,cobrado,pagado,falta:_r2(total-cobrado),sinMarcar:items.filter(it=>!it.yaPagado).length,cerrada:_cgCerrada(g,pre),cuadrada:_cgCuadrada(g)&&!_cgCerrada(g,pre),entTodo:ent>=total&&total>0,deMas:_r2(deMas)};
+  // v46.67 (Ángel 26/11/2026): la tarjeta de fuera usa LA MISMA cuenta en cascada que la de dentro (antes, lo mayor entre lo
+  // marcado y lo entregado: daba otra cifra). «Inicio › Dinero del mes» (dineroAyudasMes) no cambia.
+  const c=_cgCascada(g,_idxMes(DATA.reportMonth,DATA.reportYear),pre), items=c.items, total=c.total;
+  const pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0)), falta=Math.max(0,c.falta), deMas=Math.max(0,-c.falta);
+  const cerrada=_cgCerrada(g,pre), sinMarcar=items.filter(it=>!it.yaPagado).length;
+  return {items,total,cobrado:_r2(total-falta),pagado,falta,sinMarcar,cerrada,cuadrada:total>0&&c.falta===0&&!cerrada,entTodo:c.falta<=0&&total>0,deMas:_r2(deMas),c};
 }
 function cobrosGruposHTML(){
   const rm=DATA.reportMonth, ry=DATA.reportYear, key=getMesKey(rm,ry), pre=cuotasDelMes(rm,ry);
@@ -526,12 +586,12 @@ function cobrosGruposHTML(){
   datos.forEach(({g,p,d})=>{
     const nom=escH(p.name.split(" ")[0]), ids=[g.principalId,...(g.miembros||[])];
     const nombres=ids.map(id=>(DATA.members.find(m=>m.id===id)||{}).name||"").join(" | ");
-    const pct=d.total>0?Math.round((d.cuadrada?d.pagado:d.cobrado)/d.total*100):100;
+    const pct=d.total>0?Math.round(d.cobrado/d.total*100):100; // v46.67: la misma cuenta en cascada que dentro
     const chip=!d.items.length?`<span class="cgt-chip">Nada este mes</span>`
       :d.cerrada?`<span class="cgt-chip ok">✅ Liquidado</span>`
-      :d.cuadrada?`<span class="cgt-chip pend">Faltan ${fmtEur(_r2(d.total-d.pagado))} €</span>` // v46.14: como los demás grupos
+      :d.cuadrada?`<span class="cgt-chip pend">Cuadrada · ${d.sinMarcar} por marcar</span>`
       :d.falta>0?`<span class="cgt-chip pend">Faltan ${fmtEur(d.falta)} €</span>`
-      :d.deMas>0?`<span class="cgt-chip rev">${_cgMovs(key,g.id).some(x=>x.tipo==="ayuda"||x.tipo==="salida")?"Le pasas "+fmtEur(d.deMas)+" €":"Dio "+fmtEur(d.deMas)+" € de más"}</span>`
+      :d.deMas>0?`<span class="cgt-chip rev">Le debes ${fmtEur(d.deMas)} €</span>`
       :d.entTodo&&d.sinMarcar?`<span class="cgt-chip ok">Entregado todo</span>`
       :`<span class="cgt-chip rev">Revisar ›</span>`;
     const armado=!!DESP["cgtodo-"+g.id], formEnt=CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="entrega";
@@ -539,7 +599,7 @@ function cobrosGruposHTML(){
       <button class="cgt-cab" onclick="abrirGrupoCobros('${g.id}')">
         <span class="cgt-nom">${escH(p.name)}<span class="cgt-sub">${ids.length} ${ids.length===1?"persona":"personas"} · ${d.items.length} ${d.items.length===1?"cobro":"cobros"}</span></span>${chip}</button>`;
     if(d.items.length)h+=`<div class="reserva-bar-bg" style="margin:8px 0 4px"><div class="reserva-bar-fill" style="width:${pct}%"></div></div>
-      <div class="cgt-cifras">Cobrado <b>${fmtEur(d.cuadrada?d.pagado:d.cobrado)} €</b> de ${fmtEur(d.total)} €</div>`; // v46.14: cuenta cuadrada → lo marcado, como los demás
+      <div class="cgt-cifras">${d.falta>0?`Falta que te entregue <b>${fmtEur(d.falta)} €</b> de ${fmtEur(d.total)} €`:d.deMas>0?`<b style="color:#A63A20">Le debes a ${nom} ${fmtEur(d.deMas)} €</b>`:`Cuenta con ${nom} a 0 · ${fmtEur(d.total)} €`}</div>`; // v46.67: la misma cifra que la cuenta de dentro
     if(d.entTodo&&d.sinMarcar>0&&!formEnt) // v45.45: ya entregó todo → un toque para marcar sus cobros
       h+=`<div class="cgt-sug">✅ ${d.cuadrada?"La cuenta está cuadrada. Cuando te hayan pagado todos, márcalos aquí:":`${nom} ya te entregó todo. ¿Marcamos sus ${d.sinMarcar} ${d.sinMarcar===1?"cobro":"cobros"} como cobrados?`}
         <button class="cgt-b pri" style="width:100%;margin-top:8px" onclick="marcarTodoGrupo('${g.id}')">✓ Marcar ${d.sinMarcar===1?"su cobro":"sus "+d.sinMarcar+" cobros"}</button></div>`;
@@ -573,15 +633,15 @@ function cuentasAnterioresHTML(g){
   const ts=parseInt(String(g.id).slice(1)), dC=ts>1.6e12?new Date(ts):null, creado=dC?dC.getFullYear()*12+dC.getMonth():-1; // el grupo se creó ese mes (antes no había cuenta)
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), desde=Math.max(_idxMes("Ago",2025),idx-12,creado), k="cghist-"+g.id, ab=!!DESP[k];
   const meses=[]; for(let i=idx-1;i>=desde;i--){ const r=_sinCrearMes(i,()=>{ const total=_cgTotal(g,i); if(!total)return null;
-      const movs=_cgMovs(_keyDeIdx(i),g.id), falta=_cgFalta(g,i), resto=_cgResto(g,i);
-      return {i,total,falta,resto,movs}; }); if(r)meses.push(r); }
+      const cc=_cgCascada(g,i); // v46.67: la misma cuenta en cascada; «resto» = lo entregado con personas marcadas
+      return {i,total,falta:cc.falta,resto:cc.personas,movs:cc.movs}; }); if(r)meses.push(r); }
   if(!meses.length)return "";
   let h=`<button class="cg-ant" aria-expanded="${ab?"true":"false"}" onclick="DESP['${k}']=!DESP['${k}'];render()" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:12px 16px;min-height:48px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--dark);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit"><span>📜 Cuentas de meses anteriores</span><span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></button>`;
   if(!ab)return h;
   h+=`<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 11px 11px;padding:4px 12px 10px;margin-top:-6px;background:#fff">`;
   meses.forEach(x=>{ const est=x.falta>0?`<b style="color:#94500F">faltan ${fmtEur(x.falta)} €</b>`:x.falta<0?`<b style="color:#A93C25">faltó pasarle ${fmtEur(-x.falta)} €</b>`:`<b style="color:#1B7A3D">✅ liquidada</b>`;
     const t=_txtIdx(x.i), det=x.movs.filter(m=>m.tipo!=="pasado").map(m=>`${m.tipo==="entrega"?"Entrega "+escH(m.fecha||""):m.tipo==="ayuda"?"Ayuda a "+escH(m.nombre||""):m.tipo==="salida"?"Salida de "+escH(m.nombre||""):m.tipo==="pago"?"Le pasaste":"Pendiente anterior"} ${(m.tipo==="arrastre"||m.tipo==="pago")?"+":"−"}${fmtEur(m.importe)} €`);
-    if(x.resto>0)det.push(`Entregado sin apuntar −${fmtEur(x.resto)} €`);
+    if(x.resto>0)det.push(`Personas marcadas −${fmtEur(x.resto)} €`);
     if(x.movs.some(m=>m.tipo==="pasado"))det.push("Lo pendiente pasó al mes siguiente");
     h+=`<div style="padding:8px 0;border-bottom:1px solid #F1EBE4"><div style="display:flex;justify-content:space-between;gap:8px;font-size:14.5px"><span style="font-weight:800">${t.charAt(0).toUpperCase()+t.slice(1)}</span><span>${fmtEur(x.total)} € · ${est}</span></div>
       ${det.length?`<div style="font-size:12.5px;color:var(--muted);margin-top:2px">${det.join(" · ")}</div>`:""}</div>`; });

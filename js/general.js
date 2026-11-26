@@ -605,7 +605,7 @@ function _renderPantalla(){
           <div style="display:flex;align-items:center;justify-content:space-between">
             <button onclick="cgDetToggle('${g.id}')" style="flex:1;background:none;border:none;text-align:left;cursor:pointer;padding:0">
               <div style="font-size:16px;font-weight:800;color:var(--dark)">${escH(principal.name)}${_cgCerrada(g)?' <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#E3F1E7;color:#1B7A3D;white-space:nowrap;vertical-align:middle">✅ Liquidado</span>':""}</div>
-              <div style="font-size:12px;color:var(--muted)">${(()=>{const d=_cgTarjetaDatos(g,cuotasDelMes(rm,ry),getMesKey(rm,ry));return `${items.length} ${items.length===1?"cobro":"cobros"} · ${d.cuadrada?"cuenta cuadrada · faltan "+d.sinMarcar+" por marcar":d.falta>0?"faltan "+fmtEur(d.falta)+" €":"nada pendiente"}`;})()}</div><!-- v45.42: la misma cuenta que su tarjeta -->
+              <div style="font-size:12px;color:var(--muted)">${(()=>{const d=_cgTarjetaDatos(g,cuotasDelMes(rm,ry),getMesKey(rm,ry));return `${items.length} ${items.length===1?"cobro":"cobros"} · ${d.cuadrada?"cuenta cuadrada · faltan "+d.sinMarcar+" por marcar":d.falta>0?"faltan "+fmtEur(d.falta)+" €":d.deMas>0?"le debes "+fmtEur(d.deMas)+" €":"nada pendiente"}`;})()}</div><!-- v45.42 · v46.67: la misma cuenta en cascada que su tarjeta -->
             </button>
             <span class="ft-drop-chevron" style="width:28px;height:28px;font-size:24px;${gOpen?'transform:rotate(90deg)':''}" onclick="cgDetToggle('${g.id}')">›</span>
           </div>`;
@@ -626,7 +626,7 @@ function _renderPantalla(){
             const subtotal=Math.round(lista.reduce((s,x)=>s+x.importe,0)*100)/100;
             h+=`<div class="cob-per" style="border-bottom:1px solid var(--border);padding:8px 0 6px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;min-height:30px">
-                <div class="aporte-name" style="font-size:16px">${escH(nombre)}${esPrincipal?' <span style="font-size:12px;color:var(--muted);font-weight:700">(responsable)</span>':''}</div>
+                <div class="aporte-name" style="font-size:16px;min-width:0">${escH(nombre)}${esPrincipal?' <span style="font-size:12px;color:var(--muted);font-weight:700">(responsable)</span>':''}${typeof notaPersonaBotonHTML==="function"?notaPersonaBotonHTML(pid):""}</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   ${edG&&!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""}<!-- v45.43: dos toques y más grande -->
                 </div>
@@ -655,6 +655,10 @@ function _renderPantalla(){
                 <span style="font-size:14px;font-weight:800;color:var(--dark)">Total</span>
                 <div style="display:flex;align-items:center;gap:10px"><span class="cob-tot-amt" style="font-size:15px;font-weight:800;color:${pag?"#2D6A4F":"var(--dark)"}">${fmtEur(subtotal)} €</span><span class="toggle-btn" style="visibility:hidden"></span></div>
               </div>`; }
+            // v46.67: lo pagado cuenta como entregado por su jefe; «Me pagó a mí» lo aparta de la cuenta con el jefe
+            if(lista.some(x=>x.yaPagado)){ const dir=_cgDirectos(g,_idxMes(rm,ry)).includes(pid), nj=escH(principal.name.split(" ")[0]);
+              h+=`<div class="cgc-via${dir?" dir":""}"><span style="min-width:0">${dir?`👤 Te pagó a ti · no resta de la cuenta con ${nj}`:`↪ Pagado a través de ${nj}`}</span><button onclick="cgDirectoToggle('${g.id}','${esc(pid)}')">${dir?`Fue a través de ${nj}`:"Me pagó a mí"}</button></div>`; }
+            if(typeof notaPersonaHTML==="function")h+=notaPersonaHTML(pid);
             h+=`</div>`;
           });
           // Añadir miembro a este grupo — excluir a quien ya esté en CUALQUIER grupo

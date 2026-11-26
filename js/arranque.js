@@ -77,6 +77,7 @@ let SOL_PREFILL=null; // v45.17: {simGid, simRef} cuando la solicitud viene de u
 // de cada asociado (eso se sigue marcando uno a uno). DATA.cuentasGrupo[mesKey][gid] = {movs:[…]}
 // movs: {id, tipo:"entrega"|"ayuda"|"arrastre"|"pasado", importe, fecha, lid?, mid?, nombre?, de?}
 let CG_FORM=null; // {gid, tipo} formulario abierto
+let NOTAS=null, NOTAS_EST="", NOTA_ED=null; // v46.67: notas personales del coordinador (notas.js; privado/notas, fuera de DATA y de la contabilidad)
 let CG_SIM_MES={}; // v45.17: mes de la simulación por grupo {gid:idx} (por defecto, el del cierre)
 let CG_SIM_SOLX={}; // v45.69: solicitudes del grupo QUITADAS de la simulación {gid:[id,…]} (por defecto entran todas)
 let CG_SIM_REAL={}; // v45.72: «hacerlo real» abierto en la simulación de ese grupo
