@@ -157,6 +157,8 @@ let TORRE_DECIDIENDO=null; // id de la ficha de la bandeja mientras se guarda su
 let USO_ACTUAL={tab:null,t0:0}, USO_SESION={pantallas:{}}, USO_SUBIDO=false;
 if(!window.NH_APP_ASOCIADOS){
   document.addEventListener("visibilitychange",()=>{ if(document.hidden)_usoCerrarYSubir(); });
+  // v46.68: el gesto o botón «atrás» del iPhone cierra el simulador y deja donde estabas (simAtrasNavegador, js/ayudas.js)
+  window.addEventListener("popstate",()=>{ if(typeof simAtrasNavegador==="function")simAtrasNavegador(); });
 }
 
 

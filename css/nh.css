@@ -1627,3 +1627,8 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 .nota-nueva small{font-weight:600;color:#6A5A8C}
 .nota-ico{border:none;background:none;padding:2px 4px;margin-left:4px;font-size:1rem;cursor:pointer;opacity:.45;vertical-align:middle;min-width:34px;min-height:34px}
 .nota-ico.con{opacity:1}
+
+/* v46.68 · «← Volver» arriba del simulador (ayudas.js, simVolver): visible y fijo arriba al bajar */
+.sim-volver{position:sticky;top:0;z-index:5;display:inline-flex;align-items:center;gap:6px;min-height:44px;margin:-4px 0 8px;padding:9px 16px;border-radius:12px;border:2px solid #1B4332;background:#fff;color:#1B4332;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.cgc-x{flex:none;min-width:38px;min-height:34px;margin-left:4px;border:none;background:none;color:#A63A20;border-radius:7px;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit}
+.cgc-x.arm{background:#C0492C;color:#fff;font-size:.75rem;padding:4px 8px}

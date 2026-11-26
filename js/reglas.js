@@ -201,6 +201,20 @@ function _bloqueoPendiente(m,cap,lim,ini,concedida,sin,nom,cod){
   return {bloqueo:`A ${nom} le quedan ${fmtEur(pend)} € de capital por devolver (ayudas activas y solicitudes sin otorgar). Con su máximo de ${_miles(lim)} €, ahora puede recibir como mucho ${fmtEur(cabe)} € (Maestro ${cod}, con otras ayudas activas).`};
 }
 function cuotasMaxDe(m,ciclo){ return _ayudaCorta(m)?REGLAS.CUOTAS_MAX_CORTA:cuotasMaxCon(_cicloDe(m,ciclo),aporteQueCuenta(m)); }
+// v46.68 (Ángel 26/11/2026): cuotas que se pueden elegir en CUALQUIER formulario (apuntar o cambiar una solicitud, otorgar,
+// registrar o editar una ayuda), las mismas que el simulador (_simMaxCuotas) y la app de asociados (_nhaSolCuotasMax):
+// AY-10 (cuotasMaxDe: permanencia y aporte que cuenta; terceros y Asociado Libre, 5) y AY-1 (la última cuota dentro de su
+// permanencia, contando desde el mes en que se otorga; la 1.ª, el mes siguiente, AY-3). Ningún tope fijo de 12.
+// Persona nueva (m=null): tercero, 5; asociado nuevo, lo más que permite AY-10 con 50 € (al otorgar ya se mira su ficha).
+// minimo: nunca menos de las que ya tiene la solicitud o la ayuda (las pudo poner así el coordinador).
+function cuotasMaxPara(m,otorgaIdx,minimo,tipoNuevo){
+  let k;
+  if(!m)k=tipoNuevo==="tercero"?REGLAS.CUOTAS_MAX_CORTA:cuotasMaxCon(36,REGLAS.APORTE_MINIMO);
+  else{ k=cuotasMaxDe(m); const c=(m.ciclo!=null?m.ciclo:12);
+    if(c!==0&&!_ayudaCorta(m)&&m.joinMonth){ const base=otorgaIdx!=null?otorgaIdx:_idxMes(DATA.reportMonth,DATA.reportYear); k=Math.min(k,Math.max(0,_finCon(m,c)-(base+1)+1)); } }
+  return Math.max(1,k,minimo|0);
+}
+function opcionesCuotasHTML(max,sel,corto){ return Array.from({length:max},(_,i)=>i+1).map(n=>`<option value="${n}"${n===sel?" selected":""}>${n}${corto?"":" "+(n===1?"cuota":"cuotas")}</option>`).join(""); }
 // Compromiso (AY-10): quien recibe una ayuda mayor gracias a su aporte de 100 € o más (más importe o más cuotas de lo que
 // podría con 50 €) mantiene ese aporte hasta pagar su última cuota. Al conceder (AY-2) se guarda el aporte habitual de ese
 // día (aporteEnConcesion) y si la ayuda necesitó el aporte alto (aporteAlto).

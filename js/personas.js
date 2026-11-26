@@ -1766,19 +1766,26 @@ function cierreLoanFormHTML(){
   return`<div class="modal-title">🤝 Ayuda aprobada${sol?"":" en la reunión"}</div>
 ${sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;border-radius:9px;padding:7px 10px;margin-bottom:10px">📝 Rellenado con la solicitud de <b>${escH(sol.nombre)}</b></div>`:""}
 <label class="m-label">¿A quién?</label>
-<select id="cl-mid" class="m-select" style="margin-bottom:12px;font-size:15px" onchange="updateCierreLoanPreview()">
+<select id="cl-mid" class="m-select" style="margin-bottom:12px;font-size:15px" onchange="clCuotasAjustar();updateCierreLoanPreview()">
   <optgroup label="Asociados">${asoc.map(m=>`<option value="${esc(m.id)}"${selMid===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</optgroup>
   <optgroup label="Terceros">${terc.map(m=>`<option value="${esc(m.id)}"${selMid===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</optgroup>
 </select>
 <label class="m-label">Capital (€)</label>
 <input id="cl-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateCierreLoanPreview()"${valCap!==""&&valCap!=null?` value="${escH(String(valCap))}"`:""}>
 <label class="m-label">Nº cuotas</label>
-<select id="cl-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateCierreLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===valN?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+<select id="cl-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateCierreLoanPreview()">${opcionesCuotasHTML(cuotasMaxPara(DATA.members.find(x=>x.id===(selMid||(asoc[0]||{}).id))||null,null,valN),valN)}</select><!-- v46.68: se ajusta al elegir la persona (clCuotasAjustar) -->
 <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Otorgada en <b>${rm} ${ry}</b> · 1ª cuota en <b>${MONTHS[ni]} ${ny}</b></div>
 ${grs.length?`<label class="m-label">¿Quién entrega el dinero?</label>
 <select id="cl-entrega" class="m-select" style="margin-bottom:12px;font-size:15px"><option value="">Yo</option>${grs.map(({g,p})=>`<option value="${esc(g.id)}"${valEnt&&valEnt===g.id?" selected":""}>${escH(p.name.split(" ")[0])} (del cobro de su grupo)</option>`).join("")}</select>`:""}
 <div id="cl-preview"></div>
 <button class="m-primary" onclick="addCierreLoanSubmit()">Registrar ayuda</button>`;
+}
+// v46.68: al cambiar la persona, las cuotas que puede elegir (AY-10, AY-1; otorgada en el mes del cierre). Nunca menos de las de su solicitud.
+function clCuotasAjustar(){
+  const s=document.getElementById("cl-n"), mid=(document.getElementById("cl-mid")||{}).value||""; if(!s)return;
+  const sol=MODAL&&MODAL.sol?(DATA.solicitudes||[]).find(x=>x.id===MODAL.sol):null, m=DATA.members.find(x=>x.id===mid)||null;
+  const max=cuotasMaxPara(m,null,sol&&sol.mid===mid?sol.cuotas:0), ant=parseInt(s.value||"3");
+  s.innerHTML=opcionesCuotasHTML(max,Math.min(ant,max));
 }
 function updateCierreLoanPreview(){
   const cap=parseInt(document.getElementById("cl-cap")?.value)||0;
@@ -1857,7 +1864,7 @@ function loanFormHTML(){
 <label class="m-label">Capital (€)</label>
 <input id="l-cap" class="m-input" type="number" placeholder="500" style="font-size:20px;font-weight:700" oninput="updateLoanPreview()">
 <label class="m-label">Nº cuotas</label>
-<select id="l-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateLoanPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===3?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+<select id="l-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateLoanPreview()">${opcionesCuotasHTML(cuotasMaxPara(DATA.members.find(x=>x.id===MODAL.mid)||null,null,0),3)}</select><!-- v46.68: AY-10 y AY-1 -->
 <label class="m-label">Retorno mensual (%)</label>
 <input id="l-rate" class="m-input" type="number" value="${DATA.rate}" min="0" step="0.5" style="margin-bottom:12px" oninput="updateLoanPreview()">
 <div style="display:flex;gap:8px;margin-bottom:12px">

@@ -76,8 +76,17 @@ function solGuardar(otorgarYa){
   solOtorgar(nid);
 }
 function soAvalCambio(){ const a=(document.getElementById("so-aval")||{}).value||"", g=document.getElementById("so-grupo"); if(g&&a){ const gid=_grupoDe(a); if(gid)g.value=gid; } }
+// v46.68: las cuotas de «Nueva solicitud» según la persona (o cómo entra, si es nueva) y el mes en que se otorga (AY-10, AY-1)
+function soCuotasAjustar(){
+  const s=document.getElementById("so-n"); if(!s)return;
+  const mid=(document.getElementById("so-mid")||{}).value||"", m=mid?DATA.members.find(x=>x.id===mid):null;
+  const tipo=(document.getElementById("so-tipo")||{}).value||"", mes=(document.getElementById("so-mes")||{}).value||"";
+  const max=cuotasMaxPara(m,mes?_idxDeClave(mes):null,0,tipo), ant=parseInt(s.value||"5");
+  s.innerHTML=opcionesCuotasHTML(max,Math.min(ant,max),true); solPreview();
+}
 function soMidCambio(){
   const mid=(document.getElementById("so-mid")||{}).value||"", w=document.getElementById("so-nom-wrap"); if(w)w.style.display=mid?"none":"block";
+  soCuotasAjustar(); // v46.68
   const m=mid&&DATA.members.find(x=>x.id===mid); if(!m)return;
   const av=m.type==="tercero"?m.ref:m.referidoPor, a=document.getElementById("so-aval"), g=document.getElementById("so-grupo");
   if(a&&av)a.value=av; if(g){ const gid=_grupoDe(mid)||(av?_grupoDe(av):""); if(gid)g.value=gid; }
@@ -113,7 +122,7 @@ function solDesdeSim(gid,i){
     if(m){ sm.value=m.id; soMidCambio(); } else { const n=document.getElementById("so-nom"); if(n)n.value=x.nombre||""; }
     const gr=document.getElementById("so-grupo"); if(gr)gr.value=gid;
     const c=document.getElementById("so-cap"); if(c)c.value=x.v; solPreview();
-    const ms=document.getElementById("so-mes"); if(ms)ms.value=mes;
+    const ms=document.getElementById("so-mes"); if(ms){ ms.value=mes; soCuotasAjustar(); } // v46.68
     const h=document.getElementById("so-mid"); if(h)h.scrollIntoView({behavior:"smooth",block:"start"});
     const f=document.getElementById(x.nombre?"so-n":"so-nom"); if(f)setTimeout(()=>f.focus(),350); },40);
 }
@@ -127,7 +136,7 @@ function _solEditarHTML(so){
     <label class="m-label" for="soed-cap-${so.id}" style="margin-top:0">Importe que pide (€)</label>
     <input id="soed-cap-${so.id}" type="number" inputmode="decimal" class="m-input" value="${so.capital}" style="font-size:16px;margin-bottom:8px">
     <label class="m-label" for="soed-n-${so.id}">Cuotas para devolverla</label>
-    <select id="soed-n-${so.id}" class="m-select" style="font-size:16px">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===so.cuotas?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+    <select id="soed-n-${so.id}" class="m-select" style="font-size:16px">${opcionesCuotasHTML(cuotasMaxPara(so.mid?DATA.members.find(x=>x.id===so.mid):null,so.mes?_idxDeClave(so.mes):null,so.cuotas,so.tipoNuevo),so.cuotas)}</select><!-- v46.68: AY-10 y AY-1, sin tope fijo de 12 -->
     <div style="display:flex;gap:6px;margin-top:10px">
       <button onclick="DESP['${k}']=false;render()" style="flex:1;padding:10px;border-radius:9px;border:1px solid #D9C9B0;background:#fff;color:#6E6048;font-size:13.5px;font-weight:700;cursor:pointer">Cancelar</button>
       <button onclick="solCambiarImporte('${so.id}')" style="flex:2;padding:10px;border-radius:9px;border:none;background:#1B4332;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">Guardar</button>
@@ -372,7 +381,7 @@ function ayudasTabHTML(){
       <div id="so-nom-wrap"><div style="font-size:12px;color:var(--muted);margin:2px 0 6px">o, si aún no está en la app:</div>
       <input id="so-nom" type="text" class="m-input" placeholder="Nombre y apellidos" style="font-size:16px" oninput="tildeSugerir('so-nom','so-tilde')"><div id="so-tilde"></div><!-- v45.51 -->
       <label class="m-label">¿Cómo entra?</label>
-      <select id="so-tipo" class="m-select" style="font-size:15px"><option value="">— Elegir —</option><option value="asociado">Como asociado</option><option value="tercero">Como tercero con aval</option></select></div>
+      <select id="so-tipo" class="m-select" style="font-size:15px" onchange="soCuotasAjustar()"><option value="">— Elegir —</option><option value="asociado">Como asociado</option><option value="tercero">Como tercero con aval</option></select></div>
       <label class="m-label">¿Quién la avala?</label>
       <select id="so-aval" class="m-select" style="font-size:15px" onchange="soAvalCambio()"><option value="">— Sin aval / fundador —</option>${asoc.map(m=>`<option value="${esc(m.id)}">${escH(m.name)}</option>`).join("")}</select>
       <label class="m-label">¿En qué grupo va?</label>
@@ -380,9 +389,9 @@ function ayudasTabHTML(){
       <label class="m-label">¿Cuánto pide? (€)</label>
       <input id="so-cap" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 500" style="font-size:16px" oninput="solPreview()">
       <label class="m-label">¿En cuántas cuotas?</label>
-      <select id="so-n" class="m-select" style="font-size:15px" onchange="solPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===5?" selected":""}>${n}</option>`).join("")}</select>
+      <select id="so-n" class="m-select" style="font-size:15px" onchange="solPreview()">${opcionesCuotasHTML(cuotasMaxPara(null),5,true)}</select><!-- v46.68: se ajusta a la persona y al mes (soCuotasAjustar) -->
       <label class="m-label">¿Para qué mes? <span style="font-weight:600;color:var(--muted)">(se otorga en el cierre de ese mes)</span></label>
-      <select id="so-mes" class="m-select" style="font-size:15px">${_mesesSolOpts(getMesKey(DATA.reportMonth,DATA.reportYear))}</select>
+      <select id="so-mes" class="m-select" style="font-size:15px" onchange="soCuotasAjustar()">${_mesesSolOpts(getMesKey(DATA.reportMonth,DATA.reportYear))}</select>
       <div id="so-prev"></div>
       <div style="display:flex;gap:6px"><button onclick="SOL_FORM=false;SOL_PREFILL=null;render()" style="flex:1;padding:11px;border-radius:9px;border:1.5px solid #D9C9B0;background:#fff;color:#6E6048;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>
       <button onclick="solGuardar()" style="flex:2;padding:11px;border-radius:9px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14px;font-weight:800;cursor:pointer">Guardar en la lista</button></div>
@@ -596,7 +605,7 @@ function editLoanFormHTML(){
 <label class="m-label">Capital (€)</label>
 <input id="el-cap" class="m-input" type="number" value="${l.capital}" style="font-size:20px;font-weight:700" oninput="updateEditPreview()">
 <label class="m-label">Nº cuotas</label>
-<select id="el-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateEditPreview()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}"${n===l.n?" selected":""}>${n} ${n===1?"cuota":"cuotas"}</option>`).join("")}</select>
+<select id="el-n" class="m-select" style="margin-bottom:12px;font-size:16px;font-weight:700" onchange="updateEditPreview()">${opcionesCuotasHTML(cuotasMaxPara(m,_idxMes(l.gMonth,l.gYear),l.n),l.n)}</select><!-- v46.68: AY-10 y AY-1 desde el mes en que se otorgó -->
 <div style="display:flex;gap:8px;margin-bottom:12px">
 <div style="flex:1"><label class="m-label">Mes otorgada</label><select id="el-gm" class="m-select">${MONTHS.map(mm=>`<option${mm===l.gMonth?" selected":""}>${mm}</option>`).join("")}</select></div>
 <div style="flex:1"><label class="m-label">Año</label><select id="el-gy" class="m-select">${["2025","2026","2027"].map(y=>`<option${parseInt(y)===l.gYear?" selected":""}>${y}</option>`).join("")}</select></div>
@@ -937,8 +946,17 @@ function siSalesHoyHTML(m){
 function abrirSimulador(mid,tab){
   const m=DATA.members.find(x=>x.id===mid); if(!m)return;
   SIM={mid,tab:m.type==="tercero"?"ayuda":(tab||"ayuda"),ciclo:(m.ciclo!=null?m.ciclo:12),cap:500,n:Math.max(1,Math.min(5,m.type==="tercero"?REGLAS.CUOTAS_MAX_CORTA:_simMaxCuotas(m))),ap:50};
-  openModal('sim',{mid});
+  openModal('sim',{mid,yScroll:window.scrollY||0});
+  // v46.68: una entrada en el historial, para que «atrás» (gesto o botón del iPhone) cierre el simulador y no salga de la app
+  // La app NUNCA llama a history.back(): uno de más (abrir y cerrar seguidos, o tras recargar) sacaría de la app. Si se cierra
+  // con «← Volver» o tocando fuera, la entrada se queda y se reutiliza la próxima vez (pulsar «atrás» entonces no hace nada).
+  try{ if(!(history.state&&history.state.nhSim))history.pushState({nhSim:1},""); }catch(e){}
 }
+// v46.68 (Ángel 26/11/2026): «← Volver» arriba del simulador. Deja donde estabas (la ficha o la lista de la que venías,
+// o el formulario de la ayuda si se abrió desde ahí) y quita la entrada del historial que puso abrirSimulador.
+function _simDejar(){ const v=MODAL&&MODAL.volver, y=MODAL&&MODAL.yScroll; if(v)volverAAyuda(v); else { MODAL=null; render(); if(y!=null)window.scrollTo(0,y); } }
+function simVolver(){ _simDejar(); }
+function simAtrasNavegador(){ if(MODAL&&MODAL.type==="sim")_simDejar(); }
 // v45.53 (decisión de Ángel 25/10/2026): el simulador ya no ofrece la permanencia indefinida (llega hasta 36 meses);
 // quien ya la tiene la sigue viendo como la suya.
 function _simPermOpciones(m){ const c=(m.ciclo!=null?m.ciclo:12); return PERM_OPCIONES.filter(v=>c===0?v===0:(v!==0&&v>=c)); }
@@ -955,7 +973,8 @@ function simuladorHTML(){
   const chip=(sel,v,txt,fn)=>`<button onclick="${fn}" style="flex:1;min-width:0;padding:10px 4px;border-radius:10px;border:1.5px solid ${sel?"#1B4332":"#E3DDD2"};background:${sel?"#1B4332":"#fff"};color:${sel?"#fff":"#3B3B3B"};font-size:13.5px;font-weight:700;cursor:pointer">${txt}</button>`;
   const perm=_simPermOpciones(m);
   if(perm.indexOf(SIM.ciclo)<0)SIM.ciclo=perm[0];
-  let h=`<div class="modal-title">🧮 Simulador — ${escH(m.name.split(" ")[0])}</div>
+  let h=`<button class="sim-volver" onclick="simVolver()" aria-label="Volver a la pantalla anterior">← Volver</button>
+    <div class="modal-title">🧮 Simulador — ${escH(m.name.split(" ")[0])}</div>
     ${m.type==="tercero"?`<div></div>`:`<div style="display:flex;gap:4px;background:#EFEAE0;border-radius:12px;padding:4px;margin-bottom:14px">${tabBtn("ayuda","Ayuda")}${tabBtn("ben","Beneficio")}</div>`}`;
   if(m.type==="tercero")SIM.tab="ayuda"; // v46.56: un tercero solo simula su ayuda (y lo que podría asociándose)
   if(SIM.tab==="ben")return h+`<div id="sim-res">${simBenResHTML(m)}</div>
@@ -966,7 +985,7 @@ function simuladorHTML(){
   return h+`${SIM.tab==="ayuda"?"":`<div id="sim-res">${simBenResHTML(m)}</div>`}
     ${_adm&&SIM.tab==="ayuda"&&m.type!=="tercero"?`<button onclick="simEnviarWA()" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:15px;font-weight:800;cursor:pointer">💬 Enviar por WhatsApp</button>
       <div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.4">Se envía una imagen con esta ayuda (y, si hace falta, la permanencia que necesita) y un mensaje corto.</div>`:""}
-    ${_adm&&MODAL.volver?`<button onclick="volverAAyuda(MODAL.volver)" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer">← Volver a la ayuda</button>`:""}
+    ${_adm&&MODAL.volver?`<button onclick="simVolver()" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer">← Volver a la ayuda</button>`:""}
     <div style="font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.4">Es solo una simulación: no cambia nada de tu ficha.</div>`;
 }
 // ¿Qué permanencia hace falta para esta ayuda? (AY-1 y AY-6). Devuelve la primera que vale, desde la actual.
