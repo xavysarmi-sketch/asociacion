@@ -1,38 +1,36 @@
 // Nuevos Horizontes · aviso-version.js
 // Aviso de «Nueva versión disponible» y número de versión visible.
+// v46.66 (26/11/2026): la versión publicada se lee del propio index.html (el ?v= de sus archivos, que siempre es igual a
+// APP_VERSION; verificar_app.js lo comprueba), como hace la app de asociados con NH_APP_V. Antes se comparaba una «huella»
+// de las cabeceras ETag/Last-Modified, y GitHub Pages las da distintas según el servidor que conteste aunque el archivo sea
+// el mismo (comprobado el 26/11/2026: «…f2f» 20:03:59 desde un servidor y «…f2e» 20:03:58 desde otro), así que el aviso
+// salía al abrir la app aunque ya estuviera al día.
 window.APP_UPDATE = (function(){
   var CHECK_INTERVAL_MS = 3 * 60 * 1000; // Comprueba cada 3 minutos
-  var currentFingerprint = null;
-  var pendingFp = null;      // huella distinta a la espera de confirmarse
-  var pendingCount = 0;      // veces seguidas que se ha visto esa huella distinta
+  var publicada = null;      // versión publicada más nueva que la de esta pantalla (p. ej. "46.67")
   var dismissed = false;
   var banner = document.getElementById('updateBanner');
   var versionTag = document.getElementById('appVersionTag');
   if(versionTag && typeof APP_VERSION!=="undefined"){ versionTag.textContent = APP_VERSION; }
 
-  // Memoria persistente: qué huella ya aceptó/cerró el usuario, para NO volver a
-  // avisar de la misma versión aunque recargue o reabra la app desde el icono.
+  // Memoria persistente: de qué versión ya cerró el aviso el usuario (✕), para no volver a avisar de esa misma.
   function getSeen(){ try{ return localStorage.getItem('nh_update_seen')||''; }catch(e){ return ''; } }
-  function setSeen(fp){ try{ localStorage.setItem('nh_update_seen', fp||''); }catch(e){} }
+  function setSeen(v){ try{ localStorage.setItem('nh_update_seen', v||''); }catch(e){} }
 
-  // Obtiene una "huella" del archivo remoto sin descargarlo entero
-  // Usa un HEAD request que es muy rápido y no consume datos
-  function fetchFingerprint(){
-    // Añade un parámetro aleatorio para evitar caché del navegador
-    var url = location.href.split('?')[0] + '?_check=' + Date.now();
-    return fetch(url, { method: 'HEAD', cache: 'no-store' })
-      .then(function(r){
-        // La huella es la combinación de ETag + Last-Modified
-        // (GitHub Pages cambia estos valores en cada commit nuevo)
-        var etag = r.headers.get('ETag') || '';
-        var lastMod = r.headers.get('Last-Modified') || '';
-        return etag + '|' + lastMod;
-      })
+  // "46.66" o "v46.66" → [46, 66]
+  function numVersion(s){ var m=String(s||'').match(/(\d+)\.(\d+)/); return m?[+m[1],+m[2]]:null; }
+  function esMasNueva(a,b){ return !!(a&&b&&(a[0]>b[0]||(a[0]===b[0]&&a[1]>b[1]))); }
+
+  // Lee el index.html publicado (sin caché) y devuelve su versión: el primer ?v= de sus archivos.
+  function fetchPublicada(){
+    var url = location.href.split('#')[0].split('?')[0] + '?_check=' + Date.now();
+    return fetch(url, { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.text() : ''; })
+      .then(function(t){ var m=String(t).match(/\?v=(\d+\.\d+)/); return m ? m[1] : null; })
       .catch(function(){ return null; });
   }
 
   // Marca visualmente (sello ✓) que se confirmó que esta pantalla es la versión publicada.
-  // Se llama cuando la huella del servidor coincide con lo que ya se está viendo.
   function marcarVersionConfirmada(){
     UPDATE_CONFIRMED = true;
     var b1 = document.getElementById('versionOkBadge');
@@ -42,40 +40,26 @@ window.APP_UPDATE = (function(){
   }
 
   function check(){
-    if(dismissed) return; // Si el usuario cerró el banner, no insistir esta sesión
-    fetchFingerprint().then(function(fp){
-      if(!fp) return; // Sin conexión o error, intentar más tarde
-      if(currentFingerprint === null){
-        // Primera comprobación de esta sesión: guardamos la huella actual
-        currentFingerprint = fp;
-        marcarVersionConfirmada();
+    if(dismissed) return; // Si el usuario cerró el aviso, no insistir esta sesión
+    fetchPublicada().then(function(pub){
+      if(!pub) return; // Sin conexión o error, intentar más tarde
+      var local = (typeof APP_VERSION!=="undefined") ? String(APP_VERSION) : '';
+      var p = numVersion(pub), l = numVersion(local);
+      if(!p || !l) return;
+      if(!esMasNueva(p, l)){
+        // Igual que la de esta pantalla (o un servidor aún da la anterior unos minutos tras publicar): no hay nada nuevo
+        if(p[0]===l[0] && p[1]===l[1]) marcarVersionConfirmada();
         return;
       }
-      if(fp === currentFingerprint){
-        // Sin cambios: se limpia cualquier candidato pendiente (era ruido puntual)
-        pendingFp = null; pendingCount = 0;
-        marcarVersionConfirmada();
-        return;
-      }
-      // La huella es distinta. Puede ser versión nueva real o ruido de las
-      // cabeceras de GitHub Pages. Exigimos verla DOS veces seguidas igual.
-      if(fp === pendingFp){ pendingCount++; }
-      else{ pendingFp = fp; pendingCount = 1; }
-      if(pendingCount < 2) return; // aún no confirmada; esperar próxima comprobación
-
-      // Confirmada como versión nueva real
-      currentFingerprint = fp;
-      pendingFp = null; pendingCount = 0;
-
-      // Si el usuario YA aceptó/cerró exactamente esta huella, no volver a avisar
-      if(getSeen() === fp) return;
+      publicada = pub;
+      if(getSeen() === pub) return; // ya cerró el aviso de esta versión
 
       // En enlaces de asociados (solo lectura) se recarga solo; al admin se le avisa
       var esEnlaceAsociado = (typeof READONLY_ID!=="undefined" && READONLY_ID) ||
                              (typeof GRUPO_IDS!=="undefined" && GRUPO_IDS) ||
                              (typeof GRUPO_PPAL!=="undefined" && GRUPO_PPAL);
       if(esEnlaceAsociado){
-        setSeen(fp);
+        setSeen(pub); // una sola recarga automática por versión (si el móvil siguiera dando la anterior, no se repite)
         apply();
       }else{
         showBanner();
@@ -88,15 +72,13 @@ window.APP_UPDATE = (function(){
   }
 
   function apply(){
-    // Marca la huella actual como \"ya vista\" para que la página recargada no
-    // vuelva a mostrar el banner de esta misma versión.
-    if(currentFingerprint) setSeen(currentFingerprint);
+    // Recarga con _v= para saltarse la caché (regla crítica 4). Si al volver la pantalla sigue siendo la anterior, el aviso
+    // vuelve a salir (antes se daba por vista y ya no avisaba más de esa versión).
     try{
       var base=location.href.split('#')[0];
-      var sep=base.indexOf('?')>=0?'&':'?';
       // Quitar un _v anterior para no acumularlos
       base=base.replace(/([?&])_v=\d+/,'').replace(/[?&]$/,'');
-      sep=base.indexOf('?')>=0?'&':'?';
+      var sep=base.indexOf('?')>=0?'&':'?';
       location.replace(base+sep+'_v='+Date.now());
     }catch(e){
       location.reload();
@@ -105,8 +87,8 @@ window.APP_UPDATE = (function(){
 
   function dismiss(){
     dismissed = true;
-    // Recordar que esta versión ya se cerró: no reaparece hasta que haya otra real
-    if(currentFingerprint) setSeen(currentFingerprint);
+    // Recordar que de esta versión ya se cerró el aviso: no reaparece hasta que haya otra
+    if(publicada) setSeen(publicada);
     if(banner) banner.classList.remove('show');
   }
 
