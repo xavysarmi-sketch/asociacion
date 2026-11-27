@@ -541,7 +541,9 @@ function cuentaGrupoHTML(g,principal){
       const tot0=_cgTotal(g,idx0);
       return `<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#E8F3EC;border:1.5px solid #B7D9C3">
         <span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#1B4332">✅ Cuenta de ${mes0} liquidada<span style="display:block;font-size:13px;font-weight:600;color:#2D6A4F">${_cgMovs(_keyDeIdx(idx0),g.id).some(x=>x.tipo==="pago"||x.tipo==="ayuda"||x.tipo==="salida")?"todo apuntado y cuadrado":nom0+" te ha entregado "+fmtEur(tot0)+" €"} · no falta nada</span></span>
-        <button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#1B4332;font-size:13.5px;font-weight:800;text-decoration:underline;cursor:pointer;padding:4px;white-space:nowrap">Ver detalle</button></div>`; }
+        <button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#1B4332;font-size:13.5px;font-weight:800;text-decoration:underline;cursor:pointer;padding:4px;white-space:nowrap">Ver detalle</button></div>`
+        // v46.70 (Ángel 28/11/2026): con todos resueltos la cuenta sale «liquidada», que es justo cuando hace falta anotar lo que el responsable tiene sin persona
+        +(!mesCerrado(_keyDeIdx(idx0))&&_cgCascada(g,idx0).personas>0?`<button onclick="cgAbrir('${g.id}','tienesin')" class="cgc-link" style="margin-top:4px">＋ Lo tiene ${nom0}, sin persona</button>`:""); }
     // v45.85: «✕ Cerrar» pliega la cuenta en una línea (también cuando ya tiene apuntes); al tocarla se abre otra vez
     // v46.67: plegada, dice la misma cifra que la cuenta en cascada
     const f0=_cgCascada(g,idx0).falta, est0=f0>0?"falta que te entregue "+fmtEur(f0)+" €":f0<0?"le debes "+fmtEur(-f0)+" €":_cgCerrada(g)?"liquidada":"cuenta cuadrada";
@@ -613,7 +615,7 @@ function cuentaGrupoHTML(g,principal){
       <input id="cg-acu-nota" type="text" class="m-input" maxlength="200" placeholder="Ej: lo de septiembre y octubre" style="font-size:16px">
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Si sabes de qué personas es, mejor márcalas en su mes como «Lo tiene ${nom}». Esto pasa solo a los meses siguientes hasta que lo entregue y lo entregado lo cubre primero.</div>
       <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgAcordadoGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
-  else if(!cerrada&&!_cgCfg(g,idx).acordado)h+=`<button onclick="cgAbrir('${g.id}','acordado')" class="cgc-link">＋ Pendiente anterior acordado</button>`;
+  else if(!mesCerrado(key)&&!_cgCfg(g,idx).acordado)h+=`<button onclick="cgAbrir('${g.id}','acordado')" class="cgc-link">＋ Pendiente anterior acordado</button>`; // v46.70: también liquidada
   // v46.69 (Ángel 27/11/2026): «Lo tiene el responsable, sin persona» (lo que le sobró del grupo, sin saber de quién es)
   { const ts0=_cgCfg(g,idx).tieneSin, k="cgsin-"+g.id, arm=!!DESP[k];
     if(formTipo==="tienesin")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">
@@ -623,8 +625,8 @@ function cuentaGrupoHTML(g,principal){
       <input id="cg-sin-nota" type="text" class="m-input" maxlength="200" placeholder="Ej: lo que le sobró del grupo" style="font-size:16px">
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Las personas siguen como «Resuelto». Este dinero no cuenta para ayudas de ${mesTxt} hasta que lo entregue: pasa solo a los meses siguientes y lo entregado lo cubre primero, como lo demás.</div>
       <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgTieneSinGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
-    else if(ts0&&ts0.importe>0&&!cerrada)h+=`<button onclick="${arm?`cgTieneSinBorrar('${g.id}')`:`DESP['${k}']=true;render()`}" class="cgc-link">${arm?`¿Quitar los ${fmtEur(ts0.importe)} € sin persona? Toca otra vez`:`✕ Quitar «Lo tiene ${nom}, sin persona: ${fmtEur(ts0.importe)} €»`}</button>`;
-    else if(!cerrada&&c.personas>0)h+=`<button onclick="cgAbrir('${g.id}','tienesin')" class="cgc-link">＋ Lo tiene ${nom}, sin persona</button>`; }
+    else if(ts0&&ts0.importe>0&&!mesCerrado(key))h+=`<button onclick="${arm?`cgTieneSinBorrar('${g.id}')`:`DESP['${k}']=true;render()`}" class="cgc-link">${arm?`¿Quitar los ${fmtEur(ts0.importe)} € sin persona? Toca otra vez`:`✕ Quitar «Lo tiene ${nom}, sin persona: ${fmtEur(ts0.importe)} €»`}</button>`;
+    else if(!mesCerrado(key)&&c.personas>0)h+=`<button onclick="cgAbrir('${g.id}','tienesin')" class="cgc-link">＋ Lo tiene ${nom}, sin persona</button>`; } // v46.70: también liquidada
   if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #A63A20;background:#fff;color:#A63A20;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pagado los ${fmtEur(-falta)} €</button>`;
   if(CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="tarde")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`; // v46.38
   else if(falta>0&&!cerrada)h+=`<button onclick="cgAbrir('${g.id}','tarde')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">🕒 ＋ Alguien paga más tarde</button>`;
