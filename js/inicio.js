@@ -89,6 +89,7 @@ function inicioHTML(){
     ${d.salido&&_r2(d.enCaja)!==_r2(d.disponible)?`<div class="ay-fila"><span>En caja hoy</span><b style="${rojo(d.enCaja)}">${fmtEur(d.enCaja)} €</b></div>`:""}
     ${d.porPagar?`<div class="ay-fila"><span>Salidas por pagar este mes</span><b>−${fmtEur(d.porPagar)} €</b></div>`:""}
     <div class="ay-fila ay-total"><span>Disponible para ayudas</span><b style="font-size:19px;${rojo(d.disponible)}">${fmtEur(d.disponible)} €</b></div>
+    ${retenidoInfoHTML(d)}
     ${d.porCobrar>0?`<div class="ini-sin" style="margin-top:2px">Falta por cobrar ${fmtEur(d.porCobrar)} €.</div>`:""}
     ${d.alCierre<0?`<div style="margin-top:6px;padding:8px 10px;border-radius:10px;background:#FFF4E5;border:1px solid #E0A040;color:#8A4F12;font-size:13.5px;font-weight:700">⚠️ Aunque se cobre todo, este mes no llega: faltarían ${fmtEur(-d.alCierre)} €.</div>`:""}
     <div style="margin-top:8px;font-size:14px;font-weight:800;color:#1B4332">Ver el detalle en Ayudas ›</div></div>`;

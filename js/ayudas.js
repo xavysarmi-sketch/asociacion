@@ -280,6 +280,13 @@ function dineroMesCuerpoHTML(d){
   if(d.alCierre<0)h+=`<div style="margin-top:6px;padding:9px 11px;border-radius:10px;background:#FFF4E5;border:1px solid #E0A040;color:#8A4F12;font-size:12.5px;font-weight:700;line-height:1.4">⚠️ Aunque se cobre todo, este mes faltan ${fmtEur(-d.alCierre)} €.</div>`;
   return h;
 }
+// v46.69 (Maestro v18.91 · GE-7, AY-9): lo que tienen los responsables sin entregar (no cuenta) y lo que entregan de meses anteriores (sí cuenta)
+function retenidoInfoHTML(d){
+  if(!(d&&(d.retenido>0||d.recuperado>0)))return "";
+  const nom=x=>escH(x.p.name.split(" ")[0]);
+  const r=d.grupos.filter(x=>x.ret>0).map(x=>`${nom(x)} ${fmtEur(x.ret)} €`).join(", "), c=d.grupos.filter(x=>x.cov>0).map(x=>`${nom(x)} ${fmtEur(x.cov)} €`).join(", ");
+  return `<div class="cgc-tiene" style="margin-top:6px">${d.retenido>0?`👜 No cuentan <b>${fmtEur(d.retenido)} €</b> que tienen los responsables sin entregar (${r}): esas personas están al día.`:""}${d.retenido>0&&d.recuperado>0?"<br>":""}${d.recuperado>0?`✅ Incluye <b>${fmtEur(d.recuperado)} €</b> entregados este mes de meses anteriores (${c}).`:""}</div>`;
+}
 function origenCobradoHTML(d){
   const ab=!!DESP["ay-origen"];
   let h=`<button class="ay-desp" aria-expanded="${ab?"true":"false"}" onclick="DESP['ay-origen']=!DESP['ay-origen'];render()" style="display:flex;align-items:center;gap:10px;min-height:44px;background:none;border:none;color:#2D6A4F;font-size:14.5px;font-weight:700;cursor:pointer;padding:8px 0 0">¿De dónde viene lo cobrado? <span class="mg-acc-fl${ab?" ab":""}" aria-hidden="true"></span></button>`;
@@ -299,6 +306,7 @@ function ayudasTabHTML(){
   const fila=(l,v,st)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 0;font-size:14px"><span>${l}</span><b style="white-space:nowrap;${st||""}">${v}</b></div>`;
   let h=`<div class="mes-card"><div class="mes-title" style="margin-bottom:8px">💰 Dinero del mes · ${mesTxt}</div>
     ${dineroMesCuerpoHTML(d)}
+    ${retenidoInfoHTML(d)}
     ${pend.length?`${fila("Te han pedido en total",fmtEur(pedido)+" €")}
     <div style="margin-top:6px;padding:9px 11px;border-radius:10px;font-size:14px;font-weight:800;background:${dif>=0?"#E3F1E7":"#FFF4E5"};color:${dif>=0?"#1B7A3D":"#8A4F12"}">${dif>=0?"✅ Te alcanza para todas":"⚠️ No alcanza para todas: mira cada solicitud"}</div>`:""}`;
   h+=origenCobradoHTML(d); // v45.23

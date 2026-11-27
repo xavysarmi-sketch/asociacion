@@ -802,7 +802,7 @@ body.nh-admin .ficha-row-lbl{font-size:14.5px}
 body.nh-admin .desglose-title{font-size:14.5px}
 body.nh-admin .desglose-line-lbl{font-size:14.5px}
 body.nh-admin .cuota-hist-row{font-size:14.5px}
-body.nh-admin /* Historial beneficios mes a mes */
+body.nh-admin /* Historial beneficios mes a mes */
 .ben-row{font-size:14.5px}
 body.nh-admin .mgmt-btn{font-size:14.5px}
 body.nh-admin .desp-hint{font-size:13px}
@@ -834,7 +834,7 @@ body.nh-admin .ayuda-progreso{font-size:13px}
 body.nh-admin .ayuda-rest{font-size:14.5px}
 body.nh-admin .cuota-row{font-size:14.5px}
 body.nh-admin .cuota-estado{font-size:13px}
-body.nh-admin /* Seguridad de entorno: aviso persistente cuando producción está bloqueada. */
+body.nh-admin /* Seguridad de entorno: aviso persistente cuando producción está bloqueada. */
 .dev-mode-banner{font-size:14.5px}
 body.nh-admin #app [style*="font-size:10px"]{font-size:12px!important}
 body.nh-admin #app [style*="font-size:10.5px"]{font-size:12.5px!important}
@@ -1609,6 +1609,17 @@ body.nh-admin .sol-bot>button{flex:1 1 0!important;min-width:max-content;padding
 .cgc-via{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:4px 0 0 10px;font-size:.82rem;color:#2D6A4F;font-weight:700}
 .cgc-via.dir{color:#7A4A12}
 .cgc-via button{margin-left:auto;border:1.5px solid currentColor;background:#fff;color:inherit;border-radius:8px;padding:5px 9px;min-height:34px;font-size:.8rem;font-weight:800;cursor:pointer;font-family:inherit}
+/* v46.69 · «Lo tiene el responsable» (GE-7) */
+.cgc-via.tiene{color:#8A4F12}
+.cgc-via .cgc-via-b{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.cgc-via .cgc-via-b button{margin-left:0}
+.cgc-tiene{margin-top:8px;padding:9px 11px;border-radius:9px;background:#FFF4E5;border:1.5px solid #E0A040;color:#6B4210;font-size:.88rem;line-height:1.4}
+.cgc-tiene-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px;font-weight:800;color:#6B4210}
+.cgc-tiene-f span{font-weight:600;opacity:.8}
+.cgc-tiene-f input{flex:1 1 9rem;min-width:0;min-height:40px;padding:6px 8px;border:1.5px solid #D9B98A;border-radius:8px;font-size:1rem;font-family:inherit;background:#fff}
+.cgc-cub{margin-top:8px;padding:8px 11px;border-radius:9px;background:#E8F3EC;border:1.5px solid #B7D9C3;color:#1B4332;font-size:.86rem;font-weight:700;line-height:1.35}
+.cgc-link{display:block;width:100%;margin-top:8px;padding:8px;border:none;background:none;color:#6E6048;font-size:.86rem;font-weight:800;text-decoration:underline;cursor:pointer;font-family:inherit;min-height:40px}
+.cgr-aviso{display:block;width:100%;text-align:left;margin:0 0 8px;padding:10px 12px;border-radius:10px;background:#FFF4E5;border:1.5px solid #E0A040;color:#6B4210;font-size:.9rem;font-weight:700;line-height:1.4;cursor:pointer;font-family:inherit}
 /* v46.67 · Notas personales (notas.js): borde de rayas, no es dinero */
 .nota-caja{border:2px dashed #8C7BAF;background:#F7F4FB;border-radius:12px;padding:10px 12px;color:#3C3350}
 .nota-cab{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:.92rem}

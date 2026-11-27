@@ -66,7 +66,8 @@ function datosPrivadosDe(m){
       ...(s.historial&&s.historial.length?{historial:s.historial.map(h=>({mes:h.mes,a:h.a,motivo:h.motivo}))}:{})}))};
   if(DATA.diaAvisoProximo!=null)d.diaAvisoProximo=DATA.diaAvisoProximo;
   if(DATA.mesAutoAplicado)d.mesAutoAplicado=DATA.mesAutoAplicado;
-  if(g)Object.entries(DATA.cuentasGrupo||{}).forEach(([k,v])=>{ if(v&&v[g.id])d.cuentasGrupo[k]={[g.id]:_copia(v[g.id])}; });
+  // v46.69 (Ángel 27/11/2026): «lo tiene el responsable», su fecha y el «pendiente anterior acordado» no llegan a la app de asociados (GE-7)
+  if(g)Object.entries(DATA.cuentasGrupo||{}).forEach(([k,v])=>{ if(v&&v[g.id]){ const c=_copia(v[g.id]); delete c.tiene; delete c.tieneFecha; delete c.acordado; d.cuentasGrupo[k]={[g.id]:c}; } });
   return d;
 }
 // A quién fue el dinero de un aporte temporal es cosa del administrador: no va en la ficha

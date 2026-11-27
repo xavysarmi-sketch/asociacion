@@ -86,6 +86,8 @@ function cajaMesHTML(rm,ry,num){ // v46.31: num = número del apartado; sin fila
     <tr class="doc-subt"><td colspan="2">Dónde está el dinero del fondo al cerrar ${mesF}</td></tr>
     ${f(`Prestado en ayudas <span class="doc-sub">(falta que lo devuelvan)</span>`,c.cartera)}
     ${f(c.fin<0?'En caja <span class="doc-sub">(en negativo: lo adelantó el coordinador)</span>':"En caja",c.fin)}
+    ${(()=>{ const ix=_idxMes(rm,ry), ret=_r2(gruposCierre().reduce((a,g)=>a+_cgRetCaja(g,ix).colaFin,0)); // v46.69 (GE-7, FO-2): no es sobrante
+      return ret>0?`<tr><td><span class="doc-sub">De esto, lo tienen los responsables sin entregar (GE-7): no es sobrante</span></td><td class="n">${_eur(ret)}</td></tr>`:""; })()}
     <tr><td><b>Total del fondo</b></td><td class="n"><b>${_eur(tf)}</b></td></tr>
     <tr class="doc-subt"><td colspan="2">De quién es</td></tr>
     ${f("Aportes de los asociados",c.acAp)}

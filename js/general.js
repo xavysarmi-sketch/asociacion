@@ -442,6 +442,7 @@ function _renderPantalla(){
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Para ver otro mes, cámbialo arriba (📅 Mes de trabajo).</div>
       ${_dm.previsto>0?`<div class="cgt-cifras" style="font-size:15px">Cobrado <b>${fmtEur(_cobM)} €</b> de ${fmtEur(_dm.previsto)} €${_dm.porCobrar>0?` · faltan <b style="color:var(--warm-txt)">${fmtEur(_dm.porCobrar)} €</b>`:" · ✅ todo"}</div>
       <div class="reserva-bar-bg" style="margin:6px 0 12px"><div class="reserva-bar-fill" style="width:${_pctM}%"></div></div>`:""}
+      ${cgAvisoRetenidoHTML()}
       ${mesCerrado(getMesKey(rm,ry))?`<div style="margin:0 0 10px;padding:9px 11px;border-radius:10px;background:#1B4332;color:#fff;font-size:14px;font-weight:800">🔒 Este mes está cerrado: no se puede marcar ni desmarcar nada. Para cambiarlo, reábrelo abajo.</div>`:""}
       <input id="cierre-search" type="text" placeholder="Buscar persona…" oninput="filtrarEnVivo(this.value,'#cierre-listas')"
         style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box">
@@ -656,8 +657,18 @@ function _renderPantalla(){
                 <div style="display:flex;align-items:center;gap:10px"><span class="cob-tot-amt" style="font-size:15px;font-weight:800;color:${pag?"#2D6A4F":"var(--dark)"}">${fmtEur(subtotal)} €</span><span class="toggle-btn" style="visibility:hidden"></span></div>
               </div>`; }
             // v46.67: lo pagado cuenta como entregado por su jefe; «Me pagó a mí» lo aparta de la cuenta con el jefe
-            if(lista.some(x=>x.yaPagado)){ const dir=_cgDirectos(g,_idxMes(rm,ry)).includes(pid), nj=escH(principal.name.split(" ")[0]);
-              h+=`<div class="cgc-via${dir?" dir":""}"><span style="min-width:0">${dir?`👤 Te pagó a ti · no resta de la cuenta con ${nj}`:`↪ Pagado a través de ${nj}`}</span><button onclick="cgDirectoToggle('${g.id}','${esc(pid)}')">${dir?`Fue a través de ${nj}`:"Me pagó a mí"}</button></div>`; }
+            // v46.69 (GE-7): cuatro estados · Pendiente · Lo tiene el responsable · Resuelto · Me pagó a mí
+            { const iM=_idxMes(rm,ry), dir=_cgDirectos(g,iM).includes(pid), tn=_cgTiene(g,iM).includes(pid), nj=escH(principal.name.split(" ")[0]), cerr=mesCerrado(getMesKey(rm,ry));
+              const lote=tn?((_cgRetMes(g,iM)||{propios:[]}).propios.find(l=>l.mid===pid)):null, P=`'${g.id}','${esc(pid)}'`;
+              const bD=`<button onclick="cgDirectoToggle(${P})">Me pagó a mí</button>`, bT=`<button onclick="cgTieneToggle(${P})">Lo tiene ${nj}</button>`;
+              let txt="", cls="", bts=[];
+              if(lista.some(x=>x.yaPagado)){
+                if(dir){ cls=" dir"; txt=`👤 Me pagó a mí · no resta de la cuenta con ${nj}`; bts=[`<button onclick="cgDirectoToggle(${P})">Fue a través de ${nj}</button>`]; }
+                else if(tn&&lote&&lote.resta>0){ cls=" tiene"; txt=`👜 Lo tiene ${nj} · al día, falta que te lo entregue${lote.resta<lote.importe?` (${fmtEur(lote.resta)} € de ${fmtEur(lote.importe)} €)`:""}`; bts=[`<button onclick="cgTieneToggle(${P})">Ya lo entregó</button>`,bD]; }
+                else if(tn){ txt=`✅ Resuelto · ${nj} ya lo entregó${lote&&lote.cubierto!=null&&lote.cubierto>iM?" en "+_txtIdx(lote.cubierto).split(" ")[0]:""}`; }
+                else { txt=`✅ Resuelto · a través de ${nj}`; bts=[bT,bD]; }
+              } else { cls=" tiene"; txt="⏳ Pendiente"; bts=[`<button onclick="cgTieneToggle(${P})">Ya pagó a ${nj} (lo tiene)</button>`]; }
+              h+=`<div class="cgc-via${cls}"><span style="min-width:0">${txt}</span>${!cerr&&bts.length?`<div class="cgc-via-b">${bts.join("")}</div>`:""}</div>`; }
             if(typeof notaPersonaHTML==="function")h+=notaPersonaHTML(pid);
             h+=`</div>`;
           });

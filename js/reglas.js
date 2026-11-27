@@ -682,7 +682,7 @@ function auditarNH(){
 function cuadresNH(){
   const errores=[], pendientes=[], r2=x=>Math.round(x*100)/100, eur=v=>fmtEur(r2(v))+" €", dif=(a,b)=>Math.abs(a-b)>0.005;
   const rm=DATA.reportMonth, ry=DATA.reportYear, idx=_idxMes(rm,ry), key=getMesKey(rm,ry), mesTxt=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase()+" "+ry;
-  const enGrupo=new Set(); let indInicio=0, indCobros=0, sinMarcar=0;
+  const enGrupo=new Set(); let indInicio=0, indCobros=0, sinMarcar=0, retTot=0, covTot=0;
   gruposCierre().forEach(g=>{ const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
     const ids=[g.principalId,...(g.miembros||[])]; ids.forEach(x=>enGrupo.add(x));
     let total=0, marcado=0; ids.forEach(id=>itemsDeMiembro(id,rm,ry).forEach(it=>{ total+=it.importe; if(it.yaPagado)marcado+=it.importe; }));
@@ -690,16 +690,20 @@ function cuadresNH(){
     const movs=_cgMovs(key,g.id), suma=t=>r2(movs.filter(x=>x.tipo===t).reduce((a,x)=>a+(+x.importe||0),0));
     const entregas=suma("entrega"), ayudas=suma("ayuda"), salidas=suma("salida"), pagos=suma("pago"), arrastre=suma("arrastre"), pasado=suma("pasado");
     const delGrupo=r2(entregas+ayudas+salidas-pagos);   // lo que de verdad salió del bolsillo del grupo
-    const cob=Math.max(marcado,delGrupo);
-    indInicio+=cob; indCobros+=Math.min(cob,total);
+    // v46.69 (GE-7): lo que tiene el responsable sin entregar de este mes (ret) y lo que entrega de meses anteriores (cov)
+    const rc=_cgRetCaja(g,idx); retTot+=rc.ret; covTot+=rc.cov;
+    const marcadoN=r2(marcado-rc.ret), delN=r2(delGrupo-rc.cov);
+    const cob=Math.max(marcadoN,delN);
+    indInicio+=cob+rc.cov; indCobros+=Math.min(Math.max(marcado,delN),total);
     const nom=p.name.split(" ")[0];
-    if(delGrupo>marcado+0.005){ sinMarcar+=delGrupo-marcado; pendientes.push(`Grupo de ${nom}: ${eur(delGrupo-marcado)} entregados o usados que aún no están marcados persona por persona en Cobros`); }
+    if(delN>marcadoN+0.005){ sinMarcar+=delN-marcadoN; if(delN>marcado+0.005)pendientes.push(`Grupo de ${nom}: ${eur(delN-marcado)} entregados o usados que aún no están marcados persona por persona en Cobros`); }
     if(cob>total+0.005)pendientes.push(`Grupo de ${nom}: ha entregado ${eur(cob-total)} más de lo que tocaba este mes`);
     // Cuadre 3: la cuenta del responsable
     if(movs.length){
       const falta=r2(total+arrastre+pagos-entregas-ayudas-salidas-pasado), app=_cgFaltaApuntes(g,idx);
       if(dif(falta,app))errores.push(`Cuadre 3 · cuenta de ${p.name} (${mesTxt}): debería faltar ${eur(falta)} y la app dice ${eur(app)}`);
-      if(falta<-0.005)pendientes.push(`Grupo de ${nom}: la asociación tiene que pasarle ${eur(-falta)} («＋ Ya le he pasado…» en su cuenta)`);
+      const faltaT=r2(falta+rc.cov+rc.colaFin-rc.ret); // v46.69: lo entregado para meses anteriores no es de este mes, y lo de antes que queda pasa solo (sin eso, igual que antes)
+      if(faltaT<-0.005)pendientes.push(`Grupo de ${nom}: la asociación tiene que pasarle ${eur(-faltaT)} («＋ Ya le he pasado…» en su cuenta)`);
       if(_cgCerrada(g)&&dif(_cgFalta(g,idx),0))errores.push(`Cuadre 3 · cuenta de ${p.name}: sale como liquidada pero le falta ${eur(_cgFalta(g,idx))}`);
     }
   });
@@ -711,8 +715,9 @@ function cuadresNH(){
   if(dif(d.cobrado,indInicio))errores.push(`Cuadre 1 · cobrado de ${mesTxt}: Inicio y Ayudas dicen ${eur(d.cobrado)} y los datos dan ${eur(indInicio)}`);
   if(dif(enCobros,indCobros))errores.push(`Cuadre 1 · cobrado de ${mesTxt}: Cobros dice ${eur(enCobros)} y los datos dan ${eur(indCobros)}`);
   // Cuadre 2: la caja del mes (Inicio/Ayudas) contra la caja oficial; solo puede diferir en lo entregado sin marcar
-  const enCaja=r2(d.cobrado-d.salido), oficial=r2(cm.ent-cm.sal);
-  if(dif(enCaja,r2(oficial+sinMarcar)))errores.push(`Cuadre 2 · caja de ${mesTxt}: Inicio dice ${eur(enCaja)} y la caja oficial ${eur(oficial)}${sinMarcar?` + ${eur(sinMarcar)} sin marcar`:""} = ${eur(oficial+sinMarcar)}`);
+  // v46.69 (Maestro v18.91): ni en lo que tienen los responsables sin entregar (−) ni en lo que entregan de meses anteriores (+)
+  const enCaja=r2(d.cobrado-d.salido), oficial=r2(cm.ent-cm.sal), esperado=r2(oficial+sinMarcar-retTot+covTot);
+  if(dif(enCaja,esperado))errores.push(`Cuadre 2 · caja de ${mesTxt}: Inicio dice ${eur(enCaja)} y la caja oficial ${eur(oficial)}${sinMarcar?` + ${eur(sinMarcar)} sin marcar`:""}${retTot?` − ${eur(retTot)} que tienen los responsables`:""}${covTot?` + ${eur(covTot)} de meses anteriores`:""} = ${eur(esperado)}`);
   // Cuadre 4: cada salida ya calculada: aportes + beneficio que conserva − lo ya retirado − ayuda descontada = lo que se le paga
   DATA.members.forEach(m=>{ const b=m.baja; if(!b||!b.v18||b.total==null)return;
     const esperado=r2((+b.capitalDevuelto||0)+Math.max(0,(+b.beneficioConservado||0)-(+b.beneficioRetiradoAntes||0))-(+b.ayudaDescontada||0));
@@ -1014,15 +1019,20 @@ function dineroAyudasMes(){
     [g.principalId,...(g.miembros||[])].forEach(x=>enGrupo.add(x));
     const items=itemsDeGrupo(g,undefined,undefined,pre), total=_r2(items.reduce((a,it)=>a+it.importe,0)), pagado=_r2(items.filter(it=>it.yaPagado).reduce((a,it)=>a+it.importe,0));
     const movs=_cgMovs(key,g.id), ent=_r2(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida").reduce((a,x)=>a+x.importe,0)-_cgMovs(key,g.id).filter(x=>x.tipo==="pago").reduce((a,x)=>a+x.importe,0)); // v45.77: lo que puso la asociación («pago») no es dinero cobrado al grupo
-    grupos.push({g,p,total,cobrado:Math.max(pagado,ent)}); });
+    // v46.69 (Maestro v18.91 · GE-7, AY-9): lo que el responsable tiene sin entregar de este mes (ret) no cuenta; lo que entrega de meses
+    // anteriores (cov) no es de este mes: va aparte, como «recuperado», y sí cuenta para ayudas. Sin «lo tiene» ni «acordado», ret=cov=0 (igual que antes).
+    const rc=_cgRetCaja(g,idx);
+    grupos.push({g,p,total,cobrado:_r2(Math.max(pagado-rc.ret,ent-rc.cov)),alDia:_r2(Math.max(pagado,ent-rc.cov)),ret:rc.ret,cov:rc.cov}); });
   let rT=0,rC=0; DATA.members.filter(m=>!enGrupo.has(m.id)&&activoEnReporte(m)).forEach(m=>itemsDeMiembro(m.id,undefined,undefined,pre).forEach(it=>{ rT+=it.importe; if(it.yaPagado)rC+=it.importe; }));
-  const cobrado=_r2(grupos.reduce((a,x)=>a+x.cobrado,0)+rC+(c.puntIn||0));
+  const retenido=_r2(grupos.reduce((a,x)=>a+x.ret,0)), recuperado=_r2(grupos.reduce((a,x)=>a+x.cov,0)); // v46.69
+  const cobrado=_r2(grupos.reduce((a,x)=>a+x.cobrado,0)+rC+(c.puntIn||0)+recuperado);
   const porPagar=_r2(salidasPrevistas(rm,ry).lista.filter(x=>x.clase==="comp"&&x.pagoIdx<=idx).reduce((a,x)=>a+x.importe,0));
   const salido=_r2(c.salidas||0), disponible=_r2(cobrado-salido-porPagar);
   // v45.23: lo previsto del mes (mismas cuentas que lo cobrado) para «si se cobra todo»
-  const previsto=_r2(grupos.reduce((a,x)=>a+x.total,0)+rT), cobradoMes=_r2(grupos.reduce((a,x)=>a+Math.min(x.cobrado,x.total),0)+rC);
-  const porCobrar=Math.max(0,_r2(previsto-cobradoMes)), alCierre=_r2(disponible+porCobrar);
-  return {grupos,resto:{total:_r2(rT),cobrado:_r2(rC)},puntIn:c.puntIn||0,cobrado,salido,ayudasDadas:c.apoyos||0,gastos:c.gastos||0,porPagar,disponible,previsto,porCobrar,alCierre,enCaja:_r2(cobrado-salido)};
+  // v46.69: en «lo cobrado del mes» (Cobros) quien está en «lo tiene el responsable» cuenta como al día (alDia); el dinero, no (retenido)
+  const previsto=_r2(grupos.reduce((a,x)=>a+x.total,0)+rT), cobradoMes=_r2(grupos.reduce((a,x)=>a+Math.min(x.alDia,x.total),0)+rC);
+  const porCobrar=Math.max(0,_r2(previsto-cobradoMes)), alCierre=_r2(disponible+porCobrar+retenido);
+  return {grupos,resto:{total:_r2(rT),cobrado:_r2(rC)},puntIn:c.puntIn||0,cobrado,salido,ayudasDadas:c.apoyos||0,gastos:c.gastos||0,porPagar,disponible,previsto,porCobrar,alCierre,enCaja:_r2(cobrado-salido),retenido,recuperado};
 }
 
 // v45.47: desde el mes de su salida, las cuotas que le quedan no se cobran: se descuentan de lo que

@@ -363,6 +363,7 @@ function comprobacionCierre(){
     {ok:!solP,txt:solP?`${solP} ${solP===1?"solicitud":"solicitudes"} de ${mesTxt} sin decidir (Ayudas)`:"Ninguna solicitud sin decidir"},
     {ok:!(d.porPagar>0),txt:d.porPagar>0?`Salidas de ${mesTxt} sin marcar como pagadas: ${fmtEur(d.porPagar)} € (Más › Histórico)`:"Las salidas del mes, pagadas"},
     ...aporteBajo.map(x=>({ok:false,txt:x})),
+    ...(d.retenido>0?[{ok:false,txt:`Lo tienen los responsables sin entregar: ${d.grupos.filter(x=>x.ret>0).map(x=>x.p.name.split(" ")[0]+" "+fmtEur(x.ret)+" €").join(", ")}. No cuenta en la caja; pasa solo al mes siguiente (GE-7)`}]:[]), // v46.69
   ]};
 }
 // v46.31: meses para el desplegable «Actas de cierre»: del mes de trabajo hacia atrás hasta agosto 2025
