@@ -802,7 +802,7 @@ body.nh-admin .ficha-row-lbl{font-size:14.5px}
 body.nh-admin .desglose-title{font-size:14.5px}
 body.nh-admin .desglose-line-lbl{font-size:14.5px}
 body.nh-admin .cuota-hist-row{font-size:14.5px}
-body.nh-admin /* Historial beneficios mes a mes */
+body.nh-admin /* Historial beneficios mes a mes */
 .ben-row{font-size:14.5px}
 body.nh-admin .mgmt-btn{font-size:14.5px}
 body.nh-admin .desp-hint{font-size:13px}
@@ -834,7 +834,7 @@ body.nh-admin .ayuda-progreso{font-size:13px}
 body.nh-admin .ayuda-rest{font-size:14.5px}
 body.nh-admin .cuota-row{font-size:14.5px}
 body.nh-admin .cuota-estado{font-size:13px}
-body.nh-admin /* Seguridad de entorno: aviso persistente cuando producción está bloqueada. */
+body.nh-admin /* Seguridad de entorno: aviso persistente cuando producción está bloqueada. */
 .dev-mode-banner{font-size:14.5px}
 body.nh-admin #app [style*="font-size:10px"]{font-size:12px!important}
 body.nh-admin #app [style*="font-size:10.5px"]{font-size:12.5px!important}
