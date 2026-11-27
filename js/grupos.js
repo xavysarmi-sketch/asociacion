@@ -274,7 +274,7 @@ function _idxDeKey(k){ const [y,m]=String(k).split("-").map(Number); return y*12
 // Un lote cubierto del todo = esa persona pasa sola a «Resuelto» (lote.cubierto = mes en que se cubrió). Nada se escribe en los meses cerrados.
 function _cgRet(g){
   const mk="cgret|"+g.id; if(_MEMO_RENDER&&_MEMO_RENDER[mk])return _MEMO_RENDER[mk];
-  const keys=Object.keys(DATA.cuentasGrupo||{}).filter(k=>{ const c=DATA.cuentasGrupo[k]&&DATA.cuentasGrupo[k][g.id]; return c&&((c.tiene&&c.tiene.length)||(c.acordado&&c.acordado.importe>0)); }).sort();
+  const keys=Object.keys(DATA.cuentasGrupo||{}).filter(k=>{ const c=DATA.cuentasGrupo[k]&&DATA.cuentasGrupo[k][g.id]; return c&&((c.tiene&&c.tiene.length)||(c.acordado&&c.acordado.importe>0)||(c.tieneSin&&c.tieneSin.importe>0)); }).sort();
   const out={meses:{},lotes:[]};
   if(keys.length){
     const S=a=>_r2(a.reduce((s,x)=>s+(+x.importe||0),0)), cola=[];
@@ -283,20 +283,27 @@ function _cgRet(g){
     const ini=_idxDeKey(keys[0]), fin=Math.max(_idxMes(DATA.reportMonth,DATA.reportYear),_idxDeKey(conDatos[conDatos.length-1]));
     for(let i=ini;i<=fin;i++)_sinCrearMes(i,()=>{
       const {mes,anio}=_mesDeIdx(i), c=_cgCfg(g,i), movs=c.movs||[], dir=new Set(c.directo||[]), tiene=_cgTiene(g,i), ts=new Set(tiene);
-      const items=(tiene.length||movs.length||cola.some(l=>l.resta>0))?itemsDeGrupo(g,mes,anio):[];
+      const sinRaw=(c.tieneSin&&c.tieneSin.importe>0)?_r2(c.tieneSin.importe):0;
+      const items=(tiene.length||sinRaw||movs.length||cola.some(l=>l.resta>0))?itemsDeGrupo(g,mes,anio):[];
       if(c.acordado&&c.acordado.importe>0){ const l={mes:i,tipo:"acordado",nombre:"",nota:c.acordado.nota||"",importe:_r2(c.acordado.importe),resta:_r2(c.acordado.importe),fecha:c.acordado.fecha||"",cubierto:null};
         cola.unshift(l); out.lotes.push(l); }
       const inicio=cola.filter(l=>l.resta>0).map(l=>({mes:l.mes,tipo:l.tipo,mid:l.mid,nombre:l.nombre,nota:l.nota,fecha:l.fecha,resta:l.resta}));
       const usado=S(movs.filter(x=>x.tipo==="entrega"||x.tipo==="ayuda"||x.tipo==="salida"));
       let pool=usado; const cov=[];
       cola.forEach(l=>{ if(pool<=0||l.resta<=0)return; const v=_r2(Math.min(l.resta,pool)); l.resta=_r2(l.resta-v); pool=_r2(pool-v); cov.push({mes:l.mes,tipo:l.tipo,mid:l.mid,v}); if(l.resta<=0)l.cubierto=i; });
-      const covAnt=_r2(usado-pool), P=S(items.filter(it=>it.yaPagado&&!dir.has(it.mid)&&!ts.has(it.mid)));
+      const covAnt=_r2(usado-pool), P0=S(items.filter(it=>it.yaPagado&&!dir.has(it.mid)&&!ts.has(it.mid)));
+      // v46.69 (Ángel 27/11/2026): «Lo tiene el responsable, sin persona»: dinero de personas ya resueltas que él aún no ha entregado
+      // (lo que le sobró del grupo). Sale de lo resuelto (como mucho, lo resuelto) y es un lote más del mes, delante de las personas.
+      const sinP=_r2(Math.min(sinRaw,P0)), P=_r2(P0-sinP);
       pool=_r2(pool-Math.min(P,pool));
-      const propios=[]; tiene.forEach(mid=>{ const v=S(items.filter(it=>it.mid===mid&&it.yaPagado)); if(!(v>0))return;
+      const propios=[];
+      if(sinP>0){ const cub=_r2(Math.min(sinP,Math.max(0,pool))), l={mes:i,tipo:"sin",nombre:"",nota:c.tieneSin.nota||"",importe:sinP,resta:_r2(sinP-cub),fecha:c.tieneFecha||"",cubierto:null};
+        pool=_r2(pool-cub); if(l.resta<=0)l.cubierto=i; propios.push(l); out.lotes.push(l); cola.push(l); }
+      tiene.forEach(mid=>{ const v=S(items.filter(it=>it.mid===mid&&it.yaPagado)); if(!(v>0))return;
         const m=DATA.members.find(x=>x.id===mid), cub=_r2(Math.min(v,Math.max(0,pool)));
         const l={mes:i,tipo:"persona",mid,nombre:m?m.name:"",importe:v,resta:_r2(v-cub),fecha:c.tieneFecha||"",cubierto:null}; pool=_r2(pool-cub);
         if(l.resta<=0)l.cubierto=i; propios.push(l); out.lotes.push(l); cola.push(l); });
-      out.meses[i]={inicio,antes:_r2(inicio.reduce((a,l)=>a+l.resta,0)),cov,covAnt,propios,tieneTot:S(propios),ret:_r2(propios.reduce((a,l)=>a+l.resta,0)),colaFin:_r2(cola.reduce((a,l)=>a+Math.max(0,l.resta),0))};
+      out.meses[i]={sinP,inicio,antes:_r2(inicio.reduce((a,l)=>a+l.resta,0)),cov,covAnt,propios,tieneTot:S(propios),ret:_r2(propios.reduce((a,l)=>a+l.resta,0)),colaFin:_r2(cola.reduce((a,l)=>a+Math.max(0,l.resta),0))};
     });
   }
   if(_MEMO_RENDER)_MEMO_RENDER[mk]=out;
@@ -309,7 +316,7 @@ function _cgLineasAntes(inicio){
   (inicio||[]).forEach(l=>{ if(!(l.resta>0))return;
     if(l.tipo==="acordado"){ out.push({tipo:"acordado",mes:l.mes,titulo:"Pendiente anterior acordado",sub:l.nota||"sin nota",v:l.resta,personas:[]}); return; }
     let L=porMes[l.mes]; if(!L){ L=porMes[l.mes]={tipo:"mes",mes:l.mes,titulo:"Pendiente de "+_txtIdx(l.mes).split(" ")[0],v:0,personas:[],fecha:l.fecha||""}; }
-    L.v=_r2(L.v+l.resta); L.personas.push(String(l.nombre||"").split(" ")[0]); });
+    L.v=_r2(L.v+l.resta); L.personas.push(l.tipo==="sin"?(l.nota||"sin persona"):String(l.nombre||"").split(" ")[0]); });
   Object.keys(porMes).map(Number).sort((a,b)=>a-b).forEach(i=>{ const L=porMes[i]; L.sub=L.personas.join(", ")+(L.fecha?" · acordado para el "+_fechaAcordadaTxt(L.fecha):""); out.push(L); });
   return out;
 }
@@ -324,7 +331,7 @@ function _cgCascada(g,idx,pre){ return _sinCrearMes(idx,()=>{
   const {mes,anio}=_mesDeIdx(idx), items=itemsDeGrupo(g,mes,anio,pre), movs=_cgMovs(_keyDeIdx(idx),g.id), dir=new Set(_cgDirectos(g,idx));
   const S=a=>_r2(a.reduce((s,x)=>s+(+x.importe||0),0)), T=t=>S(movs.filter(x=>x.tipo===t));
   const R=_cgRetMes(g,idx), ts=new Set(_cgTiene(g,idx)); // v46.69: «lo tiene el responsable» no resta (sigue en lo que falta)
-  const total=S(items), directo=S(items.filter(it=>it.yaPagado&&dir.has(it.mid))), personas=S(items.filter(it=>it.yaPagado&&!dir.has(it.mid)&&!ts.has(it.mid)));
+  const total=S(items), directo=S(items.filter(it=>it.yaPagado&&dir.has(it.mid))), personas=_r2(S(items.filter(it=>it.yaPagado&&!dir.has(it.mid)&&!ts.has(it.mid)))-(R?R.sinP:0)); // v46.69: − «sin persona»
   const entregas=T("entrega"), ayudas=T("ayuda"), salidas=T("salida"), pago=T("pago"), arrastre=T("arrastre"), pasado=T("pasado");
   const antes=R?R.antes:0, covAnt=R?R.covAnt:0; // v46.69: pendiente de meses anteriores (pasa solo) y lo que lo entregado este mes cubrió de ahí
   const usado=_r2(entregas+ayudas+salidas), usadoEf=_r2(usado-covAnt), solape=_r2(Math.min(personas,usadoEf)), sinEntrega=_r2(Math.max(0,personas-usadoEf)); // v46.68: «pagados sin entrega anotada»
@@ -332,7 +339,7 @@ function _cgCascada(g,idx,pre){ return _sinCrearMes(idx,()=>{
   // tiene = lo que el jefe puede pagar todavía en ayudas sin que se le deba nada (lo que falta + lo marcado aún sin usar)
   const tiene=_r2(Math.max(0,falta+Math.max(0,personas-usadoEf)));
   return {items,movs,dir,total,directo,personas,entregas,ayudas,salidas,usado,solape,sinEntrega,pago,arrastre,pasado,falta,tiene,todo:items.length>0&&items.every(it=>it.yaPagado),
-    ts,antes,covAnt,inicio:R?R.inicio:[],propios:R?R.propios:[],ret:R?R.ret:0,tieneTot:R?R.tieneTot:0};
+    ts,antes,covAnt,inicio:R?R.inicio:[],propios:R?R.propios:[],ret:R?R.ret:0,tieneTot:R?R.tieneTot:0,sinP:R?R.sinP:0};
 }); }
 // «Me pagó a mí»: cambia solo la marca de la persona en la cuenta del jefe (no marca ni desmarca cobros)
 function cgDirectoToggle(gid,mid){
@@ -373,6 +380,17 @@ function cgAcordadoGuardar(gid){
   if(!(v>0)){toast("Escribe el importe acordado");return;}
   _cgW(getMesKey(DATA.reportMonth,DATA.reportYear),gid).acordado={importe:_r2(v),nota,fecha:_cgHoy()};
   CG_FORM=null; save(); render(); toast("Apuntado ✓ · pendiente anterior acordado");
+}
+function cgTieneSinGuardar(gid){
+  if(_mesBloqueado())return;
+  const v=numES((document.getElementById("cg-sin-imp")||{}).value), nota=String((document.getElementById("cg-sin-nota")||{}).value||"").trim().slice(0,200);
+  if(!(v>0)){toast("Escribe cuánto tiene sin entregar");return;}
+  _cgW(getMesKey(DATA.reportMonth,DATA.reportYear),gid).tieneSin={importe:_r2(v),nota,fecha:_cgHoy()};
+  CG_FORM=null; save(); render(); toast("Apuntado ✓ · lo tiene el responsable, sin persona");
+}
+function cgTieneSinBorrar(gid){
+  if(_mesBloqueado())return;
+  const c=_cgW(getMesKey(DATA.reportMonth,DATA.reportYear),gid); delete c.tieneSin; delete DESP["cgsin-"+gid]; save(); render(); toast("Quitado ✓");
 }
 function cgAcordadoBorrar(gid){
   if(_mesBloqueado())return;
@@ -574,7 +592,7 @@ function cuentaGrupoHTML(g,principal){
   if(c.ret>0&&!c.propios.some(l=>l.resta>0)){ const cm=Math.max(...c.propios.map(l=>l.cubierto==null?idx:l.cubierto)); // v46.69: ya lo entregó en un mes posterior
     h+=`<div class="cgc-cub">✅ Los ${fmtEur(c.ret)} € que tenía ${nom} de este mes los entregó${cm>idx?" en "+_txtIdx(cm).split(" ")[0]:""}: esas personas ya están resueltas.</div>`; }
   else if(c.ret>0){ const ps=c.propios.filter(l=>l.resta>0), fe=(_cgCfg(g,idx).tieneFecha)||"", rq=_r2(ps.reduce((a,l)=>a+l.resta,0));
-    h+=`<div class="cgc-tiene">👜 Incluye <b>${fmtEur(rq)} €</b> que ya le pagaron a ${nom} y aún no te ha entregado: ${ps.map(l=>escH(pn(l.nombre))).join(", ")}. Esas personas están al día, pero ese dinero no cuenta para ayudas hasta que lo entregue.
+    h+=`<div class="cgc-tiene">👜 Incluye <b>${fmtEur(rq)} €</b> que ya le pagaron a ${nom} y aún no te ha entregado: ${ps.map(l=>l.tipo==="sin"?`${fmtEur(l.resta)} € sin persona${l.nota?" ("+escH(l.nota)+")":""}`:escH(pn(l.nombre))).join(", ")}. Esas personas están al día, pero ese dinero no cuenta para ayudas hasta que lo entregue.
       ${cerrada?"":`<label class="cgc-tiene-f">Fecha acordada <span>(opcional)</span><input type="date" value="${escH(fe)}" onchange="cgTieneFecha('${g.id}',this.value)"></label>`}</div>`; }
   if(c.covAnt>0)h+=`<div class="cgc-cub">✅ De lo entregado este mes, ${fmtEur(c.covAnt)} € cubren lo pendiente de meses anteriores: esas personas ya están resueltas.</div>`;
   { const td=falta>0?_cgTarde(g,idx):[]; if(td.length){ const tt=_r2(td.reduce((a,x)=>a+x.v,0)); // v46.38
@@ -596,6 +614,17 @@ function cuentaGrupoHTML(g,principal){
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Si sabes de qué personas es, mejor márcalas en su mes como «Lo tiene ${nom}». Esto pasa solo a los meses siguientes hasta que lo entregue y lo entregado lo cubre primero.</div>
       <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgAcordadoGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
   else if(!cerrada&&!_cgCfg(g,idx).acordado)h+=`<button onclick="cgAbrir('${g.id}','acordado')" class="cgc-link">＋ Pendiente anterior acordado</button>`;
+  // v46.69 (Ángel 27/11/2026): «Lo tiene el responsable, sin persona» (lo que le sobró del grupo, sin saber de quién es)
+  { const ts0=_cgCfg(g,idx).tieneSin, k="cgsin-"+g.id, arm=!!DESP[k];
+    if(formTipo==="tienesin")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">
+      <label class="m-label" style="margin-top:10px">¿Cuánto tiene ${nom} de ${mesTxt} sin entregar, sin ser de una persona concreta?</label>
+      <input id="cg-sin-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 223" style="font-size:16px">
+      <label class="m-label">Nota <span style="font-weight:600;color:var(--muted)">(opcional)</span></label>
+      <input id="cg-sin-nota" type="text" class="m-input" maxlength="200" placeholder="Ej: lo que le sobró del grupo" style="font-size:16px">
+      <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Las personas siguen como «Resuelto». Este dinero no cuenta para ayudas de ${mesTxt} hasta que lo entregue: pasa solo a los meses siguientes y lo entregado lo cubre primero, como lo demás.</div>
+      <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgTieneSinGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
+    else if(ts0&&ts0.importe>0&&!cerrada)h+=`<button onclick="${arm?`cgTieneSinBorrar('${g.id}')`:`DESP['${k}']=true;render()`}" class="cgc-link">${arm?`¿Quitar los ${fmtEur(ts0.importe)} € sin persona? Toca otra vez`:`✕ Quitar «Lo tiene ${nom}, sin persona: ${fmtEur(ts0.importe)} €»`}</button>`;
+    else if(!cerrada&&c.personas>0)h+=`<button onclick="cgAbrir('${g.id}','tienesin')" class="cgc-link">＋ Lo tiene ${nom}, sin persona</button>`; }
   if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #A63A20;background:#fff;color:#A63A20;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pagado los ${fmtEur(-falta)} €</button>`;
   if(CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="tarde")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`; // v46.38
   else if(falta>0&&!cerrada)h+=`<button onclick="cgAbrir('${g.id}','tarde')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">🕒 ＋ Alguien paga más tarde</button>`;
@@ -689,7 +718,7 @@ function cgAvisoRetenidoHTML(){
   gruposCierre().forEach(g=>{ const p=DATA.members.find(m=>m.id===g.principalId); if(!p)return;
     const ls=_cgRetPendiente(g,iHoy); if(!ls.length)return;
     const tot=_r2(ls.reduce((a,l)=>a+l.resta,0)), meses=[...new Set(ls.map(l=>l.tipo==="acordado"?"antes (acordado)":_txtIdx(l.mes).split(" ")[0]))];
-    const fe=[...new Set(ls.map(l=>l.tipo==="persona"?l.fecha:"").filter(Boolean))].map(_fechaAcordadaTxt);
+    const fe=[...new Set(ls.map(l=>l.tipo!=="acordado"?l.fecha:"").filter(Boolean))].map(_fechaAcordadaTxt);
     out.push(`<button class="cgr-aviso" onclick="abrirGrupoCobros('${g.id}')">⚠️ ${escH(p.name.split(" ")[0])} tiene <b>${fmtEur(tot)} €</b> de ${meses.join(", ")} sin entregar${fe.length?` · acordado para el ${fe.join(", ")}`:""} ›</button>`); });
   return out.join("");
 }
