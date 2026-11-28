@@ -2,7 +2,7 @@
 // Pantalla principal: render, pestañas, tarjetas, modales, compartir, auto-chequeo y Gestión
 // Parte de la app (versión en APP_VERSION, js/utilidades… se cargan en el orden de index.html).
 // Solo declaraciones: no ejecuta nada al cargarse (el arranque está en js/arranque.js).
-function toast(msg,dur=2500){const t=document.getElementById("toast");t.textContent=msg;t.classList.remove("hidden");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add("hidden"),dur);}
+function toast(msg,dur=2500){const t=document.getElementById("toast");t.classList.remove("abajo");t.textContent=msg;t.classList.remove("hidden");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add("hidden"),dur);}
 async function copyText(text,btnId){
   let ok=false;
   if(navigator.clipboard&&navigator.clipboard.writeText){try{await navigator.clipboard.writeText(text);ok=true;}catch{}}
@@ -618,60 +618,84 @@ function _renderPantalla(){
           const orden=[];
           const porPersona={};
           items.forEach(it=>{ if(!porPersona[it.mid]){porPersona[it.mid]=[];orden.push(it.mid);} porPersona[it.mid].push(it); });
-          let _cuotaIdxGrupo=0;
           const edG=!!DESP["edgr-"+g.id]; // v46.3: quitar personas, añadir y eliminar el grupo solo en «Editar grupo»
+          // v46.71 (Ángel 28/11/2026): cada persona en UNA línea (nombre · total del mes · círculo de estado). El círculo marca o desmarca
+          // todo lo suyo (cgPersonaToggle); el nombre despliega el detalle (cada cobro con su interruptor, Cambiar aporte, Estado y Nota).
+          // Los estados son los de la v46.69 (GE-7); solo cambia cómo se ven.
+          const iM=_idxMes(rm,ry), cerr=mesCerrado(getMesKey(rm,ry)), nj=escH(principal.name.split(" ")[0]), keyM=getMesKey(rm,ry);
+          const dirs=new Set(_cgDirectos(g,iM)), tns=new Set(_cgTiene(g,iM)), RM=_cgRetMes(g,iM)||{propios:[]}, tardes={};
+          _cgTarde(g,iM).forEach(x=>{ tardes[x.mid]=x; });
+          const nCob=orden.filter(pid=>porPersona[pid].every(x=>x.yaPagado)).length;
+          h+=`<div class="cgp-cab"><b>Personas del grupo</b><span>${nCob} de ${orden.length} cobrados</span></div>`;
           orden.forEach(pid=>{
             const lista=porPersona[pid];
             const esPrincipal=(pid===g.principalId);
             const nombre=lista[0].nombre;
             const subtotal=Math.round(lista.reduce((s,x)=>s+x.importe,0)*100)/100;
-            h+=`<div class="cob-per" style="border-bottom:1px solid var(--border);padding:8px 0 6px">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;min-height:30px">
-                <div class="aporte-name" style="font-size:16px;min-width:0">${escH(nombre)}${esPrincipal?' <span style="font-size:12px;color:var(--muted);font-weight:700">(responsable)</span>':''}${typeof notaPersonaBotonHTML==="function"?notaPersonaBotonHTML(pid):""}</div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  ${edG&&!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""}<!-- v45.43: dos toques y más grande -->
-                </div>
+            const todo=lista.every(x=>x.yaPagado), algo=lista.some(x=>x.yaPagado), dir=dirs.has(pid), tn=tns.has(pid);
+            const lote=tn?RM.propios.find(l=>l.mid===pid):null, P=`'${g.id}','${esc(pid)}'`;
+            let est="pen", corto=algo?"a medias":"";
+            if(todo){ if(tn&&lote&&lote.resta>0){ est="nar"; corto="lo tiene "+nj; } else { est="ok"; corto=dir?"me pagó a mí":""; } }
+            else if(tardes[pid]){ est="nar"; corto=tardes[pid].dia?"paga el "+tardes[pid].dia:"paga más tarde"; }
+            const conNota=typeof _nota==="function"&&!!_nota("personas",pid), editNota=!!(NOTA_ED&&NOTA_ED.tipo==="personas"&&NOTA_ED.id===pid);
+            const kd="cgper-"+g.id+"-"+pid, ab=!!DESP[kd]||editNota;
+            const qm=edG&&!esPrincipal?(()=>{const kq="qm-"+g.id+"-"+pid, aq=!!DESP[kq]; return `<button class="qm-btn${aq?" arm":""}" onclick="quitarToque('${g.id}','${esc(pid)}')" title="Quitar del grupo">${aq?"¿Quitar?":"✕"}</button>`;})():""; // v45.43: dos toques
+            const estTxt=est==="ok"?"cobrado":est==="nar"?corto:"pendiente";
+            h+=`<div class="cob-per cgp${ab?" ab":""}">
+              <div class="cgp-fila">
+                <button class="cgp-nom" aria-expanded="${ab?"true":"false"}" onclick="DESP['${esc(kd)}']=!DESP['${esc(kd)}'];render()"><span class="cgp-fl" aria-hidden="true">${ab?"▾":"▸"}</span><span class="cgp-n">${escH(nombre)}${esPrincipal?' <small>· responsable</small>':''}${conNota?' <span class="cgp-ico" title="Tiene nota">📝</span>':''}${corto?` <small class="cgp-est ${est}">· ${corto}</small>`:""}</span></button>
+                <b class="cgp-tot">${fmtEur(subtotal)} €</b>${qm}
+                <button class="cgp-dot ${est}" onclick="cgPersonaToggle(${P})" aria-label="${escH(nombre)}: ${estTxt}. ${todo?"Tocar para desmarcar todo":"Tocar para marcar todo como cobrado"}"${cerr?" disabled":""}></button>
               </div>`;
-            lista.forEach(it=>{
-              const colorImp=it.yaPagado?"#2D6A4F":"var(--warm-txt)";
-              const esCuota=it.tipo==="cuota";
-              if(esCuota)_cuotaIdxGrupo++;
-              h+=`<div class="cob-it" style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
-                
+            if(ab){
+              h+=`<div class="cgp-det">`;
+              let hayAporte=false;
+              lista.forEach(it=>{
+                const colorImp=it.yaPagado?"#2D6A4F":"var(--warm-txt)";
+                h+=`<div class="cob-it" style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:4px 0 4px 10px">
                 <div class="cob-it-c" style="flex:1;min-width:0">
                   ${(()=>{ if(it.tipo!=="aporte")return `<div class="cob-con">${it.concepto}</div>`; // v46.3: una línea por concepto
-                    const mm=DATA.members.find(x=>x.id===it.mid), br=mm?aporteBrutoKey(mm,getMesKey(DATA.reportMonth,DATA.reportYear)):0, bo=_r2(br-it.importe), nom=bo>0?nombresReferidosMes(it.mid,DATA.reportMonth,DATA.reportYear):[];
+                    hayAporte=true;
+                    const mm=DATA.members.find(x=>x.id===it.mid), br=mm?aporteBrutoKey(mm,keyM):0, bo=_r2(br-it.importe), nom=bo>0?nombresReferidosMes(it.mid,DATA.reportMonth,DATA.reportYear):[];
                     return `<div class="cob-con">Aporte</div>${bo>0?`<div class="cob-bono">Paga ${fmtEur(it.importe)}&nbsp;€ (${fmtEur(br)} − ${fmtEur(bo)} de bono${nom.length?` · ${nom.map(escH).join(", ")}`:""})</div>`:""}`; })()}
                   ${it.aplazada?`<span class="asoc-badge badge-deuda" style="display:inline-block;margin-top:4px">cuota aplazada</span>`:""}
                 </div>
                 <div class="cob-it-d" style="display:flex;align-items:center;gap:10px">
-                  ${it.tipo==="aporte"?`<span class="aporte-amt ${it.yaPagado?"ap-ok":""}">${selectorAporteHTML(DATA.members.find(x=>x.id===it.mid),getMesKey(DATA.reportMonth,DATA.reportYear),false)}</span>`:`<span class="aporte-amt" style="color:${colorImp};font-size:14px">${fmtEur(it.importe)} €</span>`}
+                  ${it.tipo==="aporte"?`<span class="aporte-amt ${it.yaPagado?"ap-ok":""}">${(()=>{const mm=DATA.members.find(x=>x.id===it.mid);return mm?aporteBrutoKey(mm,keyM):0;})()} €</span>`:`<span class="aporte-amt" style="color:${colorImp};font-size:14px">${fmtEur(it.importe)} €</span>`}
                   <button class="toggle-btn ${it.yaPagado?"on":"off"}" onclick="marcarItemGrupo('${it.tipo}','${esc(it.mid)}','${it.lid?esc(it.lid):''}',${it.pi!==undefined?it.pi:-1})"></button>
                 </div>
               </div>`;
-            });
-            // v45.81: el total de la persona va debajo, como una suma (Ángel 04/11/2026: arriba confundía)
-            if(lista.length>1){ const pag=lista.every(x=>x.yaPagado);
-              h+=`<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin:4px 0 0 10px;padding-top:6px;border-top:1.5px dashed #CFC6BA">
-                <span style="font-size:14px;font-weight:800;color:var(--dark)">Total</span>
-                <div style="display:flex;align-items:center;gap:10px"><span class="cob-tot-amt" style="font-size:15px;font-weight:800;color:${pag?"#2D6A4F":"var(--dark)"}">${fmtEur(subtotal)} €</span><span class="toggle-btn" style="visibility:hidden"></span></div>
-              </div>`; }
-            // v46.67: lo pagado cuenta como entregado por su jefe; «Me pagó a mí» lo aparta de la cuenta con el jefe
-            // v46.69 (GE-7): cuatro estados · Pendiente · Lo tiene el responsable · Resuelto · Me pagó a mí
-            { const iM=_idxMes(rm,ry), dir=_cgDirectos(g,iM).includes(pid), tn=_cgTiene(g,iM).includes(pid), nj=escH(principal.name.split(" ")[0]), cerr=mesCerrado(getMesKey(rm,ry));
-              const lote=tn?((_cgRetMes(g,iM)||{propios:[]}).propios.find(l=>l.mid===pid)):null, P=`'${g.id}','${esc(pid)}'`;
-              const bD=`<button onclick="cgDirectoToggle(${P})">Me pagó a mí</button>`, bT=`<button onclick="cgTieneToggle(${P})">Lo tiene ${nj}</button>`;
+              });
+              // Estado (v46.67 · v46.69, GE-7): Pendiente · Lo tiene el responsable · Resuelto · Me pagó a mí · v46.38: Paga más tarde
               let txt="", cls="", bts=[];
-              if(lista.some(x=>x.yaPagado)){
+              const bD=`<button onclick="cgDirectoToggle(${P})">Me pagó a mí</button>`, bT=`<button onclick="cgTieneToggle(${P})">Lo tiene ${nj}</button>`;
+              if(algo){
                 if(dir){ cls=" dir"; txt=`👤 Me pagó a mí · no resta de la cuenta con ${nj}`; bts=[`<button onclick="cgDirectoToggle(${P})">Fue a través de ${nj}</button>`]; }
                 else if(tn&&lote&&lote.resta>0){ cls=" tiene"; txt=`👜 Lo tiene ${nj} · al día, falta que te lo entregue${lote.resta<lote.importe?` (${fmtEur(lote.resta)} € de ${fmtEur(lote.importe)} €)`:""}`; bts=[`<button onclick="cgTieneToggle(${P})">Ya lo entregó</button>`,bD]; }
                 else if(tn){ txt=`✅ Resuelto · ${nj} ya lo entregó${lote&&lote.cubierto!=null&&lote.cubierto>iM?" en "+_txtIdx(lote.cubierto).split(" ")[0]:""}`; }
                 else { txt=`✅ Resuelto · a través de ${nj}`; bts=[bT,bD]; }
               } else { cls=" tiene"; txt="⏳ Pendiente"; bts=[`<button onclick="cgTieneToggle(${P})">Ya pagó a ${nj} (lo tiene)</button>`]; }
-              h+=`<div class="cgc-via${cls}"><span style="min-width:0">${txt}</span>${!cerr&&bts.length?`<div class="cgc-via-b">${bts.join("")}</div>`:""}</div>`; }
-            if(typeof notaPersonaHTML==="function")h+=notaPersonaHTML(pid);
+              if(!todo&&!cerr){ // v46.71: «Paga más tarde» también desde la persona (antes solo desde «＋ Alguien paga más tarde»)
+                if(tardes[pid]){ const kt="cgtd-"+g.id+"-"+pid, arm=!!DESP[kt]; txt+=` · 🕒 paga más tarde${tardes[pid].dia?" (día "+tardes[pid].dia+")":""}`;
+                  bts.push(`<button onclick="${arm?`cgTardeQuitar(${P})`:`DESP['${esc(kt)}']=true;render()`}">${arm?"¿Quitar? Toca otra vez":"Ya no paga más tarde"}</button>`); }
+                else bts.push(`<button onclick="cgAbrir('${g.id}','tardeP');if(CG_FORM&&CG_FORM.tipo==='tardeP'){CG_FORM.mid='${esc(pid)}';render();}">🕒 Paga más tarde</button>`);
+              }
+              h+=`<div class="cgc-via${cls}"><span style="min-width:0">${txt}</span></div>`;
+              const kE="cgest-"+g.id+"-"+pid, kA="cgap-"+g.id+"-"+pid, abE=!!DESP[kE], abA=!!DESP[kA], fT=CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="tardeP"&&CG_FORM.mid===pid;
+              if(!cerr)h+=`<div class="cgp-bts">${hayAporte?`<button class="${abA?"on":""}" onclick="DESP['${esc(kA)}']=!DESP['${esc(kA)}'];render()">Cambiar aporte</button>`:""}${bts.length?`<button class="${abE||fT?"on":""}" onclick="DESP['${esc(kE)}']=!DESP['${esc(kE)}'];if(CG_FORM&&CG_FORM.tipo==='tardeP')CG_FORM=null;render()">Estado</button>`:""}${typeof notaEditar==="function"?`<button onclick="notaEditar('personas','${esc(pid)}')">Nota</button>`:""}</div>`;
+              if(abA&&hayAporte&&!cerr){ const mm=DATA.members.find(x=>x.id===pid); if(mm)h+=`<label class="cgp-panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px">Aporte del mes <span class="aporte-amt">${selectorAporteHTML(mm,keyM,false)}</span></label>`; }
+              if(fT)h+=`<div class="cgp-panel"><input type="hidden" id="cg-tarde" value="${escH(pid)}">
+                <label class="m-label" style="margin-top:0">¿Qué día paga? <span style="font-weight:600;color:var(--muted)">(opcional)</span></label>
+                <input id="cg-tarde-dia" type="number" inputmode="numeric" min="1" max="31" class="m-input" placeholder="Ej: 20" style="font-size:16px">
+                <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">No se marca como cobrado: sigue pendiente, pero se aparta de lo que ${nj} te da ahora. Vale solo para este mes.</div>
+                <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
+              else if(abE&&bts.length&&!cerr)h+=`<div class="cgc-via${cls} cgp-panel"><div class="cgc-via-b">${bts.join("")}</div></div>`;
+              if(typeof notaPersonaHTML==="function")h+=notaPersonaHTML(pid);
+              h+=`</div>`;
+            }
             h+=`</div>`;
           });
+          h+=`<div class="cgp-ley"><span><i class="cgp-dot ok"></i>cobrado</span><span><i class="cgp-dot nar"></i>paga más tarde o lo tiene ${nj}</span><span><i class="cgp-dot pen"></i>pendiente</span></div>`;
           // Añadir miembro a este grupo — excluir a quien ya esté en CUALQUIER grupo
           const enCualquierGrupo=new Set();
           grupos.forEach(gg=>{enCualquierGrupo.add(gg.principalId);(gg.miembros||[]).forEach(x=>enCualquierGrupo.add(x));});

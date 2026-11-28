@@ -62,6 +62,14 @@ function _notaCajaHTML(tipo,id,tit){
       <span class="nota-btns"><button class="nota-b" onclick="notaEditar('${tipo}','${k}')">✏️ Editar</button><button class="nota-b${arm?" arm":""}" onclick="${arm?`notaArchivar('${tipo}','${k}')`:`DESP['${esc(ka)}']=true;render()`}">${arm?"¿Archivar? Toca otra vez":"🗄 Archivar"}</button></span></div></div>`;
 }
 function notaGrupoHTML(g){ return `<div style="margin-top:12px">${_notaCajaHTML("grupos",g.id,"Nota del grupo")}</div>`; }
+// v46.71 (Ángel 28/11/2026): la nota del grupo, en una línea (icono + inicio del texto); al tocarla se abre para editar o archivar
+function notaGrupoLineaHTML(g){
+  const n=_nota("grupos",g.id), ed=!!(NOTA_ED&&NOTA_ED.tipo==="grupos"&&NOTA_ED.id===g.id), k="notaab-grupos-"+g.id;
+  if(!n||ed)return notaGrupoHTML(g); // sin nota: «📝 ＋ Nota del grupo» (ya es una línea) · escribiendo: el cuadro de siempre
+  if(DESP[k])return `<div style="margin-top:12px">${_notaCajaHTML("grupos",g.id,"Nota del grupo")}<button class="nota-cerrar" onclick="DESP['${esc(k)}']=false;render()">Cerrar la nota</button></div>`;
+  const t=String(n.t||"").replace(/\s+/g," ").trim(), corto=t.length>46?t.slice(0,44).trim()+"…":t;
+  return `<button class="nota-linea" onclick="DESP['${esc(k)}']=true;render()"><span class="nota-linea-t">📝 ${escH(corto)}</span><span class="nota-aviso">No cuenta en las cuentas</span></button>`;
+}
 function notaPersonaBotonHTML(mid){ const n=_nota("personas",mid);
   return ` <button class="nota-ico${n?" con":""}" onclick="notaEditar('personas','${esc(mid)}')" aria-label="${n?"Cambiar la nota":"Añadir una nota"}" title="Nota personal (no cuenta en las cuentas)">📝</button>`; }
 function notaPersonaHTML(mid){ const n=_nota("personas",mid), ed=!!(NOTA_ED&&NOTA_ED.tipo==="personas"&&NOTA_ED.id===mid);

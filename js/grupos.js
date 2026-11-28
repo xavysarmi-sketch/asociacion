@@ -426,7 +426,7 @@ function cgGuardar(gid){
     _cgW(key,gid).movs.push({id:"cg"+Date.now()+Math.random().toString(36).slice(2,6),tipo:"salida",importe:x.v,fecha:_cgHoy(),mid,nombre:x.m.name});
     CG_FORM=null; setPagoBaja(mid,"pagada",true); toast("Apuntado ✓ · salida de "+x.m.name.split(" ")[0]+" marcada como pagada"); return;
   } else {
-    if(CG_FORM.tipo==="tarde"){ // v46.38
+    if(CG_FORM.tipo==="tarde"||CG_FORM.tipo==="tardeP"){ // v46.38 · v46.71: tardeP = desde la persona (Estado › Paga más tarde), lo mismo
       const mid=(document.getElementById("cg-tarde")||{}).value||""; if(!mid){toast("Elige a la persona");return;}
       const dia=+String((document.getElementById("cg-tarde-dia")||{}).value||"").replace(/\D/g,"").slice(0,2), c=_cgW(key,gid);
       c.tarde=(c.tarde||[]).filter(x=>x.mid!==mid); c.tarde.push({mid,dia:(dia>=1&&dia<=31)?String(dia):""});
@@ -533,126 +533,126 @@ function _cgFormHTML(g,idx,key,nom,mesTxt){
   }
   return h;
 }
+// v46.71 (Ángel 28/11/2026): fecha acordada corta para la etiqueta de estado («3 dic»)
+function _fechaCortaTxt(f){ const m=String(f||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m?(+m[3])+" "+["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][+m[2]-1]:String(f||""); }
 function cuentaGrupoHTML(g,principal){
-  { // v45.14: liquidada → solo un enlace pequeño; sin apuntes → una línea que se abre al tocarla
-    const idx0=_idxMes(DATA.reportMonth,DATA.reportYear), mes0=MONTHS_FULL[((idx0%12)+12)%12].toLowerCase(), nom0=escH(principal.name.split(" ")[0]);
-    const usando=(CG_FORM&&CG_FORM.gid===g.id)||!!CG_SIM[g.id];
-    if(_cgCerrada(g)&&!DESP["cgver-"+g.id]&&!usando){ // v45.47: liquidada → una línea clara con lo entregado (antes solo un enlace)
-      const tot0=_cgTotal(g,idx0);
-      return `<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#E8F3EC;border:1.5px solid #B7D9C3">
-        <span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#1B4332">✅ Cuenta de ${mes0} liquidada<span style="display:block;font-size:13px;font-weight:600;color:#2D6A4F">${_cgMovs(_keyDeIdx(idx0),g.id).some(x=>x.tipo==="pago"||x.tipo==="ayuda"||x.tipo==="salida")?"todo apuntado y cuadrado":nom0+" te ha entregado "+fmtEur(tot0)+" €"} · no falta nada</span></span>
-        <button onclick="DESP['cgver-${g.id}']=true;render()" style="background:none;border:none;color:#1B4332;font-size:13.5px;font-weight:800;text-decoration:underline;cursor:pointer;padding:4px;white-space:nowrap">Ver detalle</button></div>`
-        // v46.70 (Ángel 28/11/2026): con todos resueltos la cuenta sale «liquidada», que es justo cuando hace falta anotar lo que el responsable tiene sin persona
-        +(!mesCerrado(_keyDeIdx(idx0))&&_cgCascada(g,idx0).personas>0?`<button onclick="cgAbrir('${g.id}','tienesin')" class="cgc-link" style="margin-top:4px">＋ Lo tiene ${nom0}, sin persona</button>`:""); }
-    // v45.85: «✕ Cerrar» pliega la cuenta en una línea (también cuando ya tiene apuntes); al tocarla se abre otra vez
-    // v46.67: plegada, dice la misma cifra que la cuenta en cascada
-    const f0=_cgCascada(g,idx0).falta, est0=f0>0?"falta que te entregue "+fmtEur(f0)+" €":f0<0?"le debes "+fmtEur(-f0)+" €":_cgCerrada(g)?"liquidada":"cuenta cuadrada";
-    if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id)){
-      return `<button onclick="DESP['cgplegar-${g.id}']=false;DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
-        <span style="font-size:18px">💶</span><span style="flex:1;min-width:0;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${est0}</span></span><span style="font-size:18px">›</span></button>`; }
-    const pf0=_cgMovs(_keyDeIdx(idx0-1),g.id).length?_cgPendManual(g,idx0-1):0, R0=_cgRetMes(g,idx0); // v46.69
-    if(!_cgCerrada(g)&&!_cgMovs(_keyDeIdx(idx0),g.id).length&&!(pf0>0)&&!(R0&&(R0.antes>0||R0.tieneTot>0))&&!DESP["cgabrir-"+g.id]&&!usando)
-      return `<button onclick="DESP['cgabrir-${g.id}']=true;render()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #2D6A4F;background:#F4F9F6;color:#1B4332;cursor:pointer">
-        <span style="font-size:18px">💶</span><span style="flex:1;min-width:0;font-size:14px;font-weight:800">Cuenta con ${nom0} · ${mes0} <span style="font-weight:600;font-size:12.5px;opacity:.8">· ${(_cgSolsPend(g,idx0).length||_cgSalidasPend(g).length)?"📝 tiene una propuesta":est0}</span></span><span style="font-size:18px">›</span></button>`;
-  }
-  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), key=_keyDeIdx(idx), movs=_cgMovs(key,g.id);
+  // v46.71 (Ángel 28/11/2026): TARJETA MÁS SIMPLE. SOLO CAMBIA LA VISTA: todas las cifras salen de _cgCascada/_cgRetMes como antes.
+  // Arriba la cifra grande y una etiqueta de estado · debajo las líneas de la cuenta (lo retenido, en naranja; al tocarlo, su ficha)
+  // · dos botones («Anotar entrega» y «Enviar cuenta») · el resto en «⋯ Más acciones» · la nota del grupo en una línea.
+  // Antes (v45.14–v46.70) la cuenta liquidada o sin apuntes salía plegada en una línea («Ver detalle»); ahora se ve siempre.
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear), key=_keyDeIdx(idx);
   const nom=escH(principal.name.split(" ")[0]);
   const mesTxt=MONTHS_FULL[((idx%12)+12)%12].toLowerCase(), prevTxt=MONTHS_FULL[(((idx-1)%12)+12)%12].toLowerCase();
-  const cerrada=_cgCerrada(g); // v45.41: cuenta cerrada (no falta nada): se dice arriba y no se ofrecen apuntes nuevos
-  // v46.67: tres partes: 1) la cuenta EN CASCADA (cifra final grande, dos botones, «Ver detalle» plegado) · 2) «Propuesta del mes»
-  // · 3) nota personal del grupo (notas.js; no cuenta en las cuentas)
+  const cerrada=_cgCerrada(g), mc=mesCerrado(key); // cerrada = cuenta liquidada (v45.41) · mc = mes cerrado
   const c=_cgCascada(g,idx), falta=c.falta, total=c.total, formTipo=CG_FORM&&CG_FORM.gid===g.id?CG_FORM.tipo:null;
-  const fr=(l,v,sub)=>`<div class="cgc-fila"><span class="cgc-l">${l}${sub?`<small>${sub}</small>`:""}</span><b class="cgc-v">${v}</b></div>`, mn=v=>(v?"−":"")+fmtEur(v)+" €";
-  let h=`<div style="border:1.5px solid #2D6A4F;border-radius:14px;padding:12px 14px;margin-top:12px;background:#F4F9F6">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;min-width:0;font-size:16px;font-weight:800;color:#1B4332">💶 Cuenta con ${nom} · ${mesTxt}</div><button onclick="cgPlegar('${g.id}')" style="flex:none;border:1.5px solid #2D6A4F;background:#fff;color:#1B4332;border-radius:9px;padding:6px 10px;font-size:13.5px;font-weight:800;cursor:pointer">✕ Cerrar</button></div>`;
-  const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgPendManual(g,idx-1):0; // v46.69: lo de «lo tiene» pasa solo (líneas «Pendiente de …»)
-  if(pf>0)h+=`<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:9px;padding:8px 10px;font-size:13px;color:#6B4210;margin-bottom:8px">⚠️ En ${prevTxt} quedaron pendientes <b>${fmtEur(pf)} €</b>.
-      <button onclick="cgArrastrar('${g.id}')" style="display:block;margin-top:6px;width:100%;padding:8px;border-radius:8px;border:none;background:#94571A;color:#fff;font-size:13px;font-weight:800;cursor:pointer">Pasar a ${mesTxt}</button></div>`;
-  // 1 · La cuenta en cascada
-  // v46.68 (Ángel 26/11/2026): una SUMA que se lee de arriba abajo; el resultado es exactamente la suma de las líneas que se ven.
-  // Total − te pagaron a ti − cada entrega a cuenta − cada ayuda o salida que pagó el responsable − «pagados sin entrega anotada»
-  // (lo marcado que pasa de lo ya usado, opción B) + lo que le pasas tú ± arrastre = falta. Cada apunte en su línea, con su ✕.
+  const est0=falta>0?"falta que te entregue "+fmtEur(falta)+" €":falta<0?"le debes "+fmtEur(-falta)+" €":cerrada?"liquidada":"cuenta cuadrada";
+  // «⋯ Más acciones › Plegar esta cuenta» (antes «✕ Cerrar», v45.85): una línea que se abre al tocarla
+  if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id))
+    return `<button onclick="DESP['cgplegar-${g.id}']=false;render()" class="cgc2-plegada"><span style="font-size:18px">💶</span><span style="flex:1;min-width:0;font-weight:800">Cuenta con ${nom} · ${mesTxt} <span style="font-weight:600;font-size:.9em;opacity:.8">· ${est0}</span></span><span style="font-size:18px">›</span></button>`;
+  const P=`'${g.id}'`, pn=n=>escH(String(n||"").split(" ")[0]);
+  const ps=c.propios.filter(l=>l.resta>0), rq=_r2(ps.reduce((a,l)=>a+l.resta,0)), fe=_cgCfg(g,idx).tieneFecha||"", ts0=_cgCfg(g,idx).tieneSin;
+  const td=falta>0?_cgTarde(g,idx):[], tt=_r2(td.reduce((a,x)=>a+x.v,0)), sm=c.items.filter(it=>!it.yaPagado).length;
+  // Etiqueta de estado (corta)
+  const chip=falta<0?["rev",`Le debes ${fmtEur(-falta)} €`]
+    :rq>0?["pend",`⏳ Lo tiene${fe?" · "+_fechaCortaTxt(fe):""}`]
+    :cerrada?["ok","✅ Liquidada"]
+    :!c.items.length?["","Nada este mes"]
+    :falta===0?["pend",`Cuadrada · ${sm} por marcar`] // v46.12: cuenta a 0 pero falta gente por marcar
+    :["pend","⏳ Por entregar"];
+  const subC=falta>0?"falta que te entregue":falta<0?`le debes a ${nom}`:cerrada?"no falta nada":"cuenta cuadrada";
+  let h=`<div class="cgc2${falta<0?" debe":""}">
+    <div class="cgc2-tit">💶 Cuenta con ${nom} · ${mesTxt}</div>
+    <div class="cgc2-cab"><div class="cgc2-res"><b class="cgc2-cifra">${fmtEur(Math.abs(falta))} €</b><span class="cgc2-sub">${subC}${td.length?` · te da ahora <b>${fmtEur(Math.max(0,_r2(falta-tt)))} €</b>`:""}</span></div><span class="cgc2-chip ${chip[0]}">${chip[1]}</span></div>`;
+  // Pendiente del mes anterior que no pasa solo (se pasa a mano)
+  const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgPendManual(g,idx-1):0;
+  if(pf>0)h+=`<div class="cgc2-aviso"><span style="flex:1 1 10rem;min-width:0">⚠️ En ${prevTxt} quedaron pendientes <b>${fmtEur(pf)} €</b></span><button onclick="cgArrastrar(${P})">Pasar a ${mesTxt}</button></div>`;
+  // Las líneas de la cuenta (la misma suma de la v46.68: cada apunte en su línea, con su ✕)
   const borrar=x=>{ if(x.tipo==="pasado"||cerrada)return ""; const k="cgdel-"+x.id, arm=!!DESP[k];
-    return `<button class="cgc-x${arm?" arm":""}" onclick="${arm?`cgBorrar('${g.id}','${x.id}')`:`DESP['${k}']=true;render()`}" aria-label="Borrar este apunte">${arm?"¿Borrar?":"✕"}</button>`; };
+    return `<button class="cgc-x${arm?" arm":""}" onclick="${arm?`cgBorrar(${P},'${x.id}')`:`DESP['${k}']=true;render()`}" aria-label="Borrar este apunte">${arm?"¿Borrar?":"✕"}</button>`; };
+  const fr=(l,v,sub)=>`<div class="cgc-fila"><span class="cgc-l">${l}${sub?`<small>${sub}</small>`:""}</span><b class="cgc-v">${v}</b></div>`, mn=v=>(v?"−":"")+fmtEur(v)+" €";
   const frm=(l,v,x,sub)=>`<div class="cgc-fila"><span class="cgc-l">${l}${sub?`<small>${sub}</small>`:""}</span><b class="cgc-v">${v}</b>${borrar(x)}</div>`;
-  const pn=n=>escH(String(n||"").split(" ")[0]);
-  h+=`<div class="cgc-cuenta${falta<0?" debe":""}">`;
-  // v46.69 (GE-7): lo pendiente de meses anteriores pasa solo, una línea por mes, del más antiguo al más nuevo, antes del total del mes
-  _cgLineasAntes(c.inicio).forEach(L=>{ const esAcu=L.tipo==="acordado", miAcu=esAcu&&L.mes===idx&&!cerrada, k="cgacu-"+g.id, arm=!!DESP[k];
-    h+=`<div class="cgc-fila"><span class="cgc-l">${escH(L.titulo)}<small>${escH(L.sub)}</small></span><b class="cgc-v">+${fmtEur(L.v)} €</b>${miAcu?`<button class="cgc-x${arm?" arm":""}" onclick="${arm?`cgAcordadoBorrar('${g.id}')`:`DESP['${k}']=true;render()`}" aria-label="Borrar el pendiente acordado">${arm?"¿Borrar?":"✕"}</button>`:""}</div>`; });
+  h+=`<div class="cgc-cuenta cgc2-lineas">`;
+  _cgLineasAntes(c.inicio).forEach(L=>{ const miAcu=L.tipo==="acordado"&&L.mes===idx&&!cerrada, k="cgacu-"+g.id, arm=!!DESP[k];
+    h+=`<div class="cgc-fila"><span class="cgc-l">${escH(L.titulo)}<small>${escH(L.sub)}</small></span><b class="cgc-v">+${fmtEur(L.v)} €</b>${miAcu?`<button class="cgc-x${arm?" arm":""}" onclick="${arm?`cgAcordadoBorrar(${P})`:`DESP['${k}']=true;render()`}" aria-label="Borrar el pendiente acordado">${arm?"¿Borrar?":"✕"}</button>`:""}</div>`; });
   h+=fr("Total del grupo este mes",fmtEur(total)+" €");
   c.movs.filter(x=>x.tipo==="arrastre").forEach(x=>{ h+=frm("Pendiente del mes anterior","+"+fmtEur(x.importe)+" €",x); });
   if(c.directo)h+=fr("Te pagaron a ti directamente",mn(c.directo),"no pasa por "+nom);
   c.movs.filter(x=>x.tipo==="entrega").forEach(x=>{ h+=frm("Entregado a cuenta",mn(x.importe),x,x.fecha?escH(x.fecha):""); });
   c.movs.filter(x=>x.tipo==="ayuda").forEach(x=>{ h+=frm(`Ayuda a ${pn(x.nombre)}`,mn(x.importe),x,"la pagó "+nom+" con lo cobrado"); });
   c.movs.filter(x=>x.tipo==="salida").forEach(x=>{ h+=frm(`Salida de ${pn(x.nombre)}`,mn(x.importe),x,"la pagó "+nom+" con lo cobrado"); });
-  if(c.sinEntrega)h+=fr("Pagados sin entrega anotada",mn(c.sinEntrega),"personas marcadas como pagadas, más allá de lo de arriba");
+  if(c.sinEntrega)h+=fr("Pagados sin entrega anotada",mn(c.sinEntrega),"personas marcadas como pagadas");
   c.movs.filter(x=>x.tipo==="pago").forEach(x=>{ h+=frm("Le has pagado tú","+"+fmtEur(x.importe)+" €",x,x.fecha?escH(x.fecha):""); });
   c.movs.filter(x=>x.tipo==="pasado").forEach(x=>{ h+=frm("Pasado al mes siguiente",mn(x.importe),x); });
-  const lab=falta>0?"Falta que te entregue":falta<0?`Le debes a ${nom}`:cerrada?"✅ Liquidado":"✅ Cuenta cuadrada";
-  h+=`<div class="cgc-final"><b class="cgc-fl">${lab}</b>${falta!==0?`<b class="cgc-fv">${fmtEur(Math.abs(falta))} €</b>`:""}</div>`;
+  td.forEach(x=>{ const k="cgtd-"+g.id+"-"+x.mid, arm=!!DESP[k]; // v46.38: lo que paga más tarde se aparta de lo que te da ahora
+    h+=`<div class="cgc-fila"><span class="cgc-l">🕒 Paga más tarde: ${escH(x.nombre)}${x.dia?`<small>día ${x.dia}</small>`:""}</span><b class="cgc-v">−${fmtEur(x.v)} €</b><button class="cgc-x${arm?" arm":""}" onclick="${arm?`cgTardeQuitar(${P},'${esc(x.mid)}')`:`DESP['${esc(k)}']=true;render()`}" aria-label="Quitar">${arm?"¿Quitar?":"✕"}</button></div>`; });
+  // v46.69 (GE-7): lo retenido («lo tiene el responsable»), en naranja. Ya está dentro de la cifra de arriba: estas líneas no suman otra vez.
+  const perL=ps.filter(l=>l.tipo!=="sin"), sinL=ps.find(l=>l.tipo==="sin"), kr="cgret-"+g.id, abR=!!DESP[kr];
+  const subF=fe?"acordado para el "+_fechaCortaTxt(fe):"sin fecha acordada";
+  if(perL.length)h+=`<button class="cgc2-ret" onclick="DESP['${kr}']=!DESP['${kr}'];render()"><span class="cgc-l">👜 Lo tiene ${nom}: ${perL.map(l=>pn(l.nombre)).join(", ")}<small>${subF}</small></span><b class="cgc-v">${fmtEur(_r2(perL.reduce((a,l)=>a+l.resta,0)))} €</b><span class="cgc2-fl" aria-hidden="true">›</span></button>`;
+  if(sinL)h+=`<button class="cgc2-ret" onclick="DESP['${kr}']=!DESP['${kr}'];render()"><span class="cgc-l">👜 Lo tiene ${nom}, sin persona<small>${sinL.nota?escH(sinL.nota)+" · ":""}${subF}</small></span><b class="cgc-v">${fmtEur(sinL.resta)} €</b><span class="cgc2-fl" aria-hidden="true">›</span></button>`;
+  else if(ts0&&ts0.importe>0&&!mc)h+=`<button class="cgc2-ret ok" onclick="DESP['${kr}']=!DESP['${kr}'];render()"><span class="cgc-l">👜 Sin persona: ${fmtEur(ts0.importe)} €<small>ya entregado</small></span><span class="cgc2-fl" aria-hidden="true">›</span></button>`;
+  if(abR&&(ps.length||(ts0&&ts0.importe>0))){ // ficha de lo retenido: fecha acordada, editar o quitar
+    const ksin="cgsin-"+g.id, armS=!!DESP[ksin];
+    h+=`<div class="cgc2-ficha">${rq>0?`<div>Esas personas están al día, pero estos <b>${fmtEur(rq)} €</b> no cuentan para ayudas hasta que ${nom} los entregue.</div>`:""}
+      ${rq>0&&!cerrada?`<label class="cgc-tiene-f">Fecha acordada <span>(opcional)</span><input type="date" value="${escH(fe)}" onchange="cgTieneFecha(${P},this.value)"></label>`:""}
+      ${perL.length?`<div style="margin-top:6px;font-size:.85rem;opacity:.85">Para quitar a una persona: tócala abajo › Estado › Ya lo entregó.</div>`:""}
+      ${ts0&&ts0.importe>0&&!mc?`<div class="cgc2-ficha-b"><button onclick="DESP['${kr}']=false;cgAbrir(${P},'tienesin')">✏️ Editar «sin persona»</button><button class="${armS?"arm":""}" onclick="${armS?`cgTieneSinBorrar(${P})`:`DESP['${ksin}']=true;render()`}">${armS?`¿Quitar los ${fmtEur(ts0.importe)} €? Toca otra vez`:"✕ Quitar «sin persona»"}</button></div>`:""}</div>`; }
   if(c.ret>0&&!c.propios.some(l=>l.resta>0)){ const cm=Math.max(...c.propios.map(l=>l.cubierto==null?idx:l.cubierto)); // v46.69: ya lo entregó en un mes posterior
-    h+=`<div class="cgc-cub">✅ Los ${fmtEur(c.ret)} € que tenía ${nom} de este mes los entregó${cm>idx?" en "+_txtIdx(cm).split(" ")[0]:""}: esas personas ya están resueltas.</div>`; }
-  else if(c.ret>0){ const ps=c.propios.filter(l=>l.resta>0), fe=(_cgCfg(g,idx).tieneFecha)||"", rq=_r2(ps.reduce((a,l)=>a+l.resta,0));
-    h+=`<div class="cgc-tiene">👜 Incluye <b>${fmtEur(rq)} €</b> que ya le pagaron a ${nom} y aún no te ha entregado: ${ps.map(l=>l.tipo==="sin"?`${fmtEur(l.resta)} € sin persona${l.nota?" ("+escH(l.nota)+")":""}`:escH(pn(l.nombre))).join(", ")}. Esas personas están al día, pero ese dinero no cuenta para ayudas hasta que lo entregue.
-      ${cerrada?"":`<label class="cgc-tiene-f">Fecha acordada <span>(opcional)</span><input type="date" value="${escH(fe)}" onchange="cgTieneFecha('${g.id}',this.value)"></label>`}</div>`; }
-  if(c.covAnt>0)h+=`<div class="cgc-cub">✅ De lo entregado este mes, ${fmtEur(c.covAnt)} € cubren lo pendiente de meses anteriores: esas personas ya están resueltas.</div>`;
-  { const td=falta>0?_cgTarde(g,idx):[]; if(td.length){ const tt=_r2(td.reduce((a,x)=>a+x.v,0)); // v46.38
-    td.forEach(x=>{ const k="cgtd-"+g.id+"-"+x.mid, arm=!!DESP[k];
-      h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0 0;font-size:14.5px"><span style="flex:1;min-width:0">🕒 Paga más tarde: ${escH(x.nombre)}${x.dia?` <span style="color:var(--muted);font-size:13px">(día ${x.dia})</span>`:""}</span><b style="white-space:nowrap">−${fmtEur(x.v)} €</b>
-        <button onclick="${arm?`cgTardeQuitar('${g.id}','${esc(x.mid)}')`:`DESP['${esc(k)}']=true;render()`}" aria-label="Quitar" style="border:none;background:${arm?"#C0492C":"none"};color:${arm?"#fff":"#A63A20"};border-radius:7px;font-size:${arm?12:16}px;font-weight:800;cursor:pointer;min-width:38px;min-height:34px;padding:${arm?"4px 8px":"0 2px"}">${arm?"¿Quitar?":"✕"}</button></div>`; });
-    h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:2px solid #1B4332;margin-top:6px;padding-top:8px"><b style="font-size:16.5px;color:#1B4332">Te da ahora</b><b style="font-size:21px;white-space:nowrap;color:#1B4332">${fmtEur(Math.max(0,_r2(falta-tt)))} €</b></div>`; } }
+    h+=`<div class="cgc-cub">✅ Los ${fmtEur(c.ret)} € que tenía ${nom} de este mes los entregó${cm>idx?" en "+_txtIdx(cm).split(" ")[0]:""}.</div>`; }
+  if(c.covAnt>0)h+=`<div class="cgc-cub">✅ ${fmtEur(c.covAnt)} € de lo entregado cubren lo pendiente de meses anteriores.</div>`;
   h+=`</div>`;
-  if(falta===0&&!cerrada){ const sm=c.items.filter(it=>!it.yaPagado).length; if(sm)h+=`<div style="font-size:13px;color:#8A4F12;margin-top:4px">Faltan ${sm} por marcar como cobrados: cuando estén todos, quedará liquidado.</div>`; } // v46.12
-  // Dos botones: «Anotar entrega» y «Ayuda pagada» (el formulario se abre justo debajo)
-  if(formTipo==="entrega"||formTipo==="ayuda")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`;
-  else if(formTipo==="salida")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`; // v46.68: sin «Ver detalle»
-  else if(!cerrada)h+=`<div class="cgc-btns"><button class="cgc-b" onclick="cgAbrir('${g.id}','entrega')">💶 Anotar entrega</button><button class="cgc-b" onclick="CG_FORM=null;cgAbrir('${g.id}','ayuda')">🤝 Ayuda pagada</button>${_cgSalidasPend(g).length?`<button class="cgc-b" onclick="cgAbrir('${g.id}','salida')">🚪 Salida pagada</button>`:""}</div>`;
-  if(formTipo==="acordado")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">
-      <label class="m-label" style="margin-top:10px">¿Cuánto tenía ${nom} pendiente de antes, sin saber de quién es?</label>
+  // Formularios que se abren desde los botones («Anotar entrega» o desde «Más acciones»)
+  const caja=x=>`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">${x}</div>`;
+  if(formTipo==="entrega"||formTipo==="ayuda"||formTipo==="salida"||formTipo==="tarde")h+=caja(_cgFormHTML(g,idx,key,nom,mesTxt));
+  if(formTipo==="acordado")h+=caja(`<label class="m-label" style="margin-top:10px">¿Cuánto tenía ${nom} pendiente de antes, sin saber de quién es?</label>
       <input id="cg-acu-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 150" style="font-size:16px">
       <label class="m-label">Nota <span style="font-weight:600;color:var(--muted)">(qué se acordó)</span></label>
       <input id="cg-acu-nota" type="text" class="m-input" maxlength="200" placeholder="Ej: lo de septiembre y octubre" style="font-size:16px">
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Si sabes de qué personas es, mejor márcalas en su mes como «Lo tiene ${nom}». Esto pasa solo a los meses siguientes hasta que lo entregue y lo entregado lo cubre primero.</div>
-      <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgAcordadoGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
-  else if(!mesCerrado(key)&&!_cgCfg(g,idx).acordado)h+=`<button onclick="cgAbrir('${g.id}','acordado')" class="cgc-link">＋ Pendiente anterior acordado</button>`; // v46.70: también liquidada
-  // v46.69 (Ángel 27/11/2026): «Lo tiene el responsable, sin persona» (lo que le sobró del grupo, sin saber de quién es)
-  { const ts0=_cgCfg(g,idx).tieneSin, k="cgsin-"+g.id, arm=!!DESP[k];
-    if(formTipo==="tienesin")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">
-      <label class="m-label" style="margin-top:10px">¿Cuánto tiene ${nom} de ${mesTxt} sin entregar, sin ser de una persona concreta?</label>
-      <input id="cg-sin-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 223" style="font-size:16px">
+      <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgAcordadoGuardar(${P})" class="cgt-b pri" style="flex:2">Guardar</button></div>`);
+  if(formTipo==="tienesin")h+=caja(`<label class="m-label" style="margin-top:10px">¿Cuánto tiene ${nom} de ${mesTxt} sin entregar, sin ser de una persona concreta?</label>
+      <input id="cg-sin-imp" type="number" inputmode="decimal" class="m-input" placeholder="Ej: 223" value="${ts0&&ts0.importe>0?escH(String(ts0.importe)):""}" style="font-size:16px">
       <label class="m-label">Nota <span style="font-weight:600;color:var(--muted)">(opcional)</span></label>
-      <input id="cg-sin-nota" type="text" class="m-input" maxlength="200" placeholder="Ej: lo que le sobró del grupo" style="font-size:16px">
+      <input id="cg-sin-nota" type="text" class="m-input" maxlength="200" placeholder="Ej: lo que le sobró del grupo" value="${ts0&&ts0.nota?escH(ts0.nota):""}" style="font-size:16px">
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35">Las personas siguen como «Resuelto». Este dinero no cuenta para ayudas de ${mesTxt} hasta que lo entregue: pasa solo a los meses siguientes y lo entregado lo cubre primero, como lo demás.</div>
-      <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgTieneSinGuardar('${g.id}')" class="cgt-b pri" style="flex:2">Guardar</button></div></div>`;
-    else if(ts0&&ts0.importe>0&&!mesCerrado(key))h+=`<button onclick="${arm?`cgTieneSinBorrar('${g.id}')`:`DESP['${k}']=true;render()`}" class="cgc-link">${arm?`¿Quitar los ${fmtEur(ts0.importe)} € sin persona? Toca otra vez`:`✕ Quitar «Lo tiene ${nom}, sin persona: ${fmtEur(ts0.importe)} €»`}</button>`;
-    else if(!mesCerrado(key)&&c.personas>0)h+=`<button onclick="cgAbrir('${g.id}','tienesin')" class="cgc-link">＋ Lo tiene ${nom}, sin persona</button>`; } // v46.70: también liquidada
-  if(falta<0&&!cerrada)h+=`<button onclick="cgPagoAsociacion('${g.id}')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #A63A20;background:#fff;color:#A63A20;font-size:14.5px;font-weight:800;cursor:pointer">＋ Ya le he pagado los ${fmtEur(-falta)} €</button>`;
-  if(CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo==="tarde")h+=`<div style="background:#fff;border-radius:12px;padding:2px 14px 12px;margin-top:8px">`+_cgFormHTML(g,idx,key,nom,mesTxt)+`</div>`; // v46.38
-  else if(falta>0&&!cerrada)h+=`<button onclick="cgAbrir('${g.id}','tarde')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #1B4332;background:#fff;color:#1B4332;font-size:14.5px;font-weight:800;cursor:pointer">🕒 ＋ Alguien paga más tarde</button>`;
-  h+=`<button onclick="cgEnvioAbrir('${g.id}','cuenta')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar su cuenta a ${nom}</button>`;
-  // 2 · Propuesta del mes (v46.8, Ángel 07/11/2026: sin «Hacer un plan»; las ayudas entran solo por Solicitudes y aquí se ven solas)
-  const d=_cgDatosSim(g), hayPlan=d.sols.length||d.sal.length;
+      <div style="display:flex;gap:6px;margin-top:8px"><button onclick="CG_FORM=null;render()" class="cgt-b sec" style="flex:1">Cancelar</button><button onclick="cgTieneSinGuardar(${P})" class="cgt-b pri" style="flex:2">Guardar</button></div>`);
+  // Los dos botones grandes
+  const conForm=formTipo==="entrega"||formTipo==="ayuda"||formTipo==="salida";
+  h+=`<div class="cgc-btns">${!cerrada&&!conForm?`<button class="cgc-b cgc2-b" onclick="cgAbrir(${P},'entrega')">💶 Anotar entrega</button>`:""}<button class="cgc-b cgc2-b wa" onclick="cgEnvioAbrir(${P},'cuenta')">💬 Enviar cuenta</button></div>`;
+  // «⋯ Más acciones»: lo demás que se puede anotar (mismas condiciones que antes para cada una)
+  const d=_cgDatosSim(g), hayPlan=d.sols.length||d.sal.length, km="cgmas-"+g.id, abM=!!DESP[km], cierra=`DESP['${km}']=false;`;
+  const acc=[];
+  if(falta<0&&!cerrada)acc.push([`＋ Ya le he pagado los ${fmtEur(-falta)} €`,`${cierra}cgPagoAsociacion(${P})`]);
+  if(!cerrada)acc.push([`🤝 Ayuda pagada por ${nom}`,`${cierra}CG_FORM=null;cgAbrir(${P},'ayuda')`]);
+  if(!cerrada&&_cgSalidasPend(g).length)acc.push([`🚪 Salida pagada por ${nom}`,`${cierra}cgAbrir(${P},'salida')`]);
+  if(!mc&&c.personas>0&&!(ts0&&ts0.importe>0))acc.push([`👜 Lo tiene ${nom}, sin persona`,`${cierra}cgAbrir(${P},'tienesin')`]); // v46.70: también liquidada
+  if(falta>0&&!cerrada)acc.push(["🕒 Alguien paga más tarde",`${cierra}cgAbrir(${P},'tarde')`]);
+  if(!mc&&!_cgCfg(g,idx).acordado)acc.push(["＋ Pendiente anterior acordado",`${cierra}cgAbrir(${P},'acordado')`]); // v46.70: también liquidada
+  if(!hayPlan&&!cerrada)acc.push(["📝 Nueva solicitud para este grupo",`${cierra}solDesdeGrupo(${P})`]);
+  acc.push(["Plegar esta cuenta",`${cierra}cgPlegar(${P})`]);
+  h+=`<button class="cgc2-mas" aria-expanded="${abM?"true":"false"}" onclick="DESP['${km}']=!DESP['${km}'];render()">⋯ Más acciones</button>`;
+  if(abM)h+=`<div class="cgc2-lista">${acc.map(a=>`<button onclick="${a[1]}">${a[0]}</button>`).join("")}</div>`;
+  // Propuesta del mes (v46.8): sin cambios
   const futuras=_solsR().filter(s=>s.estado==="pendiente"&&s.grupoGid===g.id&&s.capital>0&&_solMesIdx(s)>idx);
   const futTxt=futuras.length?`<div style="font-size:12.5px;color:var(--muted);margin-top:8px">+ ${futuras.length} ${futuras.length===1?"solicitud":"solicitudes"} para ${[...new Set(futuras.map(s=>_txtIdx(_solMesIdx(s)).split(" ")[0]))].join(", ")} (se verán en su mes)</div>`:"";
-  if(!hayPlan){ if(!cerrada)h+=`<button onclick="solDesdeGrupo('${g.id}')" style="width:100%;margin-top:12px;padding:11px;border-radius:12px;border:2px dashed #B06A1E;background:#FFF8EE;color:#8A4F12;font-size:14.5px;font-weight:800;cursor:pointer">📝 ＋ Nueva solicitud para este grupo</button>`+futTxt; }
+  if(!hayPlan){ if(!cerrada)h+=futTxt; }
   else {
-    const btn=(t,on,c)=>`<button onclick="${on}" style="flex:none;border:none;border-radius:8px;padding:7px 10px;background:${c};color:#fff;font-size:13px;font-weight:800;cursor:pointer">${t}</button>`;
+    const btn=(t,on,cl)=>`<button onclick="${on}" style="flex:none;border:none;border-radius:8px;padding:7px 10px;background:${cl};color:#fff;font-size:13px;font-weight:800;cursor:pointer">${t}</button>`;
     const it=(ic,txt,sub,v,ok,quitar)=>`<div style="background:#fff;border-radius:10px;padding:9px 11px;margin-top:7px"><div style="display:flex;align-items:center;gap:8px"><span style="flex:1;min-width:0;font-size:15px">${ic} ${txt}<small style="display:block;color:var(--muted);font-size:12.5px">${sub}</small></span><b style="white-space:nowrap;font-size:15px">−${fmtEur(v)} €</b></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">${btn("✕ Quitar",quitar,"#B5422E")}${ok}</div></div>`;
     const ahora=_r2(d.resto+d.solTot+d.salTot);
     h+=`<div style="margin-top:12px;border:2px dashed #B06A1E;background:#FFF8EE;border-radius:14px;padding:12px">
       <div style="font-size:16px;font-weight:800;color:#8A4F12">📝 Propuesta del mes <span style="display:inline-block;background:#94571A;color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:20px;vertical-align:middle">PENDIENTE</span></div>
       <div style="font-size:13px;color:#6B4210;margin-top:4px">Ahora: ${ahora>=0?"te entrega "+fmtEur(ahora)+" €":"le pasas "+fmtEur(-ahora)+" €"}</div>`;
-    d.sols.forEach(x=>{ h+=it("🤝","Ayuda a "+escH(x.nombre),`${x.n} ${x.n===1?"cuota":"cuotas"} de ${fmtEur(x.cuota)} € · solicitud en Ayudas`,x.v,btn("✅ Aprobar",`solOtorgar('${esc(x.id)}')`,"#1B4332"),`cgSimQuitarSol('${g.id}','${esc(x.id)}')`); });
-    d.sal.forEach(x=>{ h+=it("🚪","Salida de "+escH(x.nombre),"pendiente de pagar",x.v,btn("✅ Pagada",`cgSalidaReal('${g.id}','${esc(x.mid)}')`,"#1B4332"),`cgSimQuitarSal('${g.id}','${esc(x.mid)}')`); });
+    d.sols.forEach(x=>{ h+=it("🤝","Ayuda a "+escH(x.nombre),`${x.n} ${x.n===1?"cuota":"cuotas"} de ${fmtEur(x.cuota)} € · solicitud en Ayudas`,x.v,btn("✅ Aprobar",`solOtorgar('${esc(x.id)}')`,"#1B4332"),`cgSimQuitarSol(${P},'${esc(x.id)}')`); });
+    d.sal.forEach(x=>{ h+=it("🚪","Salida de "+escH(x.nombre),"pendiente de pagar",x.v,btn("✅ Pagada",`cgSalidaReal(${P},'${esc(x.mid)}')`,"#1B4332"),`cgSimQuitarSal(${P},'${esc(x.mid)}')`); });
     h+=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px 2px"><b style="color:#8A4F12;font-size:15.5px">${d.resto>0?"Te entregaría":d.resto<0?"Lo pone la asociación":"Justo: no sobra ni falta"}</b>${d.resto!==0?`<b style="font-size:21px;white-space:nowrap;color:${d.resto>0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(d.resto))} €</b>`:""}</div>
-      <button onclick="cgEnvioAbrir('${g.id}','plan')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar la propuesta a ${nom}</button>
-      <button onclick="solDesdeGrupo('${g.id}')" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #8A4F12;background:#fff;color:#8A4F12;font-size:14px;font-weight:800;cursor:pointer">📝 ＋ Otra solicitud para este grupo</button>${futTxt}</div>`;
+      <button onclick="cgEnvioAbrir(${P},'plan')" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">💬 Enviar la propuesta a ${nom}</button>
+      <button onclick="solDesdeGrupo(${P})" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #8A4F12;background:#fff;color:#8A4F12;font-size:14px;font-weight:800;cursor:pointer">📝 ＋ Otra solicitud para este grupo</button>${futTxt}</div>`;
   }
-  // 3 · Nota personal del grupo (v46.67, notas.js): fuera de la contabilidad
-  if(typeof notaGrupoHTML==="function")h+=notaGrupoHTML(g);
-  if(_cgCerrada(g)&&DESP["cgver-"+g.id])h+=`<div style="text-align:center;margin-top:8px"><button onclick="DESP['cgver-${g.id}']=false;render()" style="background:none;border:none;color:#2D6A4F;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer">Ocultar</button></div>`;
+  // Nota personal del grupo (v46.67, notas.js): fuera de la contabilidad · v46.71: en una línea; al tocarla se abre
+  if(typeof notaGrupoLineaHTML==="function")h+=notaGrupoLineaHTML(g);
+  else if(typeof notaGrupoHTML==="function")h+=notaGrupoHTML(g);
   return h+`</div>`;
 }
 // ══ v45.42 · COBROS POR GRUPOS ══════════════════════════════════════════════════════════════
@@ -841,6 +841,22 @@ function marcarItemGrupo(tipo,mid,lid,pi){
   }
   recalcMesRecargo();save();render();
   _avisoDeshacer(_nomCorto(mid)+(tipo==="aporte"?(ahora?": aporte cobrado ✓":": aporte desmarcado"):(ahora?": cuota cobrada ✓":": cuota desmarcada")));
+}
+// v46.71 (Ángel 28/11/2026): el círculo de cada persona en Cobros marca TODO lo suyo del mes (aporte y cuotas) de un toque; si ya
+// estaba todo marcado, lo desmarca. Hace exactamente lo mismo que tocar cada interruptor (marcarItemGrupo), con un solo «Deshacer».
+function cgPersonaToggle(gid,mid){
+  if(_mesBloqueado())return; // v45.46: mes cerrado
+  const its=itemsDeMiembro(mid,DATA.reportMonth,DATA.reportYear); if(!its.length)return;
+  const poner=!its.every(it=>it.yaPagado); let cuota=false;
+  UNDO_SNAPSHOT=JSON.stringify(DATA);
+  its.forEach(it=>{ if(!!it.yaPagado===poner)return;
+    if(it.tipo==="aporte"){ const md=getMesData(DATA.reportMonth,DATA.reportYear); if(!md.aportes)md.aportes={}; md.aportes[mid]=poner; anotarFechaAporte(md,mid); }
+    else { cuota=true; const m=DATA.members.find(x=>x.id===mid);
+      if(m)[...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>{ if(l.id===it.lid){ l.pays[it.pi].paid=poner; anotarFechaCuota(l.pays[it.pi]); } }); } });
+  if(cuota)recolocarAyudas();
+  recalcMesRecargo();save();render();
+  // v46.71 (Ángel 28/11/2026): «Marcado: Ana, 174 € · Deshacer». Deshacer (undoPay) vuelve a la copia de antes del toque: también las fechas de cobro
+  _avisoDeshacer((poner?"Marcado: ":"Desmarcado: ")+_nomCorto(mid)+", "+fmtEur(_r2(its.reduce((a,it)=>a+it.importe,0)))+" €",true);
 }
 function marcarTodoGrupo(gid){
   if(_mesBloqueado())return; // v45.46: mes cerrado

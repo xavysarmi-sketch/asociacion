@@ -157,9 +157,9 @@ function toggleAporte(memberId,mes,anio){
   _avisoDeshacer(_nomCorto(memberId)+(md.aportes[memberId]?": aporte cobrado ✓":": aporte desmarcado"));
 }
 // v45.43: los cambios de muchos cobros a la vez se pueden deshacer (mismo «Deshacer» que las cuotas)
-function _avisoDeshacer(msg){
-  const t=document.getElementById("toast"); if(!t)return;
-  t.innerHTML=`${escH(msg)} &nbsp;<span onclick="undoPay()" style="text-decoration:underline;cursor:pointer;font-weight:800">↩ Deshacer</span>`;
+function _avisoDeshacer(msg,abajo){ // v46.71: abajo = el aviso sale abajo (círculo de Cobros) · «Deshacer» ya se puede tocar (.toast-undo)
+  const t=document.getElementById("toast"); if(!t)return; t.classList.toggle("abajo",!!abajo);
+  t.innerHTML=`${escH(msg)} &nbsp;<span class="toast-undo" onclick="undoPay()" style="text-decoration:underline;cursor:pointer;font-weight:800">↩ Deshacer</span>`;
   t.classList.remove("hidden"); clearTimeout(t._t); clearTimeout(UNDO_TIMER);
   UNDO_TIMER=setTimeout(()=>{t.classList.add("hidden");UNDO_SNAPSHOT=null;},8000);
 }
@@ -244,6 +244,14 @@ function cuentasMesHTML(md,rm,ry){
     :ex>0
     ?`<div style="margin-top:10px;padding:11px 12px;border-radius:12px;background:#E8F4EC;border:1.5px solid #8CC5A0;color:#1B4332;display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:14px;font-weight:800">Sobran · se reinvierten en ayudas</span><b style="font-size:20px">${fmtEur(ex)} €</b></div>`
     :`<div style="margin-top:10px;padding:11px 12px;border-radius:12px;background:var(--bg);font-size:14px;font-weight:800;color:var(--dark)">Cuadra justo: ni falta ni sobra</div>`;
+  // v46.71 (Ángel 28/11/2026): con el mes abierto, el resultado principal es el PREVISTO (si se cobran todas las cuotas), en color
+  // neutro; lo cobrado hasta ahora va debajo, en pequeño. El rojo solo sale con el mes cerrado o si lo previsto tampoco alcanza.
+  // Mismas cifras de siempre (ex y quedaAsociacionMes): solo cambia cómo se enseñan.
+  const q=quedaAsociacionMes(rm,ry), prev=!mesCerrado(getMesKey(rm,ry))&&q.enCurso&&Math.abs(q.retornos-ret)>0.004;
+  const resP=!prev?res:(q.queda<0
+    ?`<div style="margin-top:10px;padding:11px 12px;border-radius:12px;background:#FDECEA;border:1.5px solid #E5A29B;color:#8A2A1F;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px"><span style="flex:1 1 11rem;min-width:0;font-size:14px;font-weight:800">Si se cobra todo: faltan · los pone el fondo</span><b style="margin-left:auto;font-size:20px">${fmtEur(-q.queda)} €</b></div>`
+    :`<div style="margin-top:10px;padding:11px 12px;border-radius:12px;background:#F3F1EC;border:1.5px solid #D9D2C4;color:var(--dark);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px"><span style="flex:1 1 11rem;min-width:0;font-size:14px;font-weight:800">${q.queda>0?"Si se cobra todo: sobran":"Si se cobra todo: cuadra justo"}</span>${q.queda>0?`<b style="margin-left:auto;font-size:20px">${fmtEur(q.queda)} €</b>`:""}</div>`)
+    +`<div style="margin-top:6px;font-size:12.5px;color:var(--muted);line-height:1.45">Con lo cobrado hasta ahora (retorno ${fmtEur(ret)} €): ${ex<0?"faltarían "+fmtEur(-ex)+" €":ex>0?"sobrarían "+fmtEur(ex)+" €":"cuadra justo"}.</div>`;
   return `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border-radius:12px;background:#E8F4EC;margin-bottom:12px">
       <span style="font-size:14px;color:#1B4332;font-weight:700">Aportes cobrados<span style="display:block;font-size:11.5px;font-weight:600;opacity:.8">Entran al fondo</span></span>
       <b style="font-size:20px;color:#1B4332">${fmtEur(totalAportesMes(rm,ry))} €</b></div>
@@ -251,13 +259,13 @@ function cuentasMesHTML(md,rm,ry){
     ${fila("+","Retorno cobrado de las cuotas",ret)}
     ${fila("−",`Beneficio de ${n} asociados`,r.obligacion,n?`media ${fmtEur(r.media)} € cada uno`:"")}
     ${bon?fila("−","Bonos por referidos",bon):""}
-    ${res}${quedaPrevistoHTML(rm,ry,ret)}`;
+    ${resP}${quedaPrevistoHTML(rm,ry,ret,prev)}`;
 }
 // v45.23: antes «Para la asociación» en Asociados → Resumen General (mismo cálculo: quedaAsociacionMes)
-function quedaPrevistoHTML(rm,ry,retCobrado){
+function quedaPrevistoHTML(rm,ry,retCobrado,yaArriba){ // v46.71: yaArriba = el previsto ya es el resultado principal
   const q=quedaAsociacionMes(rm,ry), ab=!!DESP["queda-asoc-meses"];
   let h="";
-  if(q.enCurso&&Math.abs(q.retornos-retCobrado)>0.004)h+=`<div style="margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.45">Si se cobran todas las cuotas del mes: retorno ${fmtEur(q.retornos)} € → ${q.queda>=0?"sobrarían":"faltarían"} <b style="color:${q.queda>=0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(q.queda))} €</b>.</div>`;
+  if(!yaArriba&&q.enCurso&&Math.abs(q.retornos-retCobrado)>0.004)h+=`<div style="margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.45">Si se cobran todas las cuotas del mes: retorno ${fmtEur(q.retornos)} € → ${q.queda>=0?"sobrarían":"faltarían"} <b style="color:${q.queda>=0?"#1B4332":"#A63A20"}">${fmtEur(Math.abs(q.queda))} €</b>.</div>`;
   h+=`<button onclick="DESP['queda-asoc-meses']=!DESP['queda-asoc-meses'];render()" style="background:none;border:none;color:#2D6A4F;font-size:13px;font-weight:700;cursor:pointer;padding:8px 0 0">${ab?"▾":"▸"} Ver otros meses</button>`;
   if(ab){
     const meses=[]; let y=2025,i=7; const fin=_idxMes(rm,ry);
