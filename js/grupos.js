@@ -411,7 +411,7 @@ function cgTardeQuitar(gid,mid){
   save(); render(); toast("Quitado ✓");
 }
 function _cgHoy(){ const d=new Date(); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0"); }
-function cgAbrir(gid,tipo){ if(tipo!=="sim"&&_mesBloqueado())return; CG_FORM={gid,tipo}; render(); } // v45.46
+function cgAbrir(gid,tipo){ if(tipo!=="sim"&&_mesBloqueado())return; CG_FORM={gid,tipo}; if(tipo!=="tardeP"&&tipo!=="sim")DESP["cgabrir-"+gid]=true; render(); } // v45.46 · v46.72: la cuenta se queda desplegada tras guardar
 function cgGuardar(gid){
   if(_mesBloqueado())return; // v45.46: mes cerrado
   const g=gruposCierre().find(x=>x.id===gid); if(!g||!CG_FORM)return;
@@ -545,10 +545,15 @@ function cuentaGrupoHTML(g,principal){
   const mesTxt=MONTHS_FULL[((idx%12)+12)%12].toLowerCase(), prevTxt=MONTHS_FULL[(((idx-1)%12)+12)%12].toLowerCase();
   const cerrada=_cgCerrada(g), mc=mesCerrado(key); // cerrada = cuenta liquidada (v45.41) · mc = mes cerrado
   const c=_cgCascada(g,idx), falta=c.falta, total=c.total, formTipo=CG_FORM&&CG_FORM.gid===g.id?CG_FORM.tipo:null;
-  const est0=falta>0?"falta que te entregue "+fmtEur(falta)+" €":falta<0?"le debes "+fmtEur(-falta)+" €":cerrada?"liquidada":"cuenta cuadrada";
-  // «⋯ Más acciones › Plegar esta cuenta» (antes «✕ Cerrar», v45.85): una línea que se abre al tocarla
-  if(DESP["cgplegar-"+g.id]&&!(CG_FORM&&CG_FORM.gid===g.id))
-    return `<button onclick="DESP['cgplegar-${g.id}']=false;render()" class="cgc2-plegada"><span style="font-size:18px">💶</span><span style="flex:1;min-width:0;font-weight:800">Cuenta con ${nom} · ${mesTxt} <span style="font-weight:600;font-size:.9em;opacity:.8">· ${est0}</span></span><span style="font-size:18px">›</span></button>`;
+  // v46.72 (Ángel 28/11/2026): la cuenta sale PLEGADA por defecto en una línea («Cuenta con Marlene ⌄»), porque la cabecera del grupo ya dice
+  // lo que falta. Al tocarla se despliega (DESP cgabrir). Solo si hay algo que mirar, una etiqueta corta: le debes al responsable o hay
+  // dinero de meses anteriores (retenido, acordado o pendiente de pasar). Con un formulario abierto (cgAbrir) se queda desplegada.
+  const abierta=!!DESP["cgabrir-"+g.id]||!!(CG_FORM&&CG_FORM.gid===g.id&&CG_FORM.tipo!=="tardeP");
+  if(!abierta){
+    const pf0=_cgMovs(_keyDeIdx(idx-1),g.id).length?_cgPendManual(g,idx-1):0;
+    const et=falta<0?["rev",`Le debes ${fmtEur(-falta)} €`]:c.antes>0?["pend",`⚠️ ${fmtEur(c.antes)} € de meses anteriores`]:pf0>0?["pend",`⚠️ ${fmtEur(pf0)} € pendientes de ${prevTxt}`]:null;
+    return `<button onclick="DESP['cgabrir-${g.id}']=true;render()" class="cgc2-plegada" aria-expanded="false"><span class="cgc2-pl-c"><span class="cgc2-pl-t">💶 Cuenta con ${nom}</span>${et?`<span class="cgc2-chip ${et[0]}">${et[1]}</span>`:""}</span><span class="mg-acc-fl" aria-hidden="true"></span></button>`;
+  }
   const P=`'${g.id}'`, pn=n=>escH(String(n||"").split(" ")[0]);
   const ps=c.propios.filter(l=>l.resta>0), rq=_r2(ps.reduce((a,l)=>a+l.resta,0)), fe=_cgCfg(g,idx).tieneFecha||"", ts0=_cgCfg(g,idx).tieneSin;
   const td=falta>0?_cgTarde(g,idx):[], tt=_r2(td.reduce((a,x)=>a+x.v,0)), sm=c.items.filter(it=>!it.yaPagado).length;
@@ -561,7 +566,7 @@ function cuentaGrupoHTML(g,principal){
     :["pend","⏳ Por entregar"];
   const subC=falta>0?"falta que te entregue":falta<0?`le debes a ${nom}`:cerrada?"no falta nada":"cuenta cuadrada";
   let h=`<div class="cgc2${falta<0?" debe":""}">
-    <div class="cgc2-tit">💶 Cuenta con ${nom} · ${mesTxt}</div>
+    <button class="cgc2-tit" onclick="cgPlegar('${g.id}')" aria-expanded="true"><span style="flex:1;min-width:0">💶 Cuenta con ${nom} · ${mesTxt}</span><span class="mg-acc-fl ab" aria-hidden="true"></span></button>
     <div class="cgc2-cab"><div class="cgc2-res"><b class="cgc2-cifra">${fmtEur(Math.abs(falta))} €</b><span class="cgc2-sub">${subC}${td.length?` · te da ahora <b>${fmtEur(Math.max(0,_r2(falta-tt)))} €</b>`:""}</span></div><span class="cgc2-chip ${chip[0]}">${chip[1]}</span></div>`;
   // Pendiente del mes anterior que no pasa solo (se pasa a mano)
   const pk=_keyDeIdx(idx-1), pf=_cgMovs(pk,g.id).length?_cgPendManual(g,idx-1):0;
@@ -659,7 +664,7 @@ function cuentaGrupoHTML(g,principal){
 // Casi todo se cobra a través de los responsables de grupo: Cobros empieza con una tarjeta por grupo.
 // «Cobrado» es la misma cuenta que en Inicio › Dinero del mes (dineroAyudasMes): lo marcado como
 // cobrado o lo apuntado como entregado, lo que sea mayor. Solo calcula y pinta (el render no escribe).
-function cgPlegar(gid){ DESP["cgplegar-"+gid]=true; DESP["cgabrir-"+gid]=false; DESP["cgver-"+gid]=false; if(CG_FORM&&CG_FORM.gid===gid)CG_FORM=null; render(); } // v45.85
+function cgPlegar(gid){ DESP["cgplegar-"+gid]=false; DESP["cgabrir-"+gid]=false; DESP["cgver-"+gid]=false; if(CG_FORM&&CG_FORM.gid===gid)CG_FORM=null; render(); } // v45.85
 // ══ v45.85 · ENVIAR LO QUE TOCA PAGAR EN EL GRUPO (a quien recoge: el responsable u otra persona del grupo) ══
 function _cgListaTexto(g,dest){
   const rm=DATA.reportMonth, ry=DATA.reportYear, mes=MONTHS_FULL[MONTHS.indexOf(rm)].toLowerCase();

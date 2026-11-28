@@ -1708,3 +1708,10 @@ i.cgp-dot.ok::after{content:none}
 /* v46.71: el «↩ Deshacer» de los avisos se puede tocar (antes todo el aviso tenía pointer-events:none) solo mientras se ve; el del círculo de Cobros sale abajo */
 .toast:not(.hidden) .toast-undo{pointer-events:auto;display:inline-block;padding:8px 6px;margin:-8px -2px}
 .toast.abajo{top:auto;bottom:calc(108px + env(safe-area-inset-bottom))}
+/* v46.72: la cuenta con el responsable, plegada por defecto en una línea; el título de la abierta la vuelve a plegar */
+.cgc2-plegada{flex-wrap:nowrap}
+.cgc2-pl-c{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.cgc2-pl-t{flex:0 1 auto;min-width:0;font-weight:800;overflow-wrap:anywhere}
+.cgc2-plegada .cgc2-chip{margin-left:auto}
+.cgc2-plegada .mg-acc-fl,button.cgc2-tit .mg-acc-fl{flex:none}
+button.cgc2-tit{width:100%;display:flex;align-items:flex-start;gap:8px;padding:0;border:none;background:none;text-align:left;cursor:pointer;font-family:inherit}
