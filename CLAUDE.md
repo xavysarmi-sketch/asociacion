@@ -183,6 +183,11 @@ Estaban dentro de notas de versión (ahora en `docs/HISTORIAL.md`); comprobadas 
   anterior a `Historico\`, PDF a `Revisiones\`, copia del registro antes del cambio, `verificar_vigente.py` en OK); y
   (2) la cabecera de `..\..\LEEME_PRIMERO.md` («Documento Maestro vXX.XX · App vXX.XX», con respaldo previo en
   `NH Oficial\respaldos\`). El revisor diario lee exactamente esas dos líneas (sección 2 «App del administrador» y 6 «Orden»).
+- AFECTA A LA GUÍA (Maestro v18.98 · GE-6, Ángel 28/11/2026): cada versión nueva del Maestro termina su fila de
+  `NH Oficial\Documento_Maestro\REGISTRO_VERSIONES.md` (y la de la tabla de versiones del propio Maestro) con «Afecta a la Guía: sí.»
+  o «Afecta a la Guía: no.». «Sí» si cambia algo que ven los asociados (una regla o cifra que explica la Guía, o una regla nueva
+  que deban conocer): entonces se revisa la Guía para asociados en el mismo paso. «No» si solo pone al día la sección 13 o cambia
+  pantallas. El revisor (v2.7) solo avisa de la Guía si alguna versión posterior a la que cita («ref. M…») dice «sí» o no lo dice.
 
 ## Terminología obligatoria (textos visibles y documentos)
 - Usar: asociados, aportes, ayudas, retorno, permanencia, devoluciones/cuotas, aval.
