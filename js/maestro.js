@@ -44,6 +44,7 @@ const REGLAS=Object.freeze({
   // ── Salidas (SA) ──
   AVISO_MESES: 1,                       // SA-1 (Maestro v18.64, 12/11/2026): un mes de aviso para todos, con cualquier saldo. Antes: · con más de 3.000 € de saldo, 2 meses de aviso
   AVISO_DIA_CORTE: 15,                  // SA-1 (v18.64): el aviso vale para el mes si llega hasta este día; desde el siguiente, para el mes siguiente. Antes: · con más de 6.000 €, 3 meses (si no, 1 mes)
+  VUELTA_MESES: 3,                      // SA-8 (Maestro, decisión de Ángel 28/11/2026): quien salió puede volver desde 3 meses después del mes en que cobró su salida
   // ── Bonus por referido (BO) ──
   BONO_REFERIDO: 10,                    // BO · € por cada referido del mes (los asume el fondo)
   REFERIDOS_MAX_MES: 3,                 // BO · como mucho 3 referidos por mes

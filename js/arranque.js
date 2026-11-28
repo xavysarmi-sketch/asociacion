@@ -39,6 +39,7 @@ let SEND_SELECTED=new Set(),SEND_FILTER="all",SEND_SEARCH="";
 let WA_QUEUE=[],WA_IDX=0;
 let UNDO_SNAPSHOT=null,UNDO_TIMER=null;
 let ALTA_VUELVE_ARM=null,_altaVuelveT=null; // v46.57: «Darle de alta de nuevo» (dos toques) en el alta, js/personas.js
+let ALTA_VUELVE_DEC=null; // v46.73 (SA-8): si salió con incidencias, lo que decide el coordinador: {mid, dec:"conAval"|"sinAval"}
 
 
 // ══ v45.27 · SESIÓN DEL ADMINISTRADOR ═══════════════════════════════════════════════════════

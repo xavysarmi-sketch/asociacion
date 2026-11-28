@@ -146,6 +146,7 @@ function addMemberSubmit(convertir,vuelve){ // v46.57: vuelve = dar de alta de n
     if(tercExist){
       // v45.21: sin confirm() (regla 5). Se avisa en el propio formulario y se convierte con su botón.
       if(!convertir){ altaNombreCambio(); toast("⚠️ Ya existe un tercero con ese nombre: toca «🔄 Convertir en asociado» o cambia el nombre",4500); return; }
+      if(!refdoId){ _altaPideAval(false); return; } // v46.73 (GE-1): como asociado nuevo, necesita quien lo recomiende
       const ok=mergeTerceroIntoAsociado(name,DATA.reportMonth,DATA.reportYear);
       if(ok){
         const conv=DATA.members.find(x=>x.type==="asociado"&&_normNombre(x.name)===key);
@@ -163,18 +164,28 @@ function addMemberSubmit(convertir,vuelve){ // v46.57: vuelve = dar de alta de n
   // v46.57 (ficha «aviso-nombre-repetido-asociado», opción C): no se crea a nadie con el nombre de otra persona (mismo
   // criterio que la auditoría, control 7, y que al renombrar). Quien salió y vuelve empieza de cero (SA-8): ficha nueva,
   // y la antigua, con su historial (SA-6), pasa a llamarse «Nombre (salió mmm. aaaa)».
+  // v46.73 (SA-8, decisiones de Ángel 28/11/2026): vuelve desde 3 meses después de cobrar su salida; sin incidencias, sin aval;
+  // con incidencias, decide el coordinador (con aval, sin aval o no entra). Las personas nuevas siempre con aval (GE-1).
   const co=_altaCoincide(name,type);
   if(co){
     if(co.caso!=="vuelve"||!vuelve){ ALTA_VUELVE_ARM=null; altaNombreCambio(); toast("⚠️ "+_altaCoincideCorto(co),4500); return; }
-    _renombrar(co.m,_nombreSalio(co.m));
+    if(co.inc.length&&!(ALTA_VUELVE_DEC&&ALTA_VUELVE_DEC.mid===co.m.id)){ ALTA_VUELVE_ARM=null; altaNombreCambio(); toast("⚠️ Salió con incidencias: decide el coordinador",4500); return; }
   }
-  const nuevo={id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:telAlta,origen:"app"};
+  const decV=co&&co.inc.length?ALTA_VUELVE_DEC.dec:null;
+  if(type==="asociado"&&!refdoId&&(!co||decV==="conAval")){ _altaPideAval(!!co); return; }
+  const telVuelta=co?telAlta||co.m.phone||"":telAlta; // SA-8: de la ficha anterior solo se reutilizan sus datos personales (teléfono)
+  const bonoYa=co&&refdoId?mesBonoDe(refdoId,co.m.name):null; // SA-8: quien lo recomienda ya cobró el bono por esta persona → no se paga otra vez
+  if(co)_renombrar(co.m,_nombreSalio(co.m));
+  const nuevo={id:"m"+Date.now(),name,type,ref,joinMonth:type==="asociado"?DATA.reportMonth:null,joinYear:type==="asociado"?DATA.reportYear:null,history:[],loans:[],phone:telVuelta,origen:"app"};
   if(type==="asociado"){nuevo.ciclo=cicloAlta;nuevo.aporte=aporteAlta;} // v45 (PE-1, AP-4)
+  if(co)nuevo.vuelta={de:co.m.id,incidencias:co.inc.length>0,decision:decV||(co.inc.length?null:"sinIncidencias")}; // v46.73: de qué ficha viene (solo informativo)
   DATA.members.push(nuevo);
-  const k=refdoId?aplicarReferidoAlta(nuevo,refdoId,bonoMes):null;
+  let k=null;
+  if(refdoId&&bonoYa){ nuevo.referidoPor=refdoId; aplicarReferidoAlta.yaExistia=true; k=bonoYa; }
+  else if(refdoId)k=aplicarReferidoAlta(nuevo,refdoId,bonoMes);
   const gTxt=_altaAplicarGrupo(nuevo,gSel); // v45.42
   const solN=MODAL&&MODAL.sol; // v45.14
-  ALTA_VUELVE_ARM=null;
+  ALTA_VUELVE_ARM=null; ALTA_VUELVE_DEC=null;
   closeModal();save();toast((co?`✓ ${name} vuelve a estar dado de alta (su ficha anterior: «${co.m.name}»)`:"Miembro añadido ✓")+gTxt+msgBono(k),co?6000:3000);
   if(solN)_solTrasAlta(solN,nuevo); else abrirBienvenida(nuevo.id,true); // v45.21
 }
@@ -192,7 +203,30 @@ function _altaCoincide(nombre,tipo){
     if(act.type==="tercero")return {caso:tipo==="asociado"?"conv":"tercero",m:act};
     return {caso:tipo==="tercero"?"asociadoTer":"asociado",m:act};
   }
-  const b=igual[0]; return {caso:_bajaPagada(b.baja)?"vuelve":"salidaPend",m:b};
+  const b=igual[0]; if(!_bajaPagada(b.baja))return {caso:"salidaPend",m:b};
+  const desde=_mesCobroSalida(b)+REGLAS.VUELTA_MESES; // v46.73 (SA-8): pasados al menos 3 meses desde el mes en que cobró su salida
+  if(_idxMes(DATA.reportMonth,DATA.reportYear)<desde)return {caso:"vuelvePronto",m:b,desde};
+  return {caso:"vuelve",m:b,inc:_incidenciasSalida(b)};
+}
+// v46.73 (SA-8): mes en que cobró su salida: el de la fecha en que se marcó pagada; si no la hay (salidas antiguas), el mes de pago
+function _mesCobroSalida(m){
+  const b=m.baja||{}, f=String(b.fechaPagada||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(f)return (+f[3])*12+(+f[2]-1);
+  const p=mesPagoBaja(b); return _idxMes(p.mes,p.anio);
+}
+// v46.73 (SA-8): incidencias de su salida (decisión de Ángel 28/11/2026): su aval o el fondo pagaron parte de su ayuda (SA-10),
+// o dejó algún pago sin hacer (cuotas de sus ayudas sin pagar). Devuelve la lista en palabras; vacía = salió sin incidencias.
+function _incidenciasSalida(m){
+  const r=[], d=datosBaja(m)||{};
+  if((d.total||0)<0)r.push(`Al salir, ${esFundador(m)?"el fondo pagó":"su aval o el fondo pagaron"} ${fmtEur(-d.total)} € de su ayuda (SA-10)`);
+  let n=0, imp=0; [...(m.loans||[]),...(m.closedLoans||[])].forEach(l=>(l.pays||[]).forEach((p,i)=>{ if(!p.paid){ n++; imp+=cuotaDe(l,i)||0; } }));
+  if(n)r.push(`Dejó ${n===1?"1 cuota":n+" cuotas"} sin pagar (${fmtEur(_r2(imp))} €)`);
+  return r;
+}
+function _altaPideAval(vuelta){ // v46.73 (GE-1): el aval es quien lo recomienda (desplegable «¿Quién lo trajo?»)
+  ALTA_VUELVE_ARM=null; altaNombreCambio();
+  toast(vuelta?"⛔ Entra con aval: elige quién lo recomienda (es su aval)":"⛔ Elige quién lo recomienda: es su aval (GE-1)",4500);
+  const el=document.getElementById("m-refdo"); if(el)el.scrollIntoView({block:"center"});
 }
 function _mesSalida(m){ const b=m.baja||{}; return b.v18&&b.ultimoMes?{mes:b.ultimoMes,anio:b.ultimoAnio}:{mes:b.month,anio:b.year}; }
 function _nombreSalio(m){ const s=_mesSalida(m); return `${m.name} (salió ${String(s.mes||"").toLowerCase()}. ${s.anio||""})`; }
@@ -202,6 +236,7 @@ function _altaCoincideCorto(co){
   return {conv:`Ya existe el tercero ${n}: toca «🔄 Convertir en asociado» o cambia el nombre`,
     asociado:`Ya hay un asociado que se llama ${n}`, tercero:`${n} ya está como tercero`, asociadoTer:`${n} ya es asociado`,
     vuelve:`${n} salió en ${_txtSalida(co.m)}: toca «Darle de alta de nuevo» o cambia el nombre`,
+    vuelvePronto:`${n} podrá volver desde ${co.desde!=null?_txtIdx(co.desde):""} (SA-8)`,
     salidaPend:`${n} tiene su salida pendiente de pagar`}[co.caso];
 }
 function _altaCaja(html){ return `<div style="background:#FFF4E5;border:1.5px solid #E0A040;border-radius:12px;padding:11px 12px;margin:-4px 0 12px;font-size:13px;color:#6B4210;line-height:1.45">${html}</div>`; }
@@ -211,17 +246,35 @@ function _altaConvHTML(nombre,tipo){
   if(co.caso==="conv"){
     const nAy=(t.loans||[]).length;
     return _altaCaja(`⚠️ Ya existe el tercero ${n}${t.ref?` (avalado por ${escH(avalistaNombre(t)||"—")})`:""}${nAy?` con ${nAy} ${nAy===1?"ayuda":"ayudas"}`:""}.
-    <div style="margin-top:4px">Si es la misma persona, conviértela en asociado: conserva su historial y sus ayudas. Elige abajo su permanencia y su aporte.</div>
+    <div style="margin-top:4px">Si es la misma persona, conviértela en asociado: conserva su historial y sus ayudas. Elige abajo su permanencia, su aporte y quién lo trajo (su aval).</div>
     <button onclick="addMemberSubmit(true)" style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:#A64B19;color:#fff;font-size:14px;font-weight:800;cursor:pointer">🔄 Convertir en asociado</button>${otra}`);
   }
   if(co.caso==="asociado")return _altaCaja(`⚠️ Ya hay un asociado que se llama ${n}.<div style="margin-top:4px">Si es la misma persona, no hace falta darla de alta otra vez.</div>${otra}`);
   if(co.caso==="tercero")return _altaCaja(`⚠️ ${n} ya está como tercero.<div style="margin-top:4px">Para una ayuda nueva, ábrelo en Personas.</div>${otra}`);
   if(co.caso==="asociadoTer")return _altaCaja(`⚠️ ${n} ya es asociado.<div style="margin-top:4px">Su ayuda se pide como asociado, desde su ficha.</div>${otra}`);
   if(co.caso==="salidaPend")return _altaCaja(`⚠️ ${n} tiene su salida anotada (último aporte en ${_txtSalida(t)}) y aún no la ha cobrado.<div style="margin-top:4px">Mientras su salida no esté pagada no se le puede dar de alta otra vez.</div>${otra}`);
-  const arm=ALTA_VUELVE_ARM===t.id;
-  return _altaCaja(`👋 ${n} salió en ${_txtSalida(t)} y ya cobró su salida.
-    <div style="margin-top:4px">Si vuelve, empieza de cero, como alguien nuevo. Su ficha anterior se guarda con su historial y pasa a llamarse «${escH(_nombreSalio(t))}».</div>
-    <button onclick="altaVuelveToque('${esc(t.id)}')" style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:${arm?"#1B4332":"#2D6A4F"};color:#fff;font-size:14px;font-weight:800;cursor:pointer">${arm?"Toca otra vez para darle de alta":"Darle de alta de nuevo"}</button>${otra}`);
+  // v46.73 (SA-8): aún no han pasado 3 meses desde que cobró su salida
+  if(co.caso==="vuelvePronto")return _altaCaja(`⏳ ${n} salió en ${_txtSalida(t)} y cobró su salida en ${_txtIdx(_mesCobroSalida(t))}.
+    <div style="margin-top:4px">Puede volver pasados al menos ${REGLAS.VUELTA_MESES} meses desde que cobró: <b>desde ${_txtIdx(co.desde)}</b> (SA-8).</div>${otra}`);
+  const arm=ALTA_VUELVE_ARM===t.id, dec=ALTA_VUELVE_DEC&&ALTA_VUELVE_DEC.mid===t.id?ALTA_VUELVE_DEC.dec:null;
+  const btnAlta=`<button onclick="altaVuelveToque('${esc(t.id)}')" style="width:100%;margin-top:8px;padding:11px;border:none;border-radius:10px;background:${arm?"#1B4332":"#2D6A4F"};color:#fff;font-size:14px;font-weight:800;cursor:pointer">${arm?"Toca otra vez para darle de alta":"Darle de alta de nuevo"}</button>`;
+  const intro=`<div style="margin-top:4px">Si vuelve, empieza de cero, como alguien nuevo: sin su permanencia, su antigüedad ni nada de antes${esFundador(t)?" (tampoco como fundador)":""}. De su ficha anterior solo se usa su teléfono. Esa ficha se guarda con su historial y pasa a llamarse «${escH(_nombreSalio(t))}».</div>`;
+  if(!co.inc.length)return _altaCaja(`👋 ${n} salió en ${_txtSalida(t)} sin incidencias y ya cobró su salida.${intro}
+    <div style="margin-top:4px">Salió sin incidencias: no necesita aval (SA-8).</div>${btnAlta}${otra}`);
+  // Con incidencias: no hay alta directa, decide el coordinador (con aval, sin aval o no entra)
+  const lista=`<ul style="margin:4px 0 0 18px;padding:0">${co.inc.map(x=>`<li>${escH(x)}</li>`).join("")}</ul>`;
+  const bDec=(v,txt)=>`<button onclick="altaVuelveDecidir('${esc(t.id)}','${v}')" style="flex:1 1 7rem;min-width:0;padding:10px 8px;border-radius:10px;border:1.5px solid ${dec===v?"#1B4332":"#C9A36A"};background:${dec===v?"#1B4332":"#fff"};color:${dec===v?"#fff":"#6B4210"};font-size:13.5px;font-weight:800;cursor:pointer">${txt}</button>`;
+  const elegida=dec==="conAval"?`<div style="margin-top:8px"><b>Decisión: entra con aval.</b> Elige abajo, en «¿Quién lo trajo?», quién lo recomienda: será su aval.</div>${btnAlta}`
+    :dec==="sinAval"?`<div style="margin-top:8px"><b>Decisión: entra sin aval.</b></div>${btnAlta}`:"";
+  return _altaCaja(`⚠️ <b>Salió con incidencias: decide el coordinador.</b>
+    <div style="margin-top:4px">${n} salió en ${_txtSalida(t)} y ya cobró su salida, pero:</div>${lista}${intro}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${bDec("conAval","Entra con aval")}${bDec("sinAval","Entra sin aval")}<button onclick="altaVuelveNoEntra('${esc(t.id)}')" style="flex:1 1 7rem;min-width:0;padding:10px 8px;border-radius:10px;border:1.5px solid #A63A20;background:#fff;color:#A63A20;font-size:13.5px;font-weight:800;cursor:pointer">No entra</button></div>${elegida}${otra}`);
+}
+// v46.73 (SA-8): decisión del coordinador cuando salió con incidencias
+function altaVuelveDecidir(mid,dec){ ALTA_VUELVE_DEC={mid,dec}; ALTA_VUELVE_ARM=null; altaNombreCambio(); }
+function altaVuelveNoEntra(mid){
+  const m=DATA.members.find(x=>x.id===mid); ALTA_VUELVE_DEC=null; ALTA_VUELVE_ARM=null;
+  closeModal(); toast(`No se da de alta${m?" a "+m.name.split(" ")[0]:""}: no se ha creado nada`,4000);
 }
 function altaVuelveToque(mid){ // dos toques (regla 5: sin confirm())
   if(ALTA_VUELVE_ARM!==mid){ ALTA_VUELVE_ARM=mid; altaNombreCambio(); clearTimeout(_altaVuelveT);
@@ -1738,7 +1791,7 @@ ${MODAL.sol?`<div style="font-size:12.5px;color:#1B4332;background:#EEF7F1;borde
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${_opcionesHTML("l-ci-opt","ciclo",PERM_OPCIONES,null,permEtiqueta)}</div>
 <label class="m-label">Aporte habitual</label>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">${_opcionesHTML("l-ap-opt","ap",APORTE_OPCIONES,50,v=>v+" €")}</div>
-<label class="m-label">🎁 ¿Quién lo trajo? (referido por)</label>
+<label class="m-label">🎁 ¿Quién lo trajo? Es su aval (obligatorio para personas nuevas, GE-1)</label>
 <select id="m-refdo" class="m-select" onchange="altaReferidoCambio();altaGrupoCambio()"><option value="">— Nadie / no aplica —</option>${asocActivos.map(m=>`<option value="${esc(m.id)}"${MODAL.solAval===m.id?" selected":""}>${escH(m.name)}</option>`).join("")}</select>
 <div id="m-bono-wrap" style="display:none;margin-top:10px;background:#FBF3DC;border:1px solid #EAD9A0;border-radius:12px;padding:10px 12px">
 <label class="m-label" style="color:#7A5A12">Mes en que se aplica el bono de 10 €</label>

@@ -168,7 +168,7 @@ function openPreview(mid){previewMiembro(mid);}
 function setReportMonth(val){DATA.reportMonth=val;save();}
 function setReportYear(val){DATA.reportYear=parseInt(val);save();}
 function openModal(type,extra){MODAL={type,...extra};render();}
-function closeModal(){MODAL=null;render();}
+function closeModal(){MODAL=null;if(typeof ALTA_VUELVE_DEC!=="undefined")ALTA_VUELVE_DEC=null;render();} // v46.73: la decisión del alta (SA-8) no sobrevive al cerrar
 
 // FIX IPHONE: shareImg también carga html2canvas lazy
 async function shareImg(mid){
