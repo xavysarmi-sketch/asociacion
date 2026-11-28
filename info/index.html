@@ -48,9 +48,11 @@ video{display:block;width:auto;max-width:100%;max-height:70vh;margin:8px auto 0;
 .fb{border:1.5px solid var(--v2);border-radius:14px;overflow:hidden;margin:10px 0}
 .fb2{border-color:#E0A040} .fb2 .fbh{background:#FFF4E5;color:#7A4A12}
 .fbh{background:var(--vc);color:var(--v);font-weight:800;padding:8px 12px;font-size:15.5px}
-.fbr{display:grid;grid-template-columns:1.3fr 1fr .8fr;align-items:center;padding:9px 12px;border-top:1px solid #EEE7DC}
+.fbr{display:flex;flex-wrap:wrap;column-gap:12px;row-gap:4px;align-items:center;padding:9px 12px;border-top:1px solid #EEE7DC}
 .fbp{font-weight:700;font-size:15px;line-height:1.2} .fbp small{font-weight:400;color:var(--gris);font-size:12.5px}
-.fbn{text-align:center} .fbn b{display:block;font-size:19px;color:var(--v)} .fbn small{font-size:11.5px;color:var(--gris)}
+.fbr>.fbp{flex:1 1 6.5em;min-width:0} .fbr>.fbn{flex:0 0 auto;min-width:4.5em}
+.fbx{padding:9px 12px;border-top:1px solid #EEE7DC;font-size:.875rem;line-height:1.45} .fbh small{font-weight:400;font-size:.8125rem}
+.fbn{text-align:center} .fbn b{display:block;font-size:19px;color:var(--v);white-space:nowrap} .fbn small{font-size:11.5px;color:var(--gris)}
 .blq{background:#F7F9F7;border:1px solid #E6ECE7;border-radius:12px;padding:4px 10px;margin:8px 0}
 .formas{table-layout:fixed;margin:0;font-size:14px}
 .formas col.c2{width:32%} .formas col.c3{width:21%}
@@ -131,14 +133,17 @@ details.card[open]>summary{margin-bottom:4px}
   <div class="card oculto" id="c-ayuda">
     <h2 class="h2c">💶 Las ayudas<button class="cerrar" onclick="ver('ayuda')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button></h2>
     <p style="margin:0 0 6px">Hay dos formas de pedir una ayuda:</p>
-    <div class="fb"><div class="fbh">1. Asociándote</div>
+    <div class="fb"><div class="fbh">1. Asociándote <small>· aportando <span id="t-ap0"></span> al mes</small></div>
       <div class="fbr"><div class="fbp">12 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a12"></b><small>máximo</small></div><div class="fbn"><b id="t-c12"></b><small>cuotas máx.</small></div></div>
       <div class="fbr"><div class="fbp">24 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a24"></b><small>máximo</small></div><div class="fbn"><b id="t-c24"></b><small>cuotas máx.</small></div></div>
       <div class="fbr"><div class="fbp">36 meses<br><small>de permanencia</small></div><div class="fbn"><b id="t-a36"></b><small>máximo</small></div><div class="fbn"><b id="t-c36"></b><small>cuotas máx.</small></div></div>
+      <div class="fbx" id="t-alto"></div>
     </div>
     <div class="fb fb2"><div class="fbh">2. Sin asociarte, con aval</div>
       <div class="fbr"><div class="fbp">Te avala<br><small>un asociado</small></div><div class="fbn"><b id="t-aav"></b><small>máximo</small></div><div class="fbn"><b id="t-cav"></b><small>cuotas máx.</small></div></div>
+      <div class="fbx" id="t-una"></div>
     </div>
+    <div class="ej" id="t-resta"></div>
     <div class="ej sim"><b>Calcula tu ayuda</b>
       <div class="bar"><span>Recibes</span><b id="s-imv"></b></div><input type="range" id="s-im" step="50" value="500">
       <div class="bar"><span>Lo devuelves en</span><b id="s-cuv"></b></div><input type="range" id="s-cu" min="1" step="1" value="5">
@@ -210,8 +215,8 @@ details.card[open]>summary{margin-bottom:4px}
   </details>
   <div class="pie">Nuevos Horizontes · Esta página no guarda ningún dato.</div>
 </div>
-<script src="../js/maestro.js?v=46.56"></script>
-<script src="../js/iconos.js?v=46.25"></script>
+<script src="../js/maestro.js?v=46.76"></script>
+<script src="../js/iconos.js?v=46.76"></script>
 <script>
 // Número de WhatsApp del coordinador (solo dígitos, con prefijo de país).
 const COORD="34685633486";
@@ -220,6 +225,8 @@ const RETORNO=5;
 const R=REGLAS, $=id=>document.getElementById(id), Q=new URLSearchParams(location.search);
 const eur=n=>{ const r=Math.round(n*100)/100; let [e,d]=String(r).split("."); e=e.replace(/\B(?=(\d{3})+(?!\d))/g,"."); return e+(d?","+d.padEnd(2,"0"):"")+" €"; };
 const DE=(Q.get("de")||"").trim().slice(0,60), W=(Q.get("w")||"").replace(/\D/g,"").slice(0,15), NOM=DE.split(" ")[0];
+// v46.76: quien invita se muestra como «Nombre I.» (nombre de pila + inicial del apellido), también en los enlaces antiguos con el nombre completo
+const DEC=(()=>{ const p=DE.split(/\s+/).filter(Boolean); return p.length>1?p[0]+" "+p[1].charAt(0).toUpperCase()+".":(p[0]||""); })();
 function cuotas(cap,n){ const tot=Math.ceil(cap+cap*RETORNO/100*n-1e-9), b=Math.floor(tot/n), r=tot-b*n; return {tot,primera:r?b+1:b}; }
 function total(ap,meses){ const t=[R.BENEFICIO_ANIO1,R.BENEFICIO_ANIO2,R.BENEFICIO_ANIO3]; let ben=0; for(let a=0;a<meses/12;a++)ben+=12*(ap/R.BLOQUE_APORTE)*t[a]; return {aportado:ap*meses,ben,tot:ap*meses+ben}; }
 // v46.56 (Maestro v18.82 · AY-10): asociándote se entra con 50 € al mes; lo que se puede pedir crece con la permanencia
@@ -242,10 +249,19 @@ $("s-im").oninput=$("s-cu").oninput=()=>{tocado();barras();}; document.querySele
 $("t-aps").textContent=R.APORTE_OPCIONES.slice(0,-1).join(", ")+" o "+R.APORTE_OPCIONES.slice(-1)+" €";
 $("t-tar").textContent=`${R.BENEFICIO_ANIO1} € al mes el 1.er año, ${R.BENEFICIO_ANIO2} € el 2.º y ${R.BENEFICIO_ANIO3} € el 3.º.`;
 $("t-ben").innerHTML=`<tr><th>Aportando 50 € al mes</th><th class="n">Aportas</th><th class="n">Ganas</th><th class="n">Recibes</th></tr>`+[12,24,36].map(m=>{const t=total(50,m);return `<tr><td>${m} meses</td><td class="n">${eur(t.aportado)}</td><td class="n" style="color:var(--v2)">+ ${eur(t.ben)}</td><td class="n"><b>${eur(t.tot)}</b></td></tr>`;}).join("");
-$("t-faqcu").textContent=`Tú eliges. Con aval, de 1 a ${R.CUOTAS_MAX_CORTA} cuotas. Asociándote, hasta ${CU[12]} cuotas con permanencia de 12 meses, ${CU[24]} con 24 y ${CU[36]} con 36.`;
+// v46.76 (vídeo de ayudas v3 · Maestro AY-1, AY-8, AY-10): con aporte de 100 € se puede pedir más, lo pendiente se resta y con aval, una sola vez
+const AP1=R.APORTE_ALTO, LIM1={12:Math.min(R.AYUDA_12_APORTE_ALTO,R.AYUDA_MAX),24:Math.min(AP1*R.VECES_24,R.AYUDA_MAX),36:Math.min(AP1*R.VECES_36,R.AYUDA_MAX)};
+const CU1={12:Math.min(R.CUOTAS_12_100,R.CUOTAS_MAX),24:Math.min(R.CUOTAS_24_100,R.CUOTAS_MAX),36:Math.min(R.CUOTAS_36,R.CUOTAS_MAX)};
+const eurN=n=>eur(n).replace(" ","\u00a0"); // la cifra y el € siempre juntos
+$("t-ap0").textContent=eurN(AP0);
+$("t-alto").innerHTML=`Si aportas <b>${eurN(AP1)} al mes</b>, puedes pedir más: hasta <b>${eurN(LIM1[12])}</b> con 12 meses (${CU1[12]} cuotas) y `+(LIM1[24]===LIM1[36]&&CU1[24]===CU1[36]?`hasta <b>${eurN(LIM1[24])}</b> con 24 o 36 meses (${CU1[24]} cuotas).`:`hasta <b>${eurN(LIM1[24])}</b> con 24 meses (${CU1[24]} cuotas) y <b>${eurN(LIM1[36])}</b> con 36 (${CU1[36]} cuotas).`);
+$("t-una").innerHTML=R.AYUDAS_MAX_TERCERO===1?"<b>Una sola vez</b>; para otra, te asocias.":"";
+const EJ=250; // ejemplo del vídeo v3 (no es una regla): 24 meses y 50 € → hasta 1.000 €, le quedan 250 €
+$("t-resta").innerHTML=`<b>Si ya tienes una ayuda</b>, lo que te queda por devolver se resta de lo que puedes pedir. Por ejemplo: hasta ${eurN(LIM[24])} − ${eurN(EJ)} que te quedan = puedes pedir <b>${eurN(LIM[24]-EJ)}</b>.`;
+$("t-faqcu").textContent=`Tú eliges. Con aval, de 1 a ${R.CUOTAS_MAX_CORTA} cuotas. Asociándote, hasta ${CU[12]} cuotas con permanencia de 12 meses, ${CU[24]} con 24 y ${CU[36]} con 36 (aportando ${eur(AP0)}; con ${eur(AP1)} o más, hasta ${CU1[12]}, ${CU1[24]} y ${CU1[36]}).`;
 // Quién invita y botones para hablar
-if(DE){ $("inv").innerHTML=`👋 Te invita <b>${DE.replace(/[<>&]/g,"")}</b>, asociado de Nuevos Horizontes.`; $("inv").classList.remove("oculto"); }
-const hola=q=>encodeURIComponent(`Hola, ${q}. He visto la información de Nuevos Horizontes${DE&&q!==NOM?` (me la ha pasado ${DE})`:""} y tengo una pregunta: `);
+if(DE){ $("inv").innerHTML=`👋 <b>${DEC.replace(/[<>&]/g,"")}</b> te invita a Nuevos Horizontes.`; /* v46.76: frase neutra, «Nombre I.» */ $("inv").classList.remove("oculto"); }
+const hola=q=>encodeURIComponent(`Hola, ${q}. He visto la información de Nuevos Horizontes${DEC&&q!==NOM?` (me la ha pasado ${DEC})`:""} y tengo una pregunta: `);
 if(W&&NOM){ const a=$("h-ref"); a.href=`https://wa.me/${W}?text=${hola(NOM)}`; a.textContent=`💬 Hablar con ${NOM}`; a.classList.remove("oculto"); }
 $("h-coo").href=`https://wa.me/${COORD}?text=${hola("coordinador")}`;
 // Capa 2 según lo que interese
@@ -293,7 +309,7 @@ function enviar(){
   const fallo=!nom?"Escribe tu nombre.":tel.replace(/\D/g,"").length<9?"Escribe tu teléfono.":!F.int?"Elige qué te interesa.":(F.int==="ayuda"&&!F.como)?"Elige cómo quieres la ayuda.":(F.int==="ayuda"&&excede())?"La ayuda pasa del límite: mira el aviso naranja.":"";
   if(fallo){ e.textContent=fallo; e.style.display="block"; return; } e.style.display="none";
   const ay=F.int==="ayuda", ah=F.int==="ahorro", pm=F.pm, ap=F.ap;
-  let t=`Hola, soy *${nom}* (tel. ${tel}).`+(DE?` Me ha recomendado *${DE}*.`:"")+`\nQuiero entrar en Nuevos Horizontes.`;
+  let t=`Hola, soy *${nom}* (tel. ${tel}).`+(DEC?` Me ha recomendado *${DEC}*.`:"")+`\nQuiero entrar en Nuevos Horizontes.`;
   if(ay){ const c=+$("f-im").value,n=+$("f-cu").value; t+=`\n💶 Una ayuda de *${eur(c)}* en ${n} ${n===1?"cuota":"cuotas"} de ${eur(cuotas(c,n).primera)}`+(F.como==="aval"?" (con aval, sin asociarme)":" (asociándome)"); }
   if(ay&&F.como==="aso")t+=`, permanencia de *${pm} meses*`;
   if(ah)t+=`\n🌱 Asociarme: aporte de *${eur(ap)}* al mes, permanencia de *${pm} meses*`;
@@ -301,7 +317,7 @@ function enviar(){
 }
 // Al abrir: según el enlace
 if(window.iconizar){ window._IC_RE=new RegExp("("+Object.keys(_IC_M).join("|")+")\\uFE0F?","gu"); iconizar(document.body); } // v46.21: iconos de línea, como la app
-const P=Q.get("p"); if(P==="ayuda"||P==="ahorro")elegir("f-int",P); else pintar(); // solo marca «Me interesa»; no abre nada
+const P=Q.get("p"); if(P==="ayuda"||P==="ahorro"){ $(P==="ayuda"?"c-ayuda":"c-ahorro").classList.remove("oculto"); $(P==="ayuda"?"b-ay":"b-ah").classList.add("on"); elegir("f-int",P); } else pintar(); // v46.76: abre la parte que le interesa SIN bajar (lo primero, «Nombre I. te invita…»); p=todo, nada abierto
 </script>
 </body>
 </html>

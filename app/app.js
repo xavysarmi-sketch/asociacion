@@ -380,9 +380,11 @@ async function nhaCamPedir(tipo,v){
 const NHA_PRUEBA_INV=true; // v46.26 (Ángel 08/11/2026): «Invitar a alguien» y el aviso del bono, para todos (antes solo con &prueba=1)
 function _nhaInvTexto(m){
   const q=NHA.inv||"todo", nom=m.name.split(" ")[0];
-  const url=new URL("../info/",location.href); url.search=""; url.searchParams.set("p",q); url.searchParams.set("de",m.name);
+  // v46.76 (Ángel 28/11/2026): el enlace lleva solo «Nombre I.» (nombre de pila + inicial del apellido), no el nombre completo
+  const pz=m.name.split(/\s+/).filter(Boolean), corto=pz.length>1?pz[0]+" "+pz[1].charAt(0).toUpperCase()+".":nom;
+  const url=new URL("../info/",location.href); url.search=""; url.searchParams.set("p",q); url.searchParams.set("de",corto);
   const ej=12*REGLAS.APORTE_MINIMO+12*REGLAS.BENEFICIO_ANIO1;
-  const lin=q==="ayuda"?`💶 Ayudas de ${fmtEur(REGLAS.AYUDA_MIN)} a ${fmtEur(REGLAS.AYUDA_MAX_SIN_APROBACION)} €, que se devuelven poco a poco, en cuotas.`
+  const lin=q==="ayuda"?`💶 Ayudas de hasta ${fmtEur(REGLAS.AYUDA_MAX)} €, según tu permanencia y tu aporte, que se devuelven poco a poco.` // v46.76: como el vídeo v3 (AY-10)
     :q==="ahorro"?`🌱 Aportas desde ${REGLAS.APORTE_MINIMO} € al mes y ganas beneficios: con ${REGLAS.APORTE_MINIMO} € al mes, en 12 meses recibes ${fmtEur(ej)} €.`
     :`💶 Ayudas cuando las necesitas y 🌱 beneficios por lo que aportas.`;
   return `Hola 👋 Te paso información de *Nuevos Horizontes*, el fondo de apoyo mutuo del que formo parte. Somos personas de confianza que aportamos cada mes y nos apoyamos cuando alguien lo necesita.\n${lin}\nMíralo aquí, son 2 minutos: ${url.href}\n— ${nom}`;
