@@ -175,6 +175,14 @@ Estaban dentro de notas de versión (ahora en `docs/HISTORIAL.md`); comprobadas 
   deben coincidir siempre (documento y app). Si no coinciden, corregir el nombre antes de seguir.
 - HISTORIAL: el historial de versiones está en `docs/HISTORIAL.md`. Añade ahí la línea de cada versión nueva
   (al final, con fecha), no en este archivo.
+- MAESTRO Y LEEME EN EL MISMO PASO (norma de Ángel desde el 28/11/2026): CADA publicación de una versión de la app incluye,
+  en el mismo paso y sin esperar al aviso del revisor: (1) el Documento Maestro con la sección 13 al día con esa versión
+  (portada «Sección 13 al día con la app vXX.XX», «Estado a la versión de la app vXX.XX…», la fila de la regla afectada y una
+  fila nueva en el registro de versiones del propio Maestro; si la versión no cambia reglas, «solo vista, sin cambios de
+  reglas»); se saca como versión nueva del Maestro siguiendo `NH Oficial\Documento_Maestro\REGISTRO_VERSIONES.md` (la
+  anterior a `Historico\`, PDF a `Revisiones\`, copia del registro antes del cambio, `verificar_vigente.py` en OK); y
+  (2) la cabecera de `..\..\LEEME_PRIMERO.md` («Documento Maestro vXX.XX · App vXX.XX», con respaldo previo en
+  `NH Oficial\respaldos\`). El revisor diario lee exactamente esas dos líneas (sección 2 «App del administrador» y 6 «Orden»).
 
 ## Terminología obligatoria (textos visibles y documentos)
 - Usar: asociados, aportes, ayudas, retorno, permanencia, devoluciones/cuotas, aval.
