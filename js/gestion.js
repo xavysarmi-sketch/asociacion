@@ -74,7 +74,7 @@ function permanenciasGestionHTML(){
         <div style="font-size:12px;line-height:1.45;color:var(--muted);margin-top:1px">${base}</div></div></div>`;
   };
   h+=`<div style="margin:8px 0 14px">
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.45">La hoja de calendario es el mes de su último aporte. Se le paga el mes siguiente, cuando se anota su último beneficio. El importe es el total previsto (aportes + beneficios) si paga los aportes que le quedan; si tiene una ayuda pendiente, se descuenta al pagar. En las indefinidas, el importe es el beneficio que puede retirar. Toca a una persona para abrir su ficha.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.45">La hoja de calendario es el mes de su último aporte. Se le paga el mes siguiente, cuando se anota su último beneficio. El importe es el total previsto (aportes + beneficios) si paga los aportes que le quedan; si le quedaría una ayuda pendiente al terminar, ya está descontada (la misma cifra que en Avisos). En las indefinidas, el importe es el beneficio que puede retirar. Toca a una persona para abrir su ficha.</div>
     <div style="display:flex;gap:6px;margin-bottom:12px">${chip("todas","Todas ("+L.length+")")}${chip("prox","Próximos 3 meses ("+nProx+")")}${chip("indef","Indefinidas ("+nIndef+")")}</div>`;
   if(!vis.length)h+=`<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">${fil==="prox"?"✓ Ninguna permanencia termina en los próximos 3 meses":"No hay asociados en este grupo"}</div>`;
   const gk=y=>y.tipo==="sin"?"sin":y.tipo==="indef"?"i"+y.fin:"f"+y.fin;

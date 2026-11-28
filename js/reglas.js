@@ -1121,6 +1121,24 @@ function totalPrevistoPerm(m,fin){
   const ret=beneficioRetirado(m);
   return {capital:_r2(cap),beneficio:_r2(ben),total:_r2(cap+ben-ret),soloBeneficio:Math.max(0,_r2(ben-ret))};
 }
+// v46.74 (Ángel 28/11/2026): LO QUE COBRARÁ AL TERMINAR SU PERMANENCIA, una sola función para Avisos (salidasPrevistas),
+// Permanencias (permanenciasLista) y la app de asociados, para que nunca den cifras distintas para la misma salida.
+// = aportes y beneficio hasta su último mes, contando los que quedan por pagar desde este mes (totalPrevistoPerm; PE-5, BE-3)
+//   − beneficio ya retirado − la ayuda que le quedaría pendiente al terminar (ayudaPendienteAlFin; SA-10).
+function salidaPrevistaFin(m,fin){
+  const tp=totalPrevistoPerm(m,fin), ay=ayudaPendienteAlFin(m,fin);
+  return {capital:tp.capital,beneficio:tp.beneficio,soloBeneficio:tp.soloBeneficio,ayuda:ay,total:_r2(tp.total-ay.importe)};
+}
+// Ayuda que le quedaría pendiente al terminar: las cuotas sin pagar de antes de este mes (atrasadas) y las de después de su último
+// mes. Las de este mes hasta su último mes se dan por pagadas, igual que los aportes de la previsión. Mismo importe que SA-10
+// (ayudaPendienteDe: capital + retorno de cada cuota, o solo el capital si SA10_SOLO_CAPITAL).
+function ayudaPendienteAlFin(m,fin){
+  const idx=_idxMes(DATA.reportMonth,DATA.reportYear); let t=0,cap=0,n=0;
+  (m.loans||[]).forEach(l=>(l.pays||[]).forEach((p,pi)=>{ if(p.paid)return;
+    const py=p.y!=null?p.y:p.año, i=MONTHS.indexOf(p.m)>=0&&py?_idxMes(p.m,+py):null; if(i!=null&&i>=idx&&i<=fin)return;
+    n++; const c=cuotaDe(l,pi), r=recargoPorCuota(l); t+=c; cap+=p.aplazada?0:Math.max(0,c-r); }));
+  return {cuotas:_r2(t),capital:_r2(cap),n,importe:_r2(SA10_SOLO_CAPITAL?cap:t)};
+}
 function permanenciasLista(){
   const idx=_idxMes(DATA.reportMonth,DATA.reportYear), out=[];
   DATA.members.forEach(m=>{
@@ -1136,7 +1154,7 @@ function permanenciasLista(){
     }
     const fin=_finCon(m,m.ciclo);
     const estado=idx>fin?"pasada":fin-idx<=1?"decide":fin-idx===2?"pronto":"normal";
-    out.push({m,tipo:"fija",ini,fin,estado,prox:fin-idx<=2,orden:fin,importe:totalPrevistoPerm(m,fin).total});
+    out.push({m,tipo:"fija",ini,fin,estado,prox:fin-idx<=2,orden:fin,importe:salidaPrevistaFin(m,fin).total}); // v46.74: misma cifra que Avisos
   });
   out.sort((a,b)=>a.orden-b.orden||String(a.m.name).localeCompare(String(b.m.name)));
   return out;
@@ -1401,8 +1419,8 @@ function salidasPrevistas(rm,ry){
     if(m.type!=="asociado"||m.baja||!m.joinMonth||m.ciclo==null)return;
     if(m.ciclo>0){ const fin=finPermanenciaIdx(m);
       if(fin+1>=idx-2&&fin+1<=hasta&&!retiradasDe(m).some(r=>r.finIdx===fin)){
-        const d=salidaV18(m,fin);
-        out.push({m,clase:"pos",tipo:"fin",pagoIdx:fin+1,importe:d.total,retira:Math.max(0,_r2(d.generado-d.retirado)),txt:`Termina su permanencia de ${m.ciclo} meses`}); }
+        const d=salidaPrevistaFin(m,fin); // v46.74: antes salidaV18 (solo lo ya pagado: faltaba el aporte del último mes)
+        out.push({m,clase:"pos",tipo:"fin",pagoIdx:fin+1,importe:d.total,retira:d.soloBeneficio,txt:`Termina su permanencia de ${m.ciclo} meses`}); }
     } else {
       const ini=_idxMes(m.joinMonth,m.joinYear);
       for(const fin of [idx-1,idx]){ const n=_mesesPerm(m,fin); if(n>=12&&n%12===0&&!retiradasDe(m).some(r=>r.finIdx===fin)){

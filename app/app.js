@@ -452,7 +452,7 @@ function nhaImportanteHTML(m,g){
     const tot=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).total,0)), pend=_r2(ms.reduce((s,x)=>s+totalDelMes(x,DATA.reportMonth,DATA.reportYear).pendiente,0));
     items.push([_icSVG("users"),pend>0?`Tu grupo: cobrado ${fmtEur(_r2(tot-pend))} de ${fmtEur(tot)} €`:`Tu grupo: todo cobrado (${fmtEur(tot)} €)`,pend>0?"Toca para ver quién falta":"Toca para verlo",`grupo`]); } // v46.9: la cifra una sola vez
   { const av=(typeof avisosPermanencia==="function"?avisosPermanencia(DATA.reportMonth,DATA.reportYear):[]).find(a=>a.m.id===m.id&&(a.tipo==="fin"||a.tipo==="pasada"));
-    if(av){ const tp=totalPrevistoPerm(m,av.fin).total; items.unshift([_icSVG("sprout"),`Tu permanencia termina en ${_txtIdx(av.fin)}`,`Si no la amplías, cobras en ${_txtIdx(av.fin+1)} unos ${fmtEur(tp)} €. Mira cuánto ganarías si la amplías.`,"sim-ben"]); } } // v46.9
+    if(av){ const tp=salidaPrevistaFin(m,av.fin).total; /* v46.74: la misma cifra que ve el coordinador en Avisos y Permanencias */ items.unshift([_icSVG("sprout"),`Tu permanencia termina en ${_txtIdx(av.fin)}`,`Si no la amplías, cobras en ${_txtIdx(av.fin+1)} unos ${fmtEur(tp)} €. Mira cuánto ganarías si la amplías.`,"sim-ben"]); } } // v46.9
   if(!items.length)return ""; // v46.9: sin avisos, no se pinta la caja
   let h=`<div class="nha-card"><div class="nha-card-tit">Tus avisos</div>`;
   items.forEach(([ic,t,s,ir])=>{ t=t.replace(/ €/g,"&nbsp;€"); s=s.replace(/ €/g,"&nbsp;€"); h+=`<button class="nha-item" onclick="${ir==="sim-ben"?`abrirSimulador('${esc(m.id)}','ben')`:`nhaIr('${ir}')`}"><span class="nha-item-ic">${ic}</span><span class="nha-item-txt"><b>${t}</b><span>${s}</span></span><span class="nha-item-fl">›</span></button>`; });
